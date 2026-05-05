@@ -7,6 +7,9 @@ on:
       - '.vibe-agent/.ai-agents/**'
       - 'scripts/check-ai-agents-routers.sh'
       - 'scripts/check-ai-agents-routers.ps1'
+      - 'scripts/link-ai-agents.sh'
+      - 'scripts/link-ai-agents.ps1'
+      - '.gitignore'
       - '.github/workflows/ai-agents-router.yml'
   pull_request:
     paths:
@@ -14,6 +17,9 @@ on:
       - '.vibe-agent/.ai-agents/**'
       - 'scripts/check-ai-agents-routers.sh'
       - 'scripts/check-ai-agents-routers.ps1'
+      - 'scripts/link-ai-agents.sh'
+      - 'scripts/link-ai-agents.ps1'
+      - '.gitignore'
       - '.github/workflows/ai-agents-router.yml'
 
 jobs:
@@ -21,6 +27,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Smoke test link script (symlinks to .ai-agents)
+        run: |
+          bash scripts/link-ai-agents.sh
+          test -L .claude/skills
+          test -L .cursor/skills
+          test -L .opencode/agents
 
       - name: Verify ROUTER.md tables match folder contents
         run: bash scripts/check-ai-agents-routers.sh

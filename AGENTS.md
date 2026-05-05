@@ -35,7 +35,7 @@ This file is the **tool-agnostic** project charter for AI assistants.
 ## Conventions
 
 - **Single source of truth:** Edit skills, agents, and commands under [`.ai-agents/`](.ai-agents), not in duplicated copies.
-- **After clone:** Run `scripts/link-ai-agents.ps1` (Windows) or `scripts/link-ai-agents.sh` (macOS/Linux) so `.claude`, `.cursor`, and `.opencode` see the same trees.
+- **After clone:** Run `scripts/link-ai-agents.ps1` (Windows) or `scripts/link-ai-agents.sh` (macOS/Linux) so `.claude`, `.cursor`, and `.opencode` discovery paths point at `.ai-agents` (junctions/symlinks are generated and not committed in this repo—see `.gitignore`).
 - **Authoring (MUST):** When **creating** a new skill, subagent, command, or hook, follow the folder’s **`TEMPLATE.md`** and complete every section (What, Why, How, When, Routing & discovery, Permissions & authority).
 - **Routing (MUST):** When **choosing** which asset to use, read [`.ai-agents/ROUTER.md`](.ai-agents/ROUTER.md) and the relevant subfolder **`ROUTER.md`**.
 - **Router tables (MUST):** After **creating, renaming, or deleting** any skill, agent, command, or hook file, update that folder’s **`ROUTER.md`** table in the **same change** (intent / use case, path, notes). Remove stale rows when deleting assets. Run `bash scripts/check-ai-agents-routers.sh` before push, or on Windows `powershell -File scripts/check-ai-agents-routers.ps1` (wraps the same Bash script). CI enforces the same check.
@@ -48,8 +48,7 @@ This file is the **tool-agnostic** project charter for AI assistants.
 - Keep the consumer repo as its own repository and source of product code.
 - Recommended mounting strategy: add this toolkit repo as a submodule at a chosen path (for example `.vibe-agent`), then treat `<toolkit-root>/.ai-agents` as the canonical shared assets path.
 - In the consumer repo, create its own root `AGENTS.md` with product/domain constraints specific to that repo.
-- In the consumer repo, add a local link script that points `.claude`, `.cursor`, and `.opencode` directories to `<toolkit-root>/.ai-agents/*` (skills/agents/commands).
-- Keep this repository's `scripts/link-ai-agents.*` for this repo layout; do not assume they work unchanged in consumer repos.
+- In the consumer repo, run the **same** [`scripts/link-ai-agents.ps1`](scripts/link-ai-agents.ps1) / [`scripts/link-ai-agents.sh`](scripts/link-ai-agents.sh) from the submodule with `-WorkspaceRoot` / `--workspace` set to the consumer root and `-AssetsRoot` / `--assets` set to `<toolkit-root>/.ai-agents` (see [`.ai-agents/README.md`](.ai-agents/README.md)). No duplicate pasted link script is required.
 - Treat `opencode.json` permissions as repository-local policy: if the consumer repo uses different paths than `src/**` and `tests/**`, update its permission map accordingly.
 
 ## Stack and quality

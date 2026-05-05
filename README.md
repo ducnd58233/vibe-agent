@@ -19,8 +19,8 @@ Reusable toolkit for AI coding workflows: shared skills, subagents, slash comman
   - [`references/`](.ai-agents/references): generic checklists/patterns
   - [`hooks/`](.ai-agents/hooks): shared hook scripts
   - [`ROUTER.md`](.ai-agents/ROUTER.md): top-level asset routing index
-- [`.claude/`](.claude): Claude settings and linked discovery paths
-- [`.cursor/`](.cursor): Cursor rules/hooks and linked discovery paths
+- [`.claude/`](.claude): Claude settings; `skills` / `agents` / `commands` are **generated junctions/symlinks** (run link script after clone; see [`.gitignore`](.gitignore))
+- [`.cursor/`](.cursor): Cursor rules/hooks; `skills` and `commands` are **generated links** (same script)
 - [`.codex/`](.codex): Codex project config
 - [`scripts/`](scripts): helper scripts (link setup and router validation)
 
@@ -29,9 +29,10 @@ Reusable toolkit for AI coding workflows: shared skills, subagents, slash comman
 ### Repository scripts
 
 - `powershell -File scripts/link-ai-agents.ps1`
-  - Creates/repairs Windows junctions from `.claude/.cursor/.opencode` to `.ai-agents`
+  - Creates/repairs Windows junctions from `.claude/.cursor/.opencode` to `.ai-agents` (defaults: workspace = repo root)
+  - Consumer repo (submodule at `.vibe-agent`): `powershell -File .vibe-agent/scripts/link-ai-agents.ps1 -WorkspaceRoot $PWD -AssetsRoot (Join-Path $PWD '.vibe-agent\.ai-agents')`
 - `bash scripts/link-ai-agents.sh`
-  - Same as above for macOS/Linux
+  - Same for macOS/Linux; consumer: `bash .vibe-agent/scripts/link-ai-agents.sh --workspace "$PWD" --assets "$PWD/.vibe-agent/.ai-agents"`
 - `bash scripts/check-ai-agents-routers.sh`
   - Validates folder `ROUTER.md` tables match files on disk
 - `powershell -File scripts/check-ai-agents-routers.ps1`
