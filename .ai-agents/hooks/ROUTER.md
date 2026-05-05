@@ -4,7 +4,10 @@ Lookup table for hook scripts in this folder. **After you add, rename, or remove
 
 | Event / concern / use case | Script | Permission notes |
 |----------------------------|--------|------------------|
-| *(none yet)* | — | When adding hooks, list events (`afterFileEdit`, etc.) and required `Bash`/`Read` rules |
-| *(add rows for each hook)* | `your-hook.sh` | Wiring in `hooks.json` / Claude settings |
+| Session bootstrap message with meta-skill | `session-start.py` | Python 3 runtime + file read access |
+| Source-driven `WebFetch` cache revalidation (pre) | `sdd-cache-pre.py` | Python 3 stdlib (`urllib`, `hashlib`); reads/writes `.claude/sdd-cache/` |
+| Source-driven `WebFetch` cache write (post) | `sdd-cache-post.py` | Python 3 stdlib (`urllib`, `hashlib`); reads/writes `.claude/sdd-cache/` |
+| Protect simplify-ignore blocks during read/edit | `simplify-ignore.py` | Python 3 stdlib; edits files + `.claude/.simplify-ignore-cache/` |
+| Hook behavior smoke test for simplify-ignore | `simplify-ignore-test.py` | Python 3 local test helper script |
 
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md) — document stdin/stdout JSON and wiring in [`.cursor/hooks.json`](../../.cursor/hooks.json) / [`.claude/settings.json`](../../.claude/settings.json).

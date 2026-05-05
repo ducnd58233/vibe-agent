@@ -95,6 +95,30 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/sdd-cache-pre.py",
+            "timeout": 10000,
+            "async": false,
+            "statusMessage": "sdd-cache-pre"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
+            "timeout": 5000,
+            "async": false,
+            "statusMessage": "simplify-ignore-pre"
+          }
+        ]
+      },
+      {
         "hooks": [
           {
             "type": "command",
@@ -120,6 +144,30 @@
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/sdd-cache-post.py",
+            "timeout": 10000,
+            "async": true,
+            "statusMessage": "sdd-cache-post"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
+            "timeout": 5000,
+            "async": false,
+            "statusMessage": "simplify-ignore-post"
+          }
+        ]
+      },
       {
         "hooks": [
           {
@@ -172,6 +220,17 @@
       }
     ],
     "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
+            "timeout": 5000,
+            "async": false,
+            "statusMessage": "simplify-ignore-stop"
+          }
+        ]
+      },
       {
         "hooks": [
           {
@@ -238,6 +297,18 @@
       }
     ],
     "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/session-start.py",
+            "timeout": 5000,
+            "async": false,
+            "once": true,
+            "statusMessage": "session-start-meta-skill"
+          }
+        ]
+      },
       {
         "hooks": [
           {

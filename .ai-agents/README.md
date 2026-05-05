@@ -132,6 +132,7 @@ If you want another repository to reuse this setup without copying asset files:
 - Reference the same path from:
   - [`.cursor/hooks.json`](../.cursor/hooks.json) (`command` paths are relative to the project root), and/or
   - [`.claude/settings.json`](../.claude/settings.json) (per [Claude Code hooks](https://code.claude.com/docs/en/hooks)).
+- For toolchains without native project hook runtime wiring in this repo (currently `opencode` and `codex`), treat `.ai-agents/hooks/` as shared scripts and invoke them manually or from external automation.
 
 Do not duplicate script bodies in `.cursor/hooks/` unless a tool requires that path; prefer one shared file under `.ai-agents/hooks/`.
 

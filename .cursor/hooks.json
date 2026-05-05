@@ -1,4 +1,35 @@
 {
   "version": 1,
-  "hooks": {}
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "python3 .ai-agents/hooks/session-start.py"
+      }
+    ],
+    "preToolUse": [
+      {
+        "matcher": "WebFetch",
+        "command": "python3 .ai-agents/hooks/sdd-cache-pre.py"
+      },
+      {
+        "matcher": "Read",
+        "command": "python3 .ai-agents/hooks/simplify-ignore.py"
+      }
+    ],
+    "postToolUse": [
+      {
+        "matcher": "WebFetch",
+        "command": "python3 .ai-agents/hooks/sdd-cache-post.py"
+      },
+      {
+        "matcher": "Edit|Write",
+        "command": "python3 .ai-agents/hooks/simplify-ignore.py"
+      }
+    ],
+    "stop": [
+      {
+        "command": "python3 .ai-agents/hooks/simplify-ignore.py"
+      }
+    ]
+  }
 }
