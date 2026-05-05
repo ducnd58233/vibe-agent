@@ -20,3 +20,9 @@ This repository is domain-agnostic; do not add product-domain logic into shared 
 For Cursor-specific paths and linking skills after clone, see **`CURSOR.md`**.
 
 Do not duplicate long policy in this rule file; update **`AGENTS.md`** or **`.ai-agents/README.md`** instead.
+
+## Always-on behavioral baseline
+
+- Apply **`karpathy-guardrails`** for assumptions, simplicity, scoped edits, and verification before completion.
+- Apply **`token-efficient-execution`** for concise default responses and low-noise execution summaries.
+- If user asks for deep explanation, tradeoffs, or teaching mode, prioritize that request over concision.

@@ -41,6 +41,13 @@ Root [`AGENTS.md`](../AGENTS.md) and [`.cursor/rules/000-project-standards.mdc`]
 | **Codex**       | Project `.codex/config.toml`, and by default `AGENTS.md` in the active workspace | No shared `skills/` discovery; use workspace-root `AGENTS.md` and this README for policy. |
 | **opencode**    | Project `opencode.json`, root `AGENTS.md` (native rules file), `.opencode/agents/`, `.opencode/commands/` | Same link script creates `.opencode/agents` and `.opencode/commands` junctions. Skills are surfaced via the `instructions` glob in `opencode.json`, which points at the routers. |
 
+### Always-on baseline semantics
+
+- The default always-on behavioral baseline is defined in root [`AGENTS.md`](../AGENTS.md).
+- `opencode` applies this baseline via `opencode.json` `instructions` entries that include `AGENTS.md` and router docs.
+- `codex` applies this baseline via [`.codex/config.toml`](../.codex/config.toml) `model_instructions_file = "AGENTS.md"`.
+- Keep always-on guidance concise; use skill routing for detail to avoid instruction bloat.
+
 ## Linking `skills` / `agents` / `commands`
 
 Claude Code and Cursor can discover **skills** and **commands** through `.claude` / `.cursor` link paths. If your environment uses linked discovery paths, run the link script to create **symlinks** or **junctions**:

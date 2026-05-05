@@ -4,6 +4,15 @@
 
 This repository is a **shared, domain-agnostic agent-assets toolkit** (skills, agents, commands, hooks), not an end-product app codebase.
 
+## Always-on behavior baseline
+
+Use these skills as default behavioral guardrails in Claude sessions:
+
+- [`karpathy-guardrails`](.ai-agents/skills/karpathy-guardrails/SKILL.md) for assumption handling, simplicity, surgical changes, and verifiable completion.
+- [`token-efficient-execution`](.ai-agents/skills/token-efficient-execution/SKILL.md) for concise, low-noise responses in repetitive execution workflows.
+
+Increase verbosity and exploratory depth whenever the user explicitly asks for detail.
+
 ## Where things live
 
 | What | Where |

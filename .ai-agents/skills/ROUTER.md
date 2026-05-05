@@ -5,6 +5,8 @@ Lookup table for skills under this folder. **After you create, rename, or delete
 | Intent / use case | Skill folder | When to invoke |
 |-------------------|--------------|----------------|
 | Meta: discover skills, routers, orchestration rules | [`using-agent-skills`](using-agent-skills) | Session start; unsure which workflow applies |
+| Always-on coding reliability guardrails | [`karpathy-guardrails`](karpathy-guardrails) | Non-trivial implementation; avoid assumptions/overengineering/scope drift |
+| Token-efficient execution and concise delivery | [`token-efficient-execution`](token-efficient-execution) | High-volume loops; minimize verbosity without losing correctness |
 | Multi-axis PR review, merge quality | [`code-review-and-quality`](code-review-and-quality) | Before merge; evaluating agent output |
 | HTTP/API contracts, OpenAPI alignment | [`api-and-interface-design`](api-and-interface-design) | New endpoints; schema design |
 | Backend modular layering, repos, txs | [`backend-engineering`](backend-engineering) | Services layout; transactions; persistence boundaries |

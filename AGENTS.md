@@ -43,6 +43,15 @@ This file is the **tool-agnostic** project charter for AI assistants.
 - **Tool-specific rules:** Keep Cursor rule files in [`.cursor/rules/`](.cursor/rules). They are not interchangeable with Claude `rules` without editing.
 - **Security:** Do not commit secrets. Use local ignore files and environment variables for credentials.
 
+## Always-on execution baseline
+
+Apply these behaviors by default across sessions and tools:
+
+- **Guardrails first:** use [`karpathy-guardrails`](.ai-agents/skills/karpathy-guardrails/SKILL.md) for assumption checks, simplicity bias, surgical diffs, and verification-first completion.
+- **Efficiency by default:** use [`token-efficient-execution`](.ai-agents/skills/token-efficient-execution/SKILL.md) for concise, low-noise outputs in repetitive workflows.
+- **User override precedence:** if the user requests detailed explanation or broader exploration, increase depth immediately.
+- **Routing discipline:** when uncertain which workflow applies, start at [`.ai-agents/skills/using-agent-skills/SKILL.md`](.ai-agents/skills/using-agent-skills/SKILL.md).
+
 ## Reuse in another repository (consumer repo)
 
 - Keep the consumer repo as its own repository and source of product code.
