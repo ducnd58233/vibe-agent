@@ -1,0 +1,7 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+#
+# Project-scoped Codex configuration (loaded when the project is trusted).
+# See https://developers.openai.com/codex/config-reference
+
+# Same domain-agnostic toolkit narrative as other tools; see https://developers.openai.com/codex/config-reference#instruction-overrides
+model_instructions_file = "AGENTS.md"

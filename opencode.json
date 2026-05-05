@@ -1,0 +1,34 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "shell": "pwsh",
+  "instructions": [
+    "AGENTS.md",
+    ".ai-agents/ROUTER.md",
+    ".ai-agents/skills/ROUTER.md",
+    ".ai-agents/agents/ROUTER.md",
+    ".ai-agents/commands/ROUTER.md",
+    ".ai-agents/PERMISSIONS.md"
+  ],
+  "permission": {
+    "edit": {
+      "*": "ask",
+      ".ai-agents/**": "allow",
+      "scripts/**": "allow",
+      ".cursor/**": "allow",
+      ".claude/**": "allow",
+      "*.md": "allow"
+    },
+    "bash": {
+      "*": "ask",
+      "git status": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "ls *": "allow",
+      "cat *": "allow",
+      "rm *": "deny",
+      "git push --force*": "deny"
+    },
+    "webfetch": "allow",
+    "websearch": "allow"
+  }
+}

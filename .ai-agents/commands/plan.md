@@ -1,0 +1,13 @@
+---
+description: Break spec into ordered tasks with acceptance criteria
+---
+
+Follow [`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md).
+
+Read the spec (user-provided path) and relevant code. Prefer read-only planning unless the user wants edits.
+
+1. Dependency graph and vertical slices (end-to-end thin slices).
+2. Tasks with acceptance criteria, verification command, files likely touched.
+3. Checkpoints between phases.
+
+Write outputs under paths the team uses (for example `docs/plan.md` and `docs/tasks.md`, or a feature folder). Present for human review before implementation.

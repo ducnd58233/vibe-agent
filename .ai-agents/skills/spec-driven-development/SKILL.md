@@ -1,0 +1,94 @@
+---
+name: spec-driven-development
+description: >-
+  Produces a written spec before coding for new features or ambiguous work. Use when requirements are unclear, scope crosses modules, or architectural choices need agreement across frontend and backend.
+disable-model-invocation: true
+---
+
+# Spec-Driven Development
+
+## Stack profile for this repository
+
+When working **in this monorepo**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md), select applicable profiles for the planned work, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
+
+## Overview
+
+Write a structured specification before implementation. The spec is the shared truth for **what**, **why**, and **done means**.
+
+## When to Use
+
+- New feature or significant change.
+- Requirements ambiguous or multi-module.
+- Architectural decision needed.
+
+**When NOT to use:** One-line fixes; changes with obvious, local scope.
+
+## Gated Workflow
+
+```text
+SPECIFY → PLAN → TASKS → IMPLEMENT
+```
+
+Do not advance without human validation when the process calls for it.
+
+### Phase 1: Specify
+
+List assumptions **before** detailed spec content:
+
+```text
+ASSUMPTIONS:
+1. …
+→ Correct now or I proceed.
+```
+
+Cover at minimum:
+
+1. **Objective** — users, problem, success.
+2. **Tech stack** — align with repo manifests, [`stack-profiles/`](../../stack-profiles/), and [`AGENTS.md`](../../../AGENTS.md); name frameworks only after reading files in-tree.
+3. **Commands** — real commands from this repo, e.g. `npm run dev`, `uv run pytest`, not placeholders.
+4. **Project structure** — where UI, API, tests, and docs live in **this** monorepo layout.
+5. **Code style** — pointer to existing conventions + one short example.
+6. **Testing strategy** — unit/component, API integration, and E2E per layer using runners this repo configures.
+7. **Boundaries** — Always / Ask first / Never (schema changes, new deps, CI, secrets).
+
+Include **Success criteria** as testable checks (latency, validation rules, UX states).
+
+**Template sketch:**
+
+```markdown
+# Spec: [Name]
+
+## Objective
+## Tech stack (pinned where relevant)
+## Commands (from repo)
+## Project structure (this repo)
+## Code style
+## Testing strategy
+## Boundaries (Always / Ask / Never)
+## Success criteria
+## Open questions
+```
+
+### Phase 2: Plan
+
+Technical plan: components, dependencies, order, risks, parallel vs sequential work, checkpoints.
+
+### Phase 3: Tasks
+
+Discrete tasks with acceptance criteria, verification command, and expected files touched. Prefer tasks that avoid gigantic single PRs.
+
+### Phase 4: Implement
+
+Execute using [`planning-and-task-breakdown`](../planning-and-task-breakdown/SKILL.md), [`test-driven-development`](../test-driven-development/SKILL.md), and [`context-engineering`](../context-engineering/SKILL.md) as appropriate.
+
+## Living Spec
+
+Update the spec when scope or decisions change; link specs from PRs.
+
+## Verification
+
+Before implementation:
+
+- [ ] Spec covers objective, stack, commands, layout, testing, boundaries, success criteria
+- [ ] Human reviewed when required by team process
+- [ ] Spec path committed or agreed

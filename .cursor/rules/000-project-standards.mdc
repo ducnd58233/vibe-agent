@@ -1,0 +1,22 @@
+---
+description: Project-wide standards; points agents to AGENTS.md and .ai-agents layout.
+globs: []
+alwaysApply: true
+---
+
+# Project context
+
+Follow the repository charter in **`AGENTS.md`** at the project root for shared conventions, security expectations, and the canonical **`.ai-agents/`** layout (skills, agents, commands, hooks).
+This repository is domain-agnostic; do not add product-domain logic into shared agent assets.
+
+**MUST — authoring:** When creating a new skill, subagent, command, or hook under **`.ai-agents/`**, follow that folder’s **`TEMPLATE.md`** and complete all sections (What, Why, How, When, Routing & discovery, Permissions & authority).
+
+**MUST — routing:** Before choosing which existing asset to use, read **`.ai-agents/ROUTER.md`** and the appropriate subfolder **`ROUTER.md`** (e.g. `skills/ROUTER.md`).
+
+**MUST — router tables:** After creating, renaming, or deleting any asset under `.ai-agents/skills`, `agents`, `commands`, or `hooks`, update that folder’s **`ROUTER.md`** in the same change so the table lists current files, use cases, and notes.
+
+**Permissions:** See **`.ai-agents/PERMISSIONS.md`** and [Claude Code permissions](https://code.claude.com/docs/en/permissions) for how **`.claude/settings.json`** relates to documented tool needs.
+
+For Cursor-specific paths and linking skills after clone, see **`CURSOR.md`**.
+
+Do not duplicate long policy in this rule file; update **`AGENTS.md`** or **`.ai-agents/README.md`** instead.

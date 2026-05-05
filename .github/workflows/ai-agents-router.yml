@@ -1,0 +1,24 @@
+name: AI agents ROUTER sync
+
+on:
+  push:
+    paths:
+      - '.ai-agents/**'
+      - 'scripts/check-ai-agents-routers.sh'
+      - 'scripts/check-ai-agents-routers.ps1'
+      - '.github/workflows/ai-agents-router.yml'
+  pull_request:
+    paths:
+      - '.ai-agents/**'
+      - 'scripts/check-ai-agents-routers.sh'
+      - 'scripts/check-ai-agents-routers.ps1'
+      - '.github/workflows/ai-agents-router.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify ROUTER.md tables match folder contents
+        run: bash scripts/check-ai-agents-routers.sh
