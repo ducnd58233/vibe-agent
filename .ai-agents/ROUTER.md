@@ -11,7 +11,7 @@ All assets are reusable and **domain-agnostic**; keep product-domain implementat
 |---------------|-----------|
 | Reusable workflow, SKILL-style instructions | [`skills/ROUTER.md`](skills/ROUTER.md) |
 | Checklists and orchestration reference docs | [`references/ROUTER.md`](references/ROUTER.md) |
-| Pinned frameworks for **this repo** | [`stack-profiles/ROUTER.md`](stack-profiles/ROUTER.md) (overview: [`README.md`](stack-profiles/README.md); authoring: [`TEMPLATE.md`](stack-profiles/TEMPLATE.md)) |
+| Pinned frameworks for the **current workspace** | [`stack-profiles/ROUTER.md`](stack-profiles/ROUTER.md) (overview: [`README.md`](stack-profiles/README.md); authoring: [`TEMPLATE.md`](stack-profiles/TEMPLATE.md)) |
 | Isolated specialist worker (Claude subagent) | [`agents/ROUTER.md`](agents/ROUTER.md) |
 | Slash-style command prompt (Claude Code / Cursor after link script) | [`commands/ROUTER.md`](commands/ROUTER.md) |
 | Lifecycle automation (format on save, CI hooks, guardrails) | [`hooks/ROUTER.md`](hooks/ROUTER.md) |

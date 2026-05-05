@@ -46,9 +46,9 @@ This file is the **tool-agnostic** project charter for AI assistants.
 ## Reuse in another repository (consumer repo)
 
 - Keep the consumer repo as its own repository and source of product code.
-- Recommended mounting strategy: add this toolkit repo as a submodule at `.vibe-agent`, then treat `.vibe-agent/.ai-agents` as the canonical shared assets path.
+- Recommended mounting strategy: add this toolkit repo as a submodule at a chosen path (for example `.vibe-agent`), then treat `<toolkit-root>/.ai-agents` as the canonical shared assets path.
 - In the consumer repo, create its own root `AGENTS.md` with product/domain constraints specific to that repo.
-- In the consumer repo, add a local link script that points `.claude`, `.cursor`, and `.opencode` directories to `.vibe-agent/.ai-agents/*` (skills/agents/commands).
+- In the consumer repo, add a local link script that points `.claude`, `.cursor`, and `.opencode` directories to `<toolkit-root>/.ai-agents/*` (skills/agents/commands).
 - Keep this repository's `scripts/link-ai-agents.*` for this repo layout; do not assume they work unchanged in consumer repos.
 - Treat `opencode.json` permissions as repository-local policy: if the consumer repo uses different paths than `src/**` and `tests/**`, update its permission map accordingly.
 

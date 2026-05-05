@@ -2,7 +2,7 @@
 
 Quick reference for application security. Use alongside the [`security-and-hardening`](../skills/security-and-hardening/SKILL.md) skill.
 
-**Repository-specific defaults** for this codebase: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) — read applicable profile files (e.g. backend, frontend).
+**Workspace-specific defaults** for the current project: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) — read applicable profile files (e.g. backend, frontend).
 
 ## Table of Contents
 

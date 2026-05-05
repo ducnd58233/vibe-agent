@@ -17,4 +17,9 @@ Many tasks span several layers:
 
 | Profile | Layer / concern | When to load | Detection / notes |
 |---------|-----------------|--------------|-------------------|
-| *— Add rows here as you author `*.md` files.* | | | For example later: `frontend-nextjs.md`, `backend-fastapi.md`, `devops-docker.md`. |
+| [`frontend-nextjs-ts.md`](frontend-nextjs-ts.md) | Frontend web (Next.js + TypeScript) | UI/routing/component boundary work | `package.json` has `next`; `tsconfig.json`; `app/` or `pages/` present |
+| [`backend-fastapi.md`](backend-fastapi.md) | Backend HTTP APIs (Python/FastAPI) | Endpoint/service/validation persistence work | FastAPI in dependency manifests; `uv.lock`/`alembic.ini` may exist |
+| [`backend-golang.md`](backend-golang.md) | Backend services (Go) | Go API/service layering and module changes | `go.mod` present; `cmd/` + `internal/` common |
+| [`finance-analyzer.md`](finance-analyzer.md) | Finance research and metrics analysis | Public-company, valuation, fundamentals tasks | Mentions 10-K/10-Q/8-K, EDGAR, FRED, market metrics |
+| [`finance-advisor.md`](finance-advisor.md) | Advisory-safe finance responses | User requests action-oriented investment guidance | Same as analyzer plus suitability/disclaimer constraints |
+| [`datascience.md`](datascience.md) | Data science / ML workflows | Dataset analysis, model training/evaluation, notebooks | Data/ML libs in manifests, notebooks present, `data/`/`models/` hints |

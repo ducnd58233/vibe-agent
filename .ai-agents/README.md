@@ -1,6 +1,6 @@
 # Centralized AI assets (`.ai-agents`)
 
-This directory is the **single source of truth** for skills, subagents, commands, and hook scripts shared across AI coding tools. Tool-specific entrypoints (`.claude/`, `.cursor/`, `.codex/`) should **point here**—not copy—so changes stay in one place.
+This directory is the **single source of truth** for skills, subagents, commands, and hook scripts shared across AI coding tools. Link-based tool entrypoints (`.claude/`, `.cursor/`, `.opencode/`) should **point here**—not copy—so changes stay in one place. Codex uses project instructions rather than linked skills discovery.
 It is intentionally **domain-agnostic** and should not contain product-domain logic.
 
 ## Layout
@@ -12,7 +12,7 @@ It is intentionally **domain-agnostic** and should not contain product-domain lo
 | `stack-profiles/` | Repo-specific pinned stacks (markdown); skills link here instead of naming frameworks inline. |
 | `agents/`  | Claude Code subagent definitions (`*.md`). |
 | `commands/` | Slash-command prompts (`*.md`); `.claude/commands` and `.cursor/commands` link here (same as skills). |
-| `hooks/`   | Hook scripts (shell, PowerShell, etc.) invoked by path from repo root. |
+| `hooks/`   | Hook scripts (shell, PowerShell, etc.) invoked by path from the active workspace root. |
 
 | File | Purpose |
 |------|---------|
@@ -24,11 +24,11 @@ It is intentionally **domain-agnostic** and should not contain product-domain lo
 ## Authoring and routing (agents MUST)
 
 1. **Creating** a new asset: follow the folder’s **`TEMPLATE.md`** (What, Why, How, When, Routing & discovery, Permissions & authority).
-2. **After creating:** update that folder’s **`ROUTER.md`** table (same PR/commit) so use cases and paths stay accurate. From repo root run `bash scripts/check-ai-agents-routers.sh`, or on Windows `powershell -File scripts/check-ai-agents-routers.ps1`, to verify tables match disk (CI runs this on `.ai-agents` changes).
+2. **After creating:** update that folder’s **`ROUTER.md`** table (same PR/commit) so use cases and paths stay accurate. From this toolkit repository root, run `bash scripts/check-ai-agents-routers.sh`, or on Windows `powershell -File scripts/check-ai-agents-routers.ps1`, to verify tables match disk (CI runs this on `.ai-agents` changes).
 3. **Choosing** an existing asset: read [`ROUTER.md`](ROUTER.md) and the relevant subfolder **`ROUTER.md`**.
 4. **Permissions:** update [`PERMISSIONS.md`](PERMISSIONS.md) and [`.claude/settings.json`](../.claude/settings.json) when tool needs change.
 
-Skills stay **general** by default; for **this** codebase, open [`stack-profiles/ROUTER.md`](stack-profiles/ROUTER.md) and read every profile file that applies to the task (see [`stack-profiles/TEMPLATE.md`](stack-profiles/TEMPLATE.md) when adding profiles).
+Skills stay **general** by default; for the **current workspace**, open [`stack-profiles/ROUTER.md`](stack-profiles/ROUTER.md) when present and read every profile file that applies to the task (see [`stack-profiles/TEMPLATE.md`](stack-profiles/TEMPLATE.md) when adding profiles).
 
 Root [`AGENTS.md`](../AGENTS.md) and [`.cursor/rules/000-project-standards.mdc`](../.cursor/rules/000-project-standards.mdc) restate these rules for tools that load them automatically.
 
@@ -38,12 +38,12 @@ Root [`AGENTS.md`](../AGENTS.md) and [`.cursor/rules/000-project-standards.mdc`]
 |-------------|----------------|----------------------------------|
 | **Claude Code** | `.claude/skills/`, `.claude/agents/`, `.claude/commands/`, hooks in `settings.json` | Run `scripts/link-ai-agents.ps1` or `scripts/link-ai-agents.sh` to create directory links (see below). |
 | **Cursor**      | `.cursor/skills/`, `.cursor/commands/`, `.cursor/hooks.json` + hook scripts | Same link script for `skills` and `commands`; hook **commands** in `hooks.json` can point **directly** to `.ai-agents/hooks/...` when preferred. |
-| **Codex**       | Project `.codex/config.toml`, and by default `AGENTS.md` in the repo | No shared `skills/` discovery; use root `AGENTS.md` and this README for policy. |
+| **Codex**       | Project `.codex/config.toml`, and by default `AGENTS.md` in the active workspace | No shared `skills/` discovery; use workspace-root `AGENTS.md` and this README for policy. |
 | **opencode**    | Project `opencode.json`, root `AGENTS.md` (native rules file), `.opencode/agents/`, `.opencode/commands/` | Same link script creates `.opencode/agents` and `.opencode/commands` junctions. Skills are surfaced via the `instructions` glob in `opencode.json`, which points at the routers. |
 
 ## Linking `skills` / `agents` / `commands`
 
-Claude Code and Cursor discover **skills** and **commands** from their own `.claude` / `.cursor` paths. After cloning, run the link script to create **symlinks** or **junctions**:
+Claude Code and Cursor can discover **skills** and **commands** through `.claude` / `.cursor` link paths. If your environment uses linked discovery paths, run the link script to create **symlinks** or **junctions**:
 
 - `.claude/skills` → `.ai-agents/skills`
 - `.claude/agents` → `.ai-agents/agents`
@@ -53,7 +53,7 @@ Claude Code and Cursor discover **skills** and **commands** from their own `.cla
 - `.opencode/agents` → `.ai-agents/agents`
 - `.opencode/commands` → `.ai-agents/commands`
 
-### Windows (PowerShell, from repo root)
+### Windows (PowerShell, from toolkit repo root)
 
 ```powershell
 ./scripts/link-ai-agents.ps1
@@ -75,10 +75,10 @@ Uses directory junctions (`mklink /J`) by default—no admin usually needed for 
 
 If you want another repository to reuse this setup without copying files, prefer this canonical pattern:
 
-1. Add this repository as a submodule at `.vibe-agent` in the consumer repo.
-2. Use `.vibe-agent/.ai-agents` as the canonical shared assets path.
-3. Add consumer-repo-local link scripts so `.claude`, `.cursor`, and `.opencode` point to `.vibe-agent/.ai-agents`.
-4. Keep a consumer-repo-specific `AGENTS.md` for product/domain constraints while shared workflows remain under `.vibe-agent/.ai-agents`.
+1. Add this toolkit repository as a submodule at a chosen path (for example `.vibe-agent`) in the consumer repo.
+2. Use `<toolkit-root>/.ai-agents` as the canonical shared assets path.
+3. Add consumer-repo-local link scripts so `.claude`, `.cursor`, and `.opencode` point to `<toolkit-root>/.ai-agents`.
+4. Keep a consumer-repo-specific `AGENTS.md` for product/domain constraints while shared workflows remain under `<toolkit-root>/.ai-agents`.
 5. Review the consumer repo `opencode.json` permission paths (`src/**`, `tests/**`, etc.) and adapt them to that repo layout.
 
 #### Consumer repo template (PowerShell)

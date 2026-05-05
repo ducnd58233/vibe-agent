@@ -2,7 +2,7 @@
 
 Quick reference for web and API performance. Use alongside the [`performance-optimization`](../skills/performance-optimization/SKILL.md) skill.
 
-**Repository-specific stack notes** for this codebase: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md).
+**Workspace-specific stack notes** for the current project: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md).
 
 ## Core Web Vitals Targets
 
@@ -104,4 +104,4 @@ Use RUM where available; DevTools Performance for long tasks on interactions.
 
 ---
 
-Concrete framework and driver reminders for **this repo**: authored in profile `*.md` files listed under [`ROUTER.md`](../stack-profiles/ROUTER.md).
+Concrete framework and driver reminders for the **current workspace**: authored in profile `*.md` files listed under [`ROUTER.md`](../stack-profiles/ROUTER.md).

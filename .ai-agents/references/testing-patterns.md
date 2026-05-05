@@ -2,7 +2,7 @@
 
 Quick reference for tests across common web + API stacks. Use alongside the [`test-driven-development`](../skills/test-driven-development/SKILL.md) skill.
 
-**Repository-specific tooling** for this codebase: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) — load every profile row that matches your slice.
+**Workspace-specific tooling** for the current project: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) — load every profile row that matches your slice.
 
 ## Table of Contents
 

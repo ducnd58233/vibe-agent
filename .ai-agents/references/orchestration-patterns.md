@@ -1,6 +1,6 @@
 # Orchestration Patterns
 
-Reference catalog of agent orchestration patterns this repository endorses, plus anti-patterns to avoid. Read this before adding a slash command that coordinates multiple personas, or before introducing a persona that wraps existing ones.
+Reference catalog of agent orchestration patterns this toolkit endorses, plus anti-patterns to avoid. Read this before adding a slash command that coordinates multiple personas, or before introducing a persona that wraps existing ones.
 
 **Canonical assets:** [`.ai-agents/`](../README.md) — skills (`skills/*/SKILL.md`), personas (`agents/*.md`), commands (`commands/*.md`). [Master router](../ROUTER.md) lists families; each subfolder has a `ROUTER.md`.
 

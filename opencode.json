@@ -7,13 +7,20 @@
     ".ai-agents/skills/ROUTER.md",
     ".ai-agents/agents/ROUTER.md",
     ".ai-agents/commands/ROUTER.md",
-    ".ai-agents/PERMISSIONS.md"
+    ".ai-agents/PERMISSIONS.md",
+    ".vibe-agent/.ai-agents/ROUTER.md",
+    ".vibe-agent/.ai-agents/skills/ROUTER.md",
+    ".vibe-agent/.ai-agents/agents/ROUTER.md",
+    ".vibe-agent/.ai-agents/commands/ROUTER.md",
+    ".vibe-agent/.ai-agents/PERMISSIONS.md"
   ],
   "permission": {
     "edit": {
       "*": "ask",
       ".ai-agents/**": "allow",
+      ".vibe-agent/.ai-agents/**": "allow",
       "scripts/**": "allow",
+      ".vibe-agent/scripts/**": "allow",
       ".cursor/**": "allow",
       ".claude/**": "allow",
       "*.md": "allow"

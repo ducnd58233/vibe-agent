@@ -2,7 +2,7 @@
 
 Quick reference for WCAG 2.1 AA compliance. Use alongside the [`frontend-ui-engineering`](../skills/frontend-ui-engineering/SKILL.md) skill.
 
-**Repository-specific UI stack** for this codebase: see frontend-related rows in [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md).
+**Workspace-specific UI stack** for the current project: see frontend-related rows in [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md).
 
 ## Table of Contents
 

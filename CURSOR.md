@@ -34,8 +34,8 @@ After **`scripts/link-ai-agents`**, editable markdown in [`.ai-agents/commands/`
 
 ## Reuse in a consumer repo
 
-When this toolkit is reused from another repository, prefer adding it as a submodule at `.vibe-agent`.
+When this toolkit is reused from another repository, prefer adding it as a submodule at a chosen path (for example `.vibe-agent`).
 
-- Canonical shared assets path in the consumer repo: `.vibe-agent/.ai-agents`
-- Consumer repo link scripts should point `.cursor/skills`, `.cursor/commands`, `.claude/*`, and `.opencode/*` to `.vibe-agent/.ai-agents/*`
+- Canonical shared assets path in the consumer repo: `<toolkit-root>/.ai-agents`
+- Consumer repo link scripts should point `.cursor/skills`, `.cursor/commands`, `.claude/*`, and `.opencode/*` to `<toolkit-root>/.ai-agents/*`
 - Keep this repo's own `scripts/link-ai-agents.*` semantics unchanged for this repository layout

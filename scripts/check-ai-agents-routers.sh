@@ -2,13 +2,23 @@
 # Verifies each `.ai-agents/<folder>/ROUTER.md` lookup table matches on-disk routable assets.
 # Does not validate `.ai-agents/ROUTER.md` (hub index, not a folder manifest).
 #
-# Usage: from repository root — bash scripts/check-ai-agents-routers.sh
+# Usage: from toolkit repository root — bash scripts/check-ai-agents-routers.sh
+# Optional: set AI_AGENTS_ROOT to override the .ai-agents path.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-AI="$ROOT/.ai-agents"
+AI_CANDIDATE="${AI_AGENTS_ROOT:-}"
+if [[ -n "$AI_CANDIDATE" ]]; then
+  AI="$AI_CANDIDATE"
+elif [[ -d "$ROOT/.ai-agents" ]]; then
+  AI="$ROOT/.ai-agents"
+elif [[ -d "$ROOT/.vibe-agent/.ai-agents" ]]; then
+  AI="$ROOT/.vibe-agent/.ai-agents"
+else
+  AI="$ROOT/.ai-agents"
+fi
 
 fail=0
 

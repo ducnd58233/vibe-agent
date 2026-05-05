@@ -69,7 +69,7 @@
   },
   "spinnerTipsOverride": {
     "tips": [
-      "Start from AGENTS.md, then route through .ai-agents/ROUTER.md.",
+      "Start from the workspace AGENTS.md, then route through .ai-agents/ROUTER.md (or <toolkit-root>/.ai-agents/ROUTER.md).",
       "Update folder ROUTER.md whenever assets are added, removed, or renamed."
     ],
     "excludeDefault": true
@@ -79,7 +79,7 @@
   "outputStyle": "Explanatory",
   "statusLine": {
     "type": "command",
-    "command": "echo \"vibe-agent: reusable agent-assets toolkit\"",
+    "command": "echo \"workspace: reusable agent-assets toolkit\"",
     "padding": 0
   },
   "attribution": {

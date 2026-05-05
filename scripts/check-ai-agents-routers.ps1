@@ -33,7 +33,10 @@ if ($bash) {
 Write-Host @'
 check-ai-agents-routers: no bash found.
 
-Install Git for Windows (includes Git Bash) or run on WSL/macOS/Linux:
+Install Git for Windows (includes Git Bash) or run on WSL/macOS/Linux.
+You can also point directly to assets with AI_AGENTS_ROOT when needed:
+
+  AI_AGENTS_ROOT=<toolkit-root>/.ai-agents bash scripts/check-ai-agents-routers.sh
 
   bash scripts/check-ai-agents-routers.sh
 

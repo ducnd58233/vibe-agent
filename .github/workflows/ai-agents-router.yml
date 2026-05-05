@@ -4,12 +4,14 @@ on:
   push:
     paths:
       - '.ai-agents/**'
+      - '.vibe-agent/.ai-agents/**'
       - 'scripts/check-ai-agents-routers.sh'
       - 'scripts/check-ai-agents-routers.ps1'
       - '.github/workflows/ai-agents-router.yml'
   pull_request:
     paths:
       - '.ai-agents/**'
+      - '.vibe-agent/.ai-agents/**'
       - 'scripts/check-ai-agents-routers.sh'
       - 'scripts/check-ai-agents-routers.ps1'
       - '.github/workflows/ai-agents-router.yml'

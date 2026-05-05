@@ -31,8 +31,8 @@ To keep personal preferences out of git, use `CLAUDE.local.md` in the project ro
 
 ## Reuse in a consumer repo
 
-When reused from another repository, prefer adding this toolkit as a submodule at `.vibe-agent`.
+When reused from another repository, prefer adding this toolkit as a submodule at a chosen path (for example `.vibe-agent`).
 
-- Canonical shared assets path in the consumer repo: `.vibe-agent/.ai-agents`
-- Consumer repo link scripts should map `.claude/*`, `.cursor/*`, and `.opencode/*` to `.vibe-agent/.ai-agents/*`
+- Canonical shared assets path in the consumer repo: `<toolkit-root>/.ai-agents`
+- Consumer repo link scripts should map `.claude/*`, `.cursor/*`, and `.opencode/*` to `<toolkit-root>/.ai-agents/*`
 - Keep this repository's own `scripts/link-ai-agents.*` behavior unchanged for local usage

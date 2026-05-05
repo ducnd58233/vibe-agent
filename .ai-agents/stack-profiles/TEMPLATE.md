@@ -2,7 +2,7 @@
 
 Use this contract when **adding a new stack profile**. Implement each profile as **`stack-profiles/<short-name>.md`** (standalone markdown—not a `SKILL.md`). Skills stay stack-agnostic; profiles pin **names, paths, tooling, and repo-specific conventions** discoverable via [`ROUTER.md`](ROUTER.md).
 
-After clone, run [`scripts/link-ai-agents.ps1`](../../scripts/link-ai-agents.ps1) (or `.sh`) where relevant; profiles are **not** mirrored into `.cursor/skills`—consumers reach them via links from skills and ROUTER.
+When link-based discovery is used, run [`scripts/link-ai-agents.ps1`](../../scripts/link-ai-agents.ps1) (or `.sh`) after clone where relevant; profiles are **not** mirrored into `.cursor/skills`—consumers reach them via links from skills and ROUTER.
 
 ---
 
@@ -10,7 +10,7 @@ After clone, run [`scripts/link-ai-agents.ps1`](../../scripts/link-ai-agents.ps1
 
 - **File name:** `stack-profiles/<slug>.md` (e.g. `backend-fastapi.md`, `frontend-nextjs.md`, `devops-docker.md`)
 - **Purpose:** Codify frameworks, dependency pins, repo layout assumptions, run commands, and security/perf quirks for **one logical layer or concern**.
-- **Inputs:** Maintainer knowledge of how this repo ships that slice.
+- **Inputs:** Maintainer knowledge of how the current workspace ships that slice.
 - **Outputs:** Agents and humans pick the right profiles from [`ROUTER.md`](ROUTER.md) instead of scattering stack tables across skills.
 
 ---
@@ -47,7 +47,7 @@ Optional:
 
 **Load when:** Tasks cross into implementation details tied to pinned frameworks named in ROUTER profiles.
 
-**Do not use as:** Sole substitute for skills—skills define **workflow**; profiles define **this repo’s pinned stack**.
+**Do not use as:** Sole substitute for skills—skills define **workflow**; profiles define the **current workspace pinned stack**.
 
 ---
 
