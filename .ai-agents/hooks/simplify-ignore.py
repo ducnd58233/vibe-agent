@@ -128,12 +128,16 @@ def _load_blocks(cache: Path, fid: str) -> dict[str, str]:
 
 def _expand_placeholders(content: str, blocks: dict[str, str]) -> str:
     output_lines: list[str] = []
+
     for line in content.splitlines():
-        replaced = line
-        for bid, block in blocks.items():
-            replaced = replaced.replace(f"BLOCK_{bid}", block)
-            replaced = re.sub(rf"BLOCK_{bid}:\s*.*$", block, replaced)
+        def _replace_match(match: re.Match[str]) -> str:
+            bid = match.group(1)
+            block = blocks.get(bid)
+            return block if block is not None else match.group(0)
+
+        replaced = BLOCK_PATTERN.sub(_replace_match, line)
         output_lines.append(replaced)
+
     return "\n".join(output_lines)
 
 

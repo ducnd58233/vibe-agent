@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 
 def run_hook(hook_path: Path, payload: dict[str, object], cwd: Path) -> int:
     proc = subprocess.run(
-        ["python", str(hook_path)],
+        [sys.executable, str(hook_path)],
         input=json.dumps(payload),
         text=True,
         cwd=str(cwd),
@@ -37,6 +39,24 @@ def main() -> int:
         if "BLOCK_" not in target.read_text(encoding="utf-8"):
             print("FAIL: Placeholder was not written")
             return 1
+
+        # Regression: placeholders with reason suffix must expand atomically.
+        write_payload = {"tool_name": "Write", "tool_input": {"file_path": str(target)}}
+        write_code = run_hook(hook, write_payload, workspace)
+        if write_code != 0:
+            print("FAIL: Write hook failed")
+            return 1
+
+        file_id = hashlib.sha1(str(target).encode("utf-8")).hexdigest()[:16]
+        backup_path = workspace / ".claude" / ".simplify-ignore-cache" / f"{file_id}.bak"
+        if not backup_path.exists():
+            print("FAIL: Backup file missing after write")
+            return 1
+        backup_text = backup_path.read_text(encoding="utf-8")
+        if "/* simplify-ignore-end */: perf" in backup_text:
+            print("FAIL: Dangling reason suffix detected in expanded block")
+            return 1
+
     print("PASS: simplify-ignore Python smoke test")
     return 0
 
