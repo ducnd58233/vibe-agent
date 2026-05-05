@@ -18,6 +18,9 @@
     powershell -File scripts/link-ai-agents.ps1
 
     powershell -File .vibe-agent/scripts/link-ai-agents.ps1 -WorkspaceRoot $PWD -AssetsRoot (Join-Path $PWD '.vibe-agent\.ai-agents')
+
+  Optional environment variables (when the matching parameter is omitted):
+    LINK_WORKSPACE, LINK_ASSETS — same paths as -WorkspaceRoot / -AssetsRoot (useful from CI or wrappers).
 #>
 [CmdletBinding()]
 param(
@@ -29,6 +32,10 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# Coerce PathInfo / other objects from callers (e.g. -WorkspaceRoot $PWD) to plain strings.
+$WorkspaceRoot = [string]$WorkspaceRoot
+$AssetsRoot = [string]$AssetsRoot
 
 function Resolve-ExistingDirectory {
     param([Parameter(Mandatory = $true)][string] $PathInput)
@@ -46,10 +53,20 @@ function Resolve-ExistingDirectory {
 
 $toolkitHome = Split-Path -Parent $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($WorkspaceRoot)) {
-    $WorkspaceRoot = $toolkitHome
+    if (-not [string]::IsNullOrWhiteSpace($env:LINK_WORKSPACE)) {
+        $WorkspaceRoot = $env:LINK_WORKSPACE
+    }
+    else {
+        $WorkspaceRoot = $toolkitHome
+    }
 }
 if ([string]::IsNullOrWhiteSpace($AssetsRoot)) {
-    $AssetsRoot = Join-Path $toolkitHome ".ai-agents"
+    if (-not [string]::IsNullOrWhiteSpace($env:LINK_ASSETS)) {
+        $AssetsRoot = $env:LINK_ASSETS
+    }
+    else {
+        $AssetsRoot = Join-Path $toolkitHome ".ai-agents"
+    }
 }
 
 $workspaceFull = Resolve-ExistingDirectory -PathInput $WorkspaceRoot

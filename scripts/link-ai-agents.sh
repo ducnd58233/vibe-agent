@@ -3,8 +3,13 @@
 #
 # Default: workspace = parent of scripts/, assets = <that>/.ai-agents (this toolkit repo).
 #
-# Consumer example (from consumer repo root):
+# Consumer (from consumer repo root; prefer forward slashes on Git Bash / MSYS):
 #   bash .vibe-agent/scripts/link-ai-agents.sh --workspace "$PWD" --assets "$PWD/.vibe-agent/.ai-agents"
+#
+# Or avoid argv quoting issues under Git Bash / PowerShell -lc:
+#   export LINK_WORKSPACE="D:/projects/my-repo"
+#   export LINK_ASSETS="D:/projects/my-repo/.vibe-agent/.ai-agents"
+#   bash .vibe-agent/scripts/link-ai-agents.sh
 #
 # Short flags: -w / -a
 
@@ -15,23 +20,50 @@ TOOLKIT_HOME="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 WORKSPACE=""
 ASSETS=""
+workspace_from_args=0
+assets_from_args=0
 
 usage() {
   echo "Usage: $0 [--workspace DIR] [--assets DIR]" >&2
+  echo "  Or set LINK_WORKSPACE and LINK_ASSETS (used when the matching flag is omitted)." >&2
   echo "  Defaults: workspace=$TOOLKIT_HOME, assets=$TOOLKIT_HOME/.ai-agents" >&2
   exit 1
 }
 
+# Git Bash / MSYS: convert Windows paths (D:/... or D:\\...) to /d/... so cd and test -d work.
+to_unix_path_if_needed() {
+  local p="$1"
+  if command -v cygpath >/dev/null 2>&1; then
+    if [[ "$p" =~ ^[A-Za-z]: ]]; then
+      cygpath -u -- "$p"
+      return
+    fi
+  fi
+  printf '%s\n' "$p"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --workspace=*)
+      WORKSPACE="${1#*=}"
+      workspace_from_args=1
+      shift
+      ;;
+    --assets=*)
+      ASSETS="${1#*=}"
+      assets_from_args=1
+      shift
+      ;;
     --workspace|-w)
       [[ $# -ge 2 ]] || usage
       WORKSPACE="$2"
+      workspace_from_args=1
       shift 2
       ;;
     --assets|-a)
       [[ $# -ge 2 ]] || usage
       ASSETS="$2"
+      assets_from_args=1
       shift 2
       ;;
     -h|--help)
@@ -44,6 +76,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ $workspace_from_args -eq 0 ]]; then
+  WORKSPACE="${LINK_WORKSPACE:-}"
+fi
+if [[ $assets_from_args -eq 0 ]]; then
+  ASSETS="${LINK_ASSETS:-}"
+fi
+
 if [[ -z "$WORKSPACE" ]]; then
   WORKSPACE="$TOOLKIT_HOME"
 fi
@@ -51,12 +90,22 @@ if [[ -z "$ASSETS" ]]; then
   ASSETS="$TOOLKIT_HOME/.ai-agents"
 fi
 
+WORKSPACE="$(to_unix_path_if_needed "$WORKSPACE")"
+ASSETS="$(to_unix_path_if_needed "$ASSETS")"
+
 if [[ ! -d "$WORKSPACE" ]]; then
   echo "Workspace directory not found: $WORKSPACE" >&2
+  if [[ "$WORKSPACE" =~ ^[A-Za-z]:[^/\\\\] ]]; then
+    echo "Hint: under Git Bash, backslashes in double-quoted paths are eaten (D:\\\\projects becomes D:projects)." >&2
+    echo "      Use forward slashes (D:/projects/...) or set LINK_WORKSPACE / LINK_ASSETS and run this script without --workspace/--assets." >&2
+  fi
   exit 1
 fi
 if [[ ! -d "$ASSETS" ]]; then
   echo "Assets directory not found: $ASSETS" >&2
+  if [[ "$ASSETS" =~ ^[A-Za-z]:[^/\\\\] ]]; then
+    echo "Hint: use D:/path/... or MSYS paths /d/path/...; see workspace hint above." >&2
+  fi
   exit 1
 fi
 

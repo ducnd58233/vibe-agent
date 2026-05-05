@@ -57,10 +57,13 @@ Claude Code and Cursor can discover **skills** and **commands** through `.claude
 
 | Parameter | PowerShell | Bash | Default |
 |-----------|------------|------|---------|
-| Workspace root (where `.claude`, `.cursor`, `.opencode` are created) | `-WorkspaceRoot` | `--workspace` / `-w` | Directory that contains `scripts/` (this toolkit checkout) |
-| Assets root (folder that already contains `skills/`, `agents/`, `commands/`) | `-AssetsRoot` | `--assets` / `-a` | `<workspace default>/.ai-agents` |
+| Workspace root (where `.claude`, `.cursor`, `.opencode` are created) | `-WorkspaceRoot` | `--workspace` / `-w` / `--workspace=DIR` | Directory that contains `scripts/` (this toolkit checkout) |
+| Assets root (folder that already contains `skills/`, `agents/`, `commands/`) | `-AssetsRoot` | `--assets` / `-a` / `--assets=DIR` | `<workspace default>/.ai-agents` |
+| Same as above via environment | `LINK_WORKSPACE`, `LINK_ASSETS` | `LINK_WORKSPACE`, `LINK_ASSETS` | Used only when the matching flag/parameter is omitted |
 
 Symlink targets on Unix and junction targets on Windows are resolved to **absolute** paths so links stay valid regardless of current working directory.
+
+**Git Bash on Windows:** do not put Windows paths with backslashes inside **double-quoted** strings passed to `bash -lc "..."` — Bash treats `\\` sequences there and paths like `D:\\projects` can turn into `D:projects`. Prefer: run the script as argv (`bash .vibe-agent/scripts/link-ai-agents.sh --workspace ...`), use **forward slashes** (`D:/projects/...`), use `--workspace=D:/...` form, or set `LINK_WORKSPACE` / `LINK_ASSETS` and run the script with no path flags.
 
 ### Windows (PowerShell)
 
@@ -90,6 +93,20 @@ From a **consumer** repository root (submodule at `.vibe-agent`):
 
 ```bash
 bash .vibe-agent/scripts/link-ai-agents.sh --workspace "$PWD" --assets "$PWD/.vibe-agent/.ai-agents"
+```
+
+Windows paths without MSYS `$PWD` (forward slashes or `cygpath`-friendly):
+
+```bash
+bash .vibe-agent/scripts/link-ai-agents.sh --workspace=D:/path/to/consumer --assets=D:/path/to/consumer/.vibe-agent/.ai-agents
+```
+
+Or:
+
+```bash
+export LINK_WORKSPACE="D:/path/to/consumer"
+export LINK_ASSETS="D:/path/to/consumer/.vibe-agent/.ai-agents"
+bash .vibe-agent/scripts/link-ai-agents.sh
 ```
 
 ### Git and symlinks
