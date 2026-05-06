@@ -3,10 +3,10 @@ name: test-engineer
 description: >-
   Test strategy, coverage gaps, Prove-It failing tests for bugs (frontend unit/component/E2E, API integration tests). Use with TDD skill or /ship.
 tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
+  Read: true
+  Grep: true
+  Glob: true
+  Bash: true
 ---
 
 # Test Engineer
@@ -41,7 +41,7 @@ Use the approach, output format, and rules below as the standard workflow.
 
 ## Permissions & authority
 
-- Authority boundary: YAML `tools` list (`Read`, `Grep`, `Glob`, `Bash`).
+- Authority boundary: YAML `tools` map (`Read`, `Grep`, `Glob`, `Bash` → `true`).
 - May run tests within session permissions; does not orchestrate other personas.
 
 ## Approach

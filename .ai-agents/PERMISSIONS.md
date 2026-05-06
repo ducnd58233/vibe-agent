@@ -8,7 +8,7 @@ Permissions described here are for reusable agent assets, not for domain-specifi
 | Mechanism | Location | Notes |
 |-----------|----------|--------|
 | Project permissions | [`.claude/settings.json`](../.claude/settings.json) | `permissions.allow`, `permissions.ask`, `permissions.deny` for tools (`Bash(...)`, `Read(...)`, `Edit(...)`, `WebFetch(...)`, MCP tools). **Deny overrides allow.** See [official permissions](https://code.claude.com/docs/en/permissions). |
-| Subagent authority | `agents/*.md` YAML **`tools:`** | Restricts which tools a subagent may use. |
+| Subagent authority | `agents/*.md` YAML **`tools:`** | Map of tool name → `true` (OpenCode-valid). Restricts which tools a subagent may use. |
 | Hooks | `hooks` in settings + scripts under `.ai-agents/hooks/` | Hook commands may need shell access; align `Bash` rules with what scripts run. |
 
 When you add or change a skill, agent, command, or hook:
@@ -18,7 +18,9 @@ When you add or change a skill, agent, command, or hook:
 
 ## Subagents (`agents/*.md`)
 
-The three personas [`code-reviewer`](agents/code-reviewer.md), [`security-auditor`](agents/security-auditor.md), and [`test-engineer`](agents/test-engineer.md) declare **`tools: Read, Grep, Glob, Bash`**. Ensure [`.claude/settings.json`](../.claude/settings.json) allows those tools for sessions that spawn subagents, and scope `Bash` to repo-documented test/lint commands where possible.
+The three personas [`code-reviewer`](agents/code-reviewer.md), [`security-auditor`](agents/security-auditor.md), and [`test-engineer`](agents/test-engineer.md) declare **`tools`** with `Read`, `Grep`, `Glob`, and `Bash` set to `true`. Ensure [`.claude/settings.json`](../.claude/settings.json) allows those tools for sessions that spawn subagents, and scope `Bash` to repo-documented test/lint commands where possible.
+
+After changing subagent `tools:` frontmatter, smoke-test delegation in Claude Code so allowlists still behave as expected. For OpenCode-only validation, run `opencode agent list` from the repo root (expects exit code 0).
 
 ## Cursor
 

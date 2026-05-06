@@ -5,11 +5,11 @@ description: >-
   unsupported claims, and reports evidence gaps or unresolved conflicts in a
   research report.
 tools:
-  - Read
-  - Grep
-  - Glob
-  - WebSearch
-  - WebFetch
+  Read: true
+  Grep: true
+  Glob: true
+  WebSearch: true
+  WebFetch: true
 ---
 
 # Source Auditor
@@ -44,7 +44,7 @@ Use the output format and rules below to validate references and claim support.
 
 ## Permissions & authority
 
-- Authority boundary: YAML `tools` list (`Read`, `Grep`, `Glob`, `WebSearch`, `WebFetch`).
+- Authority boundary: YAML `tools` map (`Read`, `Grep`, `Glob`, `WebSearch`, `WebFetch` → `true`).
 - Read-only auditing role; no silent rewriting of conclusions.
 
 ## Output format

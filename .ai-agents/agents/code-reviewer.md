@@ -3,10 +3,10 @@ name: code-reviewer
 description: >-
   Staff-level review across correctness, readability, architecture, security, and performance for web + backend changes. Use before merge or with /ship.
 tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
+  Read: true
+  Grep: true
+  Glob: true
+  Bash: true
 ---
 
 # Senior Code Reviewer
@@ -41,7 +41,7 @@ Use the review dimensions, output format, and rules below as the execution proce
 
 ## Permissions & authority
 
-- Authority boundary: YAML `tools` list (`Read`, `Grep`, `Glob`, `Bash`).
+- Authority boundary: YAML `tools` map (`Read`, `Grep`, `Glob`, `Bash` → `true`).
 - Operates as reviewer; does not orchestrate other personas.
 
 ## Review dimensions

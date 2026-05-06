@@ -3,10 +3,10 @@ name: security-auditor
 description: >-
   Security-focused pass: OWASP-style issues, document/NoSQL injection, authz, secrets, LLM/tool boundaries. Use standalone or with /ship.
 tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
+  Read: true
+  Grep: true
+  Glob: true
+  Bash: true
 ---
 
 # Security Auditor
@@ -41,7 +41,7 @@ Use the scope highlights, severity model, output format, and rules below as the 
 
 ## Permissions & authority
 
-- Authority boundary: YAML `tools` list (`Read`, `Grep`, `Glob`, `Bash`).
+- Authority boundary: YAML `tools` map (`Read`, `Grep`, `Glob`, `Bash` → `true`).
 - Recommends fixes; does not execute external security tooling beyond allowed session scope.
 
 ## Scope highlights

@@ -5,11 +5,11 @@ description: >-
   a scoped topic, then returns a citation-first digest with conflicts and
   uncertainty called out.
 tools:
-  - Read
-  - Grep
-  - Glob
-  - WebSearch
-  - WebFetch
+  Read: true
+  Grep: true
+  Glob: true
+  WebSearch: true
+  WebFetch: true
 ---
 
 # Research Investigator
@@ -44,7 +44,7 @@ Use the output format and rules below to execute a citation-first investigation.
 
 ## Permissions & authority
 
-- Authority boundary: YAML `tools` list (`Read`, `Grep`, `Glob`, `WebSearch`, `WebFetch`).
+- Authority boundary: YAML `tools` map (`Read`, `Grep`, `Glob`, `WebSearch`, `WebFetch` → `true`).
 - Read-only workflow; no file mutation or side-effecting operations.
 
 ## Output format

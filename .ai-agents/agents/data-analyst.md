@@ -4,11 +4,11 @@ description: >-
   Read-only analyst that evaluates evidence, compares options, and produces
   confidence-labeled recommendations with explicit tradeoffs and citations.
 tools:
-  - Read
-  - Grep
-  - Glob
-  - WebSearch
-  - WebFetch
+  Read: true
+  Grep: true
+  Glob: true
+  WebSearch: true
+  WebFetch: true
 ---
 
 # Data Analyst
@@ -43,7 +43,7 @@ Use the output format and rules below to frame, compare, judge, and recommend.
 
 ## Permissions & authority
 
-- Authority boundary: YAML `tools` list (`Read`, `Grep`, `Glob`, `WebSearch`, `WebFetch`).
+- Authority boundary: YAML `tools` map (`Read`, `Grep`, `Glob`, `WebSearch`, `WebFetch` → `true`).
 - Operates in read-only analysis mode.
 
 ## Output format

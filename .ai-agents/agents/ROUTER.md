@@ -4,7 +4,7 @@ Lookup table for Claude subagent files in this folder. **After you add, rename, 
 
 Subagents are primarily for **Claude Code** (typically via `.claude/agents` linked to this folder). Cursor users may `@`-reference the same files as prompts.
 
-| Task type / use case | Subagent file | Tool scope (YAML `tools`) |
+| Task type / use case | Subagent file | Tool scope (YAML `tools` map, values `true`) |
 |----------------------|---------------|---------------------------|
 | Five-axis code review | [`code-reviewer.md`](code-reviewer.md) | Read, Grep, Glob, Bash |
 | Security audit, OWASP + document DB + LLM surfaces | [`security-auditor.md`](security-auditor.md) | Read, Grep, Glob, Bash |
