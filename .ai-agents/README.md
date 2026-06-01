@@ -1,6 +1,6 @@
 # Centralized AI assets (`.ai-agents`)
 
-This directory is the **single source of truth** for skills, subagents, commands, and hook scripts shared across AI coding tools. Link-based tool entrypoints (`.claude/`, `.cursor/`, `.opencode/`) should **point here**—not copy—so changes stay in one place. Codex uses project instructions rather than linked skills discovery.
+This directory is the **single source of truth** for skills, subagents, commands, and hook scripts shared across AI coding tools. Link-based tool entrypoints (`.claude/`, `.cursor/`, `.opencode/`, `.agents/`) should **point here**—not copy—so changes stay in one place. Codex also reads skills via `.agents/skills` and project subagents via generated `.codex/agents/*.toml` after you run the link script.
 It is intentionally **domain-agnostic** and should not contain product-domain logic.
 
 ## Layout
@@ -38,14 +38,14 @@ Root [`AGENTS.md`](../AGENTS.md) and [`.cursor/rules/000-project-standards.mdc`]
 |-------------|----------------|----------------------------------|
 | **Claude Code** | `.claude/skills/`, `.claude/agents/`, `.claude/commands/`, hooks in `settings.json` | Run `scripts/link-ai-agents.ps1` or `scripts/link-ai-agents.sh` to create directory links (see below). |
 | **Cursor**      | `.cursor/skills/`, `.cursor/commands/`, `.cursor/hooks.json` + hook scripts | Same link script for `skills` and `commands`; hook **commands** in `hooks.json` can point **directly** to `.ai-agents/hooks/...` when preferred. |
-| **Codex**       | Project `.codex/config.toml`, and by default `AGENTS.md` in the active workspace | No shared `skills/` discovery; use workspace-root `AGENTS.md` and this README for policy. |
+| **Codex**       | `.agents/skills`, `.agents/commands`, `.codex/agents/*.toml`, `.codex/config.toml`, `AGENTS.md` | Run the link script: `.agents/skills` and `.agents/commands` junctions; custom subagents generated into `.codex/agents/`. Slash commands in `/` still use skills until Codex supports repo `commands/`. |
 | **opencode**    | Project `opencode.json`, root `AGENTS.md` (native rules file), `.opencode/agents/`, `.opencode/commands/` | Same link script creates `.opencode/agents` and `.opencode/commands` junctions. Skills are surfaced via the `instructions` glob in `opencode.json`, which points at the routers. |
 
 ### Always-on baseline semantics
 
 - The default always-on behavioral baseline is defined in root [`AGENTS.md`](../AGENTS.md).
 - `opencode` applies this baseline via `opencode.json` `instructions` entries that include `AGENTS.md` and router docs.
-- `codex` applies this baseline via [`.codex/config.toml`](../.codex/config.toml) `model_instructions_file = "AGENTS.md"`.
+- `codex` applies this baseline via [`.codex/config.toml`](../.codex/config.toml) `model_instructions_file = "../AGENTS.md"` (paths in project config are relative to `.codex/`).
 - Keep always-on guidance concise; use skill routing for detail to avoid instruction bloat.
 
 ## Linking `skills` / `agents` / `commands`
@@ -59,6 +59,9 @@ Claude Code and Cursor can discover **skills** and **commands** through `.claude
 - `.cursor/commands` → `.ai-agents/commands`
 - `.opencode/agents` → `.ai-agents/agents`
 - `.opencode/commands` → `.ai-agents/commands`
+- `.agents/skills` → `.ai-agents/skills` (Codex skill discovery)
+- `.agents/commands` → `.ai-agents/commands` (forward-compatible Codex command discovery; no effect until Codex supports `.agents/commands/`)
+- `.codex/agents/*.toml` — generated from `.ai-agents/agents/*.md` (Codex custom subagents; re-run link after agent edits)
 
 ### Parameters (toolkit dev vs consumer repo)
 

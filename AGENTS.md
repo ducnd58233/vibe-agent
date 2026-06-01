@@ -35,7 +35,7 @@ This file is the **tool-agnostic** project charter for AI assistants.
 ## Conventions
 
 - **Single source of truth:** Edit skills, agents, and commands under [`.ai-agents/`](.ai-agents), not in duplicated copies.
-- **After clone:** Run `scripts/link-ai-agents.ps1` (Windows) or `scripts/link-ai-agents.sh` (macOS/Linux) so `.claude`, `.cursor`, and `.opencode` discovery paths point at `.ai-agents` (junctions/symlinks are generated and not committed in this repo—see `.gitignore`).
+- **After clone:** Run `scripts/link-ai-agents.ps1` (Windows) or `scripts/link-ai-agents.sh` (macOS/Linux) so `.claude`, `.cursor`, `.opencode`, and Codex (`.agents/skills`, `.agents/commands`, `.codex/agents`) discovery paths point at `.ai-agents` (junctions/symlinks and generated Codex agent files are not committed—see `.gitignore`).
 - **Authoring (MUST):** When **creating** a new skill, subagent, command, or hook, follow the folder’s **`TEMPLATE.md`** and complete every section (What, Why, How, When, Routing & discovery, Permissions & authority).
 - **Routing (MUST):** When **choosing** which asset to use, read [`.ai-agents/ROUTER.md`](.ai-agents/ROUTER.md) and the relevant subfolder **`ROUTER.md`**.
 - **Router tables (MUST):** After **creating, renaming, or deleting** any skill, agent, command, or hook file, update that folder’s **`ROUTER.md`** table in the **same change** (intent / use case, path, notes). Remove stale rows when deleting assets. Run `bash scripts/check-ai-agents-routers.sh` before push, or on Windows `powershell -File scripts/check-ai-agents-routers.ps1` (wraps the same Bash script). CI enforces the same check.

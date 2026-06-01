@@ -9,3 +9,6 @@
 /.cursor/commands/
 /.opencode/agents/
 /.opencode/commands/
+/.agents/skills/
+/.agents/commands/
+/.codex/agents/
