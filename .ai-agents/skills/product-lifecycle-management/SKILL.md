@@ -1,7 +1,7 @@
 ---
 name: product-lifecycle-management
 description: >-
-  Connects product discovery, specs, delivery plans, feature flags, launch readiness, observability, feedback loops, deprecation, and lifecycle metrics. Use when planning product lifecycle, defining success/guardrail metrics, rollout strategy, release gates, post-launch review, or end-of-life for features and products.
+  Coordinates the product lifecycle end to end (discovery, specs, delivery, launch, feedback, deprecation), owning lifecycle metrics, guardrails, feature-flag governance, and end-of-life decisions while delegating idea shaping to idea-refine and launch/rollback mechanics to shipping-and-launch. Use when planning lifecycle stages, defining success/guardrail metrics, governing feature flags, running post-launch review, or retiring features and products.
 disable-model-invocation: true
 ---
 
@@ -28,8 +28,8 @@ Shipping code is not the same as delivering product value. Lifecycle discipline 
    - Link spec, tasks, tests, feature flags, release gates, dashboards, owner, and timeline.
    - Define “done” for both engineering and user outcome.
 5. **Launch deliberately**
-   - Use staged rollout: internal, beta/canary, percentage ramp, full launch, post-launch review.
-   - Define rollback/disable criteria before exposure.
+   - Delegate rollout/rollback mechanics to [`shipping-and-launch`](../shipping-and-launch/SKILL.md); own the lifecycle-level go/no-go criteria, owner, and post-launch review.
+   - Confirm staged exposure (internal → canary → ramp → full) and rollback/disable criteria are defined before exposure.
 6. **Close the loop**
    - Review metrics and qualitative feedback.
    - Decide iterate, scale, maintain, migrate, deprecate, or remove.
@@ -41,9 +41,11 @@ Use for lifecycle planning, rollout strategy, success metrics, product operation
 
 ## Routing & discovery
 
-- Pair with [`spec-driven-development`](../spec-driven-development/SKILL.md) for written specs.
-- Pair with [`planning-and-task-breakdown`](../planning-and-task-breakdown/SKILL.md) for execution plans.
-- Pair with [`shipping-and-launch`](../shipping-and-launch/SKILL.md) and [`observability-monitoring`](../observability-monitoring/SKILL.md) for release and feedback loops.
+- This skill **coordinates** the lifecycle and owns metrics, guardrails, flag governance, and deprecation; it does not replace the focused skills it delegates to.
+- Delegate early idea shaping and option framing to [`idea-refine`](../idea-refine/SKILL.md).
+- Delegate launch execution, staged rollout, and rollback mechanics to [`shipping-and-launch`](../shipping-and-launch/SKILL.md).
+- Pair with [`spec-driven-development`](../spec-driven-development/SKILL.md) for written specs and [`planning-and-task-breakdown`](../planning-and-task-breakdown/SKILL.md) for execution plans.
+- Pair with [`observability-monitoring`](../observability-monitoring/SKILL.md) for feedback and post-launch signals.
 
 ## Permissions & authority
 
