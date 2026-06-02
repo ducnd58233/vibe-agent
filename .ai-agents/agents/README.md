@@ -1,4 +1,4 @@
-# Agent personas (Claude subagents)
+﻿# Agent personas (Claude subagents)
 
 Markdown files in this folder define **single-role** specialists consumed as Claude Code subagents (commonly via `.claude/agents` linked to this folder). Cursor does not load these automatically; use the same instructions by `@`-referencing a file in chat.
 
@@ -10,7 +10,7 @@ Markdown files in this folder define **single-role** specialists consumed as Cla
 | **Persona** | Perspective (who) | This folder |
 | **Command** | Entry point (when) | [`commands/`](../commands/) |
 
-Personas **do not** call other personas. Composition is via user or slash commands — see [`references/orchestration-patterns.md`](../references/orchestration-patterns.md).
+Personas **do not** call other personas. Composition is via user or slash commands â€” see [`references/orchestration-patterns.md`](../references/orchestration-patterns.md).
 
 ## Personas
 
@@ -19,6 +19,14 @@ Personas **do not** call other personas. Composition is via user or slash comman
 | Code review (five axes) | [`code-reviewer.md`](code-reviewer.md) | Pre-merge PR review |
 | Security audit | [`security-auditor.md`](security-auditor.md) | Auth, data paths, dependencies |
 | Tests / coverage | [`test-engineer.md`](test-engineer.md) | TDD, gaps, Prove-It bugs |
+| Research investigation | [`research-investigator.md`](research-investigator.md) | Source-backed topic discovery |
+| Data analysis | [`data-analyst.md`](data-analyst.md) | Evidence synthesis and recommendations |
+| Source audit | [`source-auditor.md`](source-auditor.md) | Citation quality and source integrity |
+| Agent systems audit | [`agent-systems-auditor.md`](agent-systems-auditor.md) | Skills, commands, hooks, routers, permissions |
+| DevOps/SRE audit | [`devops-sre-auditor.md`](devops-sre-auditor.md) | CI/CD, infra, observability, deployment risk |
+| Architecture planning | [`architect-planner.md`](architect-planner.md) | Design options, boundaries, implementation slices |
+| Database query audit | [`database-query-auditor.md`](database-query-auditor.md) | SQL/NoSQL query correctness, performance, indexes |
+| QA testing | [`qa-tester.md`](qa-tester.md) | Manual QA, automation strategy, release signoff |
 
 ## Authoring
 

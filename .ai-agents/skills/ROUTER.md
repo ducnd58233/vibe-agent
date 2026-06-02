@@ -11,6 +11,7 @@ Lookup table for skills under this folder. **After you create, rename, or delete
 | HTTP/API contracts, OpenAPI alignment | [`api-and-interface-design`](api-and-interface-design) | New endpoints; schema design |
 | Backend modular layering, repos, txs | [`backend-engineering`](backend-engineering) | Services layout; transactions; persistence boundaries |
 | Browser verification, DevTools | [`browser-testing-with-devtools`](browser-testing-with-devtools) | Runtime/UI bugs; performance in browser |
+| Concurrency, realtime, streaming, high-traffic systems | [`concurrency-realtime-systems`](concurrency-realtime-systems) | WebSockets, SSE, WebRTC, video/live streaming, fan-out, async runtimes, slow consumers, overload |
 | Reduce complexity without behavior change | [`code-simplification`](code-simplification) | Refactor for clarity after tests exist |
 | Load right context, avoid token flood | [`context-engineering`](context-engineering) | Large tasks; scoped reads |
 | Diverge/converge on product ideas | [`idea-refine`](idea-refine) | Vague features; prioritization |
@@ -27,6 +28,13 @@ Lookup table for skills under this folder. **After you create, rename, or delete
 | Systematic debug | [`debugging-and-error-recovery`](debugging-and-error-recovery) | Failures; flakiness |
 | Docs and ADRs | [`documentation-and-adrs`](documentation-and-adrs) | Decisions; runbooks |
 | OWASP-style hardening, document DB + LLM routes | [`security-and-hardening`](security-and-hardening) | Auth, data, dependencies |
+| SQL/NoSQL query analysis and optimization | [`database-query-optimization`](database-query-optimization) | Query errors, slow queries, indexes, explain plans, locks, hot keys, cache/datastore issues |
+| Manual and automation QA strategy | [`qa-testing-strategy`](qa-testing-strategy) | Test charters, exploratory QA, regression, E2E automation, release signoff |
+| DevOps platform, CI/CD, IaC, deploy automation | [`devops-platform-delivery`](devops-platform-delivery) | Pipelines, containers, Terraform/Kubernetes, release gates, rollback |
+| System administration and host operations | [`system-administration-ops`](system-administration-ops) | systemd, Ansible, shell scripts, services, backups, host diagnostics |
+| Observability, monitoring, alerting, dashboards | [`observability-monitoring`](observability-monitoring) | OpenTelemetry, Prometheus/Grafana, logs/traces/metrics, SLOs, runbooks |
+| MLOps lifecycle and model operations | [`mlops-lifecycle`](mlops-lifecycle) | ML pipelines, model registry, evaluation, serving, drift, retraining |
+| Product lifecycle and rollout management | [`product-lifecycle-management`](product-lifecycle-management) | Success metrics, feature flags, staged launch, feedback, deprecation |
 
 Pinned stack for the **current workspace**: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) — compose matching profile files per task.
 

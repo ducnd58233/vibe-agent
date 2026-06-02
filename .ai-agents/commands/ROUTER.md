@@ -14,7 +14,9 @@ Slash-style prompts live in this folder as `*.md`. **Claude Code** commonly reso
 | Parallel investigation with audit | [`investigate.md`](investigate.md) | Multi-faceted question; merge required |
 | Plan tasks from spec | [`plan.md`](plan.md) | Spec exists |
 | Implement next task (TDD) | [`build.md`](build.md) | Tasks/plan exist |
-| TDD / Prove-It | [`test.md`](test.md) | â€” |
+| TDD / Prove-It | [`test.md`](test.md) | — |
 | Simplify safely | [`code-simplify.md`](code-simplify.md) | Tests protect behavior |
+| Audit AI asset health | [`doctor.md`](doctor.md) | Validate routers, hooks, links, permissions |
+| Harden AI asset safety | [`harden.md`](harden.md) | Review permissions, hooks, tool boundaries |
 
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md).

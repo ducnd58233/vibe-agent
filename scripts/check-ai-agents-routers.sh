@@ -236,19 +236,20 @@ check_stack_profiles() {
 
 check_hooks() {
   local dir="$AI/hooks"
-  local sh_files=""
+  local hook_files=""
   local f
 
   shopt -s nullglob
-  for f in "$dir"/*.sh; do
-    sh_files+="$(basename "$f")"$'\n'
+  for f in "$dir"/*.sh "$dir"/*.py "$dir"/*.ps1; do
+    [[ -f "$f" ]] || continue
+    hook_files+="$(basename "$f")"$'\n'
   done
   shopt -u nullglob
 
-  local sh_n
-  sh_n="$(printf '%s' "$sh_files" | grep -c . 2>/dev/null || true)"
-  sh_n="${sh_n:-0}"
-  if [[ "$sh_n" -eq 0 ]]; then
+  local hook_n
+  hook_n="$(printf '%s' "$hook_files" | grep -c . 2>/dev/null || true)"
+  hook_n="${hook_n:-0}"
+  if [[ "$hook_n" -eq 0 ]]; then
     return 0
   fi
 
@@ -259,12 +260,12 @@ check_hooks() {
       [[ -z "$target" ]] && continue
       [[ "$target" == *'/'* ]] && continue
       [[ "$target" == *..* ]] && continue
-      [[ "$target" != *.sh ]] && continue
+      [[ "$target" == *.sh || "$target" == *.py || "$target" == *.ps1 ]] || continue
       table+="$target"$'\n'
     done < <(links_in_column "$row" "1")
   done < <(get_table_body_rows "$dir/ROUTER.md")
 
-  compare_sets ".ai-agents/hooks/ROUTER.md" "$sh_files" "$table" || fail=1
+  compare_sets ".ai-agents/hooks/ROUTER.md" "$hook_files" "$table" || fail=1
 }
 
 main() {

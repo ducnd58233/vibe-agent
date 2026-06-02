@@ -4,10 +4,10 @@ Lookup table for hook scripts in this folder. **After you add, rename, or remove
 
 | Event / concern / use case | Script | Permission notes |
 |----------------------------|--------|------------------|
-| Session bootstrap message with meta-skill | `session-start.py` | Python 3 runtime + file read access |
-| Source-driven `WebFetch` cache revalidation (pre) | `sdd-cache-pre.py` | Python 3 stdlib (`urllib`, `hashlib`); reads/writes `.claude/sdd-cache/` |
-| Source-driven `WebFetch` cache write (post) | `sdd-cache-post.py` | Python 3 stdlib (`urllib`, `hashlib`); reads/writes `.claude/sdd-cache/` |
-| Protect simplify-ignore blocks during read/edit | `simplify-ignore.py` | Python 3 stdlib; edits files + `.claude/.simplify-ignore-cache/` |
-| Hook behavior smoke test for simplify-ignore | `simplify-ignore-test.py` | Python 3 local test helper script |
+| Session bootstrap message with meta-skill | [`session-start.py`](session-start.py) | Python 3 runtime + file read access |
+| Source-driven `WebFetch` cache revalidation (pre) | [`sdd-cache-pre.py`](sdd-cache-pre.py) | Python 3 stdlib (`urllib`, `hashlib`); reads/writes `.claude/sdd-cache/` |
+| Source-driven `WebFetch` cache write (post) | [`sdd-cache-post.py`](sdd-cache-post.py) | Python 3 stdlib (`urllib`, `hashlib`); reads/writes `.claude/sdd-cache/` |
+| Protect simplify-ignore blocks during read/edit | [`simplify-ignore.py`](simplify-ignore.py) | Python 3 stdlib; edits files + `.claude/.simplify-ignore-cache/` |
+| Hook behavior smoke test for simplify-ignore | [`simplify-ignore-test.py`](simplify-ignore-test.py) | Python 3 local test helper script |
 
-**Authoring:** [`TEMPLATE.md`](TEMPLATE.md) â€” document stdin/stdout JSON and wiring in [`.cursor/hooks.json`](../../.cursor/hooks.json) / [`.claude/settings.json`](../../.claude/settings.json).
+**Authoring:** [`TEMPLATE.md`](TEMPLATE.md) — document stdin/stdout JSON and wiring in [`.cursor/hooks.json`](../../.cursor/hooks.json) / [`.claude/settings.json`](../../.claude/settings.json).

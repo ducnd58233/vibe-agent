@@ -63,4 +63,5 @@ Coverage analysis with gaps, recommended tests, prioritization (Critical → Low
 
 - **Invoke directly** for suite design, gap analysis, or Prove-It reproduction.
 - **Invoke via** [`commands/test.md`](../commands/test.md) or [`commands/ship.md`](../commands/ship.md).
+- Pair with [`qa-tester`](qa-tester.md) when release signoff also needs manual charters, exploratory testing, platform matrix, or E2E automation strategy beyond implementation-level tests.
 - **Do not invoke other personas.** See [`references/orchestration-patterns.md`](../references/orchestration-patterns.md).
