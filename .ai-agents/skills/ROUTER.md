@@ -1,4 +1,4 @@
-﻿# Skills router
+# Skills router
 
 Lookup table for skills under this folder. **After you create, rename, or delete a skill folder, update this table in the same change.**
 
@@ -40,6 +40,6 @@ Lookup table for skills under this folder. **After you create, rename, or delete
 | MLOps lifecycle and model operations | [`mlops-lifecycle`](mlops-lifecycle) | ML pipelines, model registry, evaluation, serving, drift, retraining |
 | Product lifecycle and rollout management | [`product-lifecycle-management`](product-lifecycle-management) | Success metrics, feature flags, staged launch, feedback, deprecation |
 
-Pinned stack for the **current workspace**: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) â€” compose matching profile files per task.
+Pinned stack for the **current workspace**: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) — compose matching profile files per task.
 
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md).
