@@ -19,6 +19,7 @@ Add conditional specialists when the change touches their risk area:
 4. **`devops-sre-auditor`** - CI/CD, infrastructure, deploy scripts, observability, alerts, runtime config, or rollout mechanics.
 5. **`database-query-auditor`** - SQL/NoSQL schemas, migrations, indexes, query code, cache/datastore behavior, or database performance.
 6. **`qa-tester`** - manual QA, release signoff, exploratory testing, cross-browser/mobile coverage, or E2E automation strategy.
+7. **`product-design-reviewer`** - Figma/Canva handoff, design-system changes, visual QA, tokens, accessibility, or UI fidelity.
 
 Without Agent tool: run the selected perspectives sequentially but merge as below.
 
@@ -26,7 +27,7 @@ Personas **must not** delegate to each other.
 
 ## Phase B - Merge
 
-Synthesize: quality blockers, security blockers, coverage gaps, database/query risks, QA signoff gaps, accessibility ([`references/accessibility-checklist.md`](../references/accessibility-checklist.md) if UI changed), infra/env/feature flags, deploy/rollback/observability readiness.
+Synthesize: quality blockers, security blockers, coverage gaps, design-system/visual QA risks, database/query risks, QA signoff gaps, accessibility ([`references/accessibility-checklist.md`](../references/accessibility-checklist.md) if UI changed), infra/env/feature flags, deploy/rollback/observability readiness.
 
 ## Phase C - Decision
 

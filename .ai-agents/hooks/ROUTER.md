@@ -1,4 +1,4 @@
-# Hooks router
+ï»¿# Hooks router
 
 Lookup table for hook scripts in this folder. **After you add, rename, or remove a hook script, update this table in the same change.**
 
@@ -9,5 +9,6 @@ Lookup table for hook scripts in this folder. **After you add, rename, or remove
 | Source-driven `WebFetch` cache write (post) | [`sdd-cache-post.py`](sdd-cache-post.py) | Python 3 stdlib (`urllib`, `hashlib`); reads/writes `.claude/sdd-cache/` |
 | Protect simplify-ignore blocks during read/edit | [`simplify-ignore.py`](simplify-ignore.py) | Python 3 stdlib; edits files + `.claude/.simplify-ignore-cache/` |
 | Hook behavior smoke test for simplify-ignore | [`simplify-ignore-test.py`](simplify-ignore-test.py) | Python 3 local test helper script |
+| Warn on raw colors in UI files | [`design-token-guard.py`](design-token-guard.py) | Optional Python 3 hook; warns after Edit/Write when tokenizable raw colors appear |
 
-**Authoring:** [`TEMPLATE.md`](TEMPLATE.md) — document stdin/stdout JSON and wiring in [`.cursor/hooks.json`](../../.cursor/hooks.json) / [`.claude/settings.json`](../../.claude/settings.json).
+**Authoring:** [`TEMPLATE.md`](TEMPLATE.md) - document stdin/stdout JSON and wiring in [`.cursor/hooks.json`](../../.cursor/hooks.json) / [`.claude/settings.json`](../../.claude/settings.json).

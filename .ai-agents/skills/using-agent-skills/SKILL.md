@@ -1,112 +1,101 @@
 ---
 name: using-agent-skills
 description: >-
-  Meta-skill: discover skills via ROUTER tables, compose workflows, and apply core behaviors (assumptions, verification). Use at session start or when choosing workflows and slash commands for the current workspace.
+  Meta-skill: discover current skills, agents, commands, references, hooks, and stack profiles through ROUTER tables instead of memorized lists; compose workflows and apply core behaviors. Use at session start or whenever choosing workflows for the current workspace.
 disable-model-invocation: true
 ---
 
 # Using Agent Skills
 
-## Canonical locations and stack profile
+## Canonical source
 
-Canonical AI assets live under [`.ai-agents/`](../../README.md). Read [`ROUTER.md`](../../ROUTER.md) first, then the subfolder **`ROUTER.md`** for skills, agents, commands, or hooks.
+Do **not** rely on hardcoded skill/agent/command lists in this file. The current asset inventory lives in router tables:
 
-Skills stay **stack-agnostic** by default; for pinned frameworks **here**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md), select every matching profile row, and read those files. Product/domain charter: [`AGENTS.md`](../../../AGENTS.md).
+1. Start with [`../../ROUTER.md`](../../ROUTER.md) to choose the asset family.
+2. Open the relevant folder router:
+   - Skills: [`../ROUTER.md`](../ROUTER.md)
+   - Agents: [`../../agents/ROUTER.md`](../../agents/ROUTER.md)
+   - Commands: [`../../commands/ROUTER.md`](../../commands/ROUTER.md)
+   - References: [`../../references/ROUTER.md`](../../references/ROUTER.md)
+   - Stack profiles: [`../../stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md)
+   - Hooks: [`../../hooks/ROUTER.md`](../../hooks/ROUTER.md)
+3. Load only the matching assets and references needed for the task.
 
-## Overview
+Product/domain expectations live in root [`../../../AGENTS.md`](../../../AGENTS.md). Skills stay stack-agnostic; stack-specific details live in matching stack profiles.
 
-Skills encode **how** to execute a workflow. Personas (`agents/`) encode **who** (single perspective). Commands (`commands/`) encode **when** (repeatable entrypoints). The **user or command** orchestrates — personas do not call personas ([`references/orchestration-patterns.md`](../../references/orchestration-patterns.md)).
+## Mental model
 
-## Discovery
+- **Skills** define reusable workflow: how to do work.
+- **Agents/personas** define isolated perspective: who reviews or investigates.
+- **Commands** define repeatable entrypoints: when to run a workflow.
+- **References** define generic checklists and patterns.
+- **Stack profiles** define pinned frameworks, tools, commands, and repo-specific conventions.
+- **Hooks** define lifecycle automation.
 
-1. Open [`.ai-agents/ROUTER.md`](../../ROUTER.md).
-2. Open the relevant [`skills/ROUTER.md`](../ROUTER.md), [`agents/ROUTER.md`](../../agents/ROUTER.md), or [`commands/ROUTER.md`](../../commands/ROUTER.md).
-3. Pick the skill or persona whose **description** matches the task.
+The **user or command** orchestrates. Personas do not call personas; see [`../../references/orchestration-patterns.md`](../../references/orchestration-patterns.md).
 
-### Phase → skill hints
+## Workflow
 
-Not every task needs every skill. Common mappings:
+1. **Route**
+   - Read the master router, then the matching folder router.
+   - Select every matching skill/profile/reference row by task intent.
+2. **Compose**
+   - Combine assets only when each adds a distinct role.
+   - Prefer one skill plus matching stack profiles for ordinary work.
+   - Use commands for repeated multi-step flows such as spec/plan/build/ship.
+3. **Constrain context**
+   - Read manifests and router rows before deep file reads.
+   - Load optional references only when their router row or current task applies.
+4. **Execute with guardrails**
+   - Surface assumptions before non-trivial work.
+   - Prefer simple, scoped changes.
+   - Stop on conflicting instructions or unsafe ambiguity.
+   - Verify with tests, checks, runtime evidence, or cited sources.
+5. **Maintain routers**
+   - After creating, renaming, or deleting assets, update the corresponding router in the same change.
+   - Run `powershell -File scripts/check-ai-agents-routers.ps1` or `bash scripts/check-ai-agents-routers.sh`.
 
-| Situation | Start here |
-|-----------|------------|
-| Vague idea | [`idea-refine`](../idea-refine/SKILL.md) |
-| Need factual research with citations | [`research-with-citations`](../research-with-citations/SKILL.md) |
-| Need recommendation from collected evidence | [`evidence-based-analysis`](../evidence-based-analysis/SKILL.md) |
-| No written requirements | [`spec-driven-development`](../spec-driven-development/SKILL.md) |
-| Spec → tasks | [`planning-and-task-breakdown`](../planning-and-task-breakdown/SKILL.md) |
-| Right files in context | [`context-engineering`](../context-engineering/SKILL.md) |
-| Doc-accurate APIs | [`source-driven-development`](../source-driven-development/SKILL.md) |
-| UI work | [`frontend-ui-engineering`](../frontend-ui-engineering/SKILL.md) |
-| HTTP/schemas | [`api-and-interface-design`](../api-and-interface-design/SKILL.md) |
-| Backend modules / clean layers | [`backend-engineering`](../backend-engineering/SKILL.md) |
-| Tests | [`test-driven-development`](../test-driven-development/SKILL.md) |
-| Browser/runtime debug | [`browser-testing-with-devtools`](../browser-testing-with-devtools/SKILL.md) |
-| Incidents | [`debugging-and-error-recovery`](../debugging-and-error-recovery/SKILL.md) |
-| Pre-merge | [`code-review-and-quality`](../code-review-and-quality/SKILL.md) |
-| Security pass | [`security-and-hardening`](../security-and-hardening/SKILL.md) |
-| Perf pass | [`performance-optimization`](../performance-optimization/SKILL.md) |
-| Git hygiene | [`git-workflow-and-versioning`](../git-workflow-and-versioning/SKILL.md) |
-| Docs/ADRs | [`documentation-and-adrs`](../documentation-and-adrs/SKILL.md) |
-| Deploy | [`shipping-and-launch`](../shipping-and-launch/SKILL.md) |
-| Simplify diff | [`code-simplification`](../code-simplification/SKILL.md) |
+## Common routing shortcuts
 
-**Parallel ship-style review:** use command [`ship`](../../commands/ship.md) to compose reviewer + auditor + test-engineer reports — see [`orchestration-patterns.md`](../../references/orchestration-patterns.md).
+Use routers for the authoritative list, but these family-level shortcuts are stable:
 
-**Research-oriented commands:** use [`research`](../../commands/research.md), [`analyze`](../../commands/analyze.md), and [`investigate`](../../commands/investigate.md) for citation-first investigation workflows.
-
-## Core Behaviors (always)
-
-1. **Surface assumptions** before non-trivial work.
-2. **Stop on confusion** — name conflicts; ask instead of guessing.
-3. **Push back** with concrete downsides when an approach is risky.
-4. **Prefer simplicity** — fewer lines when clarity allows.
-5. **Scope discipline** — touch only what the task needs.
-6. **Verify** — tests, build, or runtime evidence; not “looks fine.”
-
-## Skill Rules
-
-1. Check [`skills/ROUTER.md`](../ROUTER.md) for an applicable skill before inventing ad hoc process.
-2. Follow the skill’s steps including **Verification** sections.
-3. Multiple skills may apply sequentially; avoid skipping spec/plan when requirements are unclear.
-
-## Typical Feature Sequence (example)
-
-```text
-idea-refine → spec-driven-development → planning-and-task-breakdown
-→ context-engineering → source-driven-development → test-driven-development
-→ code-review-and-quality → git-workflow-and-versioning → documentation-and-adrs → shipping-and-launch
-```
-
-Bugfix might be: `debugging-and-error-recovery` → `test-driven-development` → `code-review-and-quality` only.
+- Need facts or current docs: route to research/source-driven skills and references.
+- Need implementation: route to spec/plan/build/test skills and matching stack profiles.
+- Need review/ship decision: route to commands and agents, especially `/review` or `/ship`.
+- Need UI/design work: route to frontend/product-design skills plus design/front-end/mobile profiles.
+- Need data, DevOps, QA, security, or performance: route to the matching specialized skill/profile rows.
+- Need toolkit maintenance: route to `/doctor`, `/harden`, and `agent-systems-auditor`.
 
 ## Verification
 
-- [ ] Correct `ROUTER.md` consulted for the asset type
-- [ ] Chosen skill matches triggers in its YAML `description`
-- [ ] Orchestration patterns respected ([`references/orchestration-patterns.md`](../../references/orchestration-patterns.md))
+- [ ] Master router consulted.
+- [ ] Relevant folder router consulted.
+- [ ] Matching stack profiles loaded when implementation details are stack-specific.
+- [ ] No stale hardcoded asset list was used instead of routers.
+- [ ] Orchestration stayed user/command-driven, not persona-to-persona.
 
 ## What
 
-Meta-skill for selecting and composing the right skills, personas, and commands for the current workspace.
+Meta-skill for selecting and composing the current router-listed assets.
 
 ## Why
 
-Prevents ad hoc process selection and improves consistency by routing through canonical tables before execution.
+Prevents stale duplicated routing tables inside skills and keeps asset discovery centralized in `ROUTER.md` files.
 
 ## How
 
-Use the existing discovery, phase mapping, core behaviors, and verification checklist in this file as the operational workflow.
+Use the router-first workflow and verification checklist above.
 
 ## When
 
-Use at session start or whenever workflow selection is unclear.
+Use at session start or whenever workflow/asset selection is unclear.
 
 ## Routing & discovery
 
-- Use when choosing between multiple skills/commands/personas.
-- Do not use when a specific downstream skill has already been selected and validated.
+- Use when choosing between skills, commands, agents, references, stack profiles, or hooks.
+- Do not use when a downstream skill or command has already been explicitly selected and validated.
 
 ## Permissions & authority
 
 - Tools: read-only documentation/routing guidance.
-- Authority: no additional tool permissions required beyond reading local markdown assets.
+- Authority: no extra permissions beyond reading local markdown assets.

@@ -1,13 +1,91 @@
-# vibe-agent
+﻿# vibe-agent
 
-Reusable toolkit for AI coding workflows: shared skills, subagents, slash commands, routing docs, stack profiles, and hook scripts.
+Reusable toolkit for AI-agent workflows and AI asset management: shared skills, subagents, slash commands, routing guides, hooks, permissions policy, stack profiles, and cross-tool interoperability patterns.
 
-## What this repository does
+This repository is intentionally **domain-agnostic**. Product-specific behavior belongs in the consuming repository's local `AGENTS.md`.
 
-- Centralizes reusable AI assets under [`.ai-agents/`](.ai-agents)
-- Keeps asset discovery explicit with router tables (`ROUTER.md`)
-- Supports multiple tools (Claude Code, Cursor, Codex, opencode) with one canonical source
-- Provides link scripts so tool-specific folders can point to shared assets
+## What this repository provides
+
+- A single canonical asset tree under [`.ai-agents/`](.ai-agents)
+- Explicit router tables so agents choose the right workflow before acting
+- Reusable skills for engineering, research, security, QA, design systems, DevOps/SRE, MLOps, databases, realtime systems, and product lifecycle work
+- Specialist subagents for review, security, testing, research, architecture, DevOps/SRE, database query audits, QA, product design review, and AI-asset audits
+- Slash commands for repeatable workflows such as `/spec`, `/plan`, `/build`, `/review`, `/ship`, `/doctor`, and `/harden`
+- Stack profiles for pinned frameworks and operational domains
+- Shared hook scripts and permission guidance for safer tool use
+- Link scripts that wire Claude Code, Cursor, Codex, and opencode discovery paths back to `.ai-agents`
+
+## Recent hardening and expansion
+
+The toolkit has been expanded with these capabilities:
+
+### New specialist domains
+
+- **Backend/runtime:** Rust Axum/Tokio, realtime/concurrency/high-traffic systems
+- **Frontend/mobile:** React.js, React Native, Flutter, native Android, native iOS
+- **Operations:** DevOps platform, CI/CD, system administration, observability/monitoring, product lifecycle
+- **Data/ML:** MLOps, SQL databases, NoSQL databases, database query optimization
+- **Design:** design systems, design-to-code, Figma/Canva MCP handoff, visual QA
+- **Quality:** manual QA, automation QA, exploratory testing, release signoff
+
+### New skills
+
+- `concurrency-realtime-systems`
+- `devops-platform-delivery`
+- `system-administration-ops`
+- `observability-monitoring`
+- `mlops-lifecycle`
+- `product-lifecycle-management`
+- `database-query-optimization`
+- `qa-testing-strategy`
+- `product-design-systems`
+
+Core existing skills such as `backend-engineering`, `frontend-ui-engineering`, `security-and-hardening`, `performance-optimization`, and `test-driven-development` were kept reusable and composed with the new domain-specific skills.
+
+### New subagents
+
+- `agent-systems-auditor` - audits skills, commands, hooks, routers, permissions, and context hygiene
+- `architect-planner` - plans architecture, module/API boundaries, tradeoffs, and implementation slices
+- `devops-sre-auditor` - reviews CI/CD, infra, observability, deploy, rollback, and operational readiness
+- `database-query-auditor` - reviews SQL/NoSQL query correctness, indexes, migrations, locks, hot keys, and performance
+- `qa-tester` - plans manual QA, automation QA, exploratory testing, test matrices, and release signoff
+- `product-design-reviewer` - reviews design-system alignment, Figma/Canva handoff, visual QA, and UI fidelity
+
+Existing review agents remain available: `code-reviewer`, `security-auditor`, `test-engineer`, `research-investigator`, `data-analyst`, and `source-auditor`.
+
+### New commands
+
+- `/doctor` - audit AI asset health: routers, hooks, link paths, permissions, and discovery wiring
+- `/harden` - harden AI assets: permissions, hooks, tool boundaries, secret safety, and orchestration risks
+
+`/ship` now supports conditional specialist fan-out:
+
+- Always: `code-reviewer`, `security-auditor`, `test-engineer`
+- Add `devops-sre-auditor` for CI/CD, infra, deploy, observability, or rollout changes
+- Add `database-query-auditor` for SQL/NoSQL, migration, index, cache/datastore, or query-performance changes
+- Add `qa-tester` for manual QA, release signoff, exploratory testing, platform matrix, or E2E strategy
+- Add `product-design-reviewer` for design-system changes, Figma/Canva handoff, visual QA, tokens, or UI fidelity
+
+### New references
+
+- `agent-authoring-patterns.md`
+- `tool-safety-and-permissions.md`
+- `agent-evaluation-patterns.md`
+- `context-management-patterns.md`
+- `ci-cd-observability-patterns.md`
+- `database-query-patterns.md`
+- `qa-testing-strategy.md`
+- `design-to-code-patterns.md`
+
+### Hardening updates
+
+- `.claude/settings.json` now uses a narrower default permission posture
+- Removed stale Claude hook references to missing `.claude/hooks/scripts/hooks.py`
+- Disabled automatic loading of all project MCP servers by default
+- Added secret-path deny patterns
+- Updated hook router entries to link Python hook scripts
+- Updated router validation to check `.py`, `.ps1`, and `.sh` hooks
+- Added optional `design-token-guard.py` hook to warn on raw color values in UI files
 
 ## Folder structure
 
@@ -15,105 +93,117 @@ Reusable toolkit for AI coding workflows: shared skills, subagents, slash comman
   - [`skills/`](.ai-agents/skills): reusable workflows (`SKILL.md`)
   - [`agents/`](.ai-agents/agents): persona files for subagent-style delegation
   - [`commands/`](.ai-agents/commands): slash-command prompts
-  - [`stack-profiles/`](.ai-agents/stack-profiles): workspace stack playbooks
-  - [`references/`](.ai-agents/references): generic checklists/patterns
+  - [`stack-profiles/`](.ai-agents/stack-profiles): pinned stack and domain profiles
+  - [`references/`](.ai-agents/references): generic checklists and pattern references
   - [`hooks/`](.ai-agents/hooks): shared hook scripts
   - [`ROUTER.md`](.ai-agents/ROUTER.md): top-level asset routing index
-- [`.claude/`](.claude): Claude settings; `skills` / `agents` / `commands` are **generated junctions/symlinks** (run link script after clone; see [`.gitignore`](.gitignore))
-- [`.cursor/`](.cursor): Cursor rules/hooks; `skills` and `commands` are **generated links** (same script)
-- [`.codex/`](.codex): Codex project config; `agents/` is **generated** by the link script (see [`.gitignore`](.gitignore))
-- [`.agents/skills/`](.agents/skills), [`.agents/commands/`](.agents/commands): **generated** junctions for Codex discovery (same script)
-- [`scripts/`](scripts): helper scripts (link setup and router validation)
+  - [`PERMISSIONS.md`](.ai-agents/PERMISSIONS.md): permission and authority guidance
+- [`.claude/`](.claude): Claude settings; `skills`, `agents`, and `commands` are generated links after running the link script
+- [`.cursor/`](.cursor): Cursor rules/hooks; `skills` and `commands` are generated links after running the link script
+- [`.codex/`](.codex): Codex project config; `.codex/agents/*.toml` is generated from `.ai-agents/agents`
+- [`.agents/`](.agents): generated Codex-compatible skills/commands links
+- [`.opencode/`](.opencode): generated opencode agent/command links
+- [`scripts/`](scripts): helper scripts for linking and router validation
+
+## Routing rules
+
+Agents should route through the asset tree before acting:
+
+1. Read [`.ai-agents/ROUTER.md`](.ai-agents/ROUTER.md).
+2. Open the relevant folder router:
+   - skills: [`.ai-agents/skills/ROUTER.md`](.ai-agents/skills/ROUTER.md)
+   - agents: [`.ai-agents/agents/ROUTER.md`](.ai-agents/agents/ROUTER.md)
+   - commands: [`.ai-agents/commands/ROUTER.md`](.ai-agents/commands/ROUTER.md)
+   - references: [`.ai-agents/references/ROUTER.md`](.ai-agents/references/ROUTER.md)
+   - stack profiles: [`.ai-agents/stack-profiles/ROUTER.md`](.ai-agents/stack-profiles/ROUTER.md)
+   - hooks: [`.ai-agents/hooks/ROUTER.md`](.ai-agents/hooks/ROUTER.md)
+3. Load every matching stack profile for the current task.
+4. Keep skills stack-agnostic; keep pinned framework/tool details in stack profiles.
 
 ## Useful commands
 
-### Repository scripts
+### Link AI assets after clone
 
-- `powershell -File scripts/link-ai-agents.ps1`
-  - Creates/repairs Windows junctions from `.claude/.cursor/.opencode/.agents` to `.ai-agents`, and syncs Codex `.codex/agents/*.toml` from `.ai-agents/agents/*.md` (defaults: workspace = repo root)
-  - Consumer repo (submodule at `.vibe-agent`): `powershell -File .vibe-agent/scripts/link-ai-agents.ps1 -WorkspaceRoot $PWD -AssetsRoot (Join-Path $PWD '.vibe-agent\.ai-agents')`
-- `bash scripts/link-ai-agents.sh`
-  - Same for macOS/Linux; consumer: `bash .vibe-agent/scripts/link-ai-agents.sh --workspace "$PWD" --assets "$PWD/.vibe-agent/.ai-agents"`
-- `bash scripts/check-ai-agents-routers.sh`
-  - Validates folder `ROUTER.md` tables match files on disk
-- `powershell -File scripts/check-ai-agents-routers.ps1`
-  - Windows wrapper for the same router check
+Windows:
 
-### Slash commands (from `.ai-agents/commands`)
+```powershell
+powershell -File scripts/link-ai-agents.ps1
+```
 
-- `/spec`: produce scoped implementation spec
-- `/plan`: break spec into actionable steps
-- `/build`: implement next planned task with test discipline
-- `/test`: run test-driven/prove-it style validation
+macOS/Linux:
+
+```bash
+bash scripts/link-ai-agents.sh
+```
+
+Consumer repo with this toolkit mounted as `.vibe-agent`:
+
+```powershell
+powershell -File .vibe-agent/scripts/link-ai-agents.ps1 -WorkspaceRoot $PWD -AssetsRoot (Join-Path $PWD '.vibe-agent\.ai-agents')
+```
+
+```bash
+bash .vibe-agent/scripts/link-ai-agents.sh --workspace "$PWD" --assets "$PWD/.vibe-agent/.ai-agents"
+```
+
+### Validate routers
+
+Windows:
+
+```powershell
+powershell -File scripts/check-ai-agents-routers.ps1
+```
+
+macOS/Linux:
+
+```bash
+bash scripts/check-ai-agents-routers.sh
+```
+
+The router check validates skills, agents, commands, references, stack profiles, and hook scripts (`.py`, `.ps1`, `.sh`) against their folder `ROUTER.md` tables.
+
+## Slash commands
+
+- `/spec`: produce a structured implementation spec
+- `/plan`: break a spec into actionable tasks
+- `/build`: implement the next planned task with TDD discipline
+- `/test`: run test-driven or prove-it validation
 - `/review`: run focused code review
-- `/ship`: parallel ship decision flow (review + security + tests)
-- `/research`: run citation-first topic investigation
-- `/analyze`: produce evidence-based recommendation
-- `/investigate`: run parallel investigator + analyst + source-audit merge
+- `/ship`: run pre-ship specialist fan-out and produce GO/NO-GO
+- `/research`: run citation-first research
+- `/analyze`: synthesize evidence into a recommendation
+- `/investigate`: run parallel investigation, analysis, and source audit
+- `/doctor`: audit AI asset health and discovery/config wiring
+- `/harden`: review and improve AI asset safety boundaries
+- `/code-simplify`: simplify safely under test protection
 
-## Example chat workflow
+## Example workflow
 
-Orchestration stays **human-driven**: run slash commands in sequence (see [`orchestration-patterns`](.ai-agents/references/orchestration-patterns.md)). Below is a **sample dialogue** (placeholder feature and paths—swap for your consumer repo).
+```text
+/spec -> /plan -> /build -> /test -> /review -> /ship
+```
 
-### Turn 1 — Spec (Cursor Ask or Plan; read-only)
+For a database-heavy feature, `/ship` can include `database-query-auditor`. For an infra-heavy change, it can include `devops-sre-auditor`. For release signoff, it can include `qa-tester`.
 
-**You:** `/spec` — Add OAuth refresh rotation to our API. Constraints: no new deps unless justified; must pass existing `pytest tests/` and `ruff`. Save spec to `docs/features/oauth-refresh/SPEC.md`.
+## Authoring new assets
 
-**Assistant:** Clarifies scope → writes the SPEC → asks you to confirm before `/plan`.
+When adding a skill, agent, command, hook, reference, or stack profile:
 
-### Turn 2 — Plan
-
-**You:** `/plan` @ `docs/features/oauth-refresh/SPEC.md` — Break into vertical slices, **one PR per slice**. Output `docs/features/oauth-refresh/plan.md`.
-
-**Assistant:** Dependency graph, slices (e.g. A: model + migration, B: refresh endpoint, C: revoke + tests), acceptance criteria, verification commands.
-
-**You:** Approve plan before implementation.
-
-### Turn 3 — Implement slice A (Cursor Agent)
-
-**You:** Branch `feat/oauth-refresh-slice-a` from `main`. Implement **only Slice A** from the plan. Run verification commands when done.
-
-**Assistant:** Implements, runs tests, summarizes diff and open questions.
-
-### Turn 4 — Review before PR
-
-**You:** `/review` — Review the diff on `feat/oauth-refresh-slice-a`; surface blockers only.
-
-**Assistant:** Review notes; you fix or delegate fixes.
-
-### Turn 5 — Open PR (you, outside the chat)
-
-Open a PR whose description links the SPEC, plan section, and issue tracker as your team expects.
-
-### Turn 6 — Next slice
-
-**You:** Branch `feat/oauth-refresh-slice-b`. Implement Slice B only; rebase on `main` if Slice A merged. Repeat Turn 3–5.
-
-### Turn 7 — Pre-merge gate (larger or risky integration)
-
-**You:** `/ship` — Integration branch (or final PR) ready: run parallel quality + security + test perspectives and **Ship Decision: GO | NO-GO**.
-
-**Assistant:** GO/NO-GO, blockers, rollback considerations.
-
-### Turn 8 — CI failure loop (Agent)
-
-**You:** CI failed on `main`: paste failing test name and log excerpt. Fix minimally; do not widen scope.
-
-**Assistant:** Patch and re-run local verification commands.
-
-### Turn 9 — Merge (you)
-
-After green CI and policy checks, merge via your Git host (merge queue, squash, etc.—outside this toolkit).
-
-### One-shot prompt variant
-
-Use in **Agent** mode when the plan and branch already exist:
-
-> Implement Slice A from `docs/features/oauth-refresh/plan.md` on branch `feat/oauth-refresh-slice-a`. Run `pytest tests/unit -q` and `ruff check src`. Do not implement Slice B. Summarize files changed and risks.
+1. Follow that folder's `TEMPLATE.md`.
+2. Complete What / Why / How / When / Routing & discovery / Permissions & authority.
+3. Update the folder `ROUTER.md` in the same change.
+4. Run the router check.
+5. Update [`.ai-agents/PERMISSIONS.md`](.ai-agents/PERMISSIONS.md) and [`.claude/settings.json`](.claude/settings.json) if tool authority changes.
 
 ## How to use this toolkit in another repo
 
-Mount this repository at a chosen `<toolkit-root>` (for example `.vibe-agent`) and point consumer tool folders to `<toolkit-root>/.ai-agents/*`. See:
+Mount this repository at a chosen toolkit path, commonly `.vibe-agent`, then point consumer tool folders to `<toolkit-root>/.ai-agents/*` using the link script.
+
+The consumer repository should keep its own root `AGENTS.md` for product/domain rules while this toolkit supplies shared workflows.
+
+See also:
 
 - [`AGENTS.md`](AGENTS.md)
 - [`.ai-agents/README.md`](.ai-agents/README.md)
+- [`.ai-agents/PERMISSIONS.md`](.ai-agents/PERMISSIONS.md)
+- [`.ai-agents/references/orchestration-patterns.md`](.ai-agents/references/orchestration-patterns.md)

@@ -1,4 +1,4 @@
-# References router
+﻿# References router
 
 Lookup table for shared checklists and pattern docs under this folder. These files support skills (they are not Agent Skills `SKILL.md`).
 
@@ -18,5 +18,6 @@ Lookup table for shared checklists and pattern docs under this folder. These fil
 | Delivery and observability review patterns | [`ci-cd-observability-patterns.md`](ci-cd-observability-patterns.md) | `devops-platform-delivery`, `observability-monitoring` |
 | SQL/NoSQL query diagnosis and optimization | [`database-query-patterns.md`](database-query-patterns.md) | `database-query-optimization`, `database-query-auditor` |
 | Manual QA and automation strategy | [`qa-testing-strategy.md`](qa-testing-strategy.md) | `qa-testing-strategy`, `qa-tester` |
+| Design-to-code, design systems, MCP handoff | [`design-to-code-patterns.md`](design-to-code-patterns.md) | `product-design-systems`, `product-design-reviewer` |
 
 **Workspace-specific tooling** is indexed in [`../stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md). Checklists here stay generic; load matching `*.md` profiles from that router when needed.

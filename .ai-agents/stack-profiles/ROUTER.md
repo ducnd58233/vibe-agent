@@ -1,4 +1,4 @@
-# Stack profiles router
+﻿# Stack profiles router
 
 Lookup table for **repo-pinned stack** markdown files in this folder. Generic skills and references stay portable; profiles name **frameworks, layout, and tooling** here.
 
@@ -11,7 +11,7 @@ Many tasks span several layers:
 1. Open this table.
 2. Select **every** row whose **When to load** fits the current task (e.g. UI change + HTTP API change + compose two profiles).
 3. Read each matching `*.md` file listed in **Profile**.
-4. If no row fits, fall back to **manifest + directory scanning** (`package.json`, `pyproject.toml`, `go.mod`, `apps/`, `backend/`, …) until you author a matching profile ([`TEMPLATE.md`](TEMPLATE.md)).
+4. If no row fits, fall back to **manifest + directory scanning** (`package.json`, `pyproject.toml`, `go.mod`, `apps/`, `backend/`, â€¦) until you author a matching profile ([`TEMPLATE.md`](TEMPLATE.md)).
 
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md).
 
@@ -23,6 +23,7 @@ Many tasks span several layers:
 | [`backend-rust-axum.md`](backend-rust-axum.md) | Backend HTTP APIs (Rust/Axum/Tokio) | Rust API, router, extractor, middleware, async service work | `Cargo.toml` has `axum`; `tokio`, `tower`, `tower-http`, `tracing` common |
 | [`realtime-concurrency-high-traffic.md`](realtime-concurrency-high-traffic.md) | Realtime, concurrency, streaming, high-traffic systems | WebSockets, SSE, WebRTC, live/video streaming, fan-out, overload, slow consumers | `ws`, `webrtc`, `sse`, `streaming`, brokers/queues, high connection counts |
 | [`frontend-reactjs.md`](frontend-reactjs.md) | Frontend web (React.js SPA/component UI) | React component, hook, routing, state, forms, accessibility, render performance | `package.json` has `react`/`react-dom`; Vite/React Router common |
+| [`design-tools-mcp.md`](design-tools-mcp.md) | Design tools, design systems, MCP handoff | Figma/Canva/design-token/design-to-code workflows | Figma, Canva, MCP, design tokens, Storybook, visual regression, `tokens.json` |
 | [`mobile-react-native.md`](mobile-react-native.md) | Mobile apps (React Native / Expo) | RN screens, navigation, native modules, mobile performance, Expo/bare app changes | `package.json` has `react-native` or `expo`; `ios/`, `android/`, Metro config |
 | [`mobile-flutter.md`](mobile-flutter.md) | Mobile apps (Flutter/Dart) | Flutter widgets, state, navigation, platform channels, mobile performance | `pubspec.yaml` has `flutter`; `lib/main.dart`; `android/`, `ios/` |
 | [`mobile-android-native.md`](mobile-android-native.md) | Mobile apps (Native Android) | Kotlin/Java, Compose/XML, ViewModel, coroutines, Gradle, Android performance | `build.gradle*`, `AndroidManifest.xml`, `androidx.*`, `kotlinx-coroutines` |

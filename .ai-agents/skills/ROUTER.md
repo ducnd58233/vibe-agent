@@ -1,4 +1,4 @@
-# Skills router
+﻿# Skills router
 
 Lookup table for skills under this folder. **After you create, rename, or delete a skill folder, update this table in the same change.**
 
@@ -16,6 +16,7 @@ Lookup table for skills under this folder. **After you create, rename, or delete
 | Load right context, avoid token flood | [`context-engineering`](context-engineering) | Large tasks; scoped reads |
 | Diverge/converge on product ideas | [`idea-refine`](idea-refine) | Vague features; prioritization |
 | UI patterns, a11y, client/server boundaries | [`frontend-ui-engineering`](frontend-ui-engineering) | Components, layouts, UX |
+| Product design systems and design-to-code | [`product-design-systems`](product-design-systems) | Figma/Canva/MCP handoff, tokens, visual QA, reusable UI components |
 | Citation-first topic investigation and digest | [`research-with-citations`](research-with-citations) | Facts must be source-backed; web research needed |
 | Tradeoff analysis with confidence and evidence | [`evidence-based-analysis`](evidence-based-analysis) | Choosing options from gathered evidence |
 | Measure before optimizing | [`performance-optimization`](performance-optimization) | Latency, bundles, persistence slow paths |
@@ -36,6 +37,6 @@ Lookup table for skills under this folder. **After you create, rename, or delete
 | MLOps lifecycle and model operations | [`mlops-lifecycle`](mlops-lifecycle) | ML pipelines, model registry, evaluation, serving, drift, retraining |
 | Product lifecycle and rollout management | [`product-lifecycle-management`](product-lifecycle-management) | Success metrics, feature flags, staged launch, feedback, deprecation |
 
-Pinned stack for the **current workspace**: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) — compose matching profile files per task.
+Pinned stack for the **current workspace**: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) â€” compose matching profile files per task.
 
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md).

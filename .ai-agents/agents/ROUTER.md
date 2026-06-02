@@ -1,4 +1,4 @@
-# Subagents router
+﻿# Subagents router
 
 Lookup table for Claude subagent files in this folder. **After you add, rename, or remove a `*.md` subagent, update this table in the same change.**
 
@@ -17,5 +17,6 @@ Subagents are primarily for **Claude Code** (typically via `.claude/agents` link
 | Architecture planning and design risk | [`architect-planner.md`](architect-planner.md) | Read, Grep, Glob, Bash |
 | SQL/NoSQL query and datastore audit | [`database-query-auditor.md`](database-query-auditor.md) | Read, Grep, Glob, Bash |
 | Manual and automation QA | [`qa-tester.md`](qa-tester.md) | Read, Grep, Glob, Bash |
+| Product design and design-system review | [`product-design-reviewer.md`](product-design-reviewer.md) | Read, Grep, Glob, Bash |
 
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md). Overview: [`README.md`](README.md).
