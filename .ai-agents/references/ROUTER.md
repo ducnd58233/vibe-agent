@@ -12,9 +12,11 @@ Lookup table for shared checklists and pattern docs under this folder. These fil
 | AAA, mocks, RTL, API, E2E | [`testing-patterns.md`](testing-patterns.md) | `test-driven-development` |
 | Fan-out `/ship`, sequential lifecycle, anti-patterns | [`orchestration-patterns.md`](orchestration-patterns.md) | `using-agent-skills`, slash commands |
 | Skill/agent/command authoring quality | [`agent-authoring-patterns.md`](agent-authoring-patterns.md) | asset authors, `agent-systems-auditor` |
+| AI agent harness responsibilities, guides, sensors, verification | [`agent-harness-engineering.md`](agent-harness-engineering.md) | `agent-harness-engineering`, `agent-systems-auditor` |
 | Tool permissions, hooks, secret boundaries | [`tool-safety-and-permissions.md`](tool-safety-and-permissions.md) | `security-and-hardening`, `agent-systems-auditor` |
 | Agent/skill evaluation and forward testing | [`agent-evaluation-patterns.md`](agent-evaluation-patterns.md) | `agent-systems-auditor`, `test-driven-development` |
 | Context budgets and progressive disclosure | [`context-management-patterns.md`](context-management-patterns.md) | `context-engineering`, asset authors |
+| AI/ML model development, evaluation, documentation, monitoring | [`ai-model-development-patterns.md`](ai-model-development-patterns.md) | `ai-model-engineering`, `ai-research-methodology`, `ai-engineer`, `ai-researcher` |
 | Delivery and observability review patterns | [`ci-cd-observability-patterns.md`](ci-cd-observability-patterns.md) | `devops-platform-delivery`, `observability-monitoring` |
 | SQL/NoSQL query diagnosis and optimization | [`database-query-patterns.md`](database-query-patterns.md) | `database-query-optimization`, `database-query-auditor` |
 | Manual QA and automation strategy | [`qa-testing-strategy.md`](qa-testing-strategy.md) | `qa-testing-strategy`, `qa-tester` |

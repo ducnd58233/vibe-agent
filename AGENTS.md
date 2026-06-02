@@ -62,8 +62,8 @@ The authoritative inventory is in router files, not this section. At a high leve
 - Frontend/mobile/design: web UI, React/Next.js, React Native, Flutter, native Android/iOS, design systems, Figma/Canva/MCP handoff.
 - Backend/data: API design, backend layering, Rust Axum, Go, FastAPI, SQL, NoSQL, database query optimization.
 - Operations: DevOps/CI/CD, system administration, observability, shipping/launch, product lifecycle.
-- Specialized systems: concurrency, realtime, high-traffic systems, MLOps, data science, finance profiles.
-- Safety and quality: security hardening, performance, QA strategy, browser testing, agent-system audits, permission hardening.
+- Specialized systems: concurrency, realtime, high-traffic systems, AI/ML model engineering, AI research, MLOps, data science, finance profiles.
+- Safety and quality: security hardening, performance, QA strategy, browser testing, agent harness engineering, agent-system audits, permission hardening.
 
 ## Reuse in another repository (consumer repo)
 

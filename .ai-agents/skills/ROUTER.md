@@ -5,6 +5,7 @@ Lookup table for skills under this folder. **After you create, rename, or delete
 | Intent / use case | Skill folder | When to invoke |
 |-------------------|--------------|----------------|
 | Meta: discover skills, routers, orchestration rules | [`using-agent-skills`](using-agent-skills) | Session start; unsure which workflow applies |
+| AI coding-agent harness design and hardening | [`agent-harness-engineering`](agent-harness-engineering) | Instructions, routers, skills, agents, commands, context selection, tools, permissions, hooks, sensors, evals, generated Codex assets |
 | Always-on coding reliability guardrails | [`karpathy-guardrails`](karpathy-guardrails) | Non-trivial implementation; avoid assumptions/overengineering/scope drift |
 | Token-efficient execution and concise delivery | [`token-efficient-execution`](token-efficient-execution) | High-volume loops; minimize verbosity without losing correctness |
 | Multi-axis PR review, merge quality | [`code-review-and-quality`](code-review-and-quality) | Before merge; evaluating agent output |
@@ -18,6 +19,8 @@ Lookup table for skills under this folder. **After you create, rename, or delete
 | UI patterns, a11y, client/server boundaries | [`frontend-ui-engineering`](frontend-ui-engineering) | Components, layouts, UX |
 | Product design systems and design-to-code | [`product-design-systems`](product-design-systems) | Figma/Canva/MCP handoff, tokens, visual QA, reusable UI components |
 | Citation-first topic investigation and digest | [`research-with-citations`](research-with-citations) | Facts must be source-backed; web research needed |
+| AI/ML model engineering across CV/NLP/speech/multimodal | [`ai-model-engineering`](ai-model-engineering) | Model training, fine-tuning, inference, evals, model/data cards, monitoring, AI product/model quality |
+| AI/ML research methodology and paper-to-experiment handoff | [`ai-research-methodology`](ai-research-methodology) | Literature review, model/method comparison, benchmark analysis, reproduction plans, ablations |
 | Tradeoff analysis with confidence and evidence | [`evidence-based-analysis`](evidence-based-analysis) | Choosing options from gathered evidence |
 | Measure before optimizing | [`performance-optimization`](performance-optimization) | Latency, bundles, persistence slow paths |
 | Decompose specs into tasks | [`planning-and-task-breakdown`](planning-and-task-breakdown) | Multi-step features |

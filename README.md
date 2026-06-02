@@ -8,8 +8,8 @@ This repository is intentionally **domain-agnostic**. Product-specific behavior 
 
 - A single canonical asset tree under [`.ai-agents/`](.ai-agents)
 - Explicit router tables so agents choose the right workflow before acting
-- Reusable skills for engineering, research, security, QA, design systems, DevOps/SRE, MLOps, databases, realtime systems, and product lifecycle work
-- Specialist subagents for review, security, testing, research, architecture, DevOps/SRE, database query audits, QA, product design review, and AI-asset audits
+- Reusable skills for engineering, research, security, QA, design systems, DevOps/SRE, AI/ML model engineering, MLOps, databases, realtime systems, and product lifecycle work
+- Specialist subagents for review, security, testing, research, AI/ML research, AI/ML engineering, architecture, DevOps/SRE, database query audits, QA, product design review, and AI-asset audits
 - Slash commands for repeatable workflows such as `/spec`, `/plan`, `/build`, `/review`, `/ship`, `/doctor`, and `/harden`
 - Stack profiles for pinned frameworks and operational domains
 - Shared hook scripts and permission guidance for safer tool use
@@ -24,7 +24,7 @@ The toolkit has been expanded with these capabilities:
 - **Backend/runtime:** Rust Axum/Tokio, realtime/concurrency/high-traffic systems
 - **Frontend/mobile:** React.js, React Native, Flutter, native Android, native iOS
 - **Operations:** DevOps platform, CI/CD, system administration, observability/monitoring, product lifecycle
-- **Data/ML:** MLOps, SQL databases, NoSQL databases, database query optimization
+- **Data/ML/AI:** AI model engineering, AI research methodology, MLOps, SQL databases, NoSQL databases, database query optimization
 - **Design:** design systems, design-to-code, Figma/Canva MCP handoff, visual QA
 - **Quality:** manual QA, automation QA, exploratory testing, release signoff
 
@@ -34,11 +34,14 @@ The toolkit has been expanded with these capabilities:
 - `devops-platform-delivery`
 - `system-administration-ops`
 - `observability-monitoring`
+- `ai-model-engineering`
+- `ai-research-methodology`
 - `mlops-lifecycle`
 - `product-lifecycle-management`
 - `database-query-optimization`
 - `qa-testing-strategy`
 - `product-design-systems`
+- `agent-harness-engineering`
 
 Core existing skills such as `backend-engineering`, `frontend-ui-engineering`, `security-and-hardening`, `performance-optimization`, and `test-driven-development` were kept reusable and composed with the new domain-specific skills.
 
@@ -50,6 +53,8 @@ Core existing skills such as `backend-engineering`, `frontend-ui-engineering`, `
 - `database-query-auditor` - reviews SQL/NoSQL query correctness, indexes, migrations, locks, hot keys, and performance
 - `qa-tester` - plans manual QA, automation QA, exploratory testing, test matrices, and release signoff
 - `product-design-reviewer` - reviews design-system alignment, Figma/Canva handoff, visual QA, and UI fidelity
+- `ai-engineer` - reviews and plans AI/ML model build, train, eval, serve, monitor, model-card, and dataset-card work
+- `ai-researcher` - researches AI/ML papers, models, benchmarks, reproduction plans, and research-to-engineering handoffs
 
 Existing review agents remain available: `code-reviewer`, `security-auditor`, `test-engineer`, `research-investigator`, `data-analyst`, and `source-auditor`.
 
@@ -72,6 +77,8 @@ Existing review agents remain available: `code-reviewer`, `security-auditor`, `t
 - `tool-safety-and-permissions.md`
 - `agent-evaluation-patterns.md`
 - `context-management-patterns.md`
+- `agent-harness-engineering.md`
+- `ai-model-development-patterns.md`
 - `ci-cd-observability-patterns.md`
 - `database-query-patterns.md`
 - `qa-testing-strategy.md`

@@ -12,7 +12,9 @@ Subagents are primarily for **Claude Code** (typically via `.claude/agents` link
 | Topic evidence gathering and digest | [`research-investigator.md`](research-investigator.md) | Read, Grep, Glob, WebSearch, WebFetch |
 | Evidence synthesis and recommendation | [`data-analyst.md`](data-analyst.md) | Read, Grep, Glob, WebSearch, WebFetch |
 | Citation integrity and source quality audit | [`source-auditor.md`](source-auditor.md) | Read, Grep, Glob, WebSearch, WebFetch |
-| AI asset system audit | [`agent-systems-auditor.md`](agent-systems-auditor.md) | Read, Grep, Glob, Bash |
+| AI/ML research and paper-to-experiment handoff | [`ai-researcher.md`](ai-researcher.md) | Read, Grep, Glob, WebSearch, WebFetch, Bash |
+| AI/ML model engineering and production-readiness | [`ai-engineer.md`](ai-engineer.md) | Read, Grep, Glob, Bash, WebSearch, WebFetch |
+| AI asset and agent harness audit | [`agent-systems-auditor.md`](agent-systems-auditor.md) | Read, Grep, Glob, Bash |
 | DevOps/SRE operational audit | [`devops-sre-auditor.md`](devops-sre-auditor.md) | Read, Grep, Glob, Bash |
 | Architecture planning and design risk | [`architect-planner.md`](architect-planner.md) | Read, Grep, Glob, Bash |
 | SQL/NoSQL query and datastore audit | [`database-query-auditor.md`](database-query-auditor.md) | Read, Grep, Glob, Bash |
