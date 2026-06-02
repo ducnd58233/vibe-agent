@@ -18,7 +18,8 @@ Run a repo-health audit for this AI asset toolkit.
    - `.agents/skills`, `.agents/commands`, `.codex/agents`
 5. Check broad permission patterns:
    - `Bash(*)`, `Edit(*)`, `Write(*)`, `WebFetch(domain:*)`, `mcp__*`
-6. Report stale router rows, missing files, missing hooks, broad permissions, and recommended fixes.
+6. Check routing evals: step 2's validation asserts every **Expected asset** link in [`routing-evals.md`](../references/routing-evals.md) resolves. Spot-check that the listed intents still route to the expected asset after scope/router changes.
+7. Report stale router rows, missing files, missing hooks, broad permissions, broken routing-eval targets, and recommended fixes.
 
 ## Required output
 
