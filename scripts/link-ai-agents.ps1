@@ -119,6 +119,21 @@ function Escape-TomlString {
     return $Value.Replace('\', '\\').Replace('"', '\"')
 }
 
+function Convert-AgentBodyForCodex {
+    param([Parameter(Mandatory = $true)][string] $Body)
+    $converted = $Body
+    $converted = $converted.Replace('../skills/', '.ai-agents/skills/')
+    $converted = $converted.Replace('../references/', '.ai-agents/references/')
+    $converted = $converted.Replace('../stack-profiles/', '.ai-agents/stack-profiles/')
+    $converted = $converted.Replace('../commands/', '.ai-agents/commands/')
+    $converted = $converted.Replace('../agents/', '.ai-agents/agents/')
+    return @"
+Codex note: this file is generated from `.ai-agents/agents`. Resolve shared asset links from the workspace root (for example `.ai-agents/skills/...`), not from `.codex/agents`.
+
+$converted
+"@
+}
+
 function Sync-CodexAgents {
     param(
         [Parameter(Mandatory = $true)][string] $AssetsFull,
@@ -135,13 +150,13 @@ function Sync-CodexAgents {
         if ($excludeNames -contains $_.Name) {
             return
         }
-        $content = Get-Content -LiteralPath $_.FullName -Raw
+        $content = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
         if ($content -notmatch '(?s)\A---\r?\n(.*?)\r?\n---\r?\n(.*)\z') {
             Write-Warning "Skipping $($_.Name): missing YAML frontmatter."
             return
         }
         $yamlBlock = $matches[1]
-        $body = $matches[2].Trim()
+        $body = Convert-AgentBodyForCodex -Body $matches[2].Trim()
         $name = Get-FrontmatterField -YamlBlock $yamlBlock -FieldName 'name'
         if ([string]::IsNullOrWhiteSpace($name)) {
             Write-Warning "Skipping $($_.Name): missing name in frontmatter."

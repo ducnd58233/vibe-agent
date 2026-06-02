@@ -24,7 +24,7 @@ It is intentionally **domain-agnostic** and should not contain product-domain lo
 ## Authoring and routing (agents MUST)
 
 1. **Creating** a new asset: follow the folder’s **`TEMPLATE.md`** (What, Why, How, When, Routing & discovery, Permissions & authority).
-2. **After creating:** update that folder’s **`ROUTER.md`** table (same PR/commit) so use cases and paths stay accurate. From this toolkit repository root, run `bash scripts/check-ai-agents-routers.sh`, or on Windows `powershell -File scripts/check-ai-agents-routers.ps1`, to verify tables match disk (CI runs this on `.ai-agents` changes).
+2. **After creating:** update that folder’s **`ROUTER.md`** table (same PR/commit) so use cases and paths stay accurate. From this toolkit repository root, run `bash scripts/check-ai-agents-routers.sh`, or on Windows `powershell -File scripts/check-ai-agents-routers.ps1`, to verify tables match disk (CI runs this on `.ai-agents` changes). If you changed `agents/*.md`, also run `scripts/link-ai-agents.*` and `powershell -File scripts/check-codex-assets.ps1` so Codex generated agents stay in sync.
 3. **Choosing** an existing asset: read [`ROUTER.md`](ROUTER.md) and the relevant subfolder **`ROUTER.md`**.
 4. **Permissions:** update [`PERMISSIONS.md`](PERMISSIONS.md) and [`.claude/settings.json`](../.claude/settings.json) when tool needs change.
 
@@ -62,6 +62,14 @@ Claude Code and Cursor can discover **skills** and **commands** through `.claude
 - `.agents/skills` → `.ai-agents/skills` (Codex skill discovery)
 - `.agents/commands` → `.ai-agents/commands` (forward-compatible Codex command discovery; no effect until Codex supports `.agents/commands/`)
 - `.codex/agents/*.toml` — generated from `.ai-agents/agents/*.md` (Codex custom subagents; re-run link after agent edits)
+
+Validate the generated Codex-facing paths with:
+
+```powershell
+powershell -File scripts/check-codex-assets.ps1
+```
+
+This check confirms `.agents/skills`, `.agents/commands`, and `.codex/agents/*.toml` are present and in sync with `.ai-agents`, and that generated TOML avoids stale relative links or UTF-8 mojibake.
 
 ### Parameters (toolkit dev vs consumer repo)
 

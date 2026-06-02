@@ -13,7 +13,7 @@ This repository is intentionally **domain-agnostic**. Product-specific behavior 
 - Slash commands for repeatable workflows such as `/spec`, `/plan`, `/build`, `/review`, `/ship`, `/doctor`, and `/harden`
 - Stack profiles for pinned frameworks and operational domains
 - Shared hook scripts and permission guidance for safer tool use
-- Link scripts that wire Claude Code, Cursor, Codex, and opencode discovery paths back to `.ai-agents`
+- Link scripts and validation checks that wire Claude Code, Cursor, Codex, and opencode discovery paths back to `.ai-agents`
 
 ## Recent hardening and expansion
 
@@ -85,6 +85,8 @@ Existing review agents remain available: `code-reviewer`, `security-auditor`, `t
 - Added secret-path deny patterns
 - Updated hook router entries to link Python hook scripts
 - Updated router validation to check `.py`, `.ps1`, and `.sh` hooks
+- Added Codex asset validation for `.agents/skills`, `.agents/commands`, generated `.codex/agents/*.toml`, stale generated links, and UTF-8 mojibake
+- Updated Codex agent generation to rewrite shared asset links to workspace-root `.ai-agents/...` paths and read source personas as UTF-8
 - Added optional `design-token-guard.py` hook to warn on raw color values in UI files
 
 ## Folder structure
@@ -103,7 +105,7 @@ Existing review agents remain available: `code-reviewer`, `security-auditor`, `t
 - [`.codex/`](.codex): Codex project config; `.codex/agents/*.toml` is generated from `.ai-agents/agents`
 - [`.agents/`](.agents): generated Codex-compatible skills/commands links
 - [`.opencode/`](.opencode): generated opencode agent/command links
-- [`scripts/`](scripts): helper scripts for linking and router validation
+- [`scripts/`](scripts): helper scripts for linking, router validation, and Codex asset validation
 
 ## Routing rules
 
@@ -161,6 +163,16 @@ bash scripts/check-ai-agents-routers.sh
 ```
 
 The router check validates skills, agents, commands, references, stack profiles, and hook scripts (`.py`, `.ps1`, `.sh`) against their folder `ROUTER.md` tables.
+
+### Validate Codex generated assets
+
+Run this after changing `.ai-agents/agents`, after clone/link setup, or before relying on Codex custom agents:
+
+```powershell
+powershell -File scripts/check-codex-assets.ps1
+```
+
+The Codex check verifies that `.agents/skills` and `.agents/commands` exist, every source agent in `.ai-agents/agents/*.md` has a generated `.codex/agents/*.toml`, there are no stale generated agents, generated agent instructions use workspace-root `.ai-agents/...` links, and generated TOML does not contain common UTF-8 mojibake markers.
 
 ## Slash commands
 

@@ -37,6 +37,7 @@ This file is the **tool-agnostic project charter** for AI assistants.
 
 - **Single source of truth:** Edit skills, agents, commands, references, stack profiles, and hooks under [`.ai-agents/`](.ai-agents), not generated link paths.
 - **After clone:** Run `scripts/link-ai-agents.ps1` (Windows) or `scripts/link-ai-agents.sh` (macOS/Linux) so `.claude`, `.cursor`, `.opencode`, `.agents`, and `.codex/agents` discovery paths point at `.ai-agents`.
+- **Codex generation:** After changing `.ai-agents/agents/*.md`, re-run the link script and validate with `powershell -File scripts/check-codex-assets.ps1` so `.agents/skills`, `.agents/commands`, and generated `.codex/agents/*.toml` stay loadable.
 - **Authoring (MUST):** When creating a new skill, subagent, command, hook, reference, or stack profile, follow that folder's `TEMPLATE.md` where present and complete every required section.
 - **Routing (MUST):** When choosing which asset to use, read [`.ai-agents/ROUTER.md`](.ai-agents/ROUTER.md) and the relevant folder `ROUTER.md`.
 - **Router tables (MUST):** After creating, renaming, or deleting any asset under `skills/`, `agents/`, `commands/`, `hooks/`, `references/`, or `stack-profiles/`, update that folder's `ROUTER.md` in the same change. Run `bash scripts/check-ai-agents-routers.sh` or `powershell -File scripts/check-ai-agents-routers.ps1`; the check includes `.py`, `.ps1`, and `.sh` hook scripts.

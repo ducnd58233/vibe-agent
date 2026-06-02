@@ -183,6 +183,12 @@ sync_codex_agents_from_md() {
       description="$name"
     fi
     body="$(awk 'BEGIN{n=0} /^---$/ { n++; next } n>=2 { print }' "$md")"
+    body="$(printf '%s\n' "$body" \
+      | sed 's#../skills/#.ai-agents/skills/#g' \
+      | sed 's#../references/#.ai-agents/references/#g' \
+      | sed 's#../stack-profiles/#.ai-agents/stack-profiles/#g' \
+      | sed 's#../commands/#.ai-agents/commands/#g' \
+      | sed 's#../agents/#.ai-agents/agents/#g')"
     sandbox_line=""
     if awk '/^tools:/{f=1} f && /^[[:space:]]+(Bash|Edit|Write|NotebookEdit|Task):[[:space:]]*true/{bad=1} END{exit bad}' "$md"; then
       sandbox_line=$'sandbox_mode = "read-only"\n'
@@ -194,6 +200,7 @@ sync_codex_agents_from_md() {
       printf 'description = "%s"\n' "$description"
       printf '%s' "$sandbox_line"
       printf 'developer_instructions = """\n'
+      printf 'Codex note: this file is generated from `.ai-agents/agents`. Resolve shared asset links from the workspace root (for example `.ai-agents/skills/...`), not from `.codex/agents`.\n\n'
       printf '%s\n' "$body"
       printf '"""\n'
     } > "$toml_path"
