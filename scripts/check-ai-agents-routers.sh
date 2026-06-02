@@ -268,6 +268,25 @@ check_hooks() {
   compare_sets ".ai-agents/hooks/ROUTER.md" "$hook_files" "$table" || fail=1
 }
 
+# Routing evals: every relative link target in references/routing-evals.md must exist.
+check_routing_evals() {
+  local f="$AI/references/routing-evals.md"
+  [[ -f "$f" ]] || return 0  # optional fixtures file
+  local missing=0 target
+  while IFS= read -r target; do
+    [[ "$target" == ../* ]] || continue
+    if [[ ! -e "$AI/references/$target" ]]; then
+      if [[ "$missing" -eq 0 ]]; then
+        echo "" >&2
+        echo "[.ai-agents/references/routing-evals.md]" >&2
+      fi
+      echo "  Routing eval target missing: $target" >&2
+      missing=1
+    fi
+  done < <(extract_link_targets "$(cat "$f")")
+  [[ "$missing" -eq 0 ]] || fail=1
+}
+
 main() {
   if [[ ! -d "$AI" ]]; then
     echo "Missing .ai-agents directory at $AI" >&2
@@ -280,6 +299,7 @@ main() {
   check_md_router ".ai-agents/references/ROUTER.md" "references" ""
   check_stack_profiles
   check_hooks
+  check_routing_evals
 
   if [[ "$fail" -ne 0 ]]; then
     echo "" >&2
