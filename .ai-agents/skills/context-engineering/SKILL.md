@@ -304,6 +304,7 @@ After setting up context, confirm:
 ## Related references
 
 - [`orchestration-patterns.md`](../../references/orchestration-patterns.md) (research isolation vs main-context bloat)
+- [`token-efficient-execution`](../token-efficient-execution/SKILL.md) - sibling skill for **output** economy; this skill governs **input** context curation (what loads into the window).
 
 ## Permissions and authority
 

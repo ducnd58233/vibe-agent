@@ -44,6 +44,7 @@ Use for ML pipelines, model lifecycle, MLflow/Kubeflow work, inference services,
 - Pair with [`test-driven-development`](../test-driven-development/SKILL.md) for evaluation and regression gates.
 - Pair with [`observability-monitoring`](../observability-monitoring/SKILL.md) for model/service monitoring.
 - Pair with [`security-and-hardening`](../security-and-hardening/SKILL.md) for sensitive data, model abuse, and governance.
+- Defer model architecture, training/fine-tuning, and evaluation design to [`ai-model-engineering`](../ai-model-engineering/SKILL.md); this skill owns pipelines, registries, serving infrastructure, CI/CD/CT, drift detection, and rollout/rollback.
 
 ## Permissions & authority
 

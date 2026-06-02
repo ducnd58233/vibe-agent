@@ -57,6 +57,7 @@ Do not use for generic data analysis only; use [`mlops-lifecycle`](../mlops-life
 - Pair with [`source-driven-development`](../source-driven-development/SKILL.md) for version-sensitive framework APIs.
 - Pair with [`security-and-hardening`](../security-and-hardening/SKILL.md) for sensitive data, privacy, model abuse, prompt injection, or unsafe outputs.
 - Pair with [`observability-monitoring`](../observability-monitoring/SKILL.md) for dashboards, alerts, and telemetry implementation.
+- Hand off production pipelines, model registry, serving infrastructure, CI/CD/CT, and drift monitoring to [`mlops-lifecycle`](../mlops-lifecycle/SKILL.md); this skill owns model design, training/adaptation, evaluation, and model/data documentation.
 
 ## Permissions & authority
 
