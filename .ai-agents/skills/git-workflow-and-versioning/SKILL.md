@@ -73,6 +73,10 @@ Prevents invalid formats before persistence; aligns with request validation on a
 
 Suggested types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`.
 
+### No Agent Attribution
+
+Do **not** append AI/agent co-author trailers (`Co-Authored-By: …`) or "Generated with …" lines to commits or PR bodies. Every commit and PR is attributed only to the human contributor's git identity. For Claude Code this is enforced by the empty `attribution` block in [`.claude/settings.json`](../../../.claude/settings.json); other agents (Cursor, Codex, opencode) must honor the same rule by convention.
+
 ### Keep Concerns Separate
 
 Do not combine large formatting-only edits with behavior changes in the same commit when it obscures review.
