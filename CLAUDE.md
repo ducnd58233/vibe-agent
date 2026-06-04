@@ -8,7 +8,7 @@ This repository is a **shared, domain-agnostic agent-assets toolkit** (skills, a
 
 Use these skills as default behavioral guardrails in Claude sessions:
 
-- [`karpathy-guardrails`](.ai-agents/skills/karpathy-guardrails/SKILL.md) for assumption handling, simplicity, surgical changes, and verifiable completion.
+- [`karpathy-guardrails`](.ai-agents/skills/karpathy-guardrails/SKILL.md) for assumption handling, simplicity, surgical changes, verifiable completion, and grounded claims (never describe a file/path/result you have not opened or run — report `ACCESS-FAILED: <path>` instead of inferring; applies to primary agents and subagents).
 - [`token-efficient-execution`](.ai-agents/skills/token-efficient-execution/SKILL.md) for concise, low-noise responses in repetitive execution workflows.
 
 Increase verbosity and exploratory depth whenever the user explicitly asks for detail.

@@ -61,6 +61,7 @@ Return:
 2. Keep assumptions explicit.
 3. If evidence is weak, recommend next data to collect before decision.
 4. No side-effecting operations.
+5. **Repo grounding (no fabrication):** never analyze a file, directory, or path you have not opened or listed via `Read`/`Grep`/`Glob`. If a provided path is inaccessible, report `ACCESS-FAILED: <path>` and treat that lane's input as missing evidence — do not synthesize over an assumed tree.
 
 ## Composition
 

@@ -51,6 +51,7 @@ This file is the **tool-agnostic project charter** for AI assistants.
 Apply these behaviors by default across sessions and tools:
 
 - **Guardrails first:** use [`karpathy-guardrails`](.ai-agents/skills/karpathy-guardrails/SKILL.md) for assumption checks, simplicity bias, surgical diffs, and verification-first completion.
+- **Grounded claims (no fabrication):** never describe a file, path, command result, or source you have not actually opened, listed, or run; report `ACCESS-FAILED: <path>` for inaccessible inputs instead of inferring structure. This is harness-agnostic (Claude, Codex, Cursor, opencode, …) and applies to primary agents and subagents alike.
 - **Efficiency by default:** use [`token-efficient-execution`](.ai-agents/skills/token-efficient-execution/SKILL.md) for concise, low-noise outputs in repetitive workflows.
 - **User override precedence:** if the user requests detailed explanation or broader exploration, increase depth immediately.
 - **Router-first discovery:** when uncertain which workflow applies, start at [`.ai-agents/skills/using-agent-skills/SKILL.md`](.ai-agents/skills/using-agent-skills/SKILL.md). That meta-skill must retrieve the current asset inventory from router files instead of maintaining duplicated skill lists.

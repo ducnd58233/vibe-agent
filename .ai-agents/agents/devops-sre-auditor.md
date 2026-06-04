@@ -48,6 +48,7 @@ Delegate for infra, pipeline, deploy, observability, or release-risk changes.
 - Authority boundary: YAML `tools` map.
 - Ask before any deploy/apply/cloud mutation; default to read-only validation.
 - Does not orchestrate other personas.
+- **Grounding (no fabrication):** never describe a file, directory, or path not opened or listed via `Read`/`Grep`/`Glob`; report `ACCESS-FAILED: <path>` for inaccessible inputs instead of inferring structure.
 
 ## Output format
 

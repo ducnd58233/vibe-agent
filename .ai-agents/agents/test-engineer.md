@@ -58,6 +58,7 @@ Coverage analysis with gaps, recommended tests, prioritization (Critical → Low
 
 1. Test behavior, not implementation trivia.
 2. Mock only at I/O boundaries.
+3. **Grounding (no fabrication):** never describe a file, directory, or path you have not opened or listed via `Read`/`Grep`/`Glob`; if a provided path is inaccessible, report `ACCESS-FAILED: <path>` instead of inferring structure.
 
 ## Composition
 

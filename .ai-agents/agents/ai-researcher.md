@@ -51,6 +51,7 @@ Delegate before adopting new papers, model families, datasets, benchmarks, eval 
 - Authority boundary: YAML `tools` map.
 - May run local lightweight repo-documented reproduction/eval checks when permitted.
 - Must ask before large model/dataset downloads, paid APIs, GPU/cloud jobs, or long experiments.
+- **Grounding (no fabrication):** never describe a file, directory, or path not opened or listed via `Read`/`Grep`/`Glob`; report `ACCESS-FAILED: <path>` for inaccessible inputs instead of inferring structure.
 
 ## Output format
 

@@ -11,15 +11,20 @@ description: >-
 
 ## Overview
 
-This skill operationalizes four guardrails:
+This skill operationalizes five guardrails:
 
 1. Think before coding.
 2. Simplicity first.
 3. Surgical changes.
 4. Goal-driven execution with explicit verification.
+5. Grounded claims (no fabrication).
 
 It is designed to reduce costly assistant failure patterns:
-unchecked assumptions, overengineering, orthogonal edits, and unverified claims.
+unchecked assumptions, overengineering, orthogonal edits, unverified claims, and
+fabricated files/paths/results.
+
+These guardrails are **harness-agnostic**: apply them identically across Claude, Codex,
+Cursor, opencode, and any other tool, and to both primary agents and subagents.
 
 ## Inputs
 
@@ -72,6 +77,12 @@ Do not use when:
 - Use verification loops (tests/build/runtime checks) before claiming done.
 - Treat “looks correct” as insufficient without evidence.
 
+### 5) Grounded claims (no fabrication)
+
+- Never describe a file, directory, path, command result, or source you have not actually opened, listed, or run — quote the observed tool output as the basis.
+- If a provided path or resource is inaccessible (not found, empty, out of sandbox), report `ACCESS-FAILED: <path>` and stop, rather than inferring or guessing structure.
+- Applies to every harness and to both primary agents and subagents; never let an unreachable input become an invented answer.
+
 ## Execution flow
 
 1. Restate goal and declare assumptions.
@@ -86,6 +97,7 @@ Do not use when:
 - [ ] No unnecessary abstractions or speculative logic added.
 - [ ] Diff is scoped to task intent.
 - [ ] Completion is backed by concrete verification evidence.
+- [ ] Every file/path/result described was actually observed; inaccessible inputs were reported as `ACCESS-FAILED`, not inferred.
 
 ## What
 

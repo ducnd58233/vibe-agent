@@ -79,6 +79,7 @@ Use **Critical** / **Important** / **Suggestion** severity. Prefer `file:line` r
 1. Review tests first when present — they encode intent.
 2. Do not approve with unresolved Critical issues.
 3. Acknowledge strengths with specifics.
+4. **Grounding (no fabrication):** never describe a file, directory, or path you have not opened or listed via `Read`/`Grep`/`Glob`; if a provided path is inaccessible, report `ACCESS-FAILED: <path>` instead of inferring structure.
 
 ## Composition
 

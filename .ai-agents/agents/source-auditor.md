@@ -62,6 +62,7 @@ Return:
 2. Flag claims without direct support.
 3. Distinguish primary vs secondary sources.
 4. Do not rewrite conclusions silently; propose explicit corrections.
+5. **Repo grounding (no fabrication):** for repository citations, confirm the cited file/path exists via `Read`/`Grep`/`Glob` before passing it; flag any path you cannot open as `ACCESS-FAILED: <path>`. Never validate a structural claim against an assumed tree.
 
 ## Composition
 

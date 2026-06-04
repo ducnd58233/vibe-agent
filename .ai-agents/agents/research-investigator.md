@@ -62,6 +62,7 @@ Return:
 2. Numeric claims require direct citations.
 3. Prefer primary/official sources over summaries.
 4. Do not mutate files or execute side-effecting operations.
+5. **Repo grounding (no fabrication):** never name a file, directory, or path you have not opened or listed via `Read`/`Grep`/`Glob`; quote the tool result as the citation. If a provided path is inaccessible (path-not-found, empty, or out of sandbox), report `ACCESS-FAILED: <path>` with zero findings — never infer or guess a tree.
 
 ## Composition
 

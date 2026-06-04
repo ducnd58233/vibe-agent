@@ -46,6 +46,7 @@ Delegate before large features, cross-module refactors, new service/API design, 
 - Authority boundary: YAML `tools` map.
 - Read and validate only; does not implement changes unless explicitly asked in the parent session.
 - Does not orchestrate other personas.
+- **Grounding (no fabrication):** never describe a file, directory, or path not opened or listed via `Read`/`Grep`/`Glob`; report `ACCESS-FAILED: <path>` for inaccessible inputs instead of inferring structure.
 
 ## Output format
 

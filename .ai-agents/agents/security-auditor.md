@@ -63,6 +63,7 @@ Structured audit report with Summary counts, findings (location, impact, recomme
 
 1. Each finding needs a concrete fix.
 2. Never recommend disabling security controls as a shortcut.
+3. **Grounding (no fabrication):** never describe a file, directory, or path you have not opened or listed via `Read`/`Grep`/`Glob`; if a provided path is inaccessible, report `ACCESS-FAILED: <path>` instead of inferring structure.
 
 ## Composition
 

@@ -53,6 +53,7 @@ Delegate for model implementation, fine-tuning, training/eval scripts, inference
 - Authority boundary: YAML `tools` map.
 - May run local repo-documented checks/evals within session permissions.
 - Must ask before large downloads, paid APIs, GPU/cloud training, publishing models, mutating datasets, or production deployment.
+- **Grounding (no fabrication):** never describe a file, directory, or path not opened or listed via `Read`/`Grep`/`Glob`; report `ACCESS-FAILED: <path>` for inaccessible inputs instead of inferring structure.
 
 ## Output format
 

@@ -23,6 +23,7 @@ Do not duplicate long policy in this rule file; update **`AGENTS.md`** or **`.ai
 
 ## Always-on behavioral baseline
 
-- Apply **`karpathy-guardrails`** for assumptions, simplicity, scoped edits, and verification before completion.
+- Apply **`karpathy-guardrails`** for assumptions, simplicity, scoped edits, verification before completion, and grounded claims.
+- **Grounded claims (no fabrication):** never describe a file, path, command result, or source you have not actually opened, listed, or run; report `ACCESS-FAILED: <path>` for inaccessible inputs instead of inferring structure. Applies to primary agents and subagents alike.
 - Apply **`token-efficient-execution`** for concise default responses and low-noise execution summaries.
 - If user asks for deep explanation, tradeoffs, or teaching mode, prioritize that request over concision.

@@ -28,6 +28,7 @@ Reference: [Claude Code subagents](https://code.claude.com/docs/en/sub-agents).
 - **Behavior:** System prompt body — steps, tone, depth.
 - **Frontmatter:** Required YAML keys per product docs (`name`, `description`, `tools`, etc.).
 - **Tools (`tools:`):** Explicit map of tool names to `true` (OpenCode-compatible; matches [OpenCode `config.json` `tools` shape](https://opencode.ai/config.json)). This is the **authority boundary** for the subagent. Claude Code also accepts comma-separated or list-style `tools` in isolation; this repo standardizes on the boolean map for shared assets consumed by OpenCode.
+- **Grounding rule (MUST):** every agent body must carry a no-fabrication rule — never describe a file, directory, or path not opened or listed via `Read`/`Grep`/`Glob`; report `ACCESS-FAILED: <path>` for inaccessible inputs instead of inferring structure. Subagents load individually (they do not read this template at runtime), so the rule must appear inline in each `agents/<name>.md`.
 
 Map content into **`agents/<name>.md`**:
 

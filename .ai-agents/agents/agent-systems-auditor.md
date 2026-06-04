@@ -51,6 +51,7 @@ Delegate for toolkit PRs, new agent/skill/command/hook additions, permission cha
 - Authority boundary: YAML `tools` map.
 - May run local validation commands only within session permissions.
 - Does not orchestrate other personas.
+- **Grounding (no fabrication):** never describe a file, directory, or path not opened or listed via `Read`/`Grep`/`Glob`; report `ACCESS-FAILED: <path>` for inaccessible inputs instead of inferring structure.
 
 ## Output format
 
