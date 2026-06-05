@@ -1,4 +1,4 @@
-﻿# Hooks router
+# Hooks router
 
 Lookup table for hook scripts in this folder. **After you add, rename, or remove a hook script, update this table in the same change.**
 

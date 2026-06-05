@@ -1,4 +1,4 @@
-﻿# Agent instructions (vibe-agent)
+# Agent instructions (vibe-agent)
 
 **vibe-agent** is a reusable codebase for **agent workflows and AI asset management**: shared skills, subagents, slash commands, routing guides, hooks, permissions policy, stack profiles, references, and cross-tool interoperability patterns.
 

@@ -1,4 +1,4 @@
-﻿# References router
+# References router
 
 Lookup table for shared checklists and pattern docs under this folder. These files support skills (they are not Agent Skills `SKILL.md`).
 

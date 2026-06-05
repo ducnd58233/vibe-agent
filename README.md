@@ -1,4 +1,4 @@
-﻿# vibe-agent
+# vibe-agent
 
 Reusable toolkit for AI-agent workflows and AI asset management: shared skills, subagents, slash commands, routing guides, hooks, permissions policy, stack profiles, and cross-tool interoperability patterns.
 

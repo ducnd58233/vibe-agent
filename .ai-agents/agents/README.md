@@ -1,4 +1,4 @@
-﻿# Agent personas (Claude subagents)
+# Agent personas (Claude subagents)
 
 Markdown files in this folder define **single-role** specialists consumed as Claude Code subagents (commonly via `.claude/agents` linked to this folder). Cursor does not load these automatically; use the same instructions by `@`-referencing a file in chat.
 
@@ -10,7 +10,7 @@ Markdown files in this folder define **single-role** specialists consumed as Cla
 | **Persona** | Perspective (who) | This folder |
 | **Command** | Entry point (when) | [`commands/`](../commands/) |
 
-Personas **do not** call other personas. Composition is via user or slash commands â€” see [`references/orchestration-patterns.md`](../references/orchestration-patterns.md).
+Personas **do not** call other personas. Composition is via user or slash commands - see [`references/orchestration-patterns.md`](../references/orchestration-patterns.md).
 
 ## Personas
 

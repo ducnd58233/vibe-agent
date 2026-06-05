@@ -1,4 +1,4 @@
-﻿---
+---
 description: Pre-ship parallel review - specialist fan-out, then GO/NO-GO
 ---
 

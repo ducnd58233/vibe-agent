@@ -1,4 +1,4 @@
-﻿# Subagents router
+# Subagents router
 
 Lookup table for Claude subagent files in this folder. **After you add, rename, or remove a `*.md` subagent, update this table in the same change.**
 
