@@ -39,6 +39,22 @@ Applies to consumer repositories using relational databases and SQL query engine
 - Typical examples: `npm run test`, `pytest`, `cargo test`, `go test ./...`, `prisma migrate diff`, `alembic upgrade head --sql`, `sqlx prepare`, `diesel migration run`
 - Never run production migrations or destructive SQL without explicit approval and backup/rollback plan
 
+## Migration command surface (Makefile / scripts)
+
+Do not hand-fabricate migration scaffolding; use the chosen tool's CLI and read its docs ([`source-driven-development`](../skills/source-driven-development/SKILL.md)). Expose a consistent **new / up / down** trio so humans and agents share one entry point.
+
+The tools below are **examples, not a closed list**. First detect what the repo already uses (manifests, config, `migrations/`), then verify that tool still exists and check its current commands and flags in official docs. If a listed tool is gone or replaced, use the repo's actual tool and keep the same new/up/down surface.
+
+| Tool | new | up | down |
+|------|-----|----|------|
+| Alembic | `alembic revision --autogenerate -m "<x>"` | `alembic upgrade head` | `alembic downgrade -1` |
+| golang-migrate | `migrate create -ext sql -dir db/migrations <x>` | `migrate ... up` | `migrate ... down 1` |
+| SQLx | `sqlx migrate add <x>` | `sqlx migrate run` | `sqlx migrate revert` |
+| Prisma | `prisma migrate dev --name <x>` | `prisma migrate deploy` | (forward-only; new corrective migration) |
+| dbmate / goose | `dbmate new <x>` / `goose create <x> sql` | `... up` | `... down` |
+
+Wire these as `migrate-new name=<x>` / `migrate-up` / `migrate-down` in the project **`Makefile`** (or `package.json` scripts for Node projects), alongside `docker-up` for a local database. Confirm exact flags from the tool's current docs.
+
 ## Boundaries
 
 - Do not concatenate untrusted input into SQL

@@ -227,5 +227,35 @@ Ensure-Junction (Join-Path $workspaceFull ".agents\skills") (Join-Path $assetsFu
 Ensure-Junction (Join-Path $workspaceFull ".agents\commands") (Join-Path $assetsFull "commands")
 Sync-CodexAgents -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
 
+function Install-CommitAttributionHook {
+    param(
+        [Parameter(Mandatory = $true)][string] $AssetsFull,
+        [Parameter(Mandatory = $true)][string] $WorkspaceFull
+    )
+    $gitDir = Join-Path $WorkspaceFull ".git"
+    if (-not (Test-Path -LiteralPath $gitDir -PathType Container)) {
+        Write-Warning "No .git directory at $WorkspaceFull; skipped prepare-commit-msg attribution hook."
+        return
+    }
+    $hooksDir = Join-Path $gitDir "hooks"
+    if (-not (Test-Path -LiteralPath $hooksDir)) {
+        New-Item -ItemType Directory -Path $hooksDir | Out-Null
+    }
+    # Git runs hooks via its bundled sh even on Windows; write a POSIX shim with
+    # a forward-slash assets path and LF line endings.
+    $scriptPath = ($AssetsFull -replace '\\', '/') + "/hooks/strip-ai-attribution.sh"
+    $shim = @(
+        '#!/bin/sh',
+        '# Installed by scripts/link-ai-agents.ps1 - strips AI/agent attribution from commit messages.',
+        '# Source: .ai-agents/hooks/strip-ai-attribution.sh',
+        ('exec sh "' + $scriptPath + '" "$1"')
+    ) -join "`n"
+    $hookPath = Join-Path $hooksDir "prepare-commit-msg"
+    [System.IO.File]::WriteAllText($hookPath, $shim + "`n", (New-Object System.Text.UTF8Encoding $false))
+    Write-Host "Installed git prepare-commit-msg attribution hook at $hookPath"
+}
+
+Install-CommitAttributionHook -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
+
 Write-Host "Links created under $workspaceFull (.claude, .cursor, .opencode, .agents) -> $assetsFull"
 Write-Host "Codex custom agents synced to $workspaceFull\.codex\agents"

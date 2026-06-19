@@ -35,6 +35,15 @@ Applies to consumer repositories implementing Python HTTP APIs with FastAPI and 
 - `uv run mypy .`
 - `uv run python -m app.main` (or project-specific run command)
 
+## Scaffolding & command surface (CLI-first)
+
+Initialize and add deps via `uv`; do not hand-write `pyproject.toml`/`uv.lock` or app layout from memory ([`source-driven-development`](../skills/source-driven-development/SKILL.md)):
+
+- Init: `uv init`; deps: `uv add fastapi[standard] sqlalchemy alembic` (adjust to docs); dev deps: `uv add --dev pytest ruff mypy`
+- Migrations (Alembic): `alembic init`, `alembic revision --autogenerate -m "<x>"`, `alembic upgrade head`, `alembic downgrade -1`; confirm against current docs.
+
+Provide a root **`Makefile`** wiring these targets: `docker-up`/`docker-down` (compose deps), `run`, `build`, `test`, `lint` (`ruff` + `mypy`), and `migrate-new name=<x>` / `migrate-up` / `migrate-down`.
+
 ## Boundaries
 
 - Validate inbound/outbound DTOs at API boundary

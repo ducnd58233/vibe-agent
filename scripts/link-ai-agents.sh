@@ -224,5 +224,30 @@ sync_codex_agents_from_md() {
 
 sync_codex_agents_from_md "$ASSETS" "$WORKSPACE"
 
+# Install the git prepare-commit-msg hook that strips AI/agent attribution.
+# This is the only cross-harness enforcement point: Cursor/Codex/opencode and
+# manual commits have no `attribution` setting like Claude Code does.
+install_commit_attribution_hook() {
+  local assets="$1"
+  local workspace="$2"
+  if [[ ! -d "$workspace/.git" ]]; then
+    echo "No .git directory at $workspace; skipped prepare-commit-msg attribution hook." >&2
+    return 0
+  fi
+  local hooks_dir="$workspace/.git/hooks"
+  mkdir -p "$hooks_dir"
+  local hook_path="$hooks_dir/prepare-commit-msg"
+  {
+    printf '#!/bin/sh\n'
+    printf '# Installed by scripts/link-ai-agents.sh - strips AI/agent attribution from commit messages.\n'
+    printf '# Source: .ai-agents/hooks/strip-ai-attribution.sh\n'
+    printf 'exec sh "%s/hooks/strip-ai-attribution.sh" "$1"\n' "$assets"
+  } > "$hook_path"
+  chmod +x "$hook_path"
+  echo "Installed git prepare-commit-msg attribution hook at $hook_path"
+}
+
+install_commit_attribution_hook "$ASSETS" "$WORKSPACE"
+
 echo "Symlinks created under $WORKSPACE (.claude, .cursor, .opencode, .agents) -> $ASSETS"
 echo "Codex custom agents synced to $WORKSPACE/.codex/agents"

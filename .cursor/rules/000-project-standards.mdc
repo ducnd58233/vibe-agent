@@ -9,11 +9,21 @@ alwaysApply: true
 Follow the repository charter in **`AGENTS.md`** at the project root for shared conventions, security expectations, and the canonical **`.ai-agents/`** layout (skills, agents, commands, hooks).
 This repository is domain-agnostic; do not add product-domain logic into shared agent assets.
 
-**MUST — authoring:** When creating a new skill, subagent, command, or hook under **`.ai-agents/`**, follow that folder’s **`TEMPLATE.md`** and complete all sections (What, Why, How, When, Routing & discovery, Permissions & authority).
+**MUST, authoring:** When creating a new skill, subagent, command, or hook under **`.ai-agents/`**, follow that folder's **`TEMPLATE.md`** and complete all sections (What, Why, How, When, Routing & discovery, Permissions & authority).
 
-**MUST — routing:** Before choosing which existing asset to use, read **`.ai-agents/ROUTER.md`** and the appropriate subfolder **`ROUTER.md`** (e.g. `skills/ROUTER.md`).
+**MUST, routing:** Before choosing which existing asset to use, read **`.ai-agents/ROUTER.md`** and the appropriate subfolder **`ROUTER.md`** (for example `skills/ROUTER.md`).
 
-**MUST — router tables:** After creating, renaming, or deleting any asset under `.ai-agents/skills`, `agents`, `commands`, or `hooks`, update that folder’s **`ROUTER.md`** in the same change so the table lists current files, use cases, and notes.
+**MUST, router tables:** After creating, renaming, or deleting any asset under `.ai-agents/skills`, `agents`, `commands`, or `hooks`, update that folder's **`ROUTER.md`** in the same change so the table lists current files, use cases, and notes.
+
+**MUST, commit attribution:** Never add AI/agent co-author trailers (`Co-Authored-By: ...`), "Generated with ...", or robot-emoji attribution to commits or PR bodies, including from `/build` and `/ship`. Attribute every commit only to the human's git identity (see **`AGENTS.md`**, Commit attribution).
+
+**MUST, commit messages:** Use a human-friendly conventional message `type(scope): subject` (feat, fix, chore, refactor, and so on) that matches the branch name. Plain words, no AI-tell filler, no emojis/icons, no em-dash.
+
+**MUST, clarify first:** When a request is ambiguous, underspecified, or has conflicting constraints, ask the user before changing code. Do not guess and execute.
+
+**MUST, plain writing:** In code, comments, commit messages, and replies, write plain human language. Add only necessary, meaningful comments (explain why, not what). Do not use AI-tell filler words (ensure, enhance, simplify, leverage, utilize, seamless, robust, comprehensive). Do not use emojis, icons, or the em-dash character.
+
+**MUST, read project docs:** Before using or upgrading a framework/library, read the docs for the version pinned in this repo's manifests/lockfiles, not memory. Ask if the version is unclear.
 
 **Permissions:** See **`.ai-agents/PERMISSIONS.md`** and [Claude Code permissions](https://code.claude.com/docs/en/permissions) for how **`.claude/settings.json`** relates to documented tool needs.
 

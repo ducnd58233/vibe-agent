@@ -8,6 +8,7 @@ Lookup table for skills under this folder. **After you create, rename, or delete
 | AI coding-agent harness design and hardening | [`agent-harness-engineering`](agent-harness-engineering) | Instructions, routers, skills, agents, commands, context selection, tools, permissions, hooks, sensors, evals, generated Codex assets |
 | Always-on coding reliability guardrails | [`karpathy-guardrails`](karpathy-guardrails) | Non-trivial implementation; avoid assumptions/overengineering/scope drift |
 | Token-efficient execution and concise delivery | [`token-efficient-execution`](token-efficient-execution) | High-volume loops; minimize verbosity without losing correctness |
+| Core design principles, pattern selection, plain code/comments (extensible, maintainable code) | [`engineering-principles`](engineering-principles) | SOLID/DRY/KISS/YAGNI; module/class boundaries; coupling/duplication; choosing design patterns; over-engineering review; comment/writing style and no-AI-wording |
 | Multi-axis PR review, merge quality | [`code-review-and-quality`](code-review-and-quality) | Before merge; evaluating agent output |
 | HTTP/API contracts, OpenAPI alignment | [`api-and-interface-design`](api-and-interface-design) | New endpoints; schema design |
 | Backend modular layering, repos, txs | [`backend-engineering`](backend-engineering) | Services layout; transactions; persistence boundaries |

@@ -4,6 +4,14 @@ Use this contract when **adding a new stack profile**. Implement each profile as
 
 When link-based discovery is used, run [`scripts/link-ai-agents.ps1`](../../scripts/link-ai-agents.ps1) (or `.sh`) after clone where relevant; profiles are **not** mirrored into `.cursor/skills`—consumers reach them via links from skills and ROUTER.
 
+## Tool naming and currency (MUST)
+
+Stack profiles are the **only** place that names concrete tools, packages, and libraries; shared skills, references, and commands stay tool-agnostic and describe the capability or need instead (for example "the repo migration tool", not a specific product). When a profile does name tools:
+
+- Frame every tool list as **non-exhaustive examples**, not a closed or authoritative set. Use wording like "for example" or "such as".
+- A named tool can be deprecated, renamed, or replaced at any time. Tell the agent to **verify the tool still exists and check its current commands and flags** against official docs ([`source-driven-development`](../skills/source-driven-development/SKILL.md)) before using it. Prefer detecting what the **repo actually uses** (manifests, lockfiles, config) over any list here.
+- Never block work because a tool in a list is gone. Fall back to the capability description, the repo's real toolchain, and current docs.
+
 ---
 
 ## What

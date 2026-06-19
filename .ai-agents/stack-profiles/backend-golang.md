@@ -34,6 +34,15 @@ Applies to consumer repositories implementing Go services, APIs, and CLIs with i
 - `go vet ./...`
 - `go build ./...`
 
+## Scaffolding & command surface (CLI-first)
+
+Initialize and add deps via the official toolchain; do not hand-write `go.mod` or module layout from memory ([`source-driven-development`](../skills/source-driven-development/SKILL.md)):
+
+- Init: `go mod init <module-path>`; deps: `go get <pkg>`; tidy: `go mod tidy`
+- Migrations: use the repo's documented tool (for example `golang-migrate`, `goose`, `atlas`); confirm commands from its docs.
+
+Provide a root **`Makefile`** wiring these targets: `docker-up`/`docker-down` (compose deps), `run`, `build`, `test`, `lint` (`go vet` + `golangci-lint`), and `migrate-new name=<x>` / `migrate-up` / `migrate-down`.
+
 ## Boundaries
 
 - Avoid leaking transport/request models into domain logic
