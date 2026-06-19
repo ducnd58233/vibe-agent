@@ -8,7 +8,7 @@ clarify objective, users, acceptance criteria, stack constraints (from manifests
 
 Produce a spec covering: objective, tech stack, **commands** (real workspace scripts), project structure **for the current workspace**, code style pointer, testing strategy aligned with configured runners, boundaries, success criteria, open questions.
 
-Save to a path agreed with the maintainer (for example `docs/SPEC.md` or `docs/features/<name>/SPEC.md`) and confirm before coding.
+Write the spec to `docs/<slug>/SPEC.md` at the workspace root (the directory that contains `.vibe-agent/`; the repo root when this toolkit is used standalone). `<slug>` is a short kebab-case name for the work; confirm it with the user when it is not obvious. See the "Generated docs output location" rule in [`AGENTS.md`](../../AGENTS.md). Confirm the spec before coding.
 
 ## What
 

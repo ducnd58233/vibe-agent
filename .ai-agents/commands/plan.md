@@ -10,7 +10,7 @@ Read the spec (user-provided path) and relevant code. Prefer read-only planning 
 2. Tasks with acceptance criteria, verification command, files likely touched.
 3. Checkpoints between phases.
 
-Write outputs under paths the team uses (for example `docs/plan.md` and `docs/tasks.md`, or a feature folder). Present for human review before implementation.
+Write outputs to `docs/<slug>/PLAN.md` and `docs/<slug>/TASKS.md` at the workspace root (the directory that contains `.vibe-agent/`; the repo root when this toolkit is used standalone), reusing the same `<slug>` as the spec for this work. See the "Generated docs output location" rule in [`AGENTS.md`](../../AGENTS.md). Present for human review before implementation.
 
 ## What
 

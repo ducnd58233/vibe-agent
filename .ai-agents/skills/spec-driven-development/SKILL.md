@@ -79,6 +79,8 @@ Cover at minimum:
 
 Include **Success criteria** as testable checks (latency, validation rules, UX states).
 
+**Output location:** Write the spec to `docs/<slug>/SPEC.md` at the workspace root (the directory containing `.vibe-agent/`, or the repo root when this toolkit is standalone). Reuse the same `<slug>` for the plan and tasks. See the "Generated docs output location" rule in [`AGENTS.md`](../../../AGENTS.md).
+
 **Template sketch:**
 
 ```markdown
@@ -117,4 +119,4 @@ Before implementation:
 
 - [ ] Spec covers objective, stack, commands, layout, testing, boundaries, success criteria
 - [ ] Human reviewed when required by team process
-- [ ] Spec path committed or agreed
+- [ ] Spec written to `docs/<slug>/SPEC.md` at the workspace root (sibling of `.vibe-agent/`)
