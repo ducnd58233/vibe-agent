@@ -13,7 +13,7 @@ For each next task:
 3. RED — failing test for new behavior.
 4. GREEN — minimal implementation.
 5. Run full tests and typecheck/build per project (`npm`/`pnpm`/`uv` as documented).
-6. Commit with a conventional message ([`git-workflow-and-versioning`](../skills/git-workflow-and-versioning/SKILL.md)).
+6. Commit with a human-friendly conventional message, `type(scope): subject`, that matches the branch ([`git-workflow-and-versioning`](../skills/git-workflow-and-versioning/SKILL.md)). Use plain words, no AI-tell filler (ensure, enhance, simplify, and so on), no emojis/icons, no em-dash. **MUST NOT** add AI/agent co-author trailers (`Co-Authored-By: ...`) or "Generated with ..." lines; attribute commits solely to the human's git identity.
 7. Mark task complete; proceed.
 
 On failure: [`debugging-and-error-recovery`](../skills/debugging-and-error-recovery/SKILL.md).

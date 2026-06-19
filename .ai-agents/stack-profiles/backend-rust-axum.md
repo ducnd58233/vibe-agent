@@ -41,6 +41,15 @@ Applies to consumer repositories implementing Rust HTTP APIs and services with A
 - `cargo test --all`
 - `cargo check --all-targets --all-features`
 
+## Scaffolding & command surface (CLI-first)
+
+Initialize and add deps via Cargo; do not hand-write `Cargo.toml` or crate layout from memory ([`source-driven-development`](../skills/source-driven-development/SKILL.md)):
+
+- Init: `cargo new <name>` (or `cargo init` in an existing dir); deps: `cargo add axum tokio --features tokio/full` (adjust to docs)
+- Migrations (SQLx example): `sqlx migrate add <name>`, `sqlx migrate run`, `sqlx migrate revert`, or the repo's chosen tool (SeaORM/Diesel); confirm from its docs.
+
+Provide a root **`Makefile`** wiring these targets: `docker-up`/`docker-down` (compose deps), `run` (`cargo run`), `build` (`cargo build --release`), `test`, `lint` (`cargo fmt --check` + `clippy`), and `migrate-new name=<x>` / `migrate-up` / `migrate-down`.
+
 ## Boundaries
 
 - Do not hold mutex guards, database transactions, or borrowed request data across unrelated `.await` points

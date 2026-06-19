@@ -61,17 +61,27 @@ Each successful increment gets its own commit. Avoid one giant unreviewable blob
 
 Each commit does one logical thing: one feat, one fix, or one refactor — not mixed formatting + behavior.
 
-### Descriptive Messages
+### Descriptive Messages (MUST)
 
-Explain **why**, not only **what**:
+Write commit messages a human can read at a glance. Rules:
+
+- **Conventional prefix is required:** `type(scope): subject`. Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `perf`, `build`, `ci`. The `(scope)` is optional but preferred (the module/area touched).
+- **Human-friendly subject:** imperative, lower-case, concise; no trailing period.
+- **No AI wording:** do not use filler words such as ensure, enhance, simplify, leverage, utilize, seamless, robust, comprehensive. Say what changed in plain terms.
+- **No decorative characters:** no emojis, icons, or em-dash characters in the subject or body. Use a normal hyphen or comma.
+- **Body explains why,** not only what. Keep it short.
+- **Match the branch:** the type/scope should line up with the branch name (see Branching). A `fix/...` branch produces `fix(...)` commits.
 
 ```text
-feat: add email validation to registration endpoint
+feat(auth): add email validation to registration endpoint
 
-Prevents invalid formats before persistence; aligns with request validation on auth routes.
+Reject invalid formats before persistence. Matches the request validation
+already used on the other auth routes.
 ```
 
-Suggested types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`.
+### No AI words anywhere in git artifacts
+
+The same plain-language rule applies to branch names, tags, and PR titles/descriptions: no AI-tell filler words, no emojis or icons, no em-dash. Attribution rules are below.
 
 ### No Agent Attribution
 

@@ -53,11 +53,12 @@ Do not use when:
 
 ## Guardrails
 
-### 1) Think before coding
+### 1) Think before coding (ask first)
 
-- State assumptions before non-trivial execution.
+- **MUST ask the user a focused question** when the request is ambiguous, underspecified, or has conflicting constraints, before changing code. Do not guess an interpretation and execute. Running ahead on a wrong guess and making the code worse is the failure this guardrail exists to prevent.
+- State assumptions before non-trivial execution when you do proceed.
 - Surface ambiguity instead of silently choosing an interpretation.
-- Ask for clarification when blocked by conflicting constraints.
+- Before using or upgrading a framework/library, read the docs for the version pinned in the repo manifests/lockfiles (not memory or a different version). If the version or intended behavior is unclear, ask.
 
 ### 2) Simplicity first
 
