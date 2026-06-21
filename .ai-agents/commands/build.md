@@ -4,6 +4,8 @@ description: Implement next task incrementally — test, build, verify, commit
 
 Combine [`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md) (task order, acceptance) with [`test-driven-development`](../skills/test-driven-development/SKILL.md).
 
+When a task creates or updates docs with diagrams or flows, follow [`diagram-authoring`](../references/diagram-authoring.md).
+
 This repo does **not** ship a separate `incremental-implementation` skill; use explicit vertical slices and TDD.
 
 For each next task:

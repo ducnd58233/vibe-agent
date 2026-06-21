@@ -15,6 +15,8 @@ tools:
 
 Apply [`ai-research-methodology`](../skills/ai-research-methodology/SKILL.md), [`research-with-citations`](../skills/research-with-citations/SKILL.md), [`source-driven-development`](../skills/source-driven-development/SKILL.md), and [`references/ai-model-development-patterns.md`](../references/ai-model-development-patterns.md).
 
+When the digest, comparison, reproduction plan, or handoff includes diagrams, flows, timelines, or architecture sketches, follow [`diagram-authoring`](../references/diagram-authoring.md).
+
 ## What
 
 - Role: research AI/ML methods and convert evidence into reproducible experiment or implementation guidance.

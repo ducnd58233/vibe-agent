@@ -16,6 +16,8 @@ tools:
 
 Follow [`research-with-citations`](../skills/research-with-citations/SKILL.md).
 
+When the digest includes diagrams, flows, timelines, or evidence maps, follow [`diagram-authoring`](../references/diagram-authoring.md).
+
 ## What
 
 - Role: gather and verify evidence for a scoped question.

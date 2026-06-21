@@ -8,6 +8,8 @@ Follow [`references/orchestration-patterns.md`](../references/orchestration-patt
 2. [`data-analyst`](../agents/data-analyst.md)
 3. [`source-auditor`](../agents/source-auditor.md)
 
+When the final report includes diagrams, flows, timelines, or evidence maps, follow [`diagram-authoring`](../references/diagram-authoring.md).
+
 ## Phase 0 - Scope & repository-access preflight (MUST run first)
 
 1. **Pick the right instrument.** These three lanes are **web/citation** personas. If the question is primarily about a **local code repository** (its tree, code, or behavior), do **not** fan them out over the filesystem - prefer the built-in read-only `Explore` agent or direct `Read`/`Grep`/`Glob` (orchestration-patterns section 5). Reserve this command for **evidence/citation** questions (web, docs, mixed) where the lanes each add a *different kind* of finding.

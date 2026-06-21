@@ -4,6 +4,8 @@ description: Spec-first — structured specification before implementation
 
 Follow [`spec-driven-development`](../skills/spec-driven-development/SKILL.md).
 
+When the spec includes diagrams, flows, state maps, timelines, or architecture sketches, follow [`diagram-authoring`](../references/diagram-authoring.md).
+
 clarify objective, users, acceptance criteria, stack constraints (from manifests, [`AGENTS.md`](../../AGENTS.md), [`stack-profiles/`](../stack-profiles/) when present), and boundaries (Always / Ask / Never).
 
 Produce a spec covering: objective, tech stack, **commands** (real workspace scripts), project structure **for the current workspace**, code style pointer, testing strategy aligned with configured runners, boundaries, success criteria, open questions.

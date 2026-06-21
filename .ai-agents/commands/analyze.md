@@ -4,6 +4,8 @@ description: Analyze evidence into a confidence-labeled recommendation with a ci
 
 Follow [`evidence-based-analysis`](../skills/evidence-based-analysis/SKILL.md).
 
+When the analysis output includes diagrams, flows, timelines, or decision maps, follow [`diagram-authoring`](../references/diagram-authoring.md).
+
 Primary persona: [`data-analyst`](../agents/data-analyst.md).
 
 ## Inputs

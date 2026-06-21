@@ -15,6 +15,8 @@ tools:
 
 Follow [`evidence-based-analysis`](../skills/evidence-based-analysis/SKILL.md).
 
+When the analysis includes diagrams, flows, timelines, or decision maps, follow [`diagram-authoring`](../references/diagram-authoring.md).
+
 ## What
 
 - Role: evaluate evidence and produce decision-quality synthesis.

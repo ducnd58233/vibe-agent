@@ -4,6 +4,8 @@ description: Break spec into ordered tasks with acceptance criteria
 
 Follow [`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md).
 
+When the plan includes diagrams, dependency flows, timelines, or architecture sketches, follow [`diagram-authoring`](../references/diagram-authoring.md).
+
 Read the spec (user-provided path) and relevant code. Prefer read-only planning unless the user wants edits.
 
 1. Dependency graph and vertical slices (end-to-end thin slices).
