@@ -12,6 +12,10 @@
 #   bash .vibe-agent/scripts/link-ai-agents.sh
 #
 # Short flags: -w / -a
+#
+# The script also adds generated discovery paths to <workspace>/.git/info/exclude
+# when the workspace is a Git repository. This keeps local links and generated
+# Codex agent files out of Git without root .gitignore rules in consumer repos.
 
 set -euo pipefail
 
@@ -224,6 +228,48 @@ sync_codex_agents_from_md() {
 
 sync_codex_agents_from_md "$ASSETS" "$WORKSPACE"
 
+install_local_git_exclude() {
+  local workspace="$1"
+  if [[ ! -d "$workspace/.git" ]]; then
+    echo "No .git directory at $workspace; skipped local git exclude rules." >&2
+    return 0
+  fi
+  local info_dir="$workspace/.git/info"
+  local exclude_path="$info_dir/exclude"
+  mkdir -p "$info_dir"
+  touch "$exclude_path"
+
+  local -a rules=(
+    "/.claude/skills/"
+    "/.claude/agents/"
+    "/.claude/commands/"
+    "/.cursor/skills/"
+    "/.cursor/commands/"
+    "/.opencode/agents/"
+    "/.opencode/commands/"
+    "/.agents/skills/"
+    "/.agents/commands/"
+    "/.codex/agents/"
+  )
+  local -a missing=()
+  local rule
+  for rule in "${rules[@]}"; do
+    if ! grep -Fxq "$rule" "$exclude_path"; then
+      missing+=("$rule")
+    fi
+  done
+  if [[ ${#missing[@]} -eq 0 ]]; then
+    echo "Local git exclude rules already present at $exclude_path"
+    return 0
+  fi
+  {
+    printf '\n'
+    printf '# Generated vibe-agent discovery paths\n'
+    printf '%s\n' "${missing[@]}"
+  } >> "$exclude_path"
+  echo "Installed local git exclude rules at $exclude_path"
+}
+
 # Install the git prepare-commit-msg hook that strips AI/agent attribution.
 # This is the only cross-harness enforcement point: Cursor/Codex/opencode and
 # manual commits have no `attribution` setting like Claude Code does.
@@ -247,6 +293,7 @@ install_commit_attribution_hook() {
   echo "Installed git prepare-commit-msg attribution hook at $hook_path"
 }
 
+install_local_git_exclude "$WORKSPACE"
 install_commit_attribution_hook "$ASSETS" "$WORKSPACE"
 
 echo "Symlinks created under $WORKSPACE (.claude, .cursor, .opencode, .agents) -> $ASSETS"

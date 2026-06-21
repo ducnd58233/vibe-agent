@@ -23,6 +23,9 @@
 
   Optional environment variables (when the matching parameter is omitted):
     LINK_WORKSPACE, LINK_ASSETS — same paths as -WorkspaceRoot / -AssetsRoot (useful from CI or wrappers).
+  The script also adds generated discovery paths to <WorkspaceRoot>/.git/info/exclude when WorkspaceRoot is a
+  Git repository. This keeps local links and generated Codex agent files out of Git without requiring root
+  .gitignore rules in consumer repositories.
 #>
 [CmdletBinding()]
 param(
@@ -227,6 +230,45 @@ Ensure-Junction (Join-Path $workspaceFull ".agents\skills") (Join-Path $assetsFu
 Ensure-Junction (Join-Path $workspaceFull ".agents\commands") (Join-Path $assetsFull "commands")
 Sync-CodexAgents -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
 
+function Install-LocalGitExclude {
+    param([Parameter(Mandatory = $true)][string] $WorkspaceFull)
+    $gitDir = Join-Path $WorkspaceFull ".git"
+    if (-not (Test-Path -LiteralPath $gitDir -PathType Container)) {
+        Write-Warning "No .git directory at $WorkspaceFull; skipped local git exclude rules."
+        return
+    }
+    $infoDir = Join-Path $gitDir "info"
+    if (-not (Test-Path -LiteralPath $infoDir)) {
+        New-Item -ItemType Directory -Path $infoDir | Out-Null
+    }
+    $excludePath = Join-Path $infoDir "exclude"
+    if (-not (Test-Path -LiteralPath $excludePath)) {
+        New-Item -ItemType File -Path $excludePath | Out-Null
+    }
+    $rules = @(
+        "/.claude/skills/",
+        "/.claude/agents/",
+        "/.claude/commands/",
+        "/.cursor/skills/",
+        "/.cursor/commands/",
+        "/.opencode/agents/",
+        "/.opencode/commands/",
+        "/.agents/skills/",
+        "/.agents/commands/",
+        "/.codex/agents/"
+    )
+    $existing = Get-Content -LiteralPath $excludePath -ErrorAction SilentlyContinue
+    $toAdd = $rules | Where-Object { $existing -notcontains $_ }
+    if ($toAdd.Count -eq 0) {
+        Write-Host "Local git exclude rules already present at $excludePath"
+        return
+    }
+    Add-Content -LiteralPath $excludePath -Value ""
+    Add-Content -LiteralPath $excludePath -Value "# Generated vibe-agent discovery paths"
+    Add-Content -LiteralPath $excludePath -Value $toAdd
+    Write-Host "Installed local git exclude rules at $excludePath"
+}
+
 function Install-CommitAttributionHook {
     param(
         [Parameter(Mandatory = $true)][string] $AssetsFull,
@@ -255,6 +297,7 @@ function Install-CommitAttributionHook {
     Write-Host "Installed git prepare-commit-msg attribution hook at $hookPath"
 }
 
+Install-LocalGitExclude -WorkspaceFull $workspaceFull
 Install-CommitAttributionHook -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
 
 Write-Host "Links created under $workspaceFull (.claude, .cursor, .opencode, .agents) -> $assetsFull"
