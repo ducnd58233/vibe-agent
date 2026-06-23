@@ -12,3 +12,6 @@
 /.agents/skills/
 /.agents/commands/
 /.codex/agents/
+
+# Goal verification artifacts from /goal (local only; see .ai-agents/references/goal-verification-records.md)
+/tmp/

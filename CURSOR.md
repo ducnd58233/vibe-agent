@@ -25,7 +25,7 @@ When **authoring** under `.ai-agents`, follow each folder’s **`TEMPLATE.md`**.
 
 ### Project `/review`, `/ship`, …
 
-After **`scripts/link-ai-agents`**, editable markdown in [`.ai-agents/commands/`](.ai-agents/commands) is what both **`.claude/commands`** and **`.cursor/commands`** point at. In Cursor chat, type `/` to pick `review`, `ship`, etc. Author new commands only under `.ai-agents/commands/`.
+After **`scripts/link-ai-agents`**, editable markdown in [`.ai-agents/commands/`](.ai-agents/commands) is what both **`.claude/commands`** and **`.cursor/commands`** point at. In Cursor chat, type `/` to pick `goal`, `review`, `ship`, etc. Author new commands only under `.ai-agents/commands/`.
 
 ## Other tools in this repo
 

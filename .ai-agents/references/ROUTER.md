@@ -11,6 +11,8 @@ Lookup table for shared checklists and pattern docs under this folder. These fil
 | Auth, validation, headers, CORS, OWASP | [`security-checklist.md`](security-checklist.md) | `security-and-hardening` |
 | AAA, mocks, RTL, API, E2E | [`testing-patterns.md`](testing-patterns.md) | `test-driven-development` |
 | Fan-out `/ship`, sequential lifecycle, anti-patterns | [`orchestration-patterns.md`](orchestration-patterns.md) | `using-agent-skills`, slash commands |
+| End-to-end `/goal` delivery loop | [`goal-driven-delivery`](../skills/goal-driven-delivery/SKILL.md) skill + [`goal.md`](../commands/goal.md) command | `/goal`, `goal-driven-delivery` |
+| `/goal` verification artifacts (`tmp/`, PR wait, E2E records) | [`goal-verification-records.md`](goal-verification-records.md) | `/goal`, `qa-testing-strategy` |
 | Skill/agent/command authoring quality | [`agent-authoring-patterns.md`](agent-authoring-patterns.md) | asset authors, `agent-systems-auditor` |
 | AI agent harness responsibilities, guides, sensors, verification | [`agent-harness-engineering.md`](agent-harness-engineering.md) | `agent-harness-engineering`, `agent-systems-auditor` |
 | Tool permissions, hooks, secret boundaries | [`tool-safety-and-permissions.md`](tool-safety-and-permissions.md) | `security-and-hardening`, `agent-systems-auditor` |

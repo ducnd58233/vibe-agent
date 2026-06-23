@@ -33,6 +33,15 @@ Synthesize: quality blockers, security blockers, coverage gaps, design-system/vi
 
 Emit **Ship Decision: GO | NO-GO** with blockers, recommended fixes, acknowledged risks, **rollback plan**, and appended specialist reports.
 
+### Merge gate (MUST)
+
+`/ship` is the **only** command in the delivery pipeline that may **authorize** merging a task branch into `main` (or the team default branch).
+
+- **GO** means the change is fit to merge from a quality, security, and test perspective. It does **not** mean auto-merge.
+- **MUST NOT** merge, push to `main`, or complete a PR merge unless **both** are true: (1) **Ship Decision: GO**, and (2) the human explicitly asks to merge (or to open/update a PR and merge when checks pass).
+- **NO-GO** means do not merge. Stay on the **same task branch**; fix blockers (logic, UI, tests, security) on that branch and re-run `/ship`. Only unrelated new work needs a new branch.
+- [`build.md`](build.md) must never merge to `main`. If `/build` was run on `main`, treat that as a workflow violation: move work to a task branch before ship.
+
 **Skip fan-out** only if the change is trivial: <=2 files, ~<=50 lines, and no auth/payments/data/config - otherwise default to full `/ship`.
 
 ## What

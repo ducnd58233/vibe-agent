@@ -31,6 +31,7 @@ Ship safely: reversible deploys, observable behavior, incremental exposure — n
 - [ ] Lint and typecheck pass.
 - [ ] Review complete; no stray debug logs in hot paths.
 - [ ] **No AI/agent attribution** in release/tag/merge commits or PR body — no `Co-Authored-By: …` agent trailers or "Generated with …" lines ([`git-workflow-and-versioning`](../git-workflow-and-versioning/SKILL.md)).
+- [ ] Work landed on a **task branch** (not direct commits on `main`); merge to `main` only after [`ship.md`](../../commands/ship.md) **GO** and explicit human approval ([`build.md`](../../commands/build.md) never merges).
 
 ### Security
 

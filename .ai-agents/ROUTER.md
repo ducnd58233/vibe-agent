@@ -14,6 +14,7 @@ All assets are reusable and **domain-agnostic**; keep product-domain implementat
 | Pinned frameworks for the **current workspace** | [`stack-profiles/ROUTER.md`](stack-profiles/ROUTER.md) (overview: [`README.md`](stack-profiles/README.md); authoring: [`TEMPLATE.md`](stack-profiles/TEMPLATE.md)) |
 | Isolated specialist worker (Claude subagent) | [`agents/ROUTER.md`](agents/ROUTER.md) |
 | Slash-style command prompt (Claude Code / Cursor after link script) | [`commands/ROUTER.md`](commands/ROUTER.md) |
+| Full delivery from user objective (`/goal`) | [`commands/goal.md`](commands/goal.md) + [`skills/goal-driven-delivery/SKILL.md`](skills/goal-driven-delivery/SKILL.md) |
 | Lifecycle automation (format on save, CI hooks, guardrails) | [`hooks/ROUTER.md`](hooks/ROUTER.md) |
 
 **Creating new assets:** Follow that folder’s **`TEMPLATE.md`** (e.g. [skills/TEMPLATE.md](skills/TEMPLATE.md), [stack-profiles/TEMPLATE.md](stack-profiles/TEMPLATE.md), [agents/TEMPLATE.md](agents/TEMPLATE.md), [commands/TEMPLATE.md](commands/TEMPLATE.md), [hooks/TEMPLATE.md](hooks/TEMPLATE.md)).

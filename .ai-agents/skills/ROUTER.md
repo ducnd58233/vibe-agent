@@ -25,7 +25,8 @@ Lookup table for skills under this folder. **After you create, rename, or delete
 | Tradeoff analysis with confidence and evidence | [`evidence-based-analysis`](evidence-based-analysis) | Choosing options from gathered evidence |
 | Measure before optimizing | [`performance-optimization`](performance-optimization) | Latency, bundles, persistence slow paths |
 | Decompose specs into tasks | [`planning-and-task-breakdown`](planning-and-task-breakdown) | Multi-step features |
-| Git commits, branches, worktrees | [`git-workflow-and-versioning`](git-workflow-and-versioning) | Any change; parallel agents |
+| End-to-end delivery from objective to ship | [`goal-driven-delivery`](goal-driven-delivery) | `/goal`; clarify, spec, plan, build loops until done |
+| Git commits, branches, worktrees | [`git-workflow-and-versioning`](git-workflow-and-versioning) | `/build`: one branch per planned task; same-task fixes stay on branch; `/ship` = merge gate |
 | Official-docs-backed implementation | [`source-driven-development`](source-driven-development) | Framework APIs; version-sensitive code |
 | Written spec before code | [`spec-driven-development`](spec-driven-development) | New features; ambiguous scope |
 | RED/GREEN, Prove-It bugs | [`test-driven-development`](test-driven-development) | New logic; regressions |

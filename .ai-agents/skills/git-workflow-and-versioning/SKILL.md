@@ -101,6 +101,32 @@ Target small PRs (~100–300 lines per logical change when possible). Split larg
 - Naming: `feature/…`, `fix/…`, `chore/…`, `refactor/…`.
 - Delete merged branches.
 
+## Agent delivery pipeline (`/build` and `/ship`)
+
+When using toolkit commands [`build.md`](../../commands/build.md) and [`ship.md`](../../commands/ship.md):
+
+| Phase | Branch | Merge to `main` |
+|-------|--------|-----------------|
+| `/plan` | none (read-only) | no |
+| `/build` (per task) | one new branch per planned task | **no** |
+| `/test`, `/review` | same task branch | no |
+| `/ship` | same task branch | only after **GO** + human agrees |
+
+Rules:
+
+1. **One planned task, one branch, one PR.** Follow-up commits for **the same task** (user feedback, fix logic/UI, review or ship blockers on that PR) stay on that branch. **Unrelated** tasks from the plan each need a new branch and PR.
+2. **Never commit implementation work directly on `main`.** Create or check out a task branch first.
+3. **`/build` ends at push/PR on the task branch**, not at merge.
+4. **Only `/ship` plus explicit human approval** may merge to `main`. A GO decision alone is not permission to merge without the human asking.
+5. **Next unrelated task:** new branch from updated `main`. Same-task iteration reuses the existing task branch.
+
+**Branch decision (quick test):** same PR description and same task acceptance criteria → same branch; new task line in `TASKS.md` or new scope → new branch.
+
+```text
+main ──┬── feature/foo-task-1 ── PR ── feedback fixes (same branch) ── /ship GO ── (human: merge) ──► main
+       └── feature/foo-task-2 ── PR ── ...
+```
+
 ## Worktrees (parallel work)
 
 ```bash

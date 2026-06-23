@@ -64,12 +64,31 @@ Multiple personas on the same input; main session merges into go/no-go.
 ### 4. Sequential pipeline (user-driven commands)
 
 ```
-/spec → /plan → /build → /test → /review → /ship
+/spec → /plan → /build → /test → /review → /ship → (human: merge to main)
+              ↑ one branch + one PR per planned task; same-task feedback on same branch; /build never merges to main
 ```
 
 **Use when:** steps depend on prior outputs and human judgment matters between steps.
 
+**Git gates:** `/build` uses one branch + one PR per planned task; same-task feedback fixes stay on that branch; unrelated work needs a new branch. `/build` never merges to `main`. `/ship` emits GO/NO-GO; merge to `main` only after GO **and** explicit human approval ([`git-workflow-and-versioning`](../skills/git-workflow-and-versioning/SKILL.md), [`commands/build.md`](../commands/build.md), [`commands/ship.md`](../commands/ship.md)).
+
 **Cost:** no meta-orchestrator agent; the user carries context.
+
+---
+
+### 4b. Goal orchestration (`/goal`)
+
+Single slash command that walks the sequential pipeline with clarify-first intake, optional research, and iterate-until-done loops ([`commands/goal.md`](../commands/goal.md), [`goal-driven-delivery`](../skills/goal-driven-delivery/SKILL.md)).
+
+```
+/goal → INTAKE → [RESEARCH → ANALYZE] → /spec → /plan → (/build → /test → /review → /ship)* → done
+```
+
+**Use when:** the user states an outcome, not a single command step; requirements may be ambiguous.
+
+**Not the same as:** Claude Code or Codex native `/goal` harness loops (evaluator-driven turns). Toolkit `/goal` composes existing commands with checkpoints.
+
+**Anti-drift:** re-read `docs/<slug>/SPEC.md` and `TASKS.md` each phase; report `GOAL STATUS` after each phase.
 
 ---
 

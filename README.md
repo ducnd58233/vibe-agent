@@ -10,7 +10,7 @@ This repository is intentionally **domain-agnostic**. Product-specific behavior 
 - Explicit router tables so agents choose the right workflow before acting
 - Reusable skills for engineering, research, security, QA, design systems, DevOps/SRE, AI/ML model engineering, MLOps, databases, realtime systems, and product lifecycle work
 - Specialist subagents for review, security, testing, research, AI/ML research, AI/ML engineering, architecture, DevOps/SRE, database query audits, QA, product design review, and AI-asset audits
-- Slash commands for repeatable workflows such as `/spec`, `/plan`, `/build`, `/review`, `/ship`, `/doctor`, and `/harden`
+- Slash commands for repeatable workflows such as `/goal`, `/spec`, `/plan`, `/build`, `/review`, `/ship`, `/doctor`, and `/harden`
 - Stack profiles for pinned frameworks and operational domains
 - Shared hook scripts and permission guidance for safer tool use
 - Link scripts and validation checks that wire Claude Code, Cursor, Codex, and opencode discovery paths back to `.ai-agents`
@@ -60,6 +60,7 @@ Existing review agents remain available: `code-reviewer`, `security-auditor`, `t
 
 ### New commands
 
+- `/goal` - end-to-end delivery from ambiguous objective through clarify, optional research, spec, plan, per-task build, test, review, ship, and fix loops until requirements are met ([`goal-driven-delivery`](.ai-agents/skills/goal-driven-delivery/SKILL.md))
 - `/doctor` - audit AI asset health: routers, hooks, link paths, permissions, and discovery wiring
 - `/harden` - harden AI assets: permissions, hooks, tool boundaries, secret safety, and orchestration risks
 
@@ -183,6 +184,7 @@ The Codex check verifies that `.agents/skills` and `.agents/commands` exist, eve
 
 ## Slash commands
 
+- `/goal`: full delivery loop (clarify, research, spec, plan, build, test, review, ship until done); waits for PR CI and external bot reviews; E2E when in scope; saves evidence under `tmp/<slug>/` (gitignored)
 - `/spec`: produce a structured implementation spec
 - `/plan`: break a spec into actionable tasks
 - `/build`: implement the next planned task with TDD discipline
@@ -197,6 +199,12 @@ The Codex check verifies that `.agents/skills` and `.agents/commands` exist, eve
 - `/code-simplify`: simplify safely under test protection
 
 ## Example workflow
+
+```text
+/goal
+```
+
+Or step by step:
 
 ```text
 /spec -> /plan -> /build -> /test -> /review -> /ship

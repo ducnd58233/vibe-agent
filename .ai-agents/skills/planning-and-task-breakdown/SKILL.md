@@ -108,6 +108,8 @@ Each task follows this structure:
 - `tests/path/to/test.ts`
 
 **Estimated scope:** [Small: 1-2 files | Medium: 3-5 files | Large: 5+ files]
+
+**Delivery branch (for `/build`):** `feature/<slug>-task-<N>-<short-title>` (or `fix/…` / `chore/…` / `refactor/…`). One **planned** task maps to one branch and one PR. User feedback and fixes for **that same task** (logic, UI, tests, review blockers) add commits on the same branch; a **different** planned task or unrelated scope needs a new branch ([`build.md`](../../commands/build.md)).
 ```
 
 ### Step 5: Order and Checkpoint
