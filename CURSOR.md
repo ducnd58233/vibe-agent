@@ -27,6 +27,22 @@ When **authoring** under `.ai-agents`, follow each folder’s **`TEMPLATE.md`**.
 
 After **`scripts/link-ai-agents`**, editable markdown in [`.ai-agents/commands/`](.ai-agents/commands) is what both **`.claude/commands`** and **`.cursor/commands`** point at. In Cursor chat, type `/` to pick `goal`, `review`, `ship`, etc. Author new commands only under `.ai-agents/commands/`.
 
+### Cursor Bugbot (PR reviews)
+
+PR **Bugbot** does **not** load `.cursor/rules`, `AGENTS.md`, or linked skills/commands automatically. It reads:
+
+| Source | Path |
+|--------|------|
+| Project rules (always) | [`.cursor/BUGBOT.md`](.cursor/BUGBOT.md) |
+| Scoped rules | Nested `.cursor/BUGBOT.md` (for example [`.ai-agents/.cursor/BUGBOT.md`](.ai-agents/.cursor/BUGBOT.md)) |
+| Org/repo rules | [Bugbot dashboard](https://cursor.com/dashboard/bugbot) |
+
+This repo's `BUGBOT.md` files distill the same policy as `/review`, `/test`, and `code-review-and-quality`. Keep them in sync when review standards change.
+
+**Local pre-push review:** run `/review-bugbot` in Cursor chat (uses the `review-bugbot` skill). Optional `Custom Instructions` can point at a specific command or skill for one-off runs.
+
+**After merge readiness:** `/goal` and `/ship` may wait on the **Cursor Bugbot** GitHub check when configured (see `goal.md` and `goal-verification-records.md`).
+
 ## Other tools in this repo
 
 - **Claude Code:** [`CLAUDE.md`](CLAUDE.md) and [`.claude/`](.claude)

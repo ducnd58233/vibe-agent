@@ -23,7 +23,7 @@ Applies to consumer repositories using relational databases and SQL query engine
 - PostgreSQL: `EXPLAIN`, `EXPLAIN ANALYZE`, `pg_stat_statements`, indexes, constraints, vacuum/analyze, locks
 - MySQL/MariaDB: `EXPLAIN`, slow query log, indexes, InnoDB locks, query plans
 - SQLite: `EXPLAIN QUERY PLAN`, indexes, WAL mode, transaction boundaries
-- Test tools: ephemeral DBs, migrations in test setup, fixtures/factories, testcontainers where configured
+- Test tools: ephemeral DBs, migrations in test setup, fixtures/factories, testcontainers where configured (start in **setup** only; tests assert query/repository **behavior**, not "DB is up")
 
 ## Repo layout conventions
 
