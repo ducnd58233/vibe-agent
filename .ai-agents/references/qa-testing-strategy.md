@@ -23,10 +23,11 @@ Use this reference for manual QA, automated test planning, exploratory testing, 
 
 1. Pick the lowest test level that proves behavior.
 2. Prefer user-observable assertions over implementation details.
-3. Use stable selectors/roles/labels and web-first assertions for browser automation.
-4. Avoid hard sleeps; wait on observable state.
-5. Keep tests isolated, deterministic, and parallel-safe.
-6. Track flaky tests separately; do not normalize reruns as success.
+3. **Core logic only:** do not add automated tests for file/folder/env discovery, testcontainer health, or setup-only checks — see [`test-driven-development`](../skills/test-driven-development/SKILL.md).
+4. Use stable selectors/roles/labels and web-first assertions for browser automation.
+5. Avoid hard sleeps; wait on observable state.
+6. Keep tests isolated, deterministic, and parallel-safe.
+7. Track flaky tests separately; do not normalize reruns as success.
 
 ## Release QA checklist
 

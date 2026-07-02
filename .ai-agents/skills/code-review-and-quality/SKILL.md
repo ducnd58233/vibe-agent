@@ -142,6 +142,7 @@ Tests reveal intent and coverage:
 ```
 - Do tests exist for the change?
 - Do they test behavior (not implementation details)?
+- Do they target core/business logic (not file/env/container discovery or "is up" checks)?
 - Are edge cases covered?
 - Do tests have descriptive names?
 - Would the tests catch a regression if the code changed?
@@ -341,6 +342,7 @@ Part of code review is dependency review:
 - Security-sensitive changes without security-focused review
 - Large PRs that are "too big to review properly" (split them)
 - No regression tests with bug fix PRs
+- Infrastructure or discovery tests posing as behavioral tests (file exists, env set, container up)
 - Review comments without severity labels — makes it unclear what's required vs optional
 - Accepting "I'll fix it later" — it never happens
 

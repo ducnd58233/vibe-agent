@@ -26,6 +26,23 @@ Write a failing test before writing the code that makes it pass. For bug fixes, 
 
 **When NOT to use:** Pure configuration changes, documentation updates, or static content changes that have no behavioral impact.
 
+## Test only core logic (MUST)
+
+Automated tests must prove **core logic and business behavior** — inputs, outputs, state changes, domain rules, and error paths. **Do not generate** tests whose main assertion is infrastructure, discovery, or environment presence.
+
+**Forbidden (MUST NOT add to the suite):**
+
+| Category | Examples (do not write these) |
+|----------|-------------------------------|
+| Filesystem discovery | `expect(fs.existsSync('config.json')).toBe(true)`, "folder `src/` exists" |
+| Environment probes | `expect(process.env.DATABASE_URL).toBeDefined()` as the test body |
+| Container/service health | "Testcontainers Postgres is up", "Redis container started", ping-only connectivity |
+| Config/manifest trivia | "package.json has test script", "`.env.example` exists" |
+| Import/load smoke | `require('./module')` with no behavior assertion |
+| Setup dressed as tests | Asserting only that `beforeAll` finished or fixtures mounted |
+
+Put infrastructure checks in **CI**, **test setup/fixtures**, or **health endpoints** — not as behavioral test cases. Integration tests may use real DBs/containers in **setup**, but each test must still assert **application behavior** (for example "create order persists totals and status", not "database accepts a connection").
+
 **Related:** For browser-based changes, combine TDD with runtime verification using Chrome DevTools MCP — see the Browser Testing section below.
 
 ## The TDD Cycle
@@ -301,6 +318,8 @@ describe('TaskService', () => {
 | Snapshot abuse | Large snapshots nobody reviews, break on any change | Use snapshots sparingly and review every change |
 | No test isolation | Tests pass individually but fail together | Each test sets up and tears down its own state |
 | Mocking everything | Tests pass but production breaks | Prefer real implementations > fakes > stubs > mocks. Mock only at boundaries where real deps are slow or non-deterministic |
+| Infrastructure/discovery tests | False green CI; no regression signal for product logic | Delete or move to CI/setup; replace with behavior tests on core logic |
+| Container "is running" tests | Tests the test harness, not the app | Start containers in fixture setup; assert domain outcomes in tests |
 
 ## Browser Testing with DevTools
 
@@ -371,6 +390,7 @@ For detailed testing patterns, examples, and anti-patterns across frameworks, se
 - "All tests pass" but no tests were actually run
 - Bug fixes without reproduction tests
 - Tests that test framework behavior instead of application behavior
+- Tests that only check files, folders, env vars, or containers exist / are up
 - Test names that don't describe the expected behavior
 - Skipping tests to make the suite pass
 

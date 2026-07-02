@@ -15,6 +15,8 @@ Plan, execute, and review manual and automated testing for release confidence ac
 
 TDD proves code behavior at implementation time; QA strategy proves user-facing quality, risk coverage, release readiness, and manual-to-automation conversion. Expert testers combine scripted checks, exploratory charters, automation, evidence capture, and risk-based prioritization.
 
+**Automated tests in code** follow [`test-driven-development`](../test-driven-development/SKILL.md): core/business logic only — no file/env/container discovery tests. Environment and infra checks belong in manual charters, CI, or fixture setup, not unit/integration test bodies.
+
 ## How
 
 1. **Load context**

@@ -104,6 +104,20 @@ test('user can create a task', async ({ page }) => {
 
 Use web-first assertions; avoid hardcoded sleeps.
 
+## Core logic only (MUST)
+
+Tests must target **business behavior and core logic**. **Do not generate** meaningless discovery or infrastructure tests.
+
+**MUST NOT appear in the suite:**
+
+- File, folder, or path existence checks (`exists`, `access`, directory listing as the assertion)
+- Environment variable or config file presence as the test body
+- Testcontainer, Docker, or external service "is up" / connectivity-only cases
+- Import/require smoke with no behavioral assertion
+- Tests that only verify fixtures, `beforeAll`, or test harness startup
+
+Use CI, global setup, or fixtures for infrastructure. Each test case should fail when **product logic** regresses.
+
 ## Test Anti-Patterns
 
 | Anti-Pattern | Problem | Better Approach |
@@ -112,6 +126,7 @@ Use web-first assertions; avoid hardcoded sleeps.
 | Snapshot everything | Unreviewed noise | Assert specific values |
 | Shared mutable state | Flaky order-dependent tests | Isolate setup per test |
 | Mocking business logic | False confidence | Mock I/O only |
+| Infrastructure/discovery tests | No signal on logic regressions | Assert domain outcomes; keep infra in setup/CI |
 | Skipping tests to green CI | Hides failures | Fix, quarantine with ticket, or delete |
 
 ---
