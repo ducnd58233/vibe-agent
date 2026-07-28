@@ -108,7 +108,7 @@ Spawn read-only exploration that returns a digest (large read → small summary)
 | Commands | `.ai-agents/commands/*.md` as slash prompts | `.cursor/commands` junction → same files; Cursor `/` menu |
 | Subagents | `agents/*.md` in `.ai-agents/agents` | Same files as behavioral prompts; composer does not auto-load slash syntax |
 
-Platform rules from upstream still apply on Claude Code (e.g. subagents cannot spawn subagents). See upstream [orchestration doc source](https://github.com/addyosmani/agent-skills/blob/main/references/orchestration-patterns.md) for Agent Teams and plugin frontmatter details.
+Platform rules from upstream still apply on Claude Code (e.g. subagents cannot spawn subagents). For Agent Teams and plugin frontmatter details, consult the `agent-assets` sources in [`external-source-registry.md`](external-source-registry.md) — read in place, and verify against current official docs before relying on upstream platform claims.
 
 ---
 
@@ -160,4 +160,4 @@ Levers from Anthropic's agent-engineering reports, applied to this toolkit. Use 
 
 ## When to add a new pattern here
 
-Add only after repeated real use, a concrete repo artifact, and a clear anti-pattern shadow — same bar as [upstream catalog](https://github.com/addyosmani/agent-skills/blob/main/references/orchestration-patterns.md).
+Add only after repeated real use, a concrete repo artifact, and a clear anti-pattern shadow — the same bar the `agent-assets` upstreams in [`external-source-registry.md`](external-source-registry.md) apply.
