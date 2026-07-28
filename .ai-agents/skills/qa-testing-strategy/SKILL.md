@@ -32,6 +32,7 @@ TDD proves code behavior at implementation time; QA strategy proves user-facing 
    - Automation: test level, selectors/fixtures, assertions, data setup/teardown, flake controls, CI command.
 5. **Execute with evidence**
    - Capture steps, environment, screenshots/logs/network traces, versions, data IDs, and expected vs actual behavior.
+   - **UI changes:** treat an automated accessibility audit as a pass/fail gate, not an observation. Pass requires zero WCAG failures from `npx @axe-core/cli`, Lighthouse, or the configured equivalent — each remaining failure must be explained and accepted, and screenshots must cover the supported breakpoints. Mark checks `UNVERIFIED` with a reason when no browser is available rather than asserting visual correctness.
 6. **Close the loop**
    - Prioritize defects by user impact.
    - Convert recurring manual cases into automation.
@@ -61,6 +62,7 @@ Use for manual QA, automation QA, tester workflows, release testing, coverage au
 - [ ] Automated tests use stable selectors and observable assertions, not implementation details.
 - [ ] Manual findings include reproducible steps and environment details.
 - [ ] Flaky or skipped tests are tracked, not ignored.
+- [ ] UI changes carry render evidence and a zero-failure accessibility audit, or explicit `UNVERIFIED` reasons.
 
 ## References
 

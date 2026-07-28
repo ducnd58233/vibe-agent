@@ -8,6 +8,7 @@ Slash-style prompts live in this folder as `*.md`. **Claude Code** commonly reso
 |----------------------|--------------|----------------------|
 | End-to-end objective to shippable work | [`goal.md`](goal.md) | Clarify-first; composes spec/plan/build/test/review/ship; waits on PR CI + external reviews; E2E when in scope; records `tmp/<slug>/` |
 | Five-axis review | [`review.md`](review.md) | Diff or paths scoped |
+| Build or audit UI registry-first | [`design.md`](design.md) | Modes: build / audit / registry; audit is read-only; needs browser or MCP for render evidence |
 | Ship decision, parallel personas | [`ship.md`](ship.md) | Non-trivial blast radius; only phase that may authorize merge to `main` after GO + human approval |
 | Write spec first | [`spec.md`](spec.md) | Agree spec path |
 | Research with citations | [`research.md`](research.md) | Topic + scope provided |

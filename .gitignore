@@ -5,13 +5,18 @@
 /.claude/skills/
 /.claude/agents/
 /.claude/commands/
+/.claude/sdd-cache/
 /.cursor/skills/
 /.cursor/commands/
+/.cursor/sdd-cache/
 /.opencode/agents/
 /.opencode/commands/
+/.opencode/sdd-cache/
 /.agents/skills/
 /.agents/commands/
+/.agents/sdd-cache/
 /.codex/agents/
-
+/.codex/sdd-cache/
+/.codex/commands/
 # Goal verification artifacts from /goal (local only; see .ai-agents/references/goal-verification-records.md)
 /tmp/

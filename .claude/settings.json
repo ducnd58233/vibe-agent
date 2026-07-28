@@ -168,6 +168,25 @@
             "statusMessage": "simplify-ignore-post"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/design-token-guard.py",
+            "timeout": 5000,
+            "async": false,
+            "statusMessage": "design-token-guard"
+          },
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/ui-slop-guard.py",
+            "timeout": 5000,
+            "async": false,
+            "statusMessage": "ui-slop-guard"
+          }
+        ]
       }
     ],
     "Stop": [

@@ -29,6 +29,16 @@ Personas **must not** delegate to each other.
 
 Synthesize: quality blockers, security blockers, coverage gaps, design-system/visual QA risks, database/query risks, QA signoff gaps, accessibility ([`references/accessibility-checklist.md`](../references/accessibility-checklist.md) if UI changed), infra/env/feature flags, deploy/rollback/observability readiness.
 
+### UI evidence gate (MUST, when the change touches UI)
+
+Treat these as **blockers**, not observations — they are deterministic, so a missing result is a NO-GO input rather than a judgment call:
+
+- `ui-slop-guard` and `design-token-guard` are clean, or each exception is marked inline with a stated reason.
+- An automated accessibility audit reports **zero** WCAG failures, or every remaining failure is explained and explicitly accepted.
+- Render evidence exists at the supported breakpoints.
+
+Where a check could not run, it must be reported as `UNVERIFIED: <reason>` — never as a pass. Run [`/design`](design.md) in audit mode to produce the missing evidence before re-running `/ship`.
+
 ## Phase C - Decision
 
 Emit **Ship Decision: GO | NO-GO** with blockers, recommended fixes, acknowledged risks, **rollback plan**, and appended specialist reports.

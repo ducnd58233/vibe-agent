@@ -18,6 +18,7 @@ Lookup table for skills under this folder. **After you create, rename, or delete
 | Load right context, avoid token flood | [`context-engineering`](context-engineering) | Large tasks; scoped reads |
 | Diverge/converge on product ideas | [`idea-refine`](idea-refine) | Vague features; prioritization |
 | UI patterns, a11y, client/server boundaries | [`frontend-ui-engineering`](frontend-ui-engineering) | Components, layouts, UX |
+| Registry-first UI generation, anti-slop gates, render evidence | [`ui-design-fidelity`](ui-design-fidelity) | `/design`; UI looks generic or templated; design-system drift audit; UI change needs verifiable evidence |
 | Product design systems and design-to-code | [`product-design-systems`](product-design-systems) | Figma/Canva/MCP handoff, tokens, visual QA, reusable UI components |
 | Citation-first topic investigation and digest | [`research-with-citations`](research-with-citations) | Facts must be source-backed; web research needed |
 | AI/ML model engineering across CV/NLP/speech/multimodal | [`ai-model-engineering`](ai-model-engineering) | Model training, fine-tuning, inference, evals, model/data cards, monitoring, AI product/model quality |

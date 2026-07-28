@@ -23,6 +23,7 @@ Lookup table for shared checklists and pattern docs under this folder. These fil
 | SQL/NoSQL query diagnosis and optimization | [`database-query-patterns.md`](database-query-patterns.md) | `database-query-optimization`, `database-query-auditor` |
 | Manual QA and automation strategy | [`qa-testing-strategy.md`](qa-testing-strategy.md) | `qa-testing-strategy`, `qa-tester` |
 | Design-to-code, design systems, MCP handoff | [`design-to-code-patterns.md`](design-to-code-patterns.md) | `product-design-systems`, `product-design-reviewer` |
+| Registry contract for UI generation: tokens, component inventory, degradation ladder | [`ui-component-registry.md`](ui-component-registry.md) | `ui-design-fidelity`, `frontend-ui-engineering`, `product-design-reviewer` |
 | Diagram authoring with Mermaid, render checks, readability | [`diagram-authoring.md`](diagram-authoring.md) | docs-writing commands, `architect-planner`, `research-investigator`, `data-analyst` |
 | Routing fixtures: intent → expected asset, checked by `/doctor` | [`routing-evals.md`](routing-evals.md) | `agent-systems-auditor`, `using-agent-skills` |
 
