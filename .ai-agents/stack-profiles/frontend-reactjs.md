@@ -4,6 +4,8 @@
 
 Applies to consumer repositories building browser UI with React outside a more specific framework profile such as Next.js, including Vite, CRA, Remix-like client code, component libraries, forms, state, and data-fetching integration.
 
+Compose with [`lang-typescript.md`](lang-typescript.md) for type-system concerns.
+
 ## When to load
 
 - React component, hook, page, or client-side routing work

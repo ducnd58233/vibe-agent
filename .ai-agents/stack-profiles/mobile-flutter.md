@@ -4,6 +4,8 @@
 
 Applies to consumer repositories building cross-platform mobile applications with Flutter and Dart, including widgets, navigation, state management, platform channels, accessibility, testing, and release performance.
 
+Compose with [`lang-dart.md`](lang-dart.md) for language-level concerns: null safety, futures and streams, isolates, pub packaging.
+
 ## When to load
 
 - Flutter widget, screen, state, navigation, or platform integration work

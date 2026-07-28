@@ -4,6 +4,8 @@
 
 Applies to consumer repositories implementing Python HTTP APIs with FastAPI and common ecosystem libraries.
 
+Compose with [`lang-python.md`](lang-python.md) for language-level concerns: typing, asyncio and blocking-call boundaries, packaging and environments.
+
 ## When to load
 
 - New or changed FastAPI endpoints

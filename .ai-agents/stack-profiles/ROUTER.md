@@ -13,10 +13,23 @@ Many tasks span several layers:
 3. Read each matching `*.md` file listed in **Profile**.
 4. If no row fits, fall back to **manifest + directory scanning** (`package.json`, `pyproject.toml`, `go.mod`, `apps/`, `backend/`, ...) until you author a matching profile ([`TEMPLATE.md`](TEMPLATE.md)).
 
+### Two tiers: language and framework
+
+`lang-*` profiles cover a **language or runtime** — type system, memory and concurrency model, packaging, toolchain — and apply wherever that language is written. The remaining profiles cover a **framework or layer**.
+
+Compose both tiers when both apply: NestJS work loads `backend-nestjs` + `lang-typescript` + `lang-nodejs`; a Rust HTTP service loads `backend-rust-axum` + `lang-rust`; a Flutter screen loads `mobile-flutter` + `lang-dart`. Language-level work with no framework in play (a CLI, a library, a build script) loads the `lang-*` row alone.
+
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md).
 
 | Profile | Layer / concern | When to load | Detection / notes |
 |---------|-----------------|--------------|-------------------|
+| [`lang-c-cpp.md`](lang-c-cpp.md) | Language (C / C++) | Memory and lifetime, undefined behavior, build systems, sanitizers, ABI/FFI, crash triage | `CMakeLists.txt`, `Makefile`, `meson.build`, `*.c/*.cpp/*.hpp`, `compile_commands.json` |
+| [`lang-rust.md`](lang-rust.md) | Language (Rust) | Ownership/borrow, lifetimes, traits, error types, `unsafe`, cargo workspaces, features | `Cargo.toml`, `rust-toolchain.toml`, `src/lib.rs`; compose with `backend-rust-axum` for HTTP |
+| [`lang-typescript.md`](lang-typescript.md) | Language (TypeScript / JavaScript) | Type modeling, generics, narrowing, `tsconfig`, module resolution, declaration files, JS semantics | `tsconfig.json`, `*.ts/*.tsx`, `@types/*`; runtime concerns go to `lang-nodejs` |
+| [`lang-nodejs.md`](lang-nodejs.md) | Runtime (Node.js) | Event loop, streams/backpressure, ESM-CJS interop, workers, package management, graceful shutdown | `package.json` `engines`/`type`, lockfile, `node:` builtins, `.nvmrc` |
+| [`lang-python.md`](lang-python.md) | Language (Python) | Typing, asyncio and GIL, packaging/environments, imports, data-model semantics | `pyproject.toml`, `uv.lock`/`poetry.lock`, `.python-version`; compose with `backend-fastapi` or `datascience` |
+| [`lang-dart.md`](lang-dart.md) | Language (Dart) | Null safety, futures/streams, isolates, pub packaging, code generation | `pubspec.yaml`, `analysis_options.yaml`; compose with `mobile-flutter` for widget work |
+| [`backend-nestjs.md`](backend-nestjs.md) | Backend services (NestJS) | Modules and DI, controllers/providers, pipes/guards/interceptors/filters, Nest testing | `@nestjs/core` in `package.json`, `nest-cli.json`, `*.module.ts`; compose with `lang-typescript` + `lang-nodejs` |
 | [`frontend-nextjs-ts.md`](frontend-nextjs-ts.md) | Frontend web (Next.js + TypeScript) | UI/routing/component boundary work | `package.json` has `next`; `tsconfig.json`; `app/` or `pages/` present |
 | [`backend-fastapi.md`](backend-fastapi.md) | Backend HTTP APIs (Python/FastAPI) | Endpoint/service/validation persistence work | FastAPI in dependency manifests; `uv.lock`/`alembic.ini` may exist |
 | [`backend-golang.md`](backend-golang.md) | Backend services (Go) | Go API/service layering and module changes | `go.mod` present; `cmd/` + `internal/` common |

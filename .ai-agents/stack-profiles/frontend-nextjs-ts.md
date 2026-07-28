@@ -4,6 +4,8 @@
 
 Applies to consumer repositories building web UI with Next.js and TypeScript, including App Router, validation, and client/server state boundaries.
 
+Compose with [`lang-typescript.md`](lang-typescript.md) for type-system concerns and [`lang-nodejs.md`](lang-nodejs.md) for server-runtime behavior.
+
 ## When to load
 
 - UI or routing changes in Next.js apps

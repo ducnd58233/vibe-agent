@@ -4,6 +4,8 @@
 
 Applies to consumer repositories implementing Rust HTTP APIs and services with Axum on Tokio, including routers, extractors, middleware layers, async persistence clients, and observability.
 
+Compose with [`lang-rust.md`](lang-rust.md) for language-level concerns: ownership and lifetimes, error-type design, `unsafe`, cargo workspaces and features.
+
 ## When to load
 
 - Rust API or service work using Axum

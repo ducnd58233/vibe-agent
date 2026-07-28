@@ -4,6 +4,8 @@
 
 Applies to consumer repositories building iOS and Android applications with React Native or Expo, including navigation, native modules, mobile performance, offline state, accessibility, and release validation.
 
+Compose with [`lang-typescript.md`](lang-typescript.md) for type-system concerns.
+
 ## When to load
 
 - React Native screen, component, navigation, or native bridge work
