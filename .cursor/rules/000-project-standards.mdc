@@ -9,6 +9,8 @@ alwaysApply: true
 Follow the repository charter in **`AGENTS.md`** at the project root for shared conventions, security expectations, and the canonical **`.ai-agents/`** layout (skills, agents, commands, hooks).
 This repository is domain-agnostic; do not add product-domain logic into shared agent assets.
 
+**MUST, local-first precedence:** When the workspace root has its own rules, templates, or conventions, follow those first; this toolkit is the fallback. Order: session instruction, then workspace-root rules (`AGENTS.md`, `CLAUDE.md`, `.cursor/rules/`), then conventions already in the consumer repo, then `.ai-agents/`. Detect before assuming; on conflict follow the local rule and state the divergence (see **`AGENTS.md`**, Local-first precedence).
+
 **MUST, authoring:** When creating a new skill, subagent, command, or hook under **`.ai-agents/`**, follow that folder's **`TEMPLATE.md`** and complete all sections (What, Why, How, When, Routing & discovery, Permissions & authority).
 
 **MUST, routing:** Before choosing which existing asset to use, read **`.ai-agents/ROUTER.md`** and the appropriate subfolder **`ROUTER.md`** (for example `skills/ROUTER.md`).

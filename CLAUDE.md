@@ -27,6 +27,7 @@ To keep personal preferences out of git, use `CLAUDE.local.md` in the project ro
 
 ## Authoring and routing (MUST)
 
+- **Local-first precedence:** The workspace root wins. Check its own rules and templates (`AGENTS.md`, `CLAUDE.md`, `CLAUDE.local.md`, its own `TEMPLATE.md`, existing file patterns) before applying any toolkit default; on conflict follow the local rule and state the divergence. Full rule in [`AGENTS.md`](AGENTS.md).
 - **New assets:** Follow the **`TEMPLATE.md`** in the relevant [`.ai-agents/`](.ai-agents) subfolder (`skills`, `agents`, `commands`, `hooks`).
 - **Choosing assets:** Read [`.ai-agents/ROUTER.md`](.ai-agents/ROUTER.md) and the subfolder **`ROUTER.md`** before picking a skill, subagent, command, or hook.
 - **After creating assets:** Update that folder’s **`ROUTER.md`** in the same change (tables track files and use cases).

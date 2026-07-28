@@ -3,6 +3,8 @@
 Use this file to **choose which asset family** to open before implementing work. Each subfolder has its own **`ROUTER.md`** with a concrete lookup table.
 All assets are reusable and **domain-agnostic**; keep product-domain implementations in consumer repositories.
 
+**Agents MUST (precedence):** Before applying anything here, check the **workspace root** for its own rules and templates (`AGENTS.md`, `CLAUDE.md`, `CLAUDE.local.md`, `.cursor/rules/`, its own `TEMPLATE.md`, existing file patterns). Those win; this toolkit is the fallback. On conflict, follow the local rule and state the divergence. See "Local-first precedence" in root [`AGENTS.md`](../AGENTS.md).
+
 **Agents MUST (routing):** Read this file when deciding which skill, subagent, command, or hook applies; then open the listed **`ROUTER.md`** in that subfolder.
 
 **Agents MUST (after creating):** When you add or remove an asset under `skills/`, `agents/`, `commands/`, `references/`, `stack-profiles/`, or `hooks/`, update that folder’s **`ROUTER.md`** in the **same change** (same PR or commit): for `stack-profiles/*.md`, add or remove matching rows in **`stack-profiles/ROUTER.md`** per **`stack-profiles/TEMPLATE.md`**; elsewhere add a row per new file and delete stale rows when removing assets.

@@ -23,6 +23,17 @@ Do **not** rely on hardcoded skill/agent/command lists in this file. The current
 
 Product/domain expectations live in root [`../../../AGENTS.md`](../../../AGENTS.md). Skills stay stack-agnostic; stack-specific details live in matching stack profiles.
 
+## Precedence (check before routing)
+
+The workspace root wins; this toolkit is the fallback. Resolve most specific first:
+
+1. Explicit instruction in the current session.
+2. Workspace-root agent rules — `AGENTS.md`, `CLAUDE.md`, `CLAUDE.local.md`, `.cursor/rules/`, or the harness equivalent.
+3. Conventions already in the consumer repo — its own `TEMPLATE.md`, existing file/folder patterns, lint and formatter config.
+4. This toolkit's `.ai-agents/` assets.
+
+**Detect before assuming:** look for levels 2–3 at the workspace root before applying a toolkit default. On conflict, follow the local rule and state the divergence; a local rule may tighten a safety, permission, or verification boundary, but if it would weaken one, surface the conflict instead of applying it. Full rule: "Local-first precedence" in root [`../../../AGENTS.md`](../../../AGENTS.md).
+
 ## Mental model
 
 - **Skills** define reusable workflow: how to do work.
@@ -68,6 +79,7 @@ Use routers for the authoritative list, but these family-level shortcuts are sta
 
 ## Verification
 
+- [ ] Workspace-root rules and templates checked before applying toolkit defaults; any divergence stated.
 - [ ] Master router consulted.
 - [ ] Relevant folder router consulted.
 - [ ] Matching stack profiles loaded when implementation details are stack-specific.
