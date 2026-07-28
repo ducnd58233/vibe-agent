@@ -77,7 +77,9 @@ DENSITY_CHECKS = [
 
 
 def _read_payload() -> dict[str, object]:
-    raw = sys.stdin.read().strip()
+    # Decode explicitly: stdin defaults to the locale encoding (cp1252 on Windows),
+    # which corrupts non-ASCII file paths before they are resolved.
+    raw = sys.stdin.buffer.read().decode("utf-8", errors="replace").strip()
     if not raw:
         return {}
     try:
@@ -145,13 +147,8 @@ def main() -> int:
         f"exception with a `{ALLOW_MARKER}` comment on the line."
     )
 
-    print(json.dumps({
-        "systemMessage": report,
-        "hookSpecificOutput": {
-            "hookEventName": "PostToolUse",
-            "additionalContext": report,
-        },
-    }))
+    # PostToolUse accepts the common output fields only; hookSpecificOutput is PreToolUse-only.
+    print(json.dumps({"systemMessage": report}))
     return 0
 
 

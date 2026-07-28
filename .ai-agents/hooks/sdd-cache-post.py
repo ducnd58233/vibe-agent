@@ -10,7 +10,9 @@ from pathlib import Path
 
 
 def _read_input() -> dict[str, object]:
-    raw = sys.stdin.read().strip()
+    # Decode explicitly: stdin defaults to the locale encoding (cp1252 on Windows),
+    # which corrupts non-ASCII URLs and paths before they are resolved.
+    raw = sys.stdin.buffer.read().decode("utf-8", errors="replace").strip()
     if not raw:
         return {}
     try:

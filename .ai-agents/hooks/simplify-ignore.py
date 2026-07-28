@@ -22,7 +22,9 @@ def _cache_root() -> Path:
 
 
 def _read_payload() -> dict[str, object]:
-    raw = sys.stdin.read().strip()
+    # Decode explicitly: stdin defaults to the locale encoding (cp1252 on Windows),
+    # which corrupts non-ASCII file paths before they are resolved.
+    raw = sys.stdin.buffer.read().decode("utf-8", errors="replace").strip()
     if not raw:
         return {}
     try:
