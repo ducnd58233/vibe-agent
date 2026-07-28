@@ -22,6 +22,7 @@ Current project posture:
 - Allows common reads, router checks, link scripts, scoped edits under AI asset/config paths, and selected documentation fetch domains.
 - Asks for broad shell/edit/web/MCP patterns and dependency/deploy/admin commands.
 - Denies common secret files and force-push patterns.
+- **Deny patterns must be specific enough to miss ordinary source files.** A broad `Read(**/*token*)` also blocked `hooks/design-token-guard.py` and design-token files such as `tokens.json`, and because deny overrides allow there is no way to grant an exception. It is now a set of credential-shaped patterns (`*access_token*`, `*refresh_token*`, `*auth_token*`, `*api_token*`, `*id_token*`, `.token*`, `token.json`). When adding a deny rule, check it against real repository paths before committing it.
 - See [`references/tool-safety-and-permissions.md`](references/tool-safety-and-permissions.md) for the hardening checklist.
 
 ## Subagents (`agents/*.md`)

@@ -39,7 +39,17 @@
       "Read(.env*)",
       "Read(**/.env*)",
       "Read(**/*secret*)",
-      "Read(**/*token*)",
+      "Read(**/*access_token*)",
+      "Read(**/*access-token*)",
+      "Read(**/*refresh_token*)",
+      "Read(**/*refresh-token*)",
+      "Read(**/*auth_token*)",
+      "Read(**/*auth-token*)",
+      "Read(**/*api_token*)",
+      "Read(**/*api-token*)",
+      "Read(**/*id_token*)",
+      "Read(**/.token*)",
+      "Read(**/token.json)",
       "Read(**/*.pem)",
       "Read(**/*.key)",
       "Bash(git push --force*)"
@@ -212,6 +222,32 @@
             "async": false,
             "once": true,
             "statusMessage": "session-start-meta-skill"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/precedence-reminder.py",
+            "timeout": 5000,
+            "async": false,
+            "statusMessage": "precedence-reminder"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/subagent-grounding-guard.py",
+            "timeout": 10000,
+            "async": false,
+            "statusMessage": "subagent-grounding-guard"
           }
         ]
       }
