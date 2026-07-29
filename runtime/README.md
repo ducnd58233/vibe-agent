@@ -14,18 +14,36 @@ No. Contributors to this module need Go; users of the toolkit get a prebuilt bin
 
 ## Layout
 
-| Path | Role |
-|------|------|
-| `cmd/vibe-agent/` | CLI entry point |
-| `internal/state/` | Run state and the append-only event log |
-| `testdata/run-state/` | Manifests the Go writer produced, validated against the JSON Schema by `scripts/check-schemas.py` |
+```
+runtime/
+  main.go                 CLI entry point
+  Makefile                build, test, and release commands
+  internal/
+    graph/                workflow graph model, loader, static validation
+    loop/                 the runner: transitions, budget, blocker stop rule
+    verifier/             command, files, git. The things that produce evidence
+    memory/               SQLite store, FTS search, write policy, promotion
+    mcp/                  stdio server, six tools
+    harness/              hook adapters for Claude and Cursor
+    state/                run state and the append-only event log
+      testdata/           golden manifest, validated by scripts/check-schemas.py
+  e2e/                    drives the built binary against a fixture consumer repo
+```
+
+Two conventions worth knowing:
+
+- **`main.go` sits at the module root, not under `cmd/`.** The Go docs call `cmd/` *"not strictly necessary in a repository that consists only of commands"*; this module has one binary and only `internal/` packages, none of which are importable from outside. Builds always pass `-o vibe-agent`, so the directory name never decides the binary name.
+- **Test fixtures live in the `testdata/` of the package that uses them**, which is the Go convention. `internal/state/testdata/` belongs to the state package; nothing else reads it except the schema check, by path.
 
 ## Build and test
 
+Use the Makefile. `make help` lists everything.
+
 ```sh
-go vet ./...
-go test ./...
-CGO_ENABLED=0 go build -o dist/vibe-agent ./cmd/vibe-agent
+make check      # gofmt, vet, and every test including the e2e suite
+make build      # dist/vibe-agent for this platform
+make install    # onto $(go env GOPATH)/bin for local use
+make release    # all six targets plus SHA256SUMS
 ```
 
 Regenerate the golden manifest after an intentional shape change:

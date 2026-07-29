@@ -8,4 +8,8 @@
 
 # Golden fixtures are compared byte for byte by runtime tests. A CRLF checkout
 # on Windows would fail those tests while CI on Linux passed.
-runtime/testdata/** text eol=lf
+**/testdata/** text eol=lf
+
+# make requires tab-indented recipes and LF; CRLF breaks it on Linux.
+Makefile text eol=lf
+*.mk text eol=lf

@@ -1,4 +1,8 @@
-package main_test
+// Package e2e drives the built binary against a fixture consumer repository.
+//
+// Everything else in this module tests a package. This is the only test that
+// compiles and runs the program, which is what proves the pieces work together.
+package e2e_test
 
 import (
 	"encoding/json"
@@ -16,9 +20,19 @@ import (
 // It is the only test that runs the built binary. Everything else tests
 // packages; this proves the pieces work together as a program.
 
-func toolkitRoot(t *testing.T) string {
+// moduleRoot is the runtime module, one level up from this package.
+func moduleRoot(t *testing.T) string {
 	t.Helper()
 	root, err := filepath.Abs("..")
+	if err != nil {
+		t.Fatalf("resolve module root: %v", err)
+	}
+	return root
+}
+
+func toolkitRoot(t *testing.T) string {
+	t.Helper()
+	root, err := filepath.Abs("../..")
 	if err != nil {
 		t.Fatalf("resolve toolkit root: %v", err)
 	}
@@ -36,7 +50,8 @@ func buildBinary(t *testing.T) string {
 	}
 	binary := filepath.Join(t.TempDir(), name)
 
-	build := exec.Command("go", "build", "-o", binary, "./cmd/vibe-agent")
+	build := exec.Command("go", "build", "-o", binary, ".")
+	build.Dir = moduleRoot(t)
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v: %s", err, out)

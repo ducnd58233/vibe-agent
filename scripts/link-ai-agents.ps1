@@ -297,8 +297,49 @@ function Install-CommitAttributionHook {
     Write-Host "Installed git prepare-commit-msg attribution hook at $hookPath"
 }
 
+function Install-Runtime {
+    <#
+      Fetches the optional runtime binary that the wired hooks invoke by name.
+
+      Skipped when the binary is already present, when LINK_SKIP_RUNTIME is set,
+      and in CI, where a network download would make an unrelated outage look
+      like a broken link script.
+
+      Never fails the link run. The runtime is optional by design: without it
+      every hook is a quiet no-op and the markdown assets work as before.
+    #>
+    $installer = Join-Path $PSScriptRoot 'install-runtime.ps1'
+
+    if ($env:LINK_SKIP_RUNTIME) {
+        Write-Host 'Runtime install skipped (LINK_SKIP_RUNTIME set).'
+        return
+    }
+    if ($env:CI) {
+        Write-Host 'Runtime install skipped (CI). Run scripts/install-runtime.ps1 to install it.'
+        return
+    }
+    $existing = Get-Command vibe-agent -ErrorAction SilentlyContinue
+    if ($existing) {
+        Write-Host "Runtime already installed: $($existing.Source)"
+        return
+    }
+    if (-not (Test-Path -LiteralPath $installer)) {
+        Write-Warning 'No install-runtime.ps1 next to this script; skipped runtime install.'
+        return
+    }
+
+    Write-Host 'Installing the optional runtime binary...'
+    try {
+        & $installer
+    } catch {
+        Write-Warning "Runtime install did not complete: $($_.Exception.Message)"
+        Write-Warning "This is not fatal; the toolkit works without it. Retry with: $installer"
+    }
+}
+
 Install-LocalGitExclude -WorkspaceFull $workspaceFull
 Install-CommitAttributionHook -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
+Install-Runtime
 
 Write-Host "Links created under $workspaceFull (.claude, .cursor, .opencode, .agents) -> $assetsFull"
 Write-Host "Codex custom agents synced to $workspaceFull\.codex\agents"

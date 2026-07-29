@@ -36,7 +36,7 @@ It is intentionally **domain-agnostic** and should not contain product-domain lo
 | JSON Schema contracts under `schemas/` | `python3 scripts/check-schemas.py` | `scripts/requirements.txt` |
 | Workflow graphs under `graphs/` | `python3 scripts/check-graphs.py` | `scripts/requirements.txt` |
 | The graph checker itself rejects broken graphs | `python3 scripts/check-graphs-test.py` | `scripts/requirements.txt` |
-| Runtime vet, tests, and cgo-free build | `cd runtime && go vet ./... && go test ./...` | Go (contributors only) |
+| Runtime format, vet, and tests | `cd runtime && make check` | Go (contributors only) |
 
 The router check is deliberately dependency-free so it runs on a fresh clone. The graph and schema checks need a YAML and JSON Schema parser: `python3 -m pip install -r scripts/requirements.txt`. CI installs them and runs all of the above.
 3. **Choosing** an existing asset: read [`ROUTER.md`](ROUTER.md) and the relevant subfolder **`ROUTER.md`**.

@@ -293,8 +293,46 @@ install_commit_attribution_hook() {
   echo "Installed git prepare-commit-msg attribution hook at $hook_path"
 }
 
+# Fetches the optional runtime binary that the wired hooks invoke by name.
+#
+# Skipped when the binary is already present, when LINK_SKIP_RUNTIME is set, and
+# in CI, where a network download would make an unrelated outage look like a
+# broken link script.
+#
+# Never fails the link run. The runtime is optional by design: without it every
+# hook is a quiet no-op and the markdown assets work exactly as before.
+install_runtime() {
+  local installer="$SCRIPT_DIR/install-runtime.sh"
+
+  if [[ -n "${LINK_SKIP_RUNTIME:-}" ]]; then
+    echo "Runtime install skipped (LINK_SKIP_RUNTIME set)."
+    return 0
+  fi
+  if [[ -n "${CI:-}" ]]; then
+    echo "Runtime install skipped (CI). Run bash scripts/install-runtime.sh to install it."
+    return 0
+  fi
+  if command -v vibe-agent >/dev/null 2>&1; then
+    echo "Runtime already installed: $(command -v vibe-agent) ($(vibe-agent version 2>/dev/null || echo 'version unknown'))"
+    return 0
+  fi
+  if [[ ! -f "$installer" ]]; then
+    echo "No install-runtime.sh next to this script; skipped runtime install." >&2
+    return 0
+  fi
+
+  echo "Installing the optional runtime binary..."
+  if bash "$installer"; then
+    return 0
+  fi
+  echo "Runtime install did not complete. This is not fatal: the toolkit works without it." >&2
+  echo "Retry later with: bash $installer" >&2
+  return 0
+}
+
 install_local_git_exclude "$WORKSPACE"
 install_commit_attribution_hook "$ASSETS" "$WORKSPACE"
+install_runtime
 
 echo "Symlinks created under $WORKSPACE (.claude, .cursor, .opencode, .agents) -> $ASSETS"
 echo "Codex custom agents synced to $WORKSPACE/.codex/agents"

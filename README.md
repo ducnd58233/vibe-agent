@@ -105,15 +105,85 @@ Existing review agents remain available: `code-reviewer`, `security-auditor`, `t
   - [`commands/`](.ai-agents/commands): slash-command prompts
   - [`stack-profiles/`](.ai-agents/stack-profiles): pinned stack and domain profiles
   - [`references/`](.ai-agents/references): generic checklists and pattern references
+  - [`graphs/`](.ai-agents/graphs): executable workflow graphs (`*.yaml`)
   - [`hooks/`](.ai-agents/hooks): shared hook scripts
   - [`ROUTER.md`](.ai-agents/ROUTER.md): top-level asset routing index
   - [`PERMISSIONS.md`](.ai-agents/PERMISSIONS.md): permission and authority guidance
+- [`schemas/`](schemas): JSON Schema contracts for graphs, run state, and memory records
+- [`runtime/`](runtime): optional Go control plane (see below); everything else works without it
 - [`.claude/`](.claude): Claude settings; `skills`, `agents`, and `commands` are generated links after running the link script
 - [`.cursor/`](.cursor): Cursor rules/hooks; `skills` and `commands` are generated links after running the link script
 - [`.codex/`](.codex): Codex project config; `.codex/agents/*.toml` is generated from `.ai-agents/agents`
 - [`.agents/`](.agents): generated Codex-compatible skills/commands links
 - [`.opencode/`](.opencode): generated opencode agent/command links
-- [`scripts/`](scripts): helper scripts for linking, router validation, and Codex asset validation
+- [`scripts/`](scripts): helper scripts for linking, validation, and runtime install
+
+## Runtime (optional)
+
+The toolkit is markdown-first. Every skill, command, and reference works with nothing installed.
+
+The **runtime** adds what markdown cannot do: it enforces workflow transitions instead of describing them, persists run state so a lost session resumes, and keeps evidence-backed memory across runs. It owns only the **outer** loop. Claude Code, Codex, Cursor, and opencode keep their own model and tool loops.
+
+### Install
+
+You need **no Go, no C compiler, and no SQLite**. Download a prebuilt binary:
+
+```bash
+bash scripts/install-runtime.sh                # macOS, Linux, Git Bash
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install-runtime.ps1   # Windows
+```
+
+Both scripts detect your platform, verify the SHA-256 checksum, and put `vibe-agent` on `PATH`. Confirm with:
+
+```bash
+vibe-agent version
+vibe-agent doctor
+```
+
+Binaries are published as [GitHub Release](https://github.com/ducnd58233/vibe-agent/releases) assets, **not committed to this repository**. Each target is about 7 MB and there are six of them; committing every version would add roughly 43 MB per release to git history forever, with no way to diff or review it. Release assets stay outside git objects, carry checksums, and can be deleted.
+
+Contributors to the runtime need Go:
+
+```bash
+cd runtime && make check && make install
+```
+
+### How it gets triggered
+
+Three paths, in descending order of reliability:
+
+| Host | Mechanism | Fires |
+|------|-----------|-------|
+| Claude Code | hooks in [`.claude/settings.json`](.claude/settings.json) | **Always.** The harness runs them; the model does not choose. |
+| Cursor | hooks in [`.cursor/hooks.json`](.cursor/hooks.json) | **Always**, for the events Cursor exposes. |
+| Codex, opencode | MCP server, `vibe-agent mcp serve` | **When the model decides to call a tool.** Neither has a hook system, so this is best effort. |
+| You, or an agent in a shell | the CLI directly | On demand. |
+
+The wiring already exists in this repo. Once the binary is on `PATH`, a new session picks it up; before that, every hook is a deliberate no-op rather than an error, so a missing binary never wedges a session.
+
+### Using it
+
+```bash
+vibe-agent run start --slug webhook-idempotency --goal "make delivery idempotent"
+vibe-agent run status --slug webhook-idempotency     # current node and what completes it
+vibe-agent checkpoint --slug webhook-idempotency \
+  --check unit --source exit_code --passed           # record evidence, advance the graph
+```
+
+Run state lands in `tmp/<slug>/manifest.json` with an append-only log at `tmp/<slug>/events.ndjson`, beside the human-readable `RECORD.md`. Memory lives in `.agent-state/memory.db`. All of it is gitignored.
+
+`--source` is one of `exit_code`, `file_assert`, `ci_api`, `human_event`. There is deliberately **no source for model assertion**, so nothing can mark its own work complete by claiming it did.
+
+When the toolkit is mounted as a submodule, point the two roots separately:
+
+```bash
+vibe-agent run status --slug my-feature --workspace . --toolkit .vibe-agent
+```
+
+Full detail in [`runtime/README.md`](runtime/README.md) and [`references/loop-and-graph-engineering.md`](.ai-agents/references/loop-and-graph-engineering.md).
 
 ## Routing rules
 

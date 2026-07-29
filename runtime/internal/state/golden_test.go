@@ -7,12 +7,14 @@ import (
 )
 
 // goldenPath holds a manifest that scripts/check-schemas.py validates against
-// schemas/run-state.schema.json. It is the contract test between the Go writer
+// schemas/run-state.schema.json. It lives in this package's own testdata
+// directory, which is the Go convention and keeps the fixture next to the code
+// that produces it. It is the contract test between the Go writer
 // and the JSON Schema: if Save starts emitting a shape the schema rejects, one
 // of these two catches it.
 //
 // Regenerate with: UPDATE_GOLDEN=1 go test ./internal/state -run TestFreshRunMatchesGolden
-const goldenPath = "../../testdata/run-state/fresh-run.json"
+const goldenPath = "testdata/fresh-run.json"
 
 var update = os.Getenv("UPDATE_GOLDEN") != ""
 

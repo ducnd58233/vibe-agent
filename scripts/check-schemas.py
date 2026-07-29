@@ -223,7 +223,7 @@ def check_go_fixtures(root: Path, run_schema: dict) -> tuple[int, int]:
     pins what Save emits; this pins that the schema accepts it. Without both,
     the two drift and nobody notices until a run fails to load.
     """
-    fixtures_dir = root / "runtime/testdata/run-state"
+    fixtures_dir = root / "runtime/internal/state/testdata"
     if not fixtures_dir.is_dir():
         return 0, 0
 

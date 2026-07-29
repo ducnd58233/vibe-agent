@@ -1,0 +1,76 @@
+# Publishes runtime binaries as GitHub Release assets.
+#
+# Binaries are deliberately NOT committed to the repository. Each target is
+# roughly 7 MB stripped, six targets is about 43 MB per version, and git keeps
+# every version forever with no way to diff or review them. A repo that ships
+# binaries in tree becomes slow to clone and impossible to audit.
+#
+# Release assets live outside git objects, carry checksums, and can be deleted.
+
+name: Runtime release
+
+on:
+  push:
+    tags:
+      - 'runtime/v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, for example v0.1.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: runtime/go.mod
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_REF_NAME#runtime/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Never publish a binary that has not passed the same checks as a commit.
+      - name: Verify before publishing
+        working-directory: runtime
+        run: make check
+
+      - name: Cross-compile and checksum
+        working-directory: runtime
+        run: make release VERSION=${{ steps.version.outputs.value }}
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: runtime ${{ steps.version.outputs.value }}
+          files: |
+            runtime/dist/*
+          body: |
+            Prebuilt `vibe-agent` binaries for the outer-loop control plane.
+
+            You do not need Go, a C compiler, or SQLite to run these. Download
+            the one matching your platform, put it on `PATH`, and check it with
+            `vibe-agent doctor`.
+
+            Verify a download against `SHA256SUMS` before use.
+
+            | Platform | Asset |
+            |---|---|
+            | Windows x64 | `vibe-agent_${{ steps.version.outputs.value }}_windows_amd64.exe` |
+            | Windows ARM64 | `vibe-agent_${{ steps.version.outputs.value }}_windows_arm64.exe` |
+            | Linux x64 | `vibe-agent_${{ steps.version.outputs.value }}_linux_amd64` |
+            | Linux ARM64 | `vibe-agent_${{ steps.version.outputs.value }}_linux_arm64` |
+            | macOS Intel | `vibe-agent_${{ steps.version.outputs.value }}_darwin_amd64` |
+            | macOS Apple Silicon | `vibe-agent_${{ steps.version.outputs.value }}_darwin_arm64` |
