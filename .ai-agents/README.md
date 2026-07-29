@@ -25,7 +25,19 @@ It is intentionally **domain-agnostic** and should not contain product-domain lo
 ## Authoring and routing (agents MUST)
 
 1. **Creating** a new asset: follow the folder’s **`TEMPLATE.md`** (What, Why, How, When, Routing & discovery, Permissions & authority).
-2. **After creating:** update that folder’s **`ROUTER.md`** table (same PR/commit) so use cases and paths stay accurate. From this toolkit repository root, run `bash scripts/check-ai-agents-routers.sh`, or on Windows `powershell -File scripts/check-ai-agents-routers.ps1`, to verify tables match disk (CI runs this on `.ai-agents` changes). If you changed `agents/*.md`, also run `scripts/link-ai-agents.*` and `powershell -File scripts/check-codex-assets.ps1` so Codex generated agents stay in sync.
+2. **After creating:** update that folder’s **`ROUTER.md`** table (same PR/commit) so use cases and paths stay accurate. From this toolkit repository root, run `bash scripts/check-ai-agents-routers.sh`, or on Windows `powershell -File scripts/check-ai-agents-routers.ps1`, to verify tables match disk (CI runs this on `.ai-agents` changes). If you changed `agents/*.md`, also run `scripts/link-ai-agents.*` and `powershell -File scripts/check-codex-assets.ps1` so Codex generated agents stay in sync. If you changed `graphs/*.yaml` or `schemas/*.json`, also run the graph and schema checks below.
+
+### Checks
+
+| Check | Command | Dependencies |
+|-------|---------|--------------|
+| Router tables match disk | `bash scripts/check-ai-agents-routers.sh` | none, bash only |
+| Codex generated agents | `powershell -File scripts/check-codex-assets.ps1` | PowerShell |
+| JSON Schema contracts under `schemas/` | `python3 scripts/check-schemas.py` | `scripts/requirements.txt` |
+| Workflow graphs under `graphs/` | `python3 scripts/check-graphs.py` | `scripts/requirements.txt` |
+| The graph checker itself rejects broken graphs | `python3 scripts/check-graphs-test.py` | `scripts/requirements.txt` |
+
+The router check is deliberately dependency-free so it runs on a fresh clone. The graph and schema checks need a YAML and JSON Schema parser: `python3 -m pip install -r scripts/requirements.txt`. CI installs them and runs all of the above.
 3. **Choosing** an existing asset: read [`ROUTER.md`](ROUTER.md) and the relevant subfolder **`ROUTER.md`**.
 4. **Permissions:** update [`PERMISSIONS.md`](PERMISSIONS.md) and [`.claude/settings.json`](../.claude/settings.json) when tool needs change.
 

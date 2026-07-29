@@ -31,18 +31,22 @@ spec:
     - name: spec_approved
       description: Human accepted docs/<slug>/SPEC.md.
       source: check
+      reads: spec_approved
 
     - name: plan_approved
       description: Human accepted docs/<slug>/PLAN.md and TASKS.md.
       source: check
+      reads: plan_approved
 
     - name: unit_passed
       description: Unit and integration commands from the spec exited 0.
       source: check
+      reads: unit
 
     - name: e2e_ok
       description: E2E check passed, or was skipped because e2e_required is false. A skipped check is not a passed check; this guard is the only place the two are treated alike.
       source: check
+      reads: e2e
 
     - name: changes_requested
       description: Local review returned findings that must be fixed before the PR proceeds.
@@ -51,30 +55,36 @@ spec:
     - name: pr_open
       description: Task branch is pushed and a pull request is open for it. Without this, waiting on PR checks waits on nothing.
       source: check
+      reads: pr_open
 
     - name: ci_passed
       description: Required PR checks reported success. Sourced from the CI API, not from reading logs.
       source: check
+      reads: ci
 
     - name: reviews_passed
       description: Configured external PR reviewers finished with no blocking findings, or the human waived them.
       source: check
+      reads: reviews
 
     - name: ship_go
       description: /ship returned GO.
       source: check
+      reads: ship
 
     - name: merge_approved
       description: Human explicitly approved merging this task branch to main.
       source: check
+      reads: merge_approved
 
     - name: tasks_remaining
       description: TASKS.md still has an unchecked in-scope task.
       source: check
+      reads: tasks_remaining
 
     - name: blocked
-      description: Same blocker failed three ship cycles. Stops the run and reports root cause instead of retrying a fourth time.
-      source: check
+      description: Same blocker failed three ship cycles. Stops the run and reports root cause instead of retrying a fourth time. Maintained by the runner, not produced by any node.
+      source: runtime
 
   nodes:
     intake:

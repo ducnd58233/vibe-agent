@@ -1,24 +1,20 @@
-name: AI agents ROUTER sync
+name: AI agents assets check
 
 on:
   push:
     paths:
       - '.ai-agents/**'
       - '.vibe-agent/.ai-agents/**'
-      - 'scripts/check-ai-agents-routers.sh'
-      - 'scripts/check-ai-agents-routers.ps1'
-      - 'scripts/link-ai-agents.sh'
-      - 'scripts/link-ai-agents.ps1'
+      - 'schemas/**'
+      - 'scripts/**'
       - '.gitignore'
       - '.github/workflows/ai-agents-router.yml'
   pull_request:
     paths:
       - '.ai-agents/**'
       - '.vibe-agent/.ai-agents/**'
-      - 'scripts/check-ai-agents-routers.sh'
-      - 'scripts/check-ai-agents-routers.ps1'
-      - 'scripts/link-ai-agents.sh'
-      - 'scripts/link-ai-agents.ps1'
+      - 'schemas/**'
+      - 'scripts/**'
       - '.gitignore'
       - '.github/workflows/ai-agents-router.yml'
 
@@ -37,3 +33,19 @@ jobs:
 
       - name: Verify ROUTER.md tables match folder contents
         run: bash scripts/check-ai-agents-routers.sh
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install check dependencies
+        run: python3 -m pip install -r scripts/requirements.txt
+
+      - name: Verify JSON Schema contracts
+        run: python3 scripts/check-schemas.py
+
+      - name: Verify workflow graphs
+        run: python3 scripts/check-graphs.py
+
+      - name: Verify the graph checker rejects broken graphs
+        run: python3 scripts/check-graphs-test.py

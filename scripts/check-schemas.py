@@ -1,0 +1,209 @@
+#!/usr/bin/env python3
+"""Validate the JSON Schema contracts under schemas/.
+
+Two layers:
+
+1. Each file is a valid Draft 2020-12 schema.
+2. Each schema actually enforces the design rules it exists for. A schema that
+   parses but accepts a forbidden instance is worse than no schema, because it
+   reads like a guarantee.
+
+The reject cases below are the load-bearing part. They pin down decisions that
+would otherwise survive only as prose:
+
+  - a graph edge condition is a guard name, never an expression
+  - a run-state check records real provenance, never model assertion
+  - a memory record carries evidence, and procedural memory is not stored
+
+Needs jsonschema (scripts/requirements.txt).
+
+Usage: python3 scripts/check-schemas.py [repo-root]
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+try:
+    from jsonschema import Draft202012Validator
+except ImportError as exc:
+    sys.exit(
+        f"check-schemas: missing dependency ({exc.name}).\n"
+        "Install with: python3 -m pip install -r scripts/requirements.txt"
+    )
+
+NOW = "2026-07-29T10:00:00Z"
+
+
+def base_graph() -> dict:
+    return {
+        "apiVersion": "vibe-agent/v1",
+        "kind": "WorkflowGraph",
+        "metadata": {"id": "sample", "description": "d"},
+        "spec": {
+            "initial": "build",
+            "maxTransitions": 50,
+            "guards": [
+                {"name": "tests_pass", "description": "d", "source": "check", "reads": "unit"}
+            ],
+            "nodes": {
+                "build": {"type": "agent", "command": "build"},
+                "done": {"type": "terminal", "status": "done"},
+            },
+            "edges": [{"from": "build", "to": "done", "when": "tests_pass"}],
+        },
+    }
+
+
+def base_run() -> dict:
+    return {
+        "schemaVersion": 1,
+        "runId": "run_2026-07-29T10-00-00Z_sample",
+        "graphId": "goal-delivery",
+        "slug": "sample",
+        "goal": "g",
+        "currentNode": "build",
+        "status": "running",
+        "iteration": 0,
+        "maxTransitions": 50,
+        "createdAt": NOW,
+        "updatedAt": NOW,
+    }
+
+
+def base_memory() -> dict:
+    return {
+        "schemaVersion": 1,
+        "id": "mem_01J0000000000000000000000A",
+        "workspaceId": "ws1",
+        "kind": "episodic",
+        "content": "Integration tests require Redis on localhost:6379.",
+        "confidence": 0.95,
+        "status": "proposed",
+        "sourceType": "command_result",
+        "evidence": ["make integration-test failed with connection refused"],
+        "createdAt": NOW,
+        "updatedAt": NOW,
+    }
+
+
+def graph_with(node: dict) -> dict:
+    graph = base_graph()
+    graph["spec"]["nodes"]["x"] = node
+    graph["spec"]["edges"].append({"from": "x", "to": "done"})
+    return graph
+
+
+def with_edges(edges: list[dict]) -> dict:
+    graph = base_graph()
+    graph["spec"]["edges"] = edges
+    return graph
+
+
+def merged(base: dict, **overrides) -> dict:
+    instance = dict(base)
+    instance.update(overrides)
+    return instance
+
+
+def cases(schemas: dict[str, dict]) -> list[tuple[dict, str, dict, bool]]:
+    graph, run, memory = schemas["workflow-graph"], schemas["run-state"], schemas["memory-record"]
+    return [
+        (graph, "graph accepts a minimal valid document", base_graph(), True),
+        (graph, "graph rejects an expression where a guard name belongs",
+         with_edges([{"from": "build", "to": "done", "when": "state.e2eRequired == false"}]), False),
+        (graph, "graph accepts a negated guard",
+         with_edges([{"from": "build", "to": "done", "when": "!tests_pass"}]), True),
+        (graph, "graph rejects an unknown node type", graph_with({"type": "wait"}), False),
+        (graph, "graph rejects a verifier without a check",
+         graph_with({"type": "verifier", "verifier": "command"}), False),
+        (graph, "graph accepts a verifier with a check",
+         graph_with({"type": "verifier", "verifier": "command", "check": "unit"}), True),
+        (graph, "graph rejects a human gate without a prompt",
+         graph_with({"type": "human_gate", "check": "approve"}), False),
+        (graph, "graph rejects an unknown terminal status",
+         graph_with({"type": "terminal", "status": "finished"}), False),
+        (graph, "graph rejects an unknown top-level field", merged(base_graph(), extra=1), False),
+        (graph, "graph rejects a wrong apiVersion",
+         merged(base_graph(), apiVersion="vibe-agent/v2"), False),
+        (graph, "graph accepts a hyphenated id",
+         merged(base_graph(), metadata={"id": "goal-delivery", "description": "d"}), True),
+
+        (run, "run accepts a minimal valid document", base_run(), True),
+        (run, "run rejects model as a check source",
+         merged(base_run(), checks={"unit": {"passed": True, "source": "model", "at": NOW}}), False),
+        (run, "run accepts exit_code as a check source",
+         merged(base_run(), checks={"unit": {"passed": True, "source": "exit_code", "at": NOW}}), True),
+        (run, "run rejects an unknown status", merged(base_run(), status="finished"), False),
+        (run, "run rejects a malformed runId", merged(base_run(), runId="run1"), False),
+        (run, "run rejects a non-boolean flag",
+         merged(base_run(), flags={"e2e_required": "yes"}), False),
+        (run, "run rejects a blocker without an attempt count",
+         merged(base_run(), blockers=[{"node": "test", "reason": "r", "at": NOW}]), False),
+
+        (memory, "memory accepts a minimal valid record", base_memory(), True),
+        (memory, "memory rejects the procedural kind", merged(base_memory(), kind="procedural"), False),
+        (memory, "memory rejects empty evidence", merged(base_memory(), evidence=[]), False),
+        (memory, "memory rejects model_inference as a source",
+         merged(base_memory(), sourceType="model_inference"), False),
+        (memory, "memory rejects confidence above 1", merged(base_memory(), confidence=1.5), False),
+        (memory, "memory accepts the confirmed status", merged(base_memory(), status="confirmed"), True),
+    ]
+
+
+def main() -> int:
+    root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
+    schemas_dir = root / "schemas"
+    if not schemas_dir.is_dir():
+        print(f"check-schemas: missing {schemas_dir}", file=sys.stderr)
+        return 1
+
+    names = ["workflow-graph", "run-state", "memory-record"]
+    schemas: dict[str, dict] = {}
+    failures = 0
+
+    for name in names:
+        path = schemas_dir / f"{name}.schema.json"
+        if not path.is_file():
+            print(f"  FAIL  {name}.schema.json is missing", file=sys.stderr)
+            failures += 1
+            continue
+        schema = json.loads(path.read_text(encoding="utf-8"))
+        schemas[name] = schema
+        try:
+            Draft202012Validator.check_schema(schema)
+            print(f"  ok    {name}.schema.json is valid Draft 2020-12")
+        except Exception as exc:
+            print(f"  FAIL  {name}.schema.json is not valid Draft 2020-12: {exc}", file=sys.stderr)
+            failures += 1
+
+    if len(schemas) != len(names):
+        print("\ncheck-schemas: FAILED (missing or unreadable schema)", file=sys.stderr)
+        return 1
+
+    print()
+    all_cases = cases(schemas)
+    for schema, label, instance, must_accept in all_cases:
+        errors = list(Draft202012Validator(schema).iter_errors(instance))
+        accepted = not errors
+        if accepted == must_accept:
+            print(f"  ok    {label}")
+        else:
+            failures += 1
+            verb = "accept" if must_accept else "reject"
+            print(f"  FAIL  {label}: schema should {verb} this instance", file=sys.stderr)
+            for error in errors[:2]:
+                print(f"          {error.message}", file=sys.stderr)
+
+    print()
+    if failures:
+        print(f"check-schemas: FAILED ({failures} problems)", file=sys.stderr)
+        return 1
+    print(f"check-schemas: OK ({len(names)} schemas, {len(all_cases)} cases)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

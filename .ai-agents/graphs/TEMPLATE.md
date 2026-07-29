@@ -46,7 +46,8 @@ Every edge condition is a **guard name** declared in `spec.guards`, optionally n
 guards:
   - name: unit_passed
     description: Unit and integration commands from the spec exited 0.
-    source: check      # flag | check | result
+    source: check      # flag | check | result | runtime
+    reads: unit        # the checks[] key, which is not the guard name
 
 edges:
   - from: test
@@ -61,9 +62,14 @@ edges:
 
 | `source` | Read from |
 |----------|-----------|
-| `flag` | `flags[<name>]` in run state, set at intake or from the spec |
-| `check` | `checks[<name>].passed` in run state, written only by real evidence |
+| `flag` | `flags[<key>]` in run state, set at intake or from the spec |
+| `check` | `checks[<key>].passed` in run state, written only by real evidence |
 | `result` | The outcome recorded for the node that just ran |
+| `runtime` | Maintained by the runner itself (transition budget, repeated-blocker count). No node produces it. |
+
+`reads` names the key. A guard is a **question** (`unit_passed`); a check is an **evidence slot** (`unit`). They are usually not the same word, and leaving the mapping implicit buries it in runtime code. Set `reads` whenever the key differs from the guard name.
+
+The checker enforces both directions: every `check`-sourced guard must read a key some node actually writes, and no two nodes may write the same key, since the second would silently overwrite the first one's evidence.
 
 Name a guard for the condition, not the branch. `unit_passed` is right; `go_to_e2e` is not.
 

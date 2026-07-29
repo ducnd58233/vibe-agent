@@ -59,9 +59,13 @@
                 "minLength": 1
               },
               "source": {
-                "enum": ["flag", "check", "result"],
+                "enum": ["flag", "check", "result", "runtime"],
                 "default": "flag",
-                "description": "flag reads run state flags; check reads run state checks[].passed; result reads the current node result."
+                "description": "flag reads run state flags[]; check reads checks[].passed; result reads the outcome recorded for the node that just ran; runtime is maintained by the runner itself (budget, repeated-blocker count) and is not produced by any node."
+              },
+              "reads": {
+                "$ref": "#/$defs/identifier",
+                "description": "Key this guard resolves against, for source flag or check. Required when the key differs from the guard name, which is the normal case: a guard is a question (unit_passed) while a check is an evidence slot (unit)."
               }
             }
           }

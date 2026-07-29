@@ -2,6 +2,10 @@
 # Verifies each `.ai-agents/<folder>/ROUTER.md` lookup table matches on-disk routable assets.
 # Does not validate `.ai-agents/ROUTER.md` (hub index, not a folder manifest).
 #
+# Deliberately dependency-free: bash only, so it runs on a fresh clone.
+# Structural validation of graph files (reachability, guards, termination) needs
+# a YAML and JSON Schema parser and lives in scripts/check-graphs.py instead.
+#
 # Usage: from toolkit repository root — bash scripts/check-ai-agents-routers.sh
 # Optional: set AI_AGENTS_ROOT to override the .ai-agents path.
 
@@ -268,6 +272,42 @@ check_hooks() {
   compare_sets ".ai-agents/hooks/ROUTER.md" "$hook_files" "$table" || fail=1
 }
 
+check_graphs() {
+  local dir="$AI/graphs"
+  [[ -d "$dir" ]] || return 0  # graphs are optional in a consumer repo
+
+  local graph_files=""
+  local f
+
+  shopt -s nullglob
+  for f in "$dir"/*.yaml "$dir"/*.yml; do
+    [[ -f "$f" ]] || continue
+    graph_files+="$(basename "$f")"$'\n'
+  done
+  shopt -u nullglob
+
+  local graph_n
+  graph_n="$(printf '%s' "$graph_files" | grep -c . 2>/dev/null || true)"
+  graph_n="${graph_n:-0}"
+  if [[ "$graph_n" -eq 0 ]]; then
+    return 0
+  fi
+
+  local table=""
+  local row target
+  while IFS= read -r row; do
+    while IFS= read -r target; do
+      [[ -z "$target" ]] && continue
+      [[ "$target" == *'/'* ]] && continue
+      [[ "$target" == *..* ]] && continue
+      [[ "$target" == *.yaml || "$target" == *.yml ]] || continue
+      table+="$target"$'\n'
+    done < <(links_in_column "$row" "1")
+  done < <(get_table_body_rows "$dir/ROUTER.md")
+
+  compare_sets ".ai-agents/graphs/ROUTER.md" "$graph_files" "$table" || fail=1
+}
+
 # Routing evals: every relative link target in references/routing-evals.md must exist.
 check_routing_evals() {
   local f="$AI/references/routing-evals.md"
@@ -299,6 +339,7 @@ main() {
   check_md_router ".ai-agents/references/ROUTER.md" "references" ""
   check_stack_profiles
   check_hooks
+  check_graphs
   check_routing_evals
 
   if [[ "$fail" -ne 0 ]]; then

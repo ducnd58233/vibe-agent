@@ -1,0 +1,9 @@
+# Dependencies for the optional deep checks:
+#   scripts/check-graphs.py   - workflow graph schema and structure
+#   scripts/check-schemas.py  - JSON Schema contracts under schemas/
+#
+# scripts/check-ai-agents-routers.sh stays dependency-free and needs none of this.
+# Install with: python3 -m pip install -r scripts/requirements.txt
+
+PyYAML>=6.0
+jsonschema>=4.0
