@@ -1,0 +1,232 @@
+// Package graph loads and validates workflow graphs.
+//
+// A graph is the control flow for a multi-phase workflow: which node runs next,
+// and on what evidence. The shapes match schemas/workflow-graph.schema.json.
+//
+// Edge conditions are guard names, never expressions. That keeps the loader a
+// parser rather than an interpreter, and lets a typo be a static error.
+package graph
+
+import "fmt"
+
+// APIVersion and Kind are the only values this loader accepts.
+const (
+	APIVersion = "vibe-agent/v1"
+	Kind       = "WorkflowGraph"
+)
+
+// NodeType is what performs the work at a node.
+type NodeType string
+
+const (
+	// NodeAgent is free-form work by the host coding agent. It never produces
+	// an automatic pass.
+	NodeAgent NodeType = "agent"
+	// NodeArtifact is agent work followed by a file assertion.
+	NodeArtifact NodeType = "artifact"
+	// NodeVerifier is a runtime subprocess or file check that writes evidence.
+	NodeVerifier NodeType = "verifier"
+	// NodeHumanGate is an approval. It precedes irreversible actions.
+	NodeHumanGate NodeType = "human_gate"
+	// NodeTerminal ends the run.
+	NodeTerminal NodeType = "terminal"
+)
+
+func (t NodeType) valid() bool {
+	switch t {
+	case NodeAgent, NodeArtifact, NodeVerifier, NodeHumanGate, NodeTerminal:
+		return true
+	}
+	return false
+}
+
+// VerifierKind selects the implementation that produces evidence.
+type VerifierKind string
+
+const (
+	VerifierCommand VerifierKind = "command"
+	VerifierFiles   VerifierKind = "files"
+	VerifierGit     VerifierKind = "git"
+)
+
+func (k VerifierKind) valid() bool {
+	switch k {
+	case VerifierCommand, VerifierFiles, VerifierGit:
+		return true
+	}
+	return false
+}
+
+// GuardSource says where the runtime reads a guard's boolean.
+type GuardSource string
+
+const (
+	// GuardFlag reads run state flags, set at intake or from the spec.
+	GuardFlag GuardSource = "flag"
+	// GuardCheck reads checks[key].passed, written only by real evidence.
+	GuardCheck GuardSource = "check"
+	// GuardResult reads the outcome recorded for the node that just ran.
+	GuardResult GuardSource = "result"
+	// GuardRuntime is maintained by the runner itself: budgets and repeated
+	// blockers. No node produces it.
+	GuardRuntime GuardSource = "runtime"
+)
+
+func (s GuardSource) valid() bool {
+	switch s {
+	case GuardFlag, GuardCheck, GuardResult, GuardRuntime:
+		return true
+	}
+	return false
+}
+
+// TerminalStatus is how a run ends.
+type TerminalStatus string
+
+const (
+	TerminalDone      TerminalStatus = "done"
+	TerminalFailed    TerminalStatus = "failed"
+	TerminalCancelled TerminalStatus = "cancelled"
+)
+
+func (s TerminalStatus) valid() bool {
+	switch s {
+	case TerminalDone, TerminalFailed, TerminalCancelled:
+		return true
+	}
+	return false
+}
+
+// Guard is a named boolean an edge can branch on.
+type Guard struct {
+	Name        string      `yaml:"name"`
+	Description string      `yaml:"description"`
+	Source      GuardSource `yaml:"source"`
+	// Reads is the key the guard resolves against. A guard is a question
+	// (unit_passed); a check is an evidence slot (unit). When they differ, the
+	// mapping is stated here rather than left to runtime convention.
+	Reads string `yaml:"reads"`
+}
+
+// Key is the state key this guard resolves against.
+func (g Guard) Key() string {
+	if g.Reads != "" {
+		return g.Reads
+	}
+	return g.Name
+}
+
+// Node is one step in the workflow.
+type Node struct {
+	Type           NodeType `yaml:"type"`
+	Description    string   `yaml:"description"`
+	TimeoutSeconds int      `yaml:"timeoutSeconds"`
+
+	// agent and artifact
+	Command  string   `yaml:"command"`
+	Optional bool     `yaml:"optional"`
+	Outputs  []string `yaml:"outputs"`
+
+	// verifier
+	Verifier VerifierKind `yaml:"verifier"`
+	SkipWhen string       `yaml:"skipWhen"`
+
+	// verifier and human_gate
+	Check string `yaml:"check"`
+
+	// human_gate
+	Prompt string `yaml:"prompt"`
+	Guards string `yaml:"guards"`
+
+	// terminal
+	Status TerminalStatus `yaml:"status"`
+}
+
+// Edge is a transition. When is a guard name, optionally negated with "!".
+// An edge with no When is the fallback and at most one may leave a node.
+type Edge struct {
+	From string `yaml:"from"`
+	To   string `yaml:"to"`
+	When string `yaml:"when"`
+}
+
+// Negated reports whether the condition is inverted, and returns the bare name.
+func (e Edge) Negated() (string, bool) {
+	return splitCondition(e.When)
+}
+
+// Metadata identifies the graph.
+type Metadata struct {
+	ID          string `yaml:"id"`
+	Description string `yaml:"description"`
+}
+
+// Spec is the workflow itself.
+type Spec struct {
+	Initial        string          `yaml:"initial"`
+	MaxTransitions int             `yaml:"maxTransitions"`
+	Guards         []Guard         `yaml:"guards"`
+	Nodes          map[string]Node `yaml:"nodes"`
+	Edges          []Edge          `yaml:"edges"`
+}
+
+// Graph is a loaded workflow graph.
+type Graph struct {
+	APIVersion string   `yaml:"apiVersion"`
+	Kind       string   `yaml:"kind"`
+	Metadata   Metadata `yaml:"metadata"`
+	Spec       Spec     `yaml:"spec"`
+
+	guardsByName map[string]Guard
+}
+
+// Guard returns a declared guard by name.
+func (g *Graph) Guard(name string) (Guard, bool) {
+	guard, ok := g.guardsByName[name]
+	return guard, ok
+}
+
+// Node returns a node by id.
+func (g *Graph) Node(id string) (Node, bool) {
+	node, ok := g.Spec.Nodes[id]
+	return node, ok
+}
+
+// OutgoingEdges returns the edges leaving a node, conditional ones first so the
+// fallback is only reached when nothing matched.
+func (g *Graph) OutgoingEdges(from string) []Edge {
+	var conditional, fallback []Edge
+	for _, edge := range g.Spec.Edges {
+		if edge.From != from {
+			continue
+		}
+		if edge.When == "" {
+			fallback = append(fallback, edge)
+		} else {
+			conditional = append(conditional, edge)
+		}
+	}
+	return append(conditional, fallback...)
+}
+
+// TerminalStatusOf returns the end status of a terminal node.
+func (g *Graph) TerminalStatusOf(id string) (TerminalStatus, error) {
+	node, ok := g.Spec.Nodes[id]
+	if !ok {
+		return "", fmt.Errorf("no node %q", id)
+	}
+	if node.Type != NodeTerminal {
+		return "", fmt.Errorf("node %q is %s, not terminal", id, node.Type)
+	}
+	return node.Status, nil
+}
+
+func splitCondition(condition string) (string, bool) {
+	if condition == "" {
+		return "", false
+	}
+	if condition[0] == '!' {
+		return condition[1:], true
+	}
+	return condition, false
+}

@@ -37,5 +37,16 @@
     },
     "webfetch": "allow",
     "websearch": "allow"
+  },
+  "mcp": {
+    "vibe-agent": {
+      "type": "local",
+      "command": [
+        "vibe-agent",
+        "mcp",
+        "serve"
+      ],
+      "enabled": true
+    }
   }
 }

@@ -41,7 +41,13 @@
       "mcp__ide__*",
       "mcp__chrome-devtools__*",
       "mcp__playwright__*",
-      "WebFetch(domain:cursor.com)"
+      "WebFetch(domain:cursor.com)",
+      "Bash(vibe-agent *)",
+      "Read(schemas/**)",
+      "Edit(schemas/**)",
+      "Write(schemas/**)",
+      "Edit(runtime/**)",
+      "Write(runtime/**)"
     ],
     "deny": [
       "Read(.env*)",
@@ -180,6 +186,13 @@
             "timeout": 5000,
             "statusMessage": "simplify-ignore-stop",
             "async": false
+          },
+          {
+            "type": "command",
+            "command": "vibe-agent hook stop --workspace ${CLAUDE_PROJECT_DIR}",
+            "statusMessage": "vibe-checkpoint",
+            "timeout": 5000,
+            "async": false
           }
         ]
       }
@@ -194,6 +207,13 @@
             "statusMessage": "session-start-meta-skill",
             "once": true,
             "async": false
+          },
+          {
+            "type": "command",
+            "command": "vibe-agent hook session-start --workspace ${CLAUDE_PROJECT_DIR}",
+            "statusMessage": "vibe-bootstrap",
+            "timeout": 5000,
+            "async": false
           }
         ]
       }
@@ -207,6 +227,13 @@
             "timeout": 5000,
             "statusMessage": "precedence-reminder",
             "async": false
+          },
+          {
+            "type": "command",
+            "command": "vibe-agent hook user-prompt-submit --workspace ${CLAUDE_PROJECT_DIR}",
+            "statusMessage": "vibe-route",
+            "timeout": 5000,
+            "async": false
           }
         ]
       }
@@ -219,6 +246,13 @@
             "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/subagent-grounding-guard.py",
             "timeout": 10000,
             "statusMessage": "subagent-grounding-guard",
+            "async": false
+          },
+          {
+            "type": "command",
+            "command": "vibe-agent hook subagent-stop --workspace ${CLAUDE_PROJECT_DIR}",
+            "statusMessage": "vibe-subagent",
+            "timeout": 5000,
             "async": false
           }
         ]

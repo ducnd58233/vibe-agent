@@ -37,6 +37,21 @@ After changing subagent `tools:` frontmatter, smoke-test delegation in Claude Co
 - Encode guardrails in [`.cursor/rules/*.mdc`](../.cursor/rules).
 - Refer to [`CURSOR.md`](../CURSOR.md) for onboarding.
 
+## Runtime control plane
+
+The optional [`runtime/`](../runtime) binary is an actuator with its own boundaries. It is not a sandbox: a verifier node runs a real subprocess with the session's own privileges.
+
+| Concern | Boundary |
+|---------|----------|
+| Binary invocation | `Bash(vibe-agent *)` in [`.claude/settings.json`](../.claude/settings.json). Hooks call it by name, so it must be on `PATH`. |
+| Verifier subprocesses | A `verifier` node runs whatever command the graph names, in the workspace root, with a timeout. Review a graph's commands the way you review a CI file. |
+| Run state | Writes `tmp/<slug>/manifest.json` and `tmp/<slug>/events.ndjson`. Both gitignored; never commit them. |
+| Memory database | Writes `.agent-state/memory.db` under the **workspace** root, not the toolkit. Gitignored. Never contains secrets: the policy filter rejects credential-shaped candidates before they reach disk. |
+| MCP server | `vibe-agent mcp serve` exposes six tools over stdio. Model-decided, so it is best effort; Claude and Cursor get the same capabilities through hooks, which always fire. |
+| Evidence | A check is `passed` only from `exit_code`, `file_assert`, `ci_api`, or `human_event`. There is no source for model assertion, in the schema or in the code. |
+| Irreversible actions | Merge, deploy, and publish sit behind a `human_gate` node. The runtime never merges, pushes, or checks out; the `git` verifier only observes. |
+| Degradation | A missing binary makes every hook a quiet no-op. The control plane must never wedge a coding session. |
+
 ## Review checklist
 
 - [ ] Asset template **Permissions & authority** completed.

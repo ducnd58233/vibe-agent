@@ -12,6 +12,24 @@ Follow [`goal-driven-delivery`](../skills/goal-driven-delivery/SKILL.md) and [`r
 - Optional constraints (deadline, stack, out-of-scope)
 - Optional existing artifacts (`docs/<slug>/SPEC.md`, `TASKS.md`)
 
+## Runtime-backed mode (optional)
+
+The phases below are also encoded as an executable graph, [`graphs/goal-delivery.yaml`](../graphs/goal-delivery.yaml). When the [`runtime`](../../runtime) binary is installed, let it own the transitions instead of tracking them by reading this file:
+
+```sh
+vibe-agent run start --slug <slug> --goal "<objective>"
+vibe-agent run status --slug <slug>       # current node and what completes it
+vibe-agent checkpoint --slug <slug> --check <name> --source <source> --passed
+```
+
+Rules in this mode:
+
+- **Follow the node the runtime reports.** Do not infer or manually advance workflow state.
+- **Evidence has provenance.** `--source` is one of `exit_code`, `file_assert`, `ci_api`, `human_event`. There is no source for model assertion, so a step cannot be marked done by claiming it is.
+- **The graph wins.** When this prose and the graph disagree, the graph is canonical and the prose is stale.
+
+Without the binary, everything below still applies and the agent tracks phases by reading this file. The runtime is optional; the workflow is not.
+
 ## Completion condition
 
 Stop only when:

@@ -4,6 +4,9 @@
     "sessionStart": [
       {
         "command": "python3 .ai-agents/hooks/session-start.py"
+      },
+      {
+        "command": "vibe-agent hook session-start --client cursor"
       }
     ],
     "preToolUse": [
@@ -37,11 +40,17 @@
     "subagentStop": [
       {
         "command": "python3 .ai-agents/hooks/subagent-grounding-guard.py"
+      },
+      {
+        "command": "vibe-agent hook subagent-stop --client cursor"
       }
     ],
     "stop": [
       {
         "command": "python3 .ai-agents/hooks/simplify-ignore.py"
+      },
+      {
+        "command": "vibe-agent hook stop --client cursor"
       }
     ]
   }

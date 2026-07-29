@@ -10,6 +10,12 @@ Run a repo-health audit for this AI asset toolkit.
 2. Run router validation:
    - Windows: `powershell -File scripts/check-ai-agents-routers.ps1`
    - Bash: `bash scripts/check-ai-agents-routers.sh`
+2b. Run the graph, schema, and runtime checks:
+   - `python3 scripts/check-schemas.py` and `python3 scripts/check-graphs.py` (need `scripts/requirements.txt`)
+   - `python3 scripts/check-graphs-test.py` so the checker itself is still rejecting broken graphs
+   - `vibe-agent doctor` when the binary is installed: graphs load, memory database opens, every `tmp/<slug>/manifest.json` is schema-valid, and `/tmp/` plus `/.agent-state/` are gitignored
+   - `cd runtime && go vet ./... && go test ./...` when changing the runtime
+   - Report the binary as **not installed** rather than assuming it is absent-by-design; the runtime is optional, so a missing binary is a finding, not a failure
 3. Check hook command paths referenced in `.claude/settings.json` and `.cursor/hooks.json` exist.
 4. Check link/discovery paths:
    - `.claude/skills`, `.claude/agents`, `.claude/commands`

@@ -11,3 +11,10 @@ model_instructions_file = "../AGENTS.md"
 [agents]
 max_threads = 8
 max_depth = 1
+
+# Outer-loop control plane. Codex has no hook system, so unlike Claude and
+# Cursor these tools are model-decided rather than guaranteed to fire.
+# Requires the vibe-agent binary on PATH; without it Codex simply sees no tools.
+[mcp_servers.vibe-agent]
+command = "vibe-agent"
+args = ["mcp", "serve"]

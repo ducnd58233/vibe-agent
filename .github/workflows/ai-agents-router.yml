@@ -62,8 +62,20 @@ jobs:
           go vet ./...
           go test ./...
 
-      - name: Build the runtime without cgo
+      - name: Check runtime formatting
+        working-directory: runtime
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "gofmt needed on:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: Cross-compile every release target
         working-directory: runtime
         env:
           CGO_ENABLED: '0'
-        run: go build ./...
+        run: |
+          for target in windows/amd64 windows/arm64 linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            GOOS=${target%/*} GOARCH=${target#*/} go build -o /dev/null ./cmd/vibe-agent
+            echo "built $target"
+          done

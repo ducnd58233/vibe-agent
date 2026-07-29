@@ -31,6 +31,14 @@ Agent quality is not just model quality. Reliability comes from the model plus i
 4. **Prefer computational sensors**
    - Add or improve deterministic checks before adding more prompt text when the rule can be validated by script, test, typecheck, linter, schema, router check, or generated-asset check.
    - Use inferential review for semantic judgment after deterministic evidence exists.
+4b. **Audit the control plane when one exists**
+   - Read [`loop-and-graph-engineering.md`](../../references/loop-and-graph-engineering.md) for the inner/outer loop boundary and when a workflow earns a graph.
+   - Check who owns the outer loop: are transitions enforced, or described in prose and interpreted?
+   - Check evidence provenance: can any path mark a check passed from model output? There must be none.
+   - Check run state: can a fresh session resume from a file, or does progress live in chat history?
+   - Check human gates: do they precede irreversible actions, or merely record them afterwards?
+   - Check budgets: does every loop terminate, and is every node able to reach a terminal?
+   - Check memory writes: does anything store secrets, task state, or unevidenced guesses?
 5. **Keep assets canonical**
    - Edit canonical files under `.ai-agents/`.
    - After creating, renaming, or deleting assets, update the relevant `ROUTER.md`.
@@ -38,6 +46,8 @@ Agent quality is not just model quality. Reliability comes from the model plus i
 6. **Verify**
    - Run `powershell -File scripts/check-ai-agents-routers.ps1` or `bash scripts/check-ai-agents-routers.sh`.
    - For Codex-facing assets, run `powershell -File scripts/check-codex-assets.ps1`.
+   - For graphs and schemas, run `python3 scripts/check-graphs.py` and `python3 scripts/check-schemas.py`.
+   - For runtime changes, run `cd runtime && go vet ./... && go test ./...`.
    - Include checks run, failures found, and residual risks in the final report.
 
 ## When
