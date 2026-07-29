@@ -8,7 +8,7 @@ This file is the **tool-agnostic project charter** for AI assistants.
 
 - **Purpose:** Build and maintain a portable AI-agent toolkit that can be reused across repositories without duplicating assets.
 - **Assistant stance:** Prioritize reusable patterns, explicit routing, stable permissions boundaries, progressive disclosure, and minimal duplication across tools.
-- **Scope boundary:** This repository is **not** an application/product domain codebase. Domain-specific behavior belongs in each consuming repo via its local `AGENTS.md`.
+- **Scope boundary:** This repository is **not** a product-domain codebase. Domain-specific behavior belongs in each consuming repo via its local `AGENTS.md`. It does ship toolkit infrastructure code: the validation scripts under [`scripts/`](scripts) and the optional runtime control plane under [`runtime/`](runtime). The runtime enforces the outer delivery loop (graph transitions, run state, verification evidence); it never replaces a coding agent's own model and tool loop.
 
 ## Project layout for AI assets
 

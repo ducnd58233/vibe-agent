@@ -19,4 +19,14 @@
 /.codex/sdd-cache/
 /.codex/commands/
 # Goal verification artifacts from /goal (local only; see .ai-agents/references/goal-verification-records.md)
+# Run state lives at tmp/<slug>/manifest.json with the event log at tmp/<slug>/events.ndjson.
 /tmp/
+
+# Workspace-local runtime state: cross-run memory database and runtime logs.
+/.agent-state/
+
+# Compiled runtime binaries and release archives.
+/runtime/dist/
+/runtime/vibe-agent
+/runtime/vibe-agent.exe
+/docs/

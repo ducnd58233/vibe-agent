@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ducnd58233/vibe-agent/schemas/workflow-graph.schema.json",
+  "title": "WorkflowGraph",
+  "description": "Declarative outer-loop workflow for the vibe-agent runtime. Edge conditions are named boolean guards resolved from run state, not expressions.",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "const": "vibe-agent/v1"
+    },
+    "kind": {
+      "const": "WorkflowGraph"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["id", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/identifier",
+          "description": "Graph id; must match the file basename."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["initial", "maxTransitions", "nodes", "edges"],
+      "additionalProperties": false,
+      "properties": {
+        "initial": {
+          "$ref": "#/$defs/identifier",
+          "description": "Entry node id. Must be a key in nodes."
+        },
+        "maxTransitions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Transition budget. Exceeding it sets run status to budget_exceeded."
+        },
+        "guards": {
+          "type": "array",
+          "description": "Every guard name usable in edges[].when. Declaring them up front lets the validator reject typos statically.",
+          "items": {
+            "type": "object",
+            "required": ["name", "description"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "$ref": "#/$defs/identifier"
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source": {
+                "enum": ["flag", "check", "result"],
+                "default": "flag",
+                "description": "flag reads run state flags; check reads run state checks[].passed; result reads the current node result."
+              }
+            }
+          }
+        },
+        "nodes": {
+          "type": "object",
+          "minProperties": 2,
+          "description": "Node id to definition.",
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/node"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["from", "to"],
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "$ref": "#/$defs/identifier"
+              },
+              "to": {
+                "$ref": "#/$defs/identifier"
+              },
+              "when": {
+                "$ref": "#/$defs/guardRef",
+                "description": "Guard name, optionally negated with a leading '!'. Absent means unconditional. At most one unconditional edge may leave a node."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "maxLength": 64
+    },
+    "guardRef": {
+      "type": "string",
+      "pattern": "^!?[a-z][a-z0-9_]*$",
+      "maxLength": 65
+    },
+    "node": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": ["agent", "artifact", "verifier", "human_gate", "terminal"]
+        },
+        "description": {
+          "type": "string"
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "agent"
+              }
+            }
+          },
+          "then": {
+            "required": ["command"],
+            "additionalProperties": false,
+            "properties": {
+              "type": true,
+              "description": true,
+              "timeoutSeconds": true,
+              "command": {
+                "type": "string",
+                "description": "Slash command under .ai-agents/commands that instructs the host coding agent."
+              },
+              "optional": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "artifact"
+              }
+            }
+          },
+          "then": {
+            "required": ["command", "outputs"],
+            "additionalProperties": false,
+            "properties": {
+              "type": true,
+              "description": true,
+              "timeoutSeconds": true,
+              "command": {
+                "type": "string"
+              },
+              "outputs": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "description": "Path relative to workspace root. May contain ${slug}."
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "verifier"
+              }
+            }
+          },
+          "then": {
+            "required": ["verifier", "check"],
+            "additionalProperties": false,
+            "properties": {
+              "type": true,
+              "description": true,
+              "timeoutSeconds": true,
+              "verifier": {
+                "enum": ["command", "files", "git"],
+                "description": "Verifier implementation that produces the evidence."
+              },
+              "check": {
+                "$ref": "#/$defs/identifier",
+                "description": "Key written into run state checks[]."
+              },
+              "skipWhen": {
+                "$ref": "#/$defs/guardRef",
+                "description": "Guard name; when true the node is skipped and the check records skipped, not passed."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "human_gate"
+              }
+            }
+          },
+          "then": {
+            "required": ["check", "prompt"],
+            "additionalProperties": false,
+            "properties": {
+              "type": true,
+              "description": true,
+              "timeoutSeconds": true,
+              "check": {
+                "$ref": "#/$defs/identifier"
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Shown to the human. State plainly what is being approved."
+              },
+              "guards": {
+                "type": "string",
+                "description": "Irreversible action this gate sits in front of, for audit. Gates precede the action, never follow it."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "terminal"
+              }
+            }
+          },
+          "then": {
+            "required": ["status"],
+            "additionalProperties": false,
+            "properties": {
+              "type": true,
+              "description": true,
+              "timeoutSeconds": false,
+              "status": {
+                "enum": ["done", "failed", "cancelled"]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ducnd58233/vibe-agent/schemas/memory-record.schema.json",
+  "title": "MemoryRecord",
+  "description": "One cross-run memory. Stored in SQLite, searched with FTS5. Supporting context only: a memory never overrides a repository fact.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "workspaceId",
+    "kind",
+    "content",
+    "confidence",
+    "status",
+    "sourceType",
+    "evidence",
+    "createdAt",
+    "updatedAt"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^mem_[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "ULID, Crockford base32."
+    },
+    "workspaceId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable id for the workspace. Retrieval is always filtered by this; memories never leak across workspaces."
+    },
+    "kind": {
+      "enum": ["semantic", "episodic", "correction", "preference"],
+      "description": "Procedural memory is deliberately absent. A workflow worth keeping is promoted to a SKILL.md, an AGENTS.md rule, a stack profile, or a deterministic check, not stored here."
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000,
+      "description": "One fact, stated plainly. Hedged content ('probably needs Redis') fails the policy filter."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+      },
+      "maxItems": 12
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "status": {
+      "enum": ["proposed", "confirmed", "stale", "rejected"],
+      "description": "Model output can only produce 'proposed'. Only a verifier result or a human event moves a record to 'confirmed'."
+    },
+    "sourceType": {
+      "enum": [
+        "command_result",
+        "file_content",
+        "ci_api",
+        "human_statement",
+        "review_comment"
+      ],
+      "description": "How the memory was obtained. 'model_inference' is deliberately absent."
+    },
+    "sourceRef": {
+      "type": ["string", "null"],
+      "description": "Pointer to the originating run and event, for example 'run_2026-07-29T10-22-03Z_loop-graph-runtime/events.ndjson#42'."
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "description": "Concrete observations supporting the content. Empty evidence is rejected by the policy filter.",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500
+      }
+    },
+    "supersedesId": {
+      "type": ["string", "null"],
+      "pattern": "^mem_[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "When set, the referenced record moves to 'stale' on confirmation."
+    },
+    "usedCount": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Successful reuses. Repeated reuse triggers a promotion proposal to a durable rule; the runtime proposes, it does not write the rule."
+    },
+    "expiresAt": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
