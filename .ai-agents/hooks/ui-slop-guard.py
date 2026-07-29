@@ -90,12 +90,20 @@ def _read_payload() -> dict[str, object]:
 
 
 def _target_file(payload: dict[str, object]) -> Path | None:
-    if payload.get("tool_name") not in {"Edit", "Write"}:
+    # Claude PostToolUse fires for every tool, so the tool name has to be
+    # checked. Cursor afterFileEdit is already edit-only and sends no tool_name,
+    # so its absence is not a reason to bail out.
+    tool_name = payload.get("tool_name")
+    if tool_name is not None and tool_name not in {"Edit", "Write"}:
         return None
+
+    # Claude nests the path under tool_input; Cursor puts it at the top level.
+    file_path_value: object = None
     tool_input = payload.get("tool_input")
-    if not isinstance(tool_input, dict):
-        return None
-    file_path_value = tool_input.get("file_path")
+    if isinstance(tool_input, dict):
+        file_path_value = tool_input.get("file_path")
+    if not isinstance(file_path_value, str) or not file_path_value:
+        file_path_value = payload.get("file_path")
     if not isinstance(file_path_value, str) or not file_path_value:
         return None
 

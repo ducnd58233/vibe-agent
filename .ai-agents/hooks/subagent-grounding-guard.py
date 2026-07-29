@@ -111,7 +111,9 @@ def main() -> int:
     if payload.get("stop_hook_active") is True:
         return 0
 
-    transcript_value = payload.get("transcript_path")
+    # Claude SubagentStop sends transcript_path; Cursor subagentStop sends
+    # agent_transcript_path. Accept either so one script serves both harnesses.
+    transcript_value = payload.get("transcript_path") or payload.get("agent_transcript_path")
     if not isinstance(transcript_value, str) or not transcript_value:
         return 0
 

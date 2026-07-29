@@ -25,11 +25,16 @@ def _read_input() -> dict[str, object]:
 
 
 def _candidate_path(payload: dict[str, object]) -> Path | None:
+    # Claude PostToolUse nests the path under tool_input; Cursor afterFileEdit
+    # puts it at the top level. Accept both so one script serves both harnesses.
     tool_input = payload.get("tool_input")
-    if not isinstance(tool_input, dict):
-        return None
+    if isinstance(tool_input, dict):
+        for key in ("file_path", "path"):
+            value = tool_input.get(key)
+            if isinstance(value, str) and value:
+                return Path(value)
     for key in ("file_path", "path"):
-        value = tool_input.get(key)
+        value = payload.get(key)
         if isinstance(value, str) and value:
             return Path(value)
     return None
