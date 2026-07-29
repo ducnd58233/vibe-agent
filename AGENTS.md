@@ -24,6 +24,8 @@ This file is the **tool-agnostic project charter** for AI assistants.
 | [`.ai-agents/commands/`](.ai-agents/commands) | Slash-command prompts (`*.md`). |
 | [`.ai-agents/references/`](.ai-agents/references) | Generic checklists and patterns (a11y, security, testing, orchestration, design, database, QA, etc.). |
 | [`.ai-agents/stack-profiles/`](.ai-agents/stack-profiles) | Repo-pinned stack and domain profiles (frameworks, tools, commands, conventions). |
+| [`.ai-agents/graphs/`](.ai-agents/graphs) | Executable workflow graphs (`*.yaml`): nodes, edges, guards, and human gates for multi-phase workflows. |
+| [`schemas/`](schemas) | JSON Schema contracts for graphs, run state, and memory records. |
 | [`.ai-agents/hooks/`](.ai-agents/hooks) | Shared hook scripts referenced from Cursor/Claude config or invoked manually. |
 | [`.claude/`](.claude) | Claude Code settings; skills/agents/commands are generated links after running `scripts/link-ai-agents`. |
 | [`.cursor/`](.cursor) | Cursor rules and hooks; commands/skills are generated links after running `scripts/link-ai-agents`. |

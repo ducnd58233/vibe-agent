@@ -7,7 +7,7 @@ All assets are reusable and **domain-agnostic**; keep product-domain implementat
 
 **Agents MUST (routing):** Read this file when deciding which skill, subagent, command, or hook applies; then open the listed **`ROUTER.md`** in that subfolder.
 
-**Agents MUST (after creating):** When you add or remove an asset under `skills/`, `agents/`, `commands/`, `references/`, `stack-profiles/`, or `hooks/`, update that folder’s **`ROUTER.md`** in the **same change** (same PR or commit): for `stack-profiles/*.md`, add or remove matching rows in **`stack-profiles/ROUTER.md`** per **`stack-profiles/TEMPLATE.md`**; elsewhere add a row per new file and delete stale rows when removing assets.
+**Agents MUST (after creating):** When you add or remove an asset under `skills/`, `agents/`, `commands/`, `references/`, `stack-profiles/`, `graphs/`, or `hooks/`, update that folder’s **`ROUTER.md`** in the **same change** (same PR or commit): for `stack-profiles/*.md`, add or remove matching rows in **`stack-profiles/ROUTER.md`** per **`stack-profiles/TEMPLATE.md`**; elsewhere add a row per new file and delete stale rows when removing assets.
 
 | Goal / intent | Open next |
 |---------------|-----------|
@@ -17,6 +17,7 @@ All assets are reusable and **domain-agnostic**; keep product-domain implementat
 | Isolated specialist worker (Claude subagent) | [`agents/ROUTER.md`](agents/ROUTER.md) |
 | Slash-style command prompt (Claude Code / Cursor after link script) | [`commands/ROUTER.md`](commands/ROUTER.md) |
 | Full delivery from user objective (`/goal`) | [`commands/goal.md`](commands/goal.md) + [`skills/goal-driven-delivery/SKILL.md`](skills/goal-driven-delivery/SKILL.md) |
+| Executable control flow for a multi-phase workflow (nodes, edges, gates) | [`graphs/ROUTER.md`](graphs/ROUTER.md) |
 | Lifecycle automation (format on save, CI hooks, guardrails) | [`hooks/ROUTER.md`](hooks/ROUTER.md) |
 
 **Creating new assets:** Follow that folder’s **`TEMPLATE.md`** (e.g. [skills/TEMPLATE.md](skills/TEMPLATE.md), [stack-profiles/TEMPLATE.md](stack-profiles/TEMPLATE.md), [agents/TEMPLATE.md](agents/TEMPLATE.md), [commands/TEMPLATE.md](commands/TEMPLATE.md), [hooks/TEMPLATE.md](hooks/TEMPLATE.md)).

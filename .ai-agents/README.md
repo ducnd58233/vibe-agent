@@ -12,12 +12,13 @@ It is intentionally **domain-agnostic** and should not contain product-domain lo
 | `stack-profiles/` | Repo-specific pinned stacks (markdown); skills link here instead of naming frameworks inline. |
 | `agents/`  | Claude Code subagent definitions (`*.md`). |
 | `commands/` | Slash-command prompts (`*.md`); `.claude/commands` and `.cursor/commands` link here (same as skills). |
+| `graphs/`  | Executable workflow graphs (`*.yaml`): nodes, edges, guards, and human gates for multi-phase workflows. Validated against [`schemas/workflow-graph.schema.json`](../schemas/workflow-graph.schema.json). |
 | `hooks/`   | Hook scripts (shell, PowerShell, etc.) invoked by path from the active workspace root. |
 
 | File | Purpose |
 |------|---------|
 | [`ROUTER.md`](ROUTER.md) | **Master router** — pick which subfolder applies. |
-| [`skills/ROUTER.md`](skills/ROUTER.md) (and `agents/`, `commands/`, `hooks/`) | **Per-folder routers** — intent → asset; update tables when files change. |
+| [`skills/ROUTER.md`](skills/ROUTER.md) (and `agents/`, `commands/`, `graphs/`, `hooks/`) | **Per-folder routers** — intent → asset; update tables when files change. |
 | [`skills/TEMPLATE.md`](skills/TEMPLATE.md) (and same in other folders) | **Authoring contract** — required sections for new assets. |
 | [`PERMISSIONS.md`](PERMISSIONS.md) | Claude **permissions / authority** vs [`.claude/settings.json`](../.claude/settings.json). |
 

@@ -19,8 +19,8 @@
       "additionalProperties": false,
       "properties": {
         "id": {
-          "$ref": "#/$defs/identifier",
-          "description": "Graph id; must match the file basename."
+          "$ref": "#/$defs/assetId",
+          "description": "Graph id; must match the file basename. Hyphenated, matching the repository file-naming convention and the graphId pattern in run-state.schema.json."
         },
         "description": {
           "type": "string",
@@ -102,10 +102,17 @@
     }
   },
   "$defs": {
+    "assetId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "maxLength": 64,
+      "description": "File-level id. Hyphenated, like every other asset filename in this toolkit."
+    },
     "identifier": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9_]*$",
-      "maxLength": 64
+      "maxLength": 64,
+      "description": "In-graph name for a node, guard, or check. Underscored, so it stays a safe map key and Go field name."
     },
     "guardRef": {
       "type": "string",
