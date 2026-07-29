@@ -248,6 +248,67 @@ func TestEachWorkspaceGetsItsOwnMemoryDatabase(t *testing.T) {
 	}
 }
 
+// Host hook configs pass only --workspace, because a config that has to know
+// where the toolkit sits would differ per consumer repo. So the binary must
+// find .ai-agents itself when the toolkit is a submodule.
+func TestToolkitIsFoundWhenMountedAsASubmodule(t *testing.T) {
+	root := consumerRepo(t)
+	binary := buildBinary(t)
+
+	// Mirror the documented layout: toolkit under .vibe-agent, no .ai-agents at
+	// the workspace root.
+	mount := filepath.Join(root, ".vibe-agent")
+	if err := os.MkdirAll(mount, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	copyTree(t, filepath.Join(toolkitRoot(t), ".ai-agents"), filepath.Join(mount, ".ai-agents"))
+
+	// No --toolkit anywhere below.
+	noToolkit := func(args ...string) (string, error) {
+		full := append(args, "--workspace", root)
+		out, err := exec.Command(binary, full...).CombinedOutput()
+		return string(out), err
+	}
+
+	if out, err := noToolkit("run", "start", "--slug", "demo", "--goal", "prove discovery"); err != nil {
+		t.Fatalf("run start could not find the toolkit: %v\n%s", err, out)
+	}
+
+	out, err := noToolkit("run", "status", "--slug", "demo")
+	if err != nil {
+		t.Fatalf("run status: %v\n%s", err, out)
+	}
+	// The node description only appears when the graph actually loaded.
+	if !strings.Contains(out, "next       [human_gate]") {
+		t.Errorf("the graph was not loaded, so the node description is missing:\n%s", out)
+	}
+}
+
+func copyTree(t *testing.T, src, dst string) {
+	t.Helper()
+	err := filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if info.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, 0o644)
+	})
+	if err != nil {
+		t.Fatalf("copy %s: %v", src, err)
+	}
+}
+
 func TestGraphValidateRunsAgainstTheShippedGraph(t *testing.T) {
 	run := cli{t, buildBinary(t), t.TempDir(), toolkitRoot(t)}
 	cmd := exec.Command(run.binary, "graph", "validate", "--toolkit", run.toolkit)

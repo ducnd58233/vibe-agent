@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
@@ -27,21 +28,60 @@ func addRootFlags(flags *flag.FlagSet) *rootFlags {
 	}
 }
 
-// resolve turns the flags into absolute paths. The toolkit falls back to the
-// workspace rather than erroring, since standalone use is the common case.
+// resolve turns the flags into absolute paths.
 func (r *rootFlags) resolve() (workspaceRoot, toolkitRoot string, err error) {
 	workspaceRoot, err = filepath.Abs(*r.workspace)
 	if err != nil {
 		return "", "", fmt.Errorf("resolve workspace: %w", err)
 	}
 	if *r.toolkit == "" {
-		return workspaceRoot, workspaceRoot, nil
+		return workspaceRoot, discoverToolkit(workspaceRoot), nil
 	}
 	toolkitRoot, err = filepath.Abs(*r.toolkit)
 	if err != nil {
 		return "", "", fmt.Errorf("resolve toolkit: %w", err)
 	}
 	return workspaceRoot, toolkitRoot, nil
+}
+
+// discoverToolkit finds the directory holding .ai-agents when --toolkit was not
+// given.
+//
+// Standalone, that is the workspace itself. Mounted as a submodule it is a
+// subdirectory, .vibe-agent by the convention in AGENTS.md. Probing for it
+// keeps host hook configs identical in both layouts: a hook that only passes
+// --workspace still finds the graphs, instead of silently losing them and
+// degrading to a less useful message.
+//
+// One level deep only. A toolkit buried deeper is unusual enough to deserve an
+// explicit --toolkit.
+func discoverToolkit(workspaceRoot string) string {
+	if holdsAssets(workspaceRoot) {
+		return workspaceRoot
+	}
+
+	entries, err := os.ReadDir(workspaceRoot)
+	if err != nil {
+		return workspaceRoot
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Name() == ".git" || entry.Name() == "node_modules" {
+			continue
+		}
+		candidate := filepath.Join(workspaceRoot, entry.Name())
+		if holdsAssets(candidate) {
+			return candidate
+		}
+	}
+
+	// Fall back to the workspace so any later error names a path the caller
+	// recognises rather than an empty string.
+	return workspaceRoot
+}
+
+func holdsAssets(dir string) bool {
+	info, err := os.Stat(filepath.Join(dir, ".ai-agents"))
+	return err == nil && info.IsDir()
 }
 
 // newFlagSet builds a flag set that reports usage errors through the returned
