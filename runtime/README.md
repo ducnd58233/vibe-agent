@@ -16,8 +16,16 @@ No. Contributors to this module need Go; users of the toolkit get a prebuilt bin
 
 ```
 runtime/
-  main.go                 CLI entry point
   Makefile                build, test, and release commands
+  cmd/                    the CLI, one file per command
+    main.go               entry point and the dispatch table
+    common.go             shared path flags and output helpers
+    run.go                run start, run status
+    checkpoint.go         record evidence and advance the graph
+    graph.go              graph validate
+    mcp.go                mcp serve
+    hook.go               lifecycle hooks for Claude and Cursor
+    doctor.go             workspace health checks
   internal/
     graph/                workflow graph model, loader, static validation
     loop/                 the runner: transitions, budget, blocker stop rule
@@ -30,9 +38,10 @@ runtime/
   e2e/                    drives the built binary against a fixture consumer repo
 ```
 
-Two conventions worth knowing:
+Three conventions worth knowing:
 
-- **`main.go` sits at the module root, not under `cmd/`.** The Go docs call `cmd/` *"not strictly necessary in a repository that consists only of commands"*; this module has one binary and only `internal/` packages, none of which are importable from outside. Builds always pass `-o vibe-agent`, so the directory name never decides the binary name.
+- **One file per command under `cmd/`.** `main.go` stays a dispatch table; command logic never accumulates there. `common.go` holds the `--workspace` and `--toolkit` pair every command shares, so adding a command does not mean copying flag plumbing.
+- **The binary name comes from `-o`, not the directory.** `go build ./cmd` without `-o` would produce `cmd`; every build path here passes `-o vibe-agent`.
 - **Test fixtures live in the `testdata/` of the package that uses them**, which is the Go convention. `internal/state/testdata/` belongs to the state package; nothing else reads it except the schema check, by path.
 
 ## Build and test

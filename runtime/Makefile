@@ -27,11 +27,11 @@ all: check build
 
 ## build: compile for the current platform into dist/
 build:
-	go build -ldflags="$(LDFLAGS)" -o $(DIST)/$(BINARY) .
+	go build -ldflags="$(LDFLAGS)" -o $(DIST)/$(BINARY) ./cmd
 
 ## install: put the binary on the Go bin path for local use
 install:
-	go build -ldflags="$(LDFLAGS)" -o "$(shell go env GOPATH)/bin/$(BINARY)" .
+	go build -ldflags="$(LDFLAGS)" -o "$(shell go env GOPATH)/bin/$(BINARY)" ./cmd
 
 ## test: run every package test, including the consumer-repo end-to-end suite
 test:
@@ -66,7 +66,7 @@ release: clean
 		ext=""; [ "$$goos" = "windows" ] && ext=".exe"; \
 		out="$(DIST)/$(BINARY)_$(VERSION)_$${goos}_$${goarch}$$ext"; \
 		echo "building $$out"; \
-		GOOS=$$goos GOARCH=$$goarch go build -ldflags="$(LDFLAGS)" -o "$$out" . || exit 1; \
+		GOOS=$$goos GOARCH=$$goarch go build -ldflags="$(LDFLAGS)" -o "$$out" ./cmd || exit 1; \
 	done
 	@cd $(DIST) && sha256sum * > SHA256SUMS && echo "wrote $(DIST)/SHA256SUMS"
 

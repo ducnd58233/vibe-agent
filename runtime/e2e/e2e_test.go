@@ -50,7 +50,7 @@ func buildBinary(t *testing.T) string {
 	}
 	binary := filepath.Join(t.TempDir(), name)
 
-	build := exec.Command("go", "build", "-o", binary, ".")
+	build := exec.Command("go", "build", "-o", binary, "./cmd")
 	build.Dir = moduleRoot(t)
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := build.CombinedOutput(); err != nil {
