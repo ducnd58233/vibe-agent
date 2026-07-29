@@ -6,7 +6,12 @@
   The runtime is optional. Every asset under .ai-agents/ works without it; the
   binary adds enforced workflow transitions, persisted run state, and memory.
 
-  You do not need Go, a C compiler, or SQLite to run it.
+  Prefers a published release, which needs no Go. When no release is reachable
+  it falls back to building from runtime/, which does. That fallback is what
+  makes the toolkit usable before the first release exists.
+
+.PARAMETER FromSource
+  Skip the release lookup and build from runtime/ directly.
 
 .PARAMETER Version
   Release to install, for example v0.1.0. Defaults to the latest release.
@@ -22,11 +27,76 @@
 param(
   [string]$Version = 'latest',
   [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'Programs\vibe-agent'),
-  [string]$Repo = 'ducnd58233/vibe-agent'
+  [string]$Repo = 'ducnd58233/vibe-agent',
+  [switch]$FromSource
 )
 
 $ErrorActionPreference = 'Stop'
 $binary = 'vibe-agent.exe'
+$runtimeDir = Join-Path $PSScriptRoot '../runtime'
+
+function Show-Result {
+    param([string]$Target)
+    Write-Host "installed $Target"
+    Write-Host ''
+    Write-Host 'check the install with:'
+    Write-Host '  vibe-agent version'
+    Write-Host '  vibe-agent doctor'
+}
+
+function Add-ToUserPath {
+    param([string]$Directory)
+    # Hooks invoke the binary by name, so PATH matters.
+    $userPath = [Environment]::GetEnvironmentVariable('PATH', 'User')
+    if ($userPath -notlike "*$Directory*") {
+        [Environment]::SetEnvironmentVariable('PATH', "$userPath;$Directory", 'User')
+        Write-Host "added $Directory to your user PATH; open a new terminal to pick it up"
+    }
+}
+
+# Compiling is the fallback, not the plan. A release needs no Go; this path
+# exists so the toolkit still works before one is published.
+function Install-FromSource {
+    param([string]$Reason)
+
+    if (-not (Test-Path -LiteralPath (Join-Path $runtimeDir 'go.mod'))) {
+        throw "$Reason, and there is no runtime directory to build from."
+    }
+    if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
+        throw @"
+$Reason
+
+Two ways forward:
+  1. Install Go, then rerun this script. It will build the binary for you.
+  2. Wait for a published release: https://github.com/$Repo/releases
+
+Neither is required to use the toolkit. Without the binary every hook is a
+quiet no-op and the markdown assets work exactly as they do today.
+"@
+    }
+
+    Write-Host $Reason
+    Write-Host "building from source with $(go version)"
+    New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+    $target = Join-Path $InstallDir $binary
+
+    Push-Location $runtimeDir
+    try {
+        $env:CGO_ENABLED = '0'
+        & go build -ldflags='-s -w -X main.version=source' -o $target ./cmd
+        if ($LASTEXITCODE -ne 0) {
+            throw "Build failed. Run 'cd runtime; make check' to see why."
+        }
+    } finally {
+        Pop-Location
+    }
+
+    Add-ToUserPath -Directory $InstallDir
+    Show-Result -Target $target
+    exit 0
+}
+
+if ($FromSource) { Install-FromSource -Reason 'Building from source (-FromSource).' }
 
 $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
   'AMD64' { 'amd64' }
@@ -36,9 +106,15 @@ $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
 
 if ($Version -eq 'latest') {
   Write-Host 'resolving the latest release'
-  $release = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases/latest"
-  $Version = $release.tag_name -replace '^runtime/', ''
-  if (-not $Version) { throw 'Could not resolve the latest release; pass -Version explicitly.' }
+  try {
+    $release = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases/latest"
+    $Version = $release.tag_name -replace '^runtime/', ''
+  } catch {
+    $Version = ''
+  }
+  if (-not $Version) {
+    Install-FromSource -Reason "No published release found for $Repo."
+  }
 }
 
 $asset = "vibe-agent_${Version}_windows_${arch}.exe"
@@ -49,7 +125,11 @@ New-Item -ItemType Directory -Path $temp -Force | Out-Null
 try {
   Write-Host "downloading $asset"
   $downloaded = Join-Path $temp $asset
-  Invoke-WebRequest -Uri "$base/$asset" -OutFile $downloaded -UseBasicParsing
+  try {
+    Invoke-WebRequest -Uri "$base/$asset" -OutFile $downloaded -UseBasicParsing
+  } catch {
+    Install-FromSource -Reason "Release $Version has no asset for windows/$arch."
+  }
 
   # A binary that runs with the session's own privileges is worth verifying.
   try {
@@ -69,19 +149,9 @@ try {
   New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
   $target = Join-Path $InstallDir $binary
   Move-Item -Path $downloaded -Destination $target -Force
-  Write-Host "installed $target"
 
-  # Hooks invoke the binary by name, so PATH matters.
-  $userPath = [Environment]::GetEnvironmentVariable('PATH', 'User')
-  if ($userPath -notlike "*$InstallDir*") {
-    [Environment]::SetEnvironmentVariable('PATH', "$userPath;$InstallDir", 'User')
-    Write-Host "added $InstallDir to your user PATH; open a new terminal to pick it up"
-  }
+  Add-ToUserPath -Directory $InstallDir
+  Show-Result -Target $target
 } finally {
   Remove-Item -Path $temp -Recurse -Force -ErrorAction SilentlyContinue
 }
-
-Write-Host ''
-Write-Host 'check the install with:'
-Write-Host '  vibe-agent version'
-Write-Host '  vibe-agent doctor'

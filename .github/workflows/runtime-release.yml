@@ -6,11 +6,23 @@
 # binaries in tree becomes slow to clone and impossible to audit.
 #
 # Release assets live outside git objects, carry checksums, and can be deleted.
+#
+# Two channels:
+#
+#   rolling  every push to main that touches runtime/. Tag runtime/latest,
+#            marked prerelease so it never becomes GitHub's "latest release",
+#            and overwritten each time. This is what makes the installer work
+#            without anyone cutting a version.
+#   stable   a runtime/v* tag. Immutable, versioned, what people pin to.
 
 name: Runtime release
 
 on:
   push:
+    branches: [main]
+    paths:
+      - 'runtime/**'
+      - '.github/workflows/runtime-release.yml'
     tags:
       - 'runtime/v*'
   workflow_dispatch:
@@ -22,6 +34,11 @@ on:
 permissions:
   contents: write
 
+# A second push while a release is uploading would race for the same tag.
+concurrency:
+  group: runtime-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -32,45 +49,77 @@ jobs:
         with:
           go-version-file: runtime/go.mod
 
-      - name: Resolve version
-        id: version
+      - name: Decide channel and version
+        id: channel
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "tag=runtime/${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "version=${{ inputs.version }}"      >> "$GITHUB_OUTPUT"
+            echo "prerelease=false"                   >> "$GITHUB_OUTPUT"
+            echo "title=runtime ${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
+            version="${GITHUB_REF_NAME#runtime/}"
+            echo "tag=$GITHUB_REF_NAME"   >> "$GITHUB_OUTPUT"
+            echo "version=$version"       >> "$GITHUB_OUTPUT"
+            echo "prerelease=false"       >> "$GITHUB_OUTPUT"
+            echo "title=runtime $version" >> "$GITHUB_OUTPUT"
           else
-            echo "value=${GITHUB_REF_NAME#runtime/}" >> "$GITHUB_OUTPUT"
+            # Rolling build off main. The version carries the commit so a
+            # `vibe-agent version` answer points at an exact tree.
+            version="0.0.0-main.$(git rev-parse --short HEAD)"
+            echo "tag=runtime/latest"     >> "$GITHUB_OUTPUT"
+            echo "version=$version"       >> "$GITHUB_OUTPUT"
+            echo "prerelease=true"        >> "$GITHUB_OUTPUT"
+            echo "title=runtime latest (main)" >> "$GITHUB_OUTPUT"
           fi
 
-      # Never publish a binary that has not passed the same checks as a commit.
+      # Never publish a binary that has not passed the same gates as a commit.
       - name: Verify before publishing
         working-directory: runtime
         run: make check
 
       - name: Cross-compile and checksum
         working-directory: runtime
-        run: make release VERSION=${{ steps.version.outputs.value }}
+        run: make release VERSION=${{ steps.channel.outputs.version }}
 
-      - name: Publish release assets
+      # The rolling tag is reused, so the old assets have to go first or the
+      # release accumulates every past build.
+      - name: Clear the previous rolling release
+        if: steps.channel.outputs.prerelease == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete runtime/latest --yes --cleanup-tag || true
+
+      - name: Publish
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: runtime ${{ steps.version.outputs.value }}
-          files: |
-            runtime/dist/*
+          tag_name: ${{ steps.channel.outputs.tag }}
+          name: ${{ steps.channel.outputs.title }}
+          prerelease: ${{ steps.channel.outputs.prerelease }}
+          files: runtime/dist/*
           body: |
             Prebuilt `vibe-agent` binaries for the outer-loop control plane.
 
-            You do not need Go, a C compiler, or SQLite to run these. Download
-            the one matching your platform, put it on `PATH`, and check it with
-            `vibe-agent doctor`.
+            Built from `${{ github.sha }}`, version `${{ steps.channel.outputs.version }}`.
 
-            Verify a download against `SHA256SUMS` before use.
+            You need neither Go, a C compiler, nor SQLite to run these. The
+            install scripts pick the right one for your platform and verify it:
+
+            ```bash
+            bash scripts/install-runtime.sh
+            ```
+
+            ```powershell
+            powershell -ExecutionPolicy Bypass -File scripts/install-runtime.ps1
+            ```
+
+            Verify a manual download against `SHA256SUMS` before running it.
 
             | Platform | Asset |
             |---|---|
-            | Windows x64 | `vibe-agent_${{ steps.version.outputs.value }}_windows_amd64.exe` |
-            | Windows ARM64 | `vibe-agent_${{ steps.version.outputs.value }}_windows_arm64.exe` |
-            | Linux x64 | `vibe-agent_${{ steps.version.outputs.value }}_linux_amd64` |
-            | Linux ARM64 | `vibe-agent_${{ steps.version.outputs.value }}_linux_arm64` |
-            | macOS Intel | `vibe-agent_${{ steps.version.outputs.value }}_darwin_amd64` |
-            | macOS Apple Silicon | `vibe-agent_${{ steps.version.outputs.value }}_darwin_arm64` |
+            | Windows x64 | `vibe-agent_${{ steps.channel.outputs.version }}_windows_amd64.exe` |
+            | Windows ARM64 | `vibe-agent_${{ steps.channel.outputs.version }}_windows_arm64.exe` |
+            | Linux x64 | `vibe-agent_${{ steps.channel.outputs.version }}_linux_amd64` |
+            | Linux ARM64 | `vibe-agent_${{ steps.channel.outputs.version }}_linux_arm64` |
+            | macOS Intel | `vibe-agent_${{ steps.channel.outputs.version }}_darwin_amd64` |
+            | macOS Apple Silicon | `vibe-agent_${{ steps.channel.outputs.version }}_darwin_arm64` |

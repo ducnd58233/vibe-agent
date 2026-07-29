@@ -4,9 +4,14 @@
 # The runtime is optional. Every asset under .ai-agents/ works without it; the
 # binary adds enforced workflow transitions, persisted run state, and memory.
 #
+# Prefers a published release, which needs no Go. When no release is reachable
+# it falls back to building from runtime/, which does. That fallback is what
+# makes the toolkit usable before the first release exists.
+#
 # Usage:
-#   bash scripts/install-runtime.sh                 # latest release
+#   bash scripts/install-runtime.sh                 # latest release, else build
 #   bash scripts/install-runtime.sh v0.1.0          # a specific version
+#   VIBE_FROM_SOURCE=1 bash scripts/install-runtime.sh   # always build
 #   VIBE_INSTALL_DIR=~/bin bash scripts/install-runtime.sh
 
 set -euo pipefail
@@ -40,26 +45,125 @@ arch="$(detect_arch)"
 ext=""
 [ "$os" = "windows" ] && ext=".exe"
 
-if [ "$VERSION" = "latest" ]; then
-  echo "resolving the latest release"
-  VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-    | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\(.*\)".*/\1/')"
-  [ -n "$VERSION" ] || die "could not resolve the latest release; pass a version explicitly"
-  VERSION="${VERSION#runtime/}"
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUNTIME_DIR="${SCRIPT_DIR}/../runtime"
 
-asset="${BINARY}_${VERSION}_${os}_${arch}${ext}"
-base="https://github.com/${REPO}/releases/download/runtime/${VERSION}"
+# Falls back to compiling when no published binary is reachable. A release is
+# the normal path and needs no Go; this keeps the toolkit usable before the
+# first release exists, and on architectures no release covers.
+build_from_source() {
+  local reason="$1"
+  [ -f "${RUNTIME_DIR}/go.mod" ] || die "${reason}, and there is no runtime/ directory to build from."
+  command -v go >/dev/null 2>&1 || die "$(cat <<EOF
+${reason}
+
+Two ways forward:
+  1. Install Go, then rerun this script. It will build the binary for you.
+  2. Wait for a published release: https://github.com/${REPO}/releases
+
+Neither is required to use the toolkit. Without the binary every hook is a
+quiet no-op and the markdown assets work exactly as they do today.
+EOF
+)"
+
+  echo "${reason}"
+  echo "building from source with $(go version)"
+  mkdir -p "$INSTALL_DIR"
+  ( cd "$RUNTIME_DIR" && CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=source" \
+      -o "${INSTALL_DIR}/${BINARY}${ext}" ./cmd ) \
+    || die "build failed. Run 'cd runtime && make check' to see why."
+  report_success
+  exit 0
+}
+
+report_success() {
+  echo "installed ${INSTALL_DIR}/${BINARY}${ext}"
+  case ":${PATH}:" in
+    *":${INSTALL_DIR}:"*) ;;
+    *)
+      echo
+      echo "${INSTALL_DIR} is not on PATH. Hooks invoke the binary by name, so add it:"
+      echo "  export PATH=\"${INSTALL_DIR}:\$PATH\""
+      ;;
+  esac
+  echo
+  echo "check the install with:"
+  echo "  ${BINARY} version"
+  echo "  ${BINARY} doctor"
+}
+
+if [ "${VIBE_FROM_SOURCE:-}" = "1" ]; then
+  build_from_source "VIBE_FROM_SOURCE=1"
+fi
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+# Asset names embed the version, and the rolling build's version carries a
+# commit sha nobody can predict. So the release JSON is the source of truth for
+# what to download, rather than a URL assembled from guesses.
+fetch_release() {
+  local endpoint="$1"
+  curl -fsSL "https://api.github.com/repos/${REPO}/releases/${endpoint}" 2>/dev/null
+}
+
+# Resolution order:
+#   1. an explicit version, when one was passed
+#   2. the newest stable release
+#   3. the rolling build from main, which is a prerelease and so is skipped by
+#      the /releases/latest endpoint
+#
+# This only finds JSON or returns empty. Falling back to a source build happens
+# in the caller, because build_from_source exits the script and would exit only
+# the subshell if it ran inside a command substitution.
+resolve_release() {
+  if [ "$VERSION" != "latest" ]; then
+    fetch_release "tags/runtime/${VERSION}"
+    return 0
+  fi
+
+  echo "looking for a published release" >&2
+  local json
+  if json="$(fetch_release latest)" && [ -n "$json" ]; then
+    printf '%s' "$json"
+    return 0
+  fi
+
+  echo "no stable release yet, trying the rolling build from main" >&2
+  fetch_release tags/runtime/latest
+  return 0
+}
+
+release_json="$(resolve_release)" || true
+if [ -z "$release_json" ]; then
+  if [ "$VERSION" != "latest" ]; then
+    build_from_source "No release tagged runtime/${VERSION}."
+  fi
+  build_from_source "No published release found for ${REPO}."
+fi
+
+# Pull the asset URL out of the JSON rather than reconstructing it. Matching on
+# the platform suffix keeps this working whatever the version string turned out
+# to be.
+asset_url="$(printf '%s' "$release_json" \
+  | grep -o '"browser_download_url": *"[^"]*"' \
+  | sed 's/.*"browser_download_url": *"\([^"]*\)".*/\1/' \
+  | grep "_${os}_${arch}${ext}\$" | head -1)"
+
+if [ -z "$asset_url" ]; then
+  build_from_source "That release has no asset for ${os}/${arch}."
+fi
+
+sums_url="$(printf '%s' "$release_json" \
+  | grep -o '"browser_download_url": *"[^"]*SHA256SUMS"' \
+  | sed 's/.*"browser_download_url": *"\([^"]*\)".*/\1/' | head -1)"
+
+asset="$(basename "$asset_url")"
 echo "downloading ${asset}"
-curl -fsSL -o "${tmp}/${asset}" "${base}/${asset}" \
-  || die "download failed. Check that ${VERSION} has an asset for ${os}/${arch}."
+curl -fsSL -o "${tmp}/${asset}" "$asset_url" || build_from_source "Download of ${asset} failed."
 
 # A binary that runs with the session's own privileges is worth verifying.
-if curl -fsSL -o "${tmp}/SHA256SUMS" "${base}/SHA256SUMS" 2>/dev/null; then
+if [ -n "$sums_url" ] && curl -fsSL -o "${tmp}/SHA256SUMS" "$sums_url" 2>/dev/null; then
   echo "verifying checksum"
   if command -v sha256sum >/dev/null 2>&1; then
     (cd "$tmp" && grep " \*\?${asset}\$" SHA256SUMS | sha256sum -c -) \
@@ -72,25 +176,11 @@ if curl -fsSL -o "${tmp}/SHA256SUMS" "${base}/SHA256SUMS" 2>/dev/null; then
     echo "warning: no sha256sum or shasum available, skipping verification" >&2
   fi
 else
-  echo "warning: no SHA256SUMS published for ${VERSION}, skipping verification" >&2
+  echo "warning: no SHA256SUMS published alongside this asset, skipping verification" >&2
 fi
 
 mkdir -p "$INSTALL_DIR"
 install -m 0755 "${tmp}/${asset}" "${INSTALL_DIR}/${BINARY}${ext}" 2>/dev/null \
   || { cp "${tmp}/${asset}" "${INSTALL_DIR}/${BINARY}${ext}"; chmod +x "${INSTALL_DIR}/${BINARY}${ext}"; }
 
-echo "installed ${INSTALL_DIR}/${BINARY}${ext}"
-
-case ":${PATH}:" in
-  *":${INSTALL_DIR}:"*) ;;
-  *)
-    echo
-    echo "${INSTALL_DIR} is not on PATH. Hooks invoke the binary by name, so add it:"
-    echo "  export PATH=\"${INSTALL_DIR}:\$PATH\""
-    ;;
-esac
-
-echo
-echo "check the install with:"
-echo "  ${BINARY} version"
-echo "  ${BINARY} doctor"
+report_success

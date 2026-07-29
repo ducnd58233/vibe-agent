@@ -143,7 +143,20 @@ vibe-agent version
 vibe-agent doctor
 ```
 
-Binaries are published as [GitHub Release](https://github.com/ducnd58233/vibe-agent/releases) assets, **not committed to this repository**. Each target is about 7 MB and there are six of them; committing every version would add roughly 43 MB per release to git history forever, with no way to diff or review it. Release assets stay outside git objects, carry checksums, and can be deleted.
+If no release is reachable and Go happens to be installed, the scripts build from `runtime/` instead and say so. That fallback is what keeps a fresh clone usable; a release is the normal path and needs no Go.
+
+### Where binaries come from
+
+Two channels, both published by [`runtime-release.yml`](.github/workflows/runtime-release.yml):
+
+| Channel | Trigger | Tag | Use it for |
+|---------|---------|-----|------------|
+| Rolling | every push to `main` touching `runtime/**` | `runtime/latest`, prerelease | Always current with `main`. What the installer falls back to before any version is cut. |
+| Stable | a `runtime/v*` tag | `runtime/v0.1.0` | Pinning. Immutable. |
+
+Both run `make check` before publishing, so nothing ships that has not passed the same gates as a commit.
+
+Binaries are **not committed to this repository**. Each target is about 7 MB and there are six of them; committing every version would add roughly 43 MB to git history per release, forever, with no way to diff or review a binary blob. Release assets sit outside git objects, carry SHA-256 checksums, and can be deleted.
 
 Contributors to the runtime need Go:
 
