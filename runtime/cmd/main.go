@@ -10,8 +10,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/harness"
 )
 
 // version is overridden at build time with -ldflags "-X main.version=...".
@@ -25,7 +28,7 @@ Usage:
   vibe-agent checkpoint --slug <slug> --check <name> --source <source> [--passed|--failed|--skipped]
   vibe-agent graph validate [--graph <id>]
   vibe-agent mcp serve
-  vibe-agent hook <session-start|user-prompt-submit|stop|subagent-stop> [--client claude|cursor]
+  vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|stop|subagent-stop> [--client claude|cursor]
   vibe-agent doctor
   vibe-agent version
 
@@ -35,16 +38,33 @@ tmp/<slug>/events.ndjson, both under the workspace root and both gitignored.
 Evidence sources: exit_code, file_assert, ci_api, human_event. There is no
 source for model assertion, so nothing can mark its own work complete.
 
+Hooks inform, with one exception: pre-tool-use exits 2 to refuse a push to a
+protected branch or a pull request merge while an active run has not recorded
+the merge_approved evidence its graph requires.
+
 Global flags:
   --workspace <dir>   Workspace root (default: current directory)
   --toolkit <dir>     Toolkit root holding .ai-agents (default: workspace root)
 `
 
 func main() {
-	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintf(os.Stderr, "vibe-agent: %v\n", err)
-		os.Exit(1)
+	err := run(os.Args[1:])
+	if err == nil {
+		return
 	}
+
+	// Exit 2 is the only status a host treats as a hard block, and stderr is
+	// what it hands back to the model. Printed without the program prefix,
+	// because the text is an instruction to the agent rather than a report of a
+	// tool failure.
+	var blocked *harness.BlockError
+	if errors.As(err, &blocked) {
+		fmt.Fprintln(os.Stderr, blocked.Reason)
+		os.Exit(2)
+	}
+
+	fmt.Fprintf(os.Stderr, "vibe-agent: %v\n", err)
+	os.Exit(1)
 }
 
 // run dispatches to one command. Each case lives in its own file, so this stays

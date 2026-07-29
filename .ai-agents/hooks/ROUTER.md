@@ -17,3 +17,5 @@ Lookup table for hook scripts in this folder. **After you add, rename, or remove
 | Strip AI/agent co-author attribution from commit messages (PowerShell) | [`strip-ai-attribution.ps1`](strip-ai-attribution.ps1) | PowerShell 5.1 and 7+ equivalent of the `.sh`; for PowerShell-driven environments and manual runs |
 
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md) - document stdin/stdout JSON and wiring in [`.cursor/hooks.json`](../../.cursor/hooks.json) / [`.claude/settings.json`](../../.claude/settings.json).
+
+**Not in this folder:** the optional runtime binary supplies five more hooks as `vibe-agent hook <event>`, wired in the same two config files. Four inform. The fifth, `pre-tool-use`, is the only hook in this repo that **blocks**: it exits 2 on a push to `main`/`master` or a `gh pr merge` while an active run has not recorded `merge_approved`. Look there, not here, when a shell command is refused with no script to blame. See [`README.md`](../../README.md) under "The one hook that refuses".

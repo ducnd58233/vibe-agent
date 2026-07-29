@@ -14,7 +14,7 @@ import (
 // place behavior diverges.
 func hookCommand(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("hook needs an event: session-start, user-prompt-submit, stop, subagent-stop")
+		return fmt.Errorf("hook needs an event: session-start, user-prompt-submit, pre-tool-use, stop, subagent-stop")
 	}
 	event := harness.Event(args[0])
 

@@ -5,9 +5,15 @@
 // same capabilities exist in both places and why this one is preferred where it
 // is available.
 //
-// Every hook here is non-blocking by design. A control plane that can wedge a
-// coding session is worse than one that occasionally says nothing, so a missing
-// run, an unreadable manifest, or an unknown event all end in a quiet exit 0.
+// Every hook here informs rather than interferes, with one exception. A control
+// plane that can wedge a coding session is worse than one that occasionally
+// says nothing, so a missing run, an unreadable manifest, or an unknown event
+// all end in a quiet exit 0.
+//
+// The exception is gate.go, which refuses the two commands that reach other
+// people: a push to a protected branch and a pull request merge. Those are the
+// irreversible step the delivery graph already guards with approve_merge, and a
+// reminder is not enough in front of an action that cannot be undone.
 package harness
 
 import (
@@ -39,6 +45,9 @@ const (
 	EventUserPromptSubmit Event = "user-prompt-submit"
 	EventStop             Event = "stop"
 	EventSubagentStop     Event = "subagent-stop"
+	// EventPreToolUse is the one event that can refuse. Claude Code fires it as
+	// PreToolUse and Cursor as beforeShellExecution.
+	EventPreToolUse Event = "pre-tool-use"
 )
 
 // Request is a hook invocation.
@@ -57,6 +66,21 @@ type payload struct {
 	TranscriptPath      string `json:"transcript_path"`
 	AgentTranscriptPath string `json:"agent_transcript_path"`
 	Slug                string `json:"slug"`
+
+	// Claude nests the shell command under the tool input; Cursor's
+	// beforeShellExecution puts it at the top level.
+	ToolInput struct {
+		Command string `json:"command"`
+	} `json:"tool_input"`
+	Command string `json:"command"`
+}
+
+// shellCommand returns whichever field the host filled in.
+func (p payload) shellCommand() string {
+	if p.ToolInput.Command != "" {
+		return p.ToolInput.Command
+	}
+	return p.Command
 }
 
 // Run handles one hook invocation and writes any response to out.
@@ -85,6 +109,8 @@ func Run(req Request, out io.Writer) error {
 			return nil
 		}
 		return emitMessage(out, text)
+	case EventPreToolUse:
+		return gate(req, body.shellCommand(), out)
 	default:
 		return fmt.Errorf("unknown hook event %q", req.Event)
 	}

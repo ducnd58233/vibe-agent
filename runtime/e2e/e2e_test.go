@@ -6,6 +6,7 @@ package e2e_test
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -85,6 +86,27 @@ func (c cli) run(args ...string) (string, error) {
 	return string(out), err
 }
 
+// hook feeds a host payload on stdin and returns the exit status, because for
+// a hook the status is the behavior: only 2 blocks.
+func (c cli) hook(stdin string, args ...string) (string, int) {
+	c.t.Helper()
+	full := append(args, "--workspace", c.root, "--toolkit", c.toolkit)
+	cmd := exec.Command(c.binary, full...)
+	cmd.Stdin = strings.NewReader(stdin)
+	out, err := cmd.CombinedOutput()
+
+	var exit *exec.ExitError
+	switch {
+	case err == nil:
+		return string(out), 0
+	case errors.As(err, &exit):
+		return string(out), exit.ExitCode()
+	default:
+		c.t.Fatalf("hook %v: %v", args, err)
+		return "", -1
+	}
+}
+
 func (c cli) mustRun(args ...string) string {
 	c.t.Helper()
 	out, err := c.run(args...)
@@ -141,6 +163,17 @@ func TestConsumerRepoRunsAGoalToCompletion(t *testing.T) {
 		if !strings.Contains(out, "-> "+step.want) {
 			t.Fatalf("step %d did not reach %q:\n%s", i, step.want, out)
 		}
+
+		// The merge gate must open exactly here: after approve_merge recorded
+		// the human decision, and while the run is still active. Asserting it
+		// after the walk would prove nothing, since a finished run is not gated
+		// for an entirely different reason.
+		if step.check == "merge_approved" {
+			push := `{"tool_name":"Bash","tool_input":{"command":"git push origin main"}}`
+			if out, code := run.hook(push, "hook", "pre-tool-use"); code != 0 {
+				t.Errorf("the merge gate stayed shut at approve_merge, exit %d:\n%s", code, out)
+			}
+		}
 	}
 
 	status := run.mustRun("run", "status", "--slug", "webhook-idempotency", "--json")
@@ -167,6 +200,37 @@ func TestConsumerRepoRunsAGoalToCompletion(t *testing.T) {
 	lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
 	if len(lines) != len(steps)+1 {
 		t.Errorf("event log has %d lines, want %d (one start plus one per transition)", len(lines), len(steps)+1)
+	}
+}
+
+// Exit 2 is what actually blocks a host. A unit test can prove the verdict but
+// not the status the host reads, so this is the only place the gate is really
+// tested.
+func TestPushToMainExitsTwoUntilTheMergeIsApproved(t *testing.T) {
+	root := consumerRepo(t)
+	run := cli{t, buildBinary(t), root, toolkitRoot(t)}
+	run.mustRun("run", "start", "--slug", "gated", "--goal", "prove the gate holds across the process boundary")
+
+	push := `{"tool_name":"Bash","tool_input":{"command":"git push origin main"}}`
+	out, code := run.hook(push, "hook", "pre-tool-use")
+	if code != 2 {
+		t.Fatalf("a push to main exited %d, want 2, the only status a host treats as a block:\n%s", code, out)
+	}
+	if !strings.Contains(out, "merge_approved") {
+		t.Errorf("the refusal does not name the missing evidence:\n%s", out)
+	}
+
+	branch := `{"tool_name":"Bash","tool_input":{"command":"git push -u origin feature/x"}}`
+	if out, code := run.hook(branch, "hook", "pre-tool-use"); code != 0 {
+		t.Errorf("a task branch push exited %d, which would wedge the loop this protects:\n%s", code, out)
+	}
+
+	// There is no shortcut to the evidence: a checkpoint may only write the
+	// check its current node declares, so the gate cannot be opened out of turn.
+	// Where it does open is asserted mid-walk in the full delivery test.
+	if _, err := run.run("checkpoint", "--slug", "gated",
+		"--check", "merge_approved", "--source", "human_event", "--passed"); err == nil {
+		t.Error("merge_approved was recorded from intake, which would open the gate out of turn")
 	}
 }
 

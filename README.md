@@ -177,6 +177,23 @@ Three paths, in descending order of reliability:
 
 The wiring already exists in this repo. Once the binary is on `PATH`, a new session picks it up; before that, every hook is a deliberate no-op rather than an error, so a missing binary never wedges a session.
 
+### The one hook that refuses
+
+Hooks inform. One does not.
+
+`pre-tool-use` refuses two commands while a run is active and has not recorded the `merge_approved` evidence its graph requires:
+
+- a `git push` whose destination is `main` or `master`
+- `gh pr merge`
+
+Everything else passes, including pushing a task branch, which happens at `open_pr` long before the ship gate. Blocking that would wedge the loop this exists to protect.
+
+The gate does not invent a rule. [`goal-delivery.yaml`](.ai-agents/graphs/goal-delivery.yaml) already calls `approve_merge` "the only gate in front of an irreversible action"; this is the process that enforces the sentence.
+
+It refuses with **exit 2** on Claude Code, and a `deny` decision on Cursor, which uses JSON rather than exit codes for this event. Exit 2 is deliberate: a JSON `permissionDecision` fails open, because one stray line on stdout makes the JSON unparseable and the command proceeds. In front of an irreversible action a guard has to fail closed.
+
+Two ways it stays out of the way: a workspace with **no active run is never gated**, and a workspace with **no binary installed** gets a non-blocking error rather than a refusal. Codex and opencode have no hook system, so they get no gate.
+
 ### Using it
 
 ```bash

@@ -130,6 +130,18 @@
             "async": false
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "vibe-agent hook pre-tool-use --workspace ${CLAUDE_PROJECT_DIR}",
+            "timeout": 5000,
+            "statusMessage": "vibe-merge-gate",
+            "async": false
+          }
+        ]
       }
     ],
     "PostToolUse": [
