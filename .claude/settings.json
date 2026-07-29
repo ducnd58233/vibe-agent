@@ -1,5 +1,12 @@
 {
-  "disableAllHooks": false,
+  "respectGitignore": true,
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80"
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "permissions": {
     "allow": [
       "Read(*)",
@@ -33,7 +40,8 @@
       "WebFetch(domain:json.schemastore.org)",
       "mcp__ide__*",
       "mcp__chrome-devtools__*",
-      "mcp__playwright__*"
+      "mcp__playwright__*",
+      "WebFetch(domain:cursor.com)"
     ],
     "deny": [
       "Read(.env*)",
@@ -90,6 +98,141 @@
       "Bash(pkill *)"
     ]
   },
+  "enableAllProjectMcpServers": false,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/sdd-cache-pre.py",
+            "timeout": 10000,
+            "statusMessage": "sdd-cache-pre",
+            "async": false
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
+            "timeout": 5000,
+            "statusMessage": "simplify-ignore-pre",
+            "async": false
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/sdd-cache-post.py",
+            "timeout": 10000,
+            "statusMessage": "sdd-cache-post",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
+            "timeout": 5000,
+            "statusMessage": "simplify-ignore-post",
+            "async": false
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/design-token-guard.py",
+            "timeout": 5000,
+            "statusMessage": "design-token-guard",
+            "async": false
+          },
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/ui-slop-guard.py",
+            "timeout": 5000,
+            "statusMessage": "ui-slop-guard",
+            "async": false
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
+            "timeout": 5000,
+            "statusMessage": "simplify-ignore-stop",
+            "async": false
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/session-start.py",
+            "timeout": 5000,
+            "statusMessage": "session-start-meta-skill",
+            "once": true,
+            "async": false
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/precedence-reminder.py",
+            "timeout": 5000,
+            "statusMessage": "precedence-reminder",
+            "async": false
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/subagent-grounding-guard.py",
+            "timeout": 10000,
+            "statusMessage": "subagent-grounding-guard",
+            "async": false
+          }
+        ]
+      }
+    ]
+  },
+  "disableAllHooks": false,
+  "statusLine": {
+    "type": "command",
+    "command": "echo \"workspace: reusable agent-assets toolkit\"",
+    "padding": 0
+  },
+  "outputStyle": "Explanatory",
+  "spinnerTipsEnabled": true,
   "spinnerVerbs": {
     "mode": "replace",
     "verbs": [
@@ -104,153 +247,11 @@
     ]
   },
   "spinnerTipsOverride": {
+    "excludeDefault": true,
     "tips": [
       "Start from the workspace AGENTS.md, then route through .ai-agents/ROUTER.md (or <toolkit-root>/.ai-agents/ROUTER.md).",
       "Update folder ROUTER.md whenever assets are added, removed, or renamed."
-    ],
-    "excludeDefault": true
-  },
-  "plansDirectory": "./reports",
-  "outputStyle": "Explanatory",
-  "statusLine": {
-    "type": "command",
-    "command": "echo \"workspace: reusable agent-assets toolkit\"",
-    "padding": 0
-  },
-  "attribution": {
-    "commit": "",
-    "pr": ""
-  },
-  "spinnerTipsEnabled": true,
-  "respectGitignore": true,
-  "env": {
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "80"
-  },
-  "enableAllProjectMcpServers": false,
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "WebFetch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/sdd-cache-pre.py",
-            "timeout": 10000,
-            "async": false,
-            "statusMessage": "sdd-cache-pre"
-          }
-        ]
-      },
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
-            "timeout": 5000,
-            "async": false,
-            "statusMessage": "simplify-ignore-pre"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "WebFetch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/sdd-cache-post.py",
-            "timeout": 10000,
-            "async": true,
-            "statusMessage": "sdd-cache-post"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
-            "timeout": 5000,
-            "async": false,
-            "statusMessage": "simplify-ignore-post"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/design-token-guard.py",
-            "timeout": 5000,
-            "async": false,
-            "statusMessage": "design-token-guard"
-          },
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/ui-slop-guard.py",
-            "timeout": 5000,
-            "async": false,
-            "statusMessage": "ui-slop-guard"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
-            "timeout": 5000,
-            "async": false,
-            "statusMessage": "simplify-ignore-stop"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/session-start.py",
-            "timeout": 5000,
-            "async": false,
-            "once": true,
-            "statusMessage": "session-start-meta-skill"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/precedence-reminder.py",
-            "timeout": 5000,
-            "async": false,
-            "statusMessage": "precedence-reminder"
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/subagent-grounding-guard.py",
-            "timeout": 10000,
-            "async": false,
-            "statusMessage": "subagent-grounding-guard"
-          }
-        ]
-      }
     ]
-  }
+  },
+  "plansDirectory": "./reports"
 }
