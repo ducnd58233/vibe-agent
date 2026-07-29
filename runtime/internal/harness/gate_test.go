@@ -145,6 +145,11 @@ func TestTheGateSeesPastCommandDressing(t *testing.T) {
 		"/usr/bin/git push origin main",
 		"git.exe push origin main",
 		"echo pushing; gh pr merge 12",
+		// Fields are split on whitespace, so quotes have to be stripped or the
+		// comparison is against a string that only looks like a branch name.
+		`git push origin "main"`,
+		"git push origin 'main'",
+		`git push "origin" "HEAD:main"`,
 	}
 	for _, command := range gated {
 		if blocked, _ := attempt(t, root, command); blocked == nil {

@@ -219,11 +219,15 @@ func positionalArgs(fields []string) []string {
 //
 // An empty source with a destination, as in :main, deletes the remote branch,
 // which this treats the same as writing to it.
+//
+// Quotes are stripped because fields were split on whitespace alone: without
+// this, `git push origin "main"` compares "main" against main and slips past.
 func refspecDestination(spec string) string {
-	dst := spec
-	if colon := strings.LastIndex(spec, ":"); colon >= 0 {
-		dst = spec[colon+1:]
+	dst := strings.Trim(spec, `"'`)
+	if colon := strings.LastIndex(dst, ":"); colon >= 0 {
+		dst = dst[colon+1:]
 	}
+	dst = strings.Trim(dst, `"'`)
 	dst = strings.TrimPrefix(dst, "+")
 	return strings.TrimPrefix(dst, "refs/heads/")
 }
