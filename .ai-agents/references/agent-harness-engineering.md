@@ -84,6 +84,7 @@ Use these as short prompts when reviewing a harness:
 - [`context-management-patterns.md`](context-management-patterns.md)
 - [`tool-safety-and-permissions.md`](tool-safety-and-permissions.md)
 - [`orchestration-patterns.md`](orchestration-patterns.md)
+- [`loop-and-graph-engineering.md`](loop-and-graph-engineering.md) - which loop the harness owns, and when a workflow earns an executable graph
 
 ## Source notes
 

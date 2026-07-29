@@ -90,6 +90,8 @@ Single slash command that walks the sequential pipeline with clarify-first intak
 
 **Anti-drift:** re-read `docs/<slug>/SPEC.md` and `TASKS.md` each phase; report `GOAL STATUS` after each phase.
 
+**Executable form:** the transitions above are defined in [`graphs/goal-delivery.yaml`](../graphs/goal-delivery.yaml) and validated by `scripts/check-graphs.py`. When the graph and a prose description disagree, the graph wins; two copies of the control flow drift. See [`loop-and-graph-engineering.md`](loop-and-graph-engineering.md) for when a workflow earns a graph at all, and [`graphs/TEMPLATE.md`](../graphs/TEMPLATE.md) for the authoring contract.
+
 ---
 
 ### 5. Research isolation (context preservation)
