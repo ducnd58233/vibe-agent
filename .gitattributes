@@ -2,3 +2,10 @@
 # on Windows, a .sh checked out with CRLF breaks `sh` execution (errors like
 # "$'\r': command not found"). Pin them to LF so the hooks run everywhere.
 *.sh text eol=lf
+
+# Go source is LF by convention, and gofmt emits LF.
+*.go text eol=lf
+
+# Golden fixtures are compared byte for byte by runtime tests. A CRLF checkout
+# on Windows would fail those tests while CI on Linux passed.
+runtime/testdata/** text eol=lf

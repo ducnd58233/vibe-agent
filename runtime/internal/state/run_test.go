@@ -1,0 +1,218 @@
+package state
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+func fixedTime() time.Time {
+	return time.Date(2026, 7, 29, 10, 0, 0, 0, time.UTC)
+}
+
+func newTestRun(t *testing.T) *Run {
+	t.Helper()
+	run, err := NewRun("loop-graph-runtime", "add a control plane", "goal-delivery", 50, fixedTime())
+	if err != nil {
+		t.Fatalf("NewRun: %v", err)
+	}
+	return run
+}
+
+func TestNewRunIDIsSortableAndCarriesSlug(t *testing.T) {
+	run := newTestRun(t)
+	want := "run_2026-07-29T10-00-00Z_loop-graph-runtime"
+	if run.RunID != want {
+		t.Errorf("RunID = %q, want %q", run.RunID, want)
+	}
+	if run.Status != StatusRunning {
+		t.Errorf("Status = %q, want %q", run.Status, StatusRunning)
+	}
+	if run.Iteration != 0 {
+		t.Errorf("Iteration = %d, want 0", run.Iteration)
+	}
+}
+
+func TestNewRunRejectsBadSlug(t *testing.T) {
+	for _, slug := range []string{"", "Has Caps", "under_score", "trailing-", "-leading", "a/b"} {
+		if _, err := NewRun(slug, "g", "goal-delivery", 50, fixedTime()); err == nil {
+			t.Errorf("NewRun(%q) accepted an invalid slug", slug)
+		}
+	}
+}
+
+// The whole point of the provenance enum: model output must never be able to
+// mark work complete. This is the load-bearing test in this package.
+func TestSetCheckRejectsSourcesOutsideTheEnum(t *testing.T) {
+	run := newTestRun(t)
+	for _, source := range []CheckSource{"model", "", "assumed", "llm", "exit-code"} {
+		err := run.SetCheck("unit", Check{Passed: true, Source: source, At: fixedTime()})
+		if err == nil {
+			t.Errorf("SetCheck accepted source %q", source)
+		}
+		if _, ok := run.Checks["unit"]; ok {
+			t.Fatalf("SetCheck stored a check despite rejecting source %q", source)
+		}
+	}
+}
+
+func TestSetCheckAcceptsEveryRealProvenance(t *testing.T) {
+	run := newTestRun(t)
+	for _, source := range []CheckSource{SourceExitCode, SourceFileAssert, SourceCIAPI, SourceHumanEvent} {
+		if err := run.SetCheck("unit", Check{Passed: true, Source: source, At: fixedTime()}); err != nil {
+			t.Errorf("SetCheck(%q) rejected a valid source: %v", source, err)
+		}
+	}
+}
+
+// A skipped check is not a passed check. Guards must be able to tell them apart.
+func TestSetCheckRejectsPassedAndSkippedTogether(t *testing.T) {
+	run := newTestRun(t)
+	err := run.SetCheck("e2e", Check{Passed: true, Skipped: true, Source: SourceExitCode, At: fixedTime()})
+	if err == nil {
+		t.Error("SetCheck accepted a check that is both passed and skipped")
+	}
+}
+
+func TestSetCheckStampsUpdatedAt(t *testing.T) {
+	run := newTestRun(t)
+	before := run.UpdatedAt
+	later := fixedTime().Add(time.Minute)
+	if err := run.SetCheckAt("unit", Check{Passed: true, Source: SourceExitCode, At: later}, later); err != nil {
+		t.Fatalf("SetCheckAt: %v", err)
+	}
+	if !run.UpdatedAt.After(before) {
+		t.Errorf("UpdatedAt = %v, want later than %v", run.UpdatedAt, before)
+	}
+}
+
+func TestSaveThenLoadRoundTrips(t *testing.T) {
+	dir := t.TempDir()
+	run := newTestRun(t)
+	run.Flags = map[string]bool{"research_required": true, "e2e_required": false}
+	if err := run.SetCheck("unit", Check{Passed: true, Source: SourceExitCode, Ref: "events.ndjson#41", At: fixedTime()}); err != nil {
+		t.Fatalf("SetCheck: %v", err)
+	}
+
+	path := ManifestPath(dir, run.Slug)
+	if err := Save(path, run); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if loaded.RunID != run.RunID || loaded.Slug != run.Slug {
+		t.Errorf("identity lost: got %+v", loaded)
+	}
+	if !loaded.Flags["research_required"] || loaded.Flags["e2e_required"] {
+		t.Errorf("flags lost: %+v", loaded.Flags)
+	}
+	if got := loaded.Checks["unit"]; !got.Passed || got.Source != SourceExitCode {
+		t.Errorf("check lost: %+v", got)
+	}
+}
+
+// Load is the boundary a hand-edited or older manifest crosses. It must apply
+// the same provenance rule as SetCheck, not trust the file.
+func TestLoadRejectsAForgedCheckSource(t *testing.T) {
+	dir := t.TempDir()
+	run := newTestRun(t)
+	path := ManifestPath(dir, run.Slug)
+	if err := Save(path, run); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	doc["checks"] = map[string]any{
+		"unit": map[string]any{"passed": true, "source": "model", "at": "2026-07-29T10:00:00Z"},
+	}
+	forged, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if err := os.WriteFile(path, forged, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	if _, err := Load(path); err == nil {
+		t.Error("Load accepted a manifest whose check claims source \"model\"")
+	}
+}
+
+func TestSaveIsAtomicAndLeavesNoTempFiles(t *testing.T) {
+	dir := t.TempDir()
+	run := newTestRun(t)
+	path := ManifestPath(dir, run.Slug)
+
+	for i := 0; i < 3; i++ {
+		if err := Save(path, run); err != nil {
+			t.Fatalf("Save %d: %v", i, err)
+		}
+	}
+
+	entries, err := os.ReadDir(filepath.Dir(path))
+	if err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+	for _, entry := range entries {
+		if entry.Name() != "manifest.json" {
+			t.Errorf("Save left behind %q", entry.Name())
+		}
+	}
+}
+
+func TestSaveWritesSchemaConformantShape(t *testing.T) {
+	dir := t.TempDir()
+	run := newTestRun(t)
+	path := ManifestPath(dir, run.Slug)
+	if err := Save(path, run); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("manifest is not valid JSON: %v", err)
+	}
+	for _, key := range []string{
+		"schemaVersion", "runId", "graphId", "slug", "goal",
+		"currentNode", "status", "iteration", "maxTransitions",
+		"createdAt", "updatedAt",
+	} {
+		if _, ok := doc[key]; !ok {
+			t.Errorf("manifest is missing required key %q", key)
+		}
+	}
+	if !strings.HasSuffix(string(raw), "\n") {
+		t.Error("manifest should end with a newline")
+	}
+}
+
+func TestManifestAndEventPathsSitTogether(t *testing.T) {
+	manifest := ManifestPath("/repo", "my-slug")
+	events := EventLogPath("/repo", "my-slug")
+	if filepath.Dir(manifest) != filepath.Dir(events) {
+		t.Errorf("manifest %q and events %q should share a directory", manifest, events)
+	}
+	if filepath.Base(manifest) != "manifest.json" {
+		t.Errorf("manifest basename = %q", filepath.Base(manifest))
+	}
+	if filepath.Base(events) != "events.ndjson" {
+		t.Errorf("events basename = %q", filepath.Base(events))
+	}
+}

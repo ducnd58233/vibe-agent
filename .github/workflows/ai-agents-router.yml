@@ -7,6 +7,7 @@ on:
       - '.vibe-agent/.ai-agents/**'
       - 'schemas/**'
       - 'scripts/**'
+      - 'runtime/**'
       - '.gitignore'
       - '.github/workflows/ai-agents-router.yml'
   pull_request:
@@ -15,6 +16,7 @@ on:
       - '.vibe-agent/.ai-agents/**'
       - 'schemas/**'
       - 'scripts/**'
+      - 'runtime/**'
       - '.gitignore'
       - '.github/workflows/ai-agents-router.yml'
 
@@ -49,3 +51,19 @@ jobs:
 
       - name: Verify the graph checker rejects broken graphs
         run: python3 scripts/check-graphs-test.py
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: runtime/go.mod
+
+      - name: Vet and test the runtime
+        working-directory: runtime
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: Build the runtime without cgo
+        working-directory: runtime
+        env:
+          CGO_ENABLED: '0'
+        run: go build ./...

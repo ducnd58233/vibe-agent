@@ -142,6 +142,10 @@ def cases(schemas: dict[str, dict]) -> list[tuple[dict, str, dict, bool]]:
          merged(base_run(), flags={"e2e_required": "yes"}), False),
         (run, "run rejects a blocker without an attempt count",
          merged(base_run(), blockers=[{"node": "test", "reason": "r", "at": NOW}]), False),
+        (run, "run accepts an empty currentNode before the first transition",
+         merged(base_run(), currentNode=""), True),
+        (run, "run rejects a malformed currentNode",
+         merged(base_run(), currentNode="Build Step"), False),
 
         (memory, "memory accepts a minimal valid record", base_memory(), True),
         (memory, "memory rejects the procedural kind", merged(base_memory(), kind="procedural"), False),
@@ -197,12 +201,50 @@ def main() -> int:
             for error in errors[:2]:
                 print(f"          {error.message}", file=sys.stderr)
 
+    fixtures = check_go_fixtures(root, schemas["run-state"])
+    failures += fixtures[0]
+
     print()
     if failures:
         print(f"check-schemas: FAILED ({failures} problems)", file=sys.stderr)
         return 1
-    print(f"check-schemas: OK ({len(names)} schemas, {len(all_cases)} cases)")
+    noun = "fixture" if fixtures[1] == 1 else "fixtures"
+    print(
+        f"check-schemas: OK ({len(names)} schemas, {len(all_cases)} cases, "
+        f"{fixtures[1]} Go {noun})"
+    )
     return 0
+
+
+def check_go_fixtures(root: Path, run_schema: dict) -> tuple[int, int]:
+    """Validate manifests the Go writer produced against the run-state schema.
+
+    This is the contract test across the language boundary. The Go golden test
+    pins what Save emits; this pins that the schema accepts it. Without both,
+    the two drift and nobody notices until a run fails to load.
+    """
+    fixtures_dir = root / "runtime/testdata/run-state"
+    if not fixtures_dir.is_dir():
+        return 0, 0
+
+    paths = sorted(fixtures_dir.glob("*.json"))
+    if not paths:
+        return 0, 0
+
+    print()
+    failures = 0
+    for path in paths:
+        instance = json.loads(path.read_text(encoding="utf-8"))
+        errors = list(Draft202012Validator(run_schema).iter_errors(instance))
+        label = f"Go fixture {path.name} validates against run-state.schema.json"
+        if errors:
+            failures += 1
+            print(f"  FAIL  {label}", file=sys.stderr)
+            for error in errors[:3]:
+                print(f"          {list(error.path)}: {error.message}", file=sys.stderr)
+        else:
+            print(f"  ok    {label}")
+    return failures, len(paths)
 
 
 if __name__ == "__main__":

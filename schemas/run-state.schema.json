@@ -43,7 +43,8 @@
     },
     "currentNode": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9_]*$"
+      "pattern": "^$|^[a-z][a-z0-9_]*$",
+      "description": "Node the run sits at. Empty between `run start` and the first transition, when the run exists but has not entered its graph yet."
     },
     "status": {
       "enum": [
