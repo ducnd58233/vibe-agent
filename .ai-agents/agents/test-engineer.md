@@ -58,8 +58,10 @@ Coverage analysis with gaps, recommended tests, prioritization (Critical → Low
 
 1. Test behavior, not implementation trivia.
 2. Mock only at I/O boundaries.
-3. **Core logic only:** every recommended test must assert business/domain outcomes. Never recommend or write file/folder/env existence checks, testcontainer health tests, or other infrastructure-discovery cases — use setup/CI instead.
-4. **Grounding (no fabrication):** never describe a file, directory, or path you have not opened or listed via `Read`/`Grep`/`Glob`; if a provided path is inaccessible, report `ACCESS-FAILED: <path>` instead of inferring structure.
+3. **Core logic only:** every recommended test must assert business/domain outcomes. Never recommend or write file/folder/env existence checks, testcontainer health tests, infrastructure-discovery cases, trivial code (getters, setters, no-logic constructors), pass-through wrappers, or tautological assertions where a mock returns what the test supplied — use setup/CI instead.
+4. **Required coverage:** when a change touches data ingestion or parsing of untrusted input, concurrency and replay, a security boundary, money or state transitions, or a failure path, a test must pin it. Banning low-value tests is not permission to recommend none.
+5. **Judge semantically:** a test may read a file, the clock, or the environment when that reading is the behavioral claim. "Saving writes a manifest" is behavior; "the config file exists" is discovery. Ask whether the test fails when product behavior changes, not which API it called.
+6. **Grounding (no fabrication):** never describe a file, directory, or path you have not opened or listed via `Read`/`Grep`/`Glob`; if a provided path is inaccessible, report `ACCESS-FAILED: <path>` instead of inferring structure.
 
 ## Composition
 

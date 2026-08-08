@@ -115,8 +115,17 @@ Tests must target **business behavior and core logic**. **Do not generate** mean
 - Testcontainer, Docker, or external service "is up" / connectivity-only cases
 - Import/require smoke with no behavioral assertion
 - Tests that only verify fixtures, `beforeAll`, or test harness startup
+- Trivial code: getters, setters, constructors with no logic
+- Wrappers and pass-through methods, asserted by checking the dependency was called
+- Tautological assertions: a mock returning what the test told it to return, or a constant compared to itself
 
 Use CI, global setup, or fixtures for infrastructure. Each test case should fail when **product logic** regresses.
+
+**MUST be covered** when a change touches them: data ingestion and parsing of untrusted input, concurrency and replay, security boundaries and tenant isolation, money and state transitions, and failure paths. Banning low-value tests is not permission to write none.
+
+**The bans are semantic, not syntactic.** A test may read a file, the clock, or the environment when that reading *is* the claim: "saving writes a manifest" and "this input creates no file" are behavior; "`config.json` exists" is discovery. The test is the question "does this fail when product behavior changes", not "which API did it call".
+
+See [`test-driven-development`](../skills/test-driven-development/SKILL.md) for the full tables.
 
 ## Test Anti-Patterns
 
@@ -127,6 +136,8 @@ Use CI, global setup, or fixtures for infrastructure. Each test case should fail
 | Shared mutable state | Flaky order-dependent tests | Isolate setup per test |
 | Mocking business logic | False confidence | Mock I/O only |
 | Infrastructure/discovery tests | No signal on logic regressions | Assert domain outcomes; keep infra in setup/CI |
+| Testing a pass-through wrapper | Deleting the wrapper body may not fail the test | Test at the layer that owns the behavior |
+| Tautological assertions | The test asserts what the test supplied | Assert an outcome the code computed |
 | Skipping tests to green CI | Hides failures | Fix, quarantine with ticket, or delete |
 
 ---

@@ -77,10 +77,11 @@ Use **Critical** / **Important** / **Suggestion** severity. Prefer `file:line` r
 ## Rules
 
 1. Review tests first when present — they encode intent.
-2. Reject meaningless tests (file/folder/env discovery, testcontainer health, setup-only assertions); require core logic coverage instead.
-3. Do not approve with unresolved Critical issues.
-4. Acknowledge strengths with specifics.
-5. **Grounding (no fabrication):** never describe a file, directory, or path you have not opened or listed via `Read`/`Grep`/`Glob`; if a provided path is inaccessible, report `ACCESS-FAILED: <path>` instead of inferring structure.
+2. Reject meaningless tests (file/folder/env discovery, testcontainer health, setup-only assertions, trivial getters and setters, pass-through wrappers, tautological mock assertions); require core logic coverage instead. Judge by whether the test fails when behavior changes, not by which API it called: a test asserting that saving wrote a manifest is behavior, not discovery.
+3. Flag **missing** coverage as its own finding when a change touches untrusted input parsing, concurrency or replay, a security boundary, money or state transitions, or a failure path.
+4. Do not approve with unresolved Critical issues.
+5. Acknowledge strengths with specifics.
+6. **Grounding (no fabrication):** never describe a file, directory, or path you have not opened or listed via `Read`/`Grep`/`Glob`; if a provided path is inaccessible, report `ACCESS-FAILED: <path>` instead of inferring structure.
 
 ## Composition
 

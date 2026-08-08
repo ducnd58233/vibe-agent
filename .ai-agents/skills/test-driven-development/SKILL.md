@@ -40,8 +40,37 @@ Automated tests must prove **core logic and business behavior** — inputs, outp
 | Config/manifest trivia | "package.json has test script", "`.env.example` exists" |
 | Import/load smoke | `require('./module')` with no behavior assertion |
 | Setup dressed as tests | Asserting only that `beforeAll` finished or fixtures mounted |
+| Trivial code | Getters, setters, constructors with no logic, single-line properties |
+| Wrappers and pass-through | A method that only forwards to a dependency, asserted by checking the dependency was called |
+| Tautological assertions | Asserting a mock returned what the test told it to return; asserting a constant equals itself |
+| Restating the implementation | The assertion is the function body copied into the test |
 
 Put infrastructure checks in **CI**, **test setup/fixtures**, or **health endpoints** — not as behavioral test cases. Integration tests may use real DBs/containers in **setup**, but each test must still assert **application behavior** (for example "create order persists totals and status", not "database accepts a connection").
+
+### Required coverage (MUST)
+
+The list above bans low-value tests. It is not permission to write none: a change that touches any row below needs a test that fails when that behavior regresses.
+
+| Risk area | What the test must pin |
+|-----------|------------------------|
+| Data ingestion and parsing | Malformed, truncated, wrong-encoding, and hostile input. What the code does with input it did not expect is the behavior, not a detail |
+| Concurrency and ordering | Two callers racing the same state; retry and replay producing one effect, not two; ordering that must hold |
+| Security boundaries | Authorization decisions, tenant and workspace isolation, injection-carrying input, secret redaction |
+| Money, quantities, and state machines | Rounding, currency, totals; every transition that is legal and at least one that is not |
+| Error and failure paths | The path taken when a dependency times out, returns an error, or returns nothing |
+
+### Observing a file is not a discovery test
+
+The bans above are **semantic, not syntactic**. A test may read the filesystem, the clock, or the environment when that reading *is* the behavioral claim:
+
+| Assertion | Verdict |
+|-----------|---------|
+| "the file `config.json` exists in the repo" | Discovery. **Banned** |
+| "saving the run writes a manifest into the workspace" | Behavior. **Allowed** — the write is the feature |
+| "each workspace gets its own database" | Behavior. **Allowed** — isolation is the feature |
+| "this input produces no side effect" (asserting a file was *not* created) | Behavior. **Allowed** — the absence is the feature |
+
+The question is never which API the test called. It is whether the test fails when **product behavior** changes. If the answer is no, delete it whatever it asserts on.
 
 **Related:** For browser-based changes, combine TDD with runtime verification using Chrome DevTools MCP — see the Browser Testing section below.
 
@@ -320,6 +349,9 @@ describe('TaskService', () => {
 | Mocking everything | Tests pass but production breaks | Prefer real implementations > fakes > stubs > mocks. Mock only at boundaries where real deps are slow or non-deterministic |
 | Infrastructure/discovery tests | False green CI; no regression signal for product logic | Delete or move to CI/setup; replace with behavior tests on core logic |
 | Container "is running" tests | Tests the test harness, not the app | Start containers in fixture setup; assert domain outcomes in tests |
+| Testing a pass-through wrapper | Passes whatever the wrapper forwards; deleting the wrapper body may not fail it | Test the behavior at the layer that owns it; delete the wrapper test |
+| Tautological assertions | A mock returns what the test supplied, so the test asserts itself | Assert an outcome the code computed, not one the test provided |
+| Trivial getters and setters | No logic to regress | Delete. Cover them incidentally through the behavior that uses them |
 
 ## Browser Testing with DevTools
 
