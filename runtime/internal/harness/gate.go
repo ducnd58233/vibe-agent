@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
@@ -34,10 +35,16 @@ const (
 // protectedRefs are the branches a push to which reaches everyone else.
 var protectedRefs = map[string]bool{"main": true, "master": true}
 
-// gate decides whether a shell command may run, and answers in whichever form
-// the host understands.
-func gate(req Request, command string, out io.Writer) error {
-	blocked := shellVerdict(req, command)
+// gate decides whether a tool call may run, and answers in whichever form the
+// host understands.
+//
+// A payload this package cannot parse arrives here empty, and an empty payload
+// matches no guard, so unreadable stdin lets the call through. That is the
+// deliberate side to fail on: refusing every tool call whenever a host changes
+// its JSON would wedge the session completely, while the thing actually being
+// guarded is also written down in the run manifest, which this cannot corrupt.
+func gate(req Request, body payload, out io.Writer) error {
+	blocked := verdict(req, body)
 	if blocked == nil {
 		return nil
 	}
@@ -47,10 +54,18 @@ func gate(req Request, command string, out io.Writer) error {
 		return write(out, map[string]any{
 			"permission":   "deny",
 			"agentMessage": blocked.Reason,
-			"userMessage":  "vibe-agent blocked an irreversible command: no active run has passed approve_merge.",
+			"userMessage":  "vibe-agent blocked a command that would bypass the delivery graph.",
 		})
 	}
 	return blocked
+}
+
+// verdict runs every guard this hook enforces. The first refusal wins.
+func verdict(req Request, body payload) *BlockError {
+	if blocked := shellVerdict(req, body.shellCommand()); blocked != nil {
+		return blocked
+	}
+	return stateWriteVerdict(req, body)
 }
 
 // shellVerdict returns a BlockError when the command is the irreversible step
@@ -74,6 +89,106 @@ func shellVerdict(req Request, command string) *BlockError {
 		}
 	}
 	return &BlockError{Reason: blockedReason(action, runs)}
+}
+
+// runStateFile matches a run's own bookkeeping: the manifest that says where a
+// run is, and the append-only log that says how it got there.
+var runStateFile = regexp.MustCompile(`(^|/)tmp/[^/]+/(manifest\.json|events\.ndjson)$`)
+
+// shellWriters are the commands that change a file rather than read it. A
+// redirection is handled separately, since it has no command word of its own.
+var shellWriters = map[string]bool{
+	"rm": true, "mv": true, "cp": true, "tee": true,
+	"truncate": true, "dd": true, "sed": true, "install": true, "ln": true,
+}
+
+// stateWriteVerdict refuses to let anything but the runtime write a run's own
+// state.
+//
+// The merge gate ends by asking the model not to edit the manifest to get past
+// it. Asking is the wrong instrument in front of a file whose whole purpose is
+// to be the thing that cannot be asserted: a hand-written check turns evidence
+// into model output with extra steps, and every guard downstream reads it as
+// real.
+//
+// With no active run there is nothing to protect, and refusing would break
+// every workspace that uses this toolkit without starting a run.
+func stateWriteVerdict(req Request, body payload) *BlockError {
+	if len(activeRuns(req.WorkspaceRoot)) == 0 {
+		return nil
+	}
+
+	if target := body.writeTarget(); protectedRunFile(target, req.WorkspaceRoot) {
+		return &BlockError{Reason: stateWriteReason(target)}
+	}
+	if target, found := shellWritesRunState(body.shellCommand(), req.WorkspaceRoot); found {
+		return &BlockError{Reason: stateWriteReason(target)}
+	}
+	return nil
+}
+
+func stateWriteReason(target string) string {
+	return strings.Join([]string{
+		fmt.Sprintf("Blocked: %s is run state, and only the runtime writes it.", target),
+		"A hand-edited manifest is model output that every later guard reads as recorded evidence.",
+		"Record the result properly instead:",
+		"  vibe-agent checkpoint --slug <slug> --check <name> --source <exit_code|file_assert|ci_api|human_event> --passed",
+		"Reading these files is fine. Writing them is not.",
+	}, "\n")
+}
+
+// protectedRunFile reports whether a path points at a run's manifest or event
+// log, whichever way the caller happened to spell it.
+func protectedRunFile(path, workspaceRoot string) bool {
+	trimmed := strings.Trim(strings.TrimSpace(path), `"'`)
+	if trimmed == "" {
+		return false
+	}
+	native := filepath.Clean(filepath.FromSlash(trimmed))
+	if filepath.IsAbs(native) {
+		if relative, err := filepath.Rel(workspaceRoot, native); err == nil {
+			native = relative
+		}
+	}
+	return runStateFile.MatchString(filepath.ToSlash(native))
+}
+
+// shellWritesRunState finds a run state file on the receiving end of a shell
+// command that would change it.
+//
+// Like the rest of this file it over-approximates rather than parsing a shell,
+// so it may inspect one extra word, never one fewer.
+func shellWritesRunState(command, workspaceRoot string) (string, bool) {
+	for _, segment := range shellSegments(command) {
+		fields := strings.Fields(segment)
+		if len(fields) == 0 {
+			continue
+		}
+		writes := strings.Contains(segment, ">")
+		for _, field := range fields {
+			if shellWriters[strings.TrimSuffix(strings.ToLower(baseName(field)), ".exe")] {
+				writes = true
+				break
+			}
+		}
+		if !writes {
+			continue
+		}
+		for _, field := range fields {
+			if candidate := strings.TrimLeft(field, "<>&"); protectedRunFile(candidate, workspaceRoot) {
+				return candidate, true
+			}
+		}
+	}
+	return "", false
+}
+
+func baseName(field string) string {
+	base := strings.Trim(field, `"'`)
+	if cut := strings.LastIndexAny(base, `/\`); cut >= 0 {
+		base = base[cut+1:]
+	}
+	return base
 }
 
 func passed(run *state.Run, name string) bool {
@@ -188,11 +303,7 @@ func matchesWords(rest, want []string) bool {
 // than with filepath.Base, because the command may have been written on a
 // different platform than the one evaluating it.
 func isBinary(field, name string) bool {
-	base := strings.Trim(field, `"'`)
-	if cut := strings.LastIndexAny(base, `/\`); cut >= 0 {
-		base = base[cut+1:]
-	}
-	return strings.TrimSuffix(base, ".exe") == name
+	return strings.TrimSuffix(baseName(field), ".exe") == name
 }
 
 // positionalArgs drops flags. -o is the only push flag that takes a separate

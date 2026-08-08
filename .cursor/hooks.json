@@ -17,6 +17,10 @@
       {
         "matcher": "Read",
         "command": "python3 .ai-agents/hooks/simplify-ignore.py"
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "command": "vibe-agent hook pre-tool-use --client cursor"
       }
     ],
     "beforeShellExecution": [
@@ -32,6 +36,10 @@
       {
         "matcher": "Edit|Write",
         "command": "python3 .ai-agents/hooks/simplify-ignore.py"
+      },
+      {
+        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "command": "vibe-agent hook post-tool-use --client cursor"
       }
     ],
     "afterFileEdit": [

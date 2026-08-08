@@ -12,6 +12,14 @@ import (
 // hundred is context flooding with extra steps.
 const DefaultLimit = 8
 
+// Disclaimer rides along with every retrieved memory, wherever it is retrieved
+// from.
+//
+// Retrieved memory sits below repository facts in the source-of-truth order.
+// Saying so on every response is cheap; a model treating a stale memory as
+// authority is not.
+const Disclaimer = "Supporting context only. The repository is the source of truth: verify each item against the current code and config before acting on it. A memory that contradicts the repository is stale."
+
 // Query selects which memories to retrieve.
 type Query struct {
 	// WorkspaceID is required. Retrieval never crosses workspaces.

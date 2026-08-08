@@ -16,10 +16,10 @@ import (
 
 // MemoryDisclaimer rides along with every retrieved memory.
 //
-// Retrieved memory sits below repository facts in the source-of-truth order.
-// Saying so on every response is cheap; a model treating a stale memory as
-// authority is not.
-const MemoryDisclaimer = "Supporting context only. The repository is the source of truth: verify each item against the current code and config before acting on it. A memory that contradicts the repository is stale."
+// The text lives in the memory package because the hooks in internal/harness
+// retrieve too, and one wording that drifts between the two surfaces is worse
+// than none.
+const MemoryDisclaimer = memory.Disclaimer
 
 // Deps is what the tools need to do their work.
 type Deps struct {

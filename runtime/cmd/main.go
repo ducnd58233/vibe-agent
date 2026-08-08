@@ -28,7 +28,10 @@ Usage:
   vibe-agent checkpoint --slug <slug> --check <name> --source <source> [--passed|--failed|--skipped]
   vibe-agent graph validate [--graph <id>]
   vibe-agent mcp serve
-  vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|stop|subagent-stop> [--client claude|cursor]
+  vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|stop|subagent-stop> [--client claude|cursor]
+  vibe-agent memory list [--status <status>]
+  vibe-agent memory confirm --id <id>
+  vibe-agent memory forget --id <id>
   vibe-agent doctor
   vibe-agent version
 
@@ -38,9 +41,16 @@ tmp/<slug>/events.ndjson, both under the workspace root and both gitignored.
 Evidence sources: exit_code, file_assert, ci_api, human_event. There is no
 source for model assertion, so nothing can mark its own work complete.
 
-Hooks inform, with one exception: pre-tool-use exits 2 to refuse a push to a
-protected branch or a pull request merge while an active run has not recorded
-the merge_approved evidence its graph requires.
+Hooks mostly inform. Two of them refuse:
+
+  pre-tool-use  exits 2 on a push to a protected branch or a pull request merge
+                while no active run has recorded merge_approved, and on any
+                write to a run's own manifest or event log.
+  stop          returns decision "block" while a run sits mid-graph with nothing
+                recorded, once per turn, and never for a run awaiting a human.
+
+Only confirmed memories are retrieved into a session. Use "memory list" to see
+what is stored and "memory confirm" to vouch for one yourself.
 
 Global flags:
   --workspace <dir>   Workspace root (default: current directory)
@@ -86,6 +96,8 @@ func run(args []string) error {
 		return mcpCommand(args[1:])
 	case "hook":
 		return hookCommand(args[1:])
+	case "memory":
+		return memoryCommand(args[1:])
 	case "doctor":
 		return doctorCommand(args[1:])
 	case "version":

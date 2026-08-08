@@ -109,14 +109,17 @@ func TestClaudePromptSubmitSurfacesTheCurrentNode(t *testing.T) {
 	}
 }
 
-func TestPromptSubmitStaysQuietOnUnrelatedPrompts(t *testing.T) {
+// Nothing to say is still the right answer when there is nothing to say. What
+// changed is that a prompt not sounding like a status question is no longer
+// treated as one of those cases; see TestPromptSubmitSurfacesTheRunOnAnyPrompt.
+func TestPromptSubmitStaysQuietWithNothingToReport(t *testing.T) {
 	output := invoke(t, Request{
 		Event: EventUserPromptSubmit, Client: ClientClaude,
-		WorkspaceRoot: workspaceWithRun(t),
+		WorkspaceRoot: t.TempDir(),
 		Stdin:         strings.NewReader(`{"prompt":"explain this regex"}`),
 	})
 	if output != "" {
-		t.Errorf("prompt submit injected context into an unrelated prompt: %s", output)
+		t.Errorf("prompt submit spoke with no run and no memory: %s", output)
 	}
 }
 
