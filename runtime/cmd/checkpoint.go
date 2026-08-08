@@ -1,10 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/checkpoint"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
@@ -41,16 +41,6 @@ func checkpointCommand(args []string) error {
 		return err
 	}
 
-	manifest := state.ManifestPath(workspaceRoot, *slug)
-	current, err := state.Load(manifest)
-	if err != nil {
-		return err
-	}
-	loaded, err := graph.LoadByID(graph.DefaultDir(toolkitRoot), current.GraphID)
-	if err != nil {
-		return err
-	}
-
 	outcome := loop.Outcome{Blocker: *blocker}
 	if *checkName != "" {
 		if *source == "" {
@@ -68,33 +58,34 @@ func checkpointCommand(args []string) error {
 		}
 	}
 
-	from := current.CurrentNode
-	transition, err := loop.New(loaded).Advance(current, outcome)
+	result, err := checkpoint.Apply(checkpoint.Request{
+		WorkspaceRoot: workspaceRoot,
+		GraphDir:      graph.DefaultDir(toolkitRoot),
+		Slug:          *slug,
+		Outcome:       outcome,
+	})
 	if err != nil {
 		return err
 	}
 
-	// Append the event before saving state: an event without a matching state
-	// change is recoverable, a state change with no record of why is not.
-	payload, _ := json.Marshal(map[string]any{"from": from, "to": transition.To, "via": transition.Via})
-	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, *slug),
-		state.Event{Type: "transition", Node: transition.To, Payload: payload, At: time.Now()},
-	); err != nil {
-		return err
+	current := result.Run
+	if result.Duplicate {
+		// Said plainly rather than silently: a caller retrying a checkpoint is
+		// usually a caller that thinks the first one failed.
+		fmt.Printf("Already recorded. This exact evidence was the last checkpoint, so nothing advanced.\n")
+	} else {
+		via := result.Transition.Via
+		if via == "" {
+			via = "(fallback)"
+		}
+		fmt.Printf("%s -> %s via %s\n", result.Transition.From, result.Transition.To, via)
 	}
-	if err := state.Save(manifest, current); err != nil {
-		return err
-	}
-
-	via := transition.Via
-	if via == "" {
-		via = "(fallback)"
-	}
-	fmt.Printf("%s -> %s via %s\n", transition.From, transition.To, via)
 	fmt.Printf("  status     %s\n", current.Status)
 	fmt.Printf("  iteration  %d/%d\n", current.Iteration, current.MaxTransitions)
-	if node, ok := loaded.Node(current.CurrentNode); ok && !transition.Terminal {
-		fmt.Printf("  next       [%s] %s\n", node.Type, node.Description)
+	if node, ok := result.Graph.Node(current.CurrentNode); ok {
+		if result.Duplicate || !result.Transition.Terminal {
+			fmt.Printf("  next       [%s] %s\n", node.Type, node.Description)
+		}
 	}
 	return nil
 }

@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS memories (
     supersedes_id TEXT,
     used_count    INTEGER NOT NULL DEFAULT 0,
     expires_at    TEXT,
+    valid_from    TEXT NOT NULL DEFAULT '',
+    valid_to      TEXT,
     created_at    TEXT NOT NULL,
     updated_at    TEXT NOT NULL
 );
@@ -79,7 +81,63 @@ func OpenAt(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("apply memory schema: %w", err)
 	}
+	if err := migrate(db); err != nil {
+		db.Close()
+		return nil, err
+	}
 	return &Store{db: db}, nil
+}
+
+// migrate adds columns to a database created by an earlier version.
+//
+// CREATE TABLE IF NOT EXISTS does nothing to a table that already exists, so a
+// workspace that has been storing memories since before the validity interval
+// would otherwise fail every query against the new columns.
+func migrate(db *sql.DB) error {
+	rows, err := db.Query(`PRAGMA table_info(memories)`)
+	if err != nil {
+		return fmt.Errorf("inspect memory schema: %w", err)
+	}
+	present := map[string]bool{}
+	for rows.Next() {
+		var (
+			index      int
+			name       string
+			columnType string
+			notNull    int
+			preset     sql.NullString
+			primary    int
+		)
+		if err := rows.Scan(&index, &name, &columnType, &notNull, &preset, &primary); err != nil {
+			rows.Close()
+			return fmt.Errorf("read memory schema: %w", err)
+		}
+		present[name] = true
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("read memory schema: %w", err)
+	}
+
+	for _, column := range []struct{ name, definition string }{
+		{"valid_from", `valid_from TEXT NOT NULL DEFAULT ''`},
+		{"valid_to", `valid_to TEXT`},
+	} {
+		if present[column.name] {
+			continue
+		}
+		if _, err := db.Exec(`ALTER TABLE memories ADD COLUMN ` + column.definition); err != nil {
+			return fmt.Errorf("add memory column %s: %w", column.name, err)
+		}
+	}
+
+	// Rows written before the interval existed were true from when they were
+	// recorded, which is the closest honest answer available.
+	_, err = db.Exec(`UPDATE memories SET valid_from = created_at WHERE valid_from = ''`)
+	if err != nil {
+		return fmt.Errorf("backfill memory validity: %w", err)
+	}
+	return nil
 }
 
 // Close releases the database.
@@ -112,6 +170,11 @@ func (s *Store) Propose(ctx context.Context, candidate Record, now time.Time) (R
 	candidate.Status = StatusProposed
 	candidate.CreatedAt = now.UTC()
 	candidate.UpdatedAt = now.UTC()
+	// A candidate that does not say when its fact started being true started
+	// being true when it was observed.
+	if candidate.ValidFrom.IsZero() {
+		candidate.ValidFrom = now.UTC()
+	}
 	if err := s.insert(ctx, candidate); err != nil {
 		return Record{}, decision, err
 	}
@@ -142,14 +205,39 @@ func (s *Store) Confirm(ctx context.Context, id string, source SourceType, ref s
 	if err := s.update(ctx, record); err != nil {
 		return Record{}, err
 	}
-	// Confirming a superseding memory retires the one it replaces, so retrieval
+	// Confirming a superseding memory closes the one it replaces, so retrieval
 	// never returns both sides of a contradiction.
+	//
+	// It closes at this record's ValidFrom rather than at "now": the old fact
+	// stopped being true when the new one started, which is not always the
+	// moment somebody got around to recording it.
 	if record.SupersedesID != "" {
-		if err := s.SetStatus(ctx, record.SupersedesID, StatusStale, now); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		if err := s.Invalidate(ctx, record.SupersedesID, record.ValidFrom); err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return Record{}, err
 		}
 	}
 	return record, nil
+}
+
+// Invalidate closes a memory's validity interval and marks it stale.
+//
+// Nothing is deleted. A fact that stopped being true is different from one that
+// was never recorded, and only the first can explain a decision made while it
+// still held.
+func (s *Store) Invalidate(ctx context.Context, id string, at time.Time) error {
+	result, err := s.db.ExecContext(ctx,
+		`UPDATE memories SET valid_to = ?, status = ?, updated_at = ?
+         WHERE id = ? AND valid_to IS NULL`,
+		at.UTC().Format(ExpiryLayout), string(StatusStale),
+		at.UTC().Format(time.RFC3339Nano), id)
+	if err != nil {
+		return fmt.Errorf("invalidate memory: %w", err)
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 // SetStatus changes a memory's status, for example retiring a stale fact.
@@ -219,12 +307,13 @@ func (s *Store) insert(ctx context.Context, record Record) error {
 	if _, err := tx.ExecContext(ctx, `
         INSERT INTO memories (id, workspace_id, kind, content, tags, confidence,
             status, source_type, source_ref, evidence, supersedes_id, used_count,
-            expires_at, created_at, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            expires_at, valid_from, valid_to, created_at, updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		record.ID, record.WorkspaceID, string(record.Kind), record.Content,
 		strings.Join(record.Tags, " "), record.Confidence, string(record.Status),
 		string(record.SourceType), record.SourceRef, strings.Join(record.Evidence, "\n"),
 		record.SupersedesID, record.UsedCount, formatTimePtr(record.ExpiresAt),
+		record.ValidFrom.UTC().Format(ExpiryLayout), formatTimePtr(record.ValidTo),
 		record.CreatedAt.Format(time.RFC3339Nano), record.UpdatedAt.Format(time.RFC3339Nano),
 	); err != nil {
 		return fmt.Errorf("insert memory: %w", err)
@@ -248,12 +337,13 @@ func (s *Store) update(ctx context.Context, record Record) error {
 	if _, err := tx.ExecContext(ctx, `
         UPDATE memories SET kind=?, content=?, tags=?, confidence=?, status=?,
             source_type=?, source_ref=?, evidence=?, supersedes_id=?,
-            used_count=?, expires_at=?, updated_at=?
+            used_count=?, expires_at=?, valid_from=?, valid_to=?, updated_at=?
         WHERE id=?`,
 		string(record.Kind), record.Content, strings.Join(record.Tags, " "),
 		record.Confidence, string(record.Status), string(record.SourceType),
 		record.SourceRef, strings.Join(record.Evidence, "\n"), record.SupersedesID,
 		record.UsedCount, formatTimePtr(record.ExpiresAt),
+		record.ValidFrom.UTC().Format(ExpiryLayout), formatTimePtr(record.ValidTo),
 		record.UpdatedAt.Format(time.RFC3339Nano), record.ID,
 	); err != nil {
 		return fmt.Errorf("update memory: %w", err)
@@ -297,48 +387,65 @@ func (s *Store) mergeEvidence(ctx context.Context, id string, candidate Record, 
 const selectColumns = `
 SELECT id, workspace_id, kind, content, tags, confidence, status, source_type,
        source_ref, evidence, supersedes_id, used_count, expires_at,
-       created_at, updated_at
+       valid_from, valid_to, created_at, updated_at
 FROM memories`
 
 func scanRecords(rows *sql.Rows) ([]Record, error) {
 	var records []Record
 	for rows.Next() {
-		var (
-			record       Record
-			tags         string
-			sourceRef    sql.NullString
-			evidence     string
-			supersedesID sql.NullString
-			expiresAt    sql.NullString
-			createdAt    string
-			updatedAt    string
-			kind         string
-			status       string
-			sourceType   string
-		)
-		if err := rows.Scan(&record.ID, &record.WorkspaceID, &kind, &record.Content,
-			&tags, &record.Confidence, &status, &sourceType, &sourceRef, &evidence,
-			&supersedesID, &record.UsedCount, &expiresAt, &createdAt, &updatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan memory: %w", err)
+		record, err := scanRecord(rows.Scan)
+		if err != nil {
+			return nil, err
 		}
-		record.Kind = Kind(kind)
-		record.Status = Status(status)
-		record.SourceType = SourceType(sourceType)
-		record.SourceRef = sourceRef.String
-		record.SupersedesID = supersedesID.String
-		if tags != "" {
-			record.Tags = strings.Fields(tags)
-		}
-		if evidence != "" {
-			record.Evidence = strings.Split(evidence, "\n")
-		}
-		record.ExpiresAt = parseTimePtr(expiresAt)
-		record.CreatedAt = parseTime(createdAt)
-		record.UpdatedAt = parseTime(updatedAt)
 		records = append(records, record)
 	}
 	return records, rows.Err()
+}
+
+// scanRecord reads the shared column list. Search adds a score column of its
+// own, so it passes a scan function that consumes one more value rather than
+// duplicating this list and letting the two drift.
+func scanRecord(scan func(...any) error, extra ...any) (Record, error) {
+	var (
+		record       Record
+		tags         string
+		sourceRef    sql.NullString
+		evidence     string
+		supersedesID sql.NullString
+		expiresAt    sql.NullString
+		validFrom    string
+		validTo      sql.NullString
+		createdAt    string
+		updatedAt    string
+		kind         string
+		status       string
+		sourceType   string
+	)
+	targets := append([]any{&record.ID, &record.WorkspaceID, &kind, &record.Content,
+		&tags, &record.Confidence, &status, &sourceType, &sourceRef, &evidence,
+		&supersedesID, &record.UsedCount, &expiresAt, &validFrom, &validTo,
+		&createdAt, &updatedAt}, extra...)
+
+	if err := scan(targets...); err != nil {
+		return Record{}, fmt.Errorf("scan memory: %w", err)
+	}
+	record.Kind = Kind(kind)
+	record.Status = Status(status)
+	record.SourceType = SourceType(sourceType)
+	record.SourceRef = sourceRef.String
+	record.SupersedesID = supersedesID.String
+	if tags != "" {
+		record.Tags = strings.Fields(tags)
+	}
+	if evidence != "" {
+		record.Evidence = strings.Split(evidence, "\n")
+	}
+	record.ExpiresAt = parseTimePtr(expiresAt)
+	record.ValidFrom = parseTime(validFrom)
+	record.ValidTo = parseTimePtr(validTo)
+	record.CreatedAt = parseTime(createdAt)
+	record.UpdatedAt = parseTime(updatedAt)
+	return record, nil
 }
 
 var idEncoding = base32.NewEncoding("0123456789ABCDEFGHJKMNPQRSTVWXYZ").WithPadding(base32.NoPadding)

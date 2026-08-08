@@ -66,8 +66,8 @@ func memoryListCommand(args []string) error {
 			continue
 		}
 		shown++
-		fmt.Printf("%s  %-9s %-10s used=%d%s\n", record.ID, record.Kind, record.Status,
-			record.UsedCount, expiryNote(record.ExpiresAt))
+		fmt.Printf("%s  %-9s %-10s used=%d%s%s\n", record.ID, record.Kind, record.Status,
+			record.UsedCount, stamp("  expires=", record.ExpiresAt), stamp("  closed=", record.ValidTo))
 		fmt.Printf("  %s\n", singleLine(record.Content))
 		for _, item := range record.Evidence {
 			fmt.Printf("    evidence: %s\n", singleLine(item))
@@ -112,10 +112,13 @@ func memorySetStatus(args []string, action string) error {
 	now := time.Now().UTC()
 
 	if action == "forget" {
-		if err := store.SetStatus(ctx, *id, memory.StatusStale, now); err != nil {
+		// Invalidate rather than SetStatus: closing the validity interval is
+		// what records when the fact stopped being true, which is the part an
+		// as-of query needs and a status flag cannot carry.
+		if err := store.Invalidate(ctx, *id, now); err != nil {
 			return err
 		}
-		fmt.Printf("%s is now stale and will not be retrieved.\n", *id)
+		fmt.Printf("%s is closed as of now and will not be retrieved.\n", *id)
 		return nil
 	}
 
@@ -140,11 +143,11 @@ func openExistingMemory(workspaceRoot string) (*memory.Store, error) {
 	return memory.OpenAt(path)
 }
 
-func expiryNote(expires *time.Time) string {
-	if expires == nil {
+func stamp(label string, value *time.Time) string {
+	if value == nil {
 		return ""
 	}
-	return "  expires=" + expires.Format(memory.ExpiryLayout)
+	return label + value.Format(memory.ExpiryLayout)
 }
 
 func singleLine(text string) string {

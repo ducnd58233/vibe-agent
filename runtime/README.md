@@ -30,6 +30,7 @@ runtime/
   internal/
     graph/                workflow graph model, loader, static validation
     loop/                 the runner: transitions, budget, blocker stop rule
+    checkpoint/           the one write path: apply evidence, once
     verifier/             command, files, git. The things that produce evidence
     memory/               SQLite store, FTS search, write policy, promotion
     mcp/                  stdio server, six tools
@@ -110,7 +111,40 @@ vibe-agent memory forget  --id <id>     # retract one that turned out wrong
 
 The other path is `post-tool-use`, which confirms from the exit code the host reported, citing the event-log entry it just wrote. Those memories carry an expiry of `FailureMemoryLife`, because "this command fails" is true about a moment and would otherwise become the stale memory this design keeps warning about.
 
-`forget` is one way. A retracted memory is re-earned with fresh evidence rather than toggled back on.
+`forget` closes the memory's validity interval rather than flipping a flag, so the store still knows when the fact stopped being true. It is one way: a retracted memory is re-earned with fresh evidence rather than toggled back on.
+## Recording a checkpoint twice
+
+`internal/checkpoint` owns the write path both the CLI and the MCP tool go through, and it records a given piece of evidence once.
+
+Every transition event carries a key derived from what the checkpoint asserts: the check, its verdict, its source and ref, any result flags, any blocker. If the incoming evidence matches the key on the last transition, nothing advances and the caller is told so.
+
+Two things are deliberately outside the key:
+
+- **The clock**, so a retry a second later is recognised rather than looking new.
+- **The current node**, because a retry arrives *after* the first attempt already moved the run. Keying on where the run is now would make the replay this exists to catch look like a different checkpoint.
+
+An outcome that asserts nothing gets no key at all. A bare advance past an agent node has nothing to recognise a replay by, and treating two of them as the same event would stall a run walking through consecutive nodes.
+
+## When a memory was true, and when we learned it
+
+Memories carry a validity interval (`valid_from`, `valid_to`) separately from when the store learned about them (`created_at`, `updated_at`). This is the [bi-temporal model from Zep's Graphiti](https://arxiv.org/pdf/2501.13956), reduced to what this store needs.
+
+Confirming a memory that supersedes another **closes** the old one at the new one's `valid_from` rather than deleting it. Retrieval stops returning it, so both sides of a contradiction never arrive together, while the record of having believed it survives:
+
+```go
+store.Search(ctx, memory.Query{WorkspaceID: id})                  // what is held now
+store.Search(ctx, memory.Query{WorkspaceID: id, AsOf: lastMonth}) // what was held then
+```
+
+An as-of query includes stale memories by default. A fact that was true then is usually stale now, and excluding it would make every as-of query answer with the present.
+
+## How retrieval ranks
+
+With a query, two orderings are fused with [reciprocal rank fusion](https://dl.acm.org/doi/10.1145/1571941.1572114) at `k=60`: bm25 keyword relevance, and recency. Neither alone is right, and fusing avoids inventing a scale on which a bm25 score and a timestamp are comparable.
+
+Ties are frequent and expected. Two results that swap places between the two rankings score identically, so the tiebreak is recency, then confidence: when two memories say almost the same thing, the usual reason is that one replaced the other.
+
+Keyword search with metadata filters remains the deliberate first choice. Embeddings come only after this is measured as insufficient.
 
 ## Contract with the schemas
 

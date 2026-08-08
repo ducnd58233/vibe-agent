@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/checkpoint"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
@@ -85,7 +86,7 @@ func Tools(deps Deps) []Tool {
 			Name:        "vibe_checkpoint",
 			Description: "Record evidence for the current node and advance the graph. Evidence must come from a command exit code, a file assertion, a CI response, or a human approval.",
 			InputSchema: schema(`{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"},"check":{"type":"object","required":["name","passed","source"],"properties":{"name":{"type":"string"},"passed":{"type":"boolean"},"skipped":{"type":"boolean"},"source":{"type":"string","enum":["exit_code","file_assert","ci_api","human_event"]},"ref":{"type":"string"}}},"result":{"type":"object","additionalProperties":{"type":"boolean"}},"blocker":{"type":"string"}}}`),
-			Handler:     func(raw json.RawMessage) (any, error) { return checkpoint(deps, raw) },
+			Handler:     func(raw json.RawMessage) (any, error) { return runCheckpoint(deps, raw) },
 		},
 	}
 }
@@ -250,7 +251,7 @@ func runStatus(deps Deps, raw json.RawMessage) (any, error) {
 	return describe(loaded, run), nil
 }
 
-func checkpoint(deps Deps, raw json.RawMessage) (any, error) {
+func runCheckpoint(deps Deps, raw json.RawMessage) (any, error) {
 	var args struct {
 		Slug  string `json:"slug"`
 		Check *struct {
@@ -264,16 +265,6 @@ func checkpoint(deps Deps, raw json.RawMessage) (any, error) {
 		Blocker string          `json:"blocker"`
 	}
 	if err := json.Unmarshal(raw, &args); err != nil {
-		return nil, err
-	}
-
-	manifest := state.ManifestPath(deps.WorkspaceRoot, args.Slug)
-	run, err := state.Load(manifest)
-	if err != nil {
-		return nil, err
-	}
-	loaded, err := graph.LoadByID(graph.DefaultDir(deps.ToolkitRoot), run.GraphID)
-	if err != nil {
 		return nil, err
 	}
 
@@ -291,26 +282,29 @@ func checkpoint(deps Deps, raw json.RawMessage) (any, error) {
 		}
 	}
 
-	runner := &loop.Runner{Graph: loaded, Now: deps.now}
-	from := run.CurrentNode
-	transition, err := runner.Advance(run, outcome)
+	result, err := checkpoint.Apply(checkpoint.Request{
+		WorkspaceRoot: deps.WorkspaceRoot,
+		GraphDir:      graph.DefaultDir(deps.ToolkitRoot),
+		Slug:          args.Slug,
+		Outcome:       outcome,
+		Now:           deps.now(),
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	payload, _ := json.Marshal(map[string]any{"from": from, "to": transition.To, "via": transition.Via})
-	if _, err := state.AppendEvent(state.EventLogPath(deps.WorkspaceRoot, args.Slug),
-		state.Event{Type: "transition", Node: transition.To, Payload: payload, At: deps.now()}); err != nil {
-		return nil, err
+	out := describe(result.Graph, result.Run)
+	if result.Duplicate {
+		// A tool call that timed out after the write gets retried. Telling the
+		// caller its evidence was already recorded is more useful than either
+		// advancing twice or reporting a transition that did not happen.
+		out["duplicate"] = true
+		out["note"] = "This exact evidence was the last checkpoint recorded, so nothing advanced."
+		return out, nil
 	}
-	if err := state.Save(manifest, run); err != nil {
-		return nil, err
-	}
-
-	out := describe(loaded, run)
 	out["transition"] = map[string]any{
-		"from": transition.From, "to": transition.To,
-		"via": transition.Via, "terminal": transition.Terminal,
+		"from": result.Transition.From, "to": result.Transition.To,
+		"via": result.Transition.Via, "terminal": result.Transition.Terminal,
 	}
 	return out, nil
 }

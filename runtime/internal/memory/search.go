@@ -2,8 +2,8 @@ package memory
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -28,22 +28,44 @@ type Query struct {
 	Kinds       []Kind
 	// Statuses defaults to confirmed only. Proposed memories are candidates,
 	// not knowledge, and returning them would make the gate meaningless.
+	//
+	// An as-of query defaults to confirmed and stale together, because a fact
+	// that was true then is usually stale now, and excluding it would make
+	// every as-of query answer with the present.
 	Statuses []Status
-	Limit    int
+	// AsOf asks what the workspace believed at an instant rather than what it
+	// believes now. Zero means now.
+	AsOf  time.Time
+	Limit int
 }
 
-// Hit is one retrieved memory and its relevance.
+// Hit is one retrieved memory and its fused score. Higher is a better match.
 type Hit struct {
 	Record Record
-	// Score is bm25 rank, lower is a better match. Zero when no text was given.
-	Score float64
+	Score  float64
 }
 
-// Search finds relevant memories, ranked by bm25 when text is supplied.
+// rrfK damps the contribution of low-ranked results in reciprocal rank fusion.
+// 60 is the value the method was published with, and it is not tuned here:
+// picking weights per workspace is exactly the kind of knob that looks like
+// tuning and behaves like noise.
+const rrfK = 60.0
+
+// candidateFactor is how many rows are pulled per requested result before
+// fusing. Reranking can only reorder what it was given, so the keyword stage
+// hands over more than the caller asked for.
+const candidateFactor = 4
+
+// Search finds relevant memories.
 //
-// Keyword search with metadata filters is the deliberate first choice.
-// Embeddings come only after keyword search is measured as insufficient, not
-// before.
+// With text, two rankings are fused: keyword relevance from bm25, and recency.
+// Neither alone is right. Keyword rank alone puts a year-old note above the
+// note that replaced it whenever the older wording matched better; recency
+// alone ignores the question. Reciprocal rank fusion combines the orderings
+// without needing a scale that makes bm25 and timestamps comparable.
+//
+// Keyword search with metadata filters remains the deliberate first choice.
+// Embeddings come only after this is measured as insufficient, not before.
 func (s *Store) Search(ctx context.Context, query Query) ([]Hit, error) {
 	if query.WorkspaceID == "" {
 		return nil, fmt.Errorf("search needs a workspaceId; memories never leak across workspaces")
@@ -52,9 +74,32 @@ func (s *Store) Search(ctx context.Context, query Query) ([]Hit, error) {
 		query.Limit = DefaultLimit
 	}
 	if len(query.Statuses) == 0 {
-		query.Statuses = []Status{StatusConfirmed}
+		if query.AsOf.IsZero() {
+			query.Statuses = []Status{StatusConfirmed}
+		} else {
+			query.Statuses = []Status{StatusConfirmed, StatusStale}
+		}
 	}
 
+	text := strings.TrimSpace(query.Text)
+	fetch := query.Limit
+	if text != "" {
+		fetch = query.Limit * candidateFactor
+	}
+
+	hits, err := s.candidates(ctx, query, text, fetch)
+	if err != nil {
+		return nil, err
+	}
+	if text == "" {
+		return hits, nil
+	}
+	return fuse(hits, query.Limit), nil
+}
+
+// candidates runs the SQL side: filters, then bm25 order when there is a query
+// to rank against and recency order when there is not.
+func (s *Store) candidates(ctx context.Context, query Query, text string, limit int) ([]Hit, error) {
 	var (
 		conditions = []string{"m.workspace_id = ?"}
 		args       = []any{query.WorkspaceID}
@@ -63,7 +108,7 @@ func (s *Store) Search(ctx context.Context, query Query) ([]Hit, error) {
 		selectExpr = "0.0 AS score"
 	)
 
-	if text := strings.TrimSpace(query.Text); text != "" {
+	if text != "" {
 		joins = "JOIN memories_fts f ON f.memory_id = m.id"
 		conditions = append(conditions, "memories_fts MATCH ?")
 		args = append(args, ftsQuery(text))
@@ -81,21 +126,38 @@ func (s *Store) Search(ctx context.Context, query Query) ([]Hit, error) {
 			args = append(args, string(kind))
 		}
 	}
-	// An expired memory is a fact whose known shelf life has passed. Both sides
-	// are fixed-width UTC RFC3339, so a string comparison is a time comparison.
+
+	// Every timestamp compared here is fixed-width UTC RFC3339, so a string
+	// comparison is a time comparison. Nanosecond precision would make the
+	// strings variable width and break that.
+	instant := query.AsOf
+	if instant.IsZero() {
+		instant = time.Now()
+	}
+	stamp := instant.UTC().Format(ExpiryLayout)
+
+	// An expired memory is a fact whose known shelf life has passed.
 	conditions = append(conditions, "(m.expires_at IS NULL OR m.expires_at > ?)")
-	args = append(args, time.Now().UTC().Format(ExpiryLayout))
+	args = append(args, stamp)
+
+	if query.AsOf.IsZero() {
+		conditions = append(conditions, "m.valid_to IS NULL")
+	} else {
+		conditions = append(conditions, "m.valid_from <= ?", "(m.valid_to IS NULL OR m.valid_to > ?)")
+		args = append(args, stamp, stamp)
+	}
 
 	statement := fmt.Sprintf(`
         SELECT m.id, m.workspace_id, m.kind, m.content, m.tags, m.confidence,
                m.status, m.source_type, m.source_ref, m.evidence, m.supersedes_id,
-               m.used_count, m.expires_at, m.created_at, m.updated_at, %s
+               m.used_count, m.expires_at, m.valid_from, m.valid_to,
+               m.created_at, m.updated_at, %s
         FROM memories m %s
         WHERE %s
         ORDER BY %s
         LIMIT ?`,
 		selectExpr, joins, strings.Join(conditions, " AND "), order)
-	args = append(args, query.Limit)
+	args = append(args, limit)
 
 	rows, err := s.db.QueryContext(ctx, statement, args...)
 	if err != nil {
@@ -105,43 +167,65 @@ func (s *Store) Search(ctx context.Context, query Query) ([]Hit, error) {
 
 	var hits []Hit
 	for rows.Next() {
-		var (
-			record       Record
-			tags         string
-			sourceRef    sql.NullString
-			evidence     string
-			supersedesID sql.NullString
-			expiresAt    sql.NullString
-			createdAt    string
-			updatedAt    string
-			kind         string
-			status       string
-			sourceType   string
-			score        float64
-		)
-		if err := rows.Scan(&record.ID, &record.WorkspaceID, &kind, &record.Content,
-			&tags, &record.Confidence, &status, &sourceType, &sourceRef, &evidence,
-			&supersedesID, &record.UsedCount, &expiresAt, &createdAt, &updatedAt, &score,
-		); err != nil {
-			return nil, fmt.Errorf("scan search result: %w", err)
+		var score float64
+		record, err := scanRecord(rows.Scan, &score)
+		if err != nil {
+			return nil, err
 		}
-		record.Kind = Kind(kind)
-		record.Status = Status(status)
-		record.SourceType = SourceType(sourceType)
-		record.SourceRef = sourceRef.String
-		record.SupersedesID = supersedesID.String
-		if tags != "" {
-			record.Tags = strings.Fields(tags)
-		}
-		if evidence != "" {
-			record.Evidence = strings.Split(evidence, "\n")
-		}
-		record.ExpiresAt = parseTimePtr(expiresAt)
-		record.CreatedAt = parseTime(createdAt)
-		record.UpdatedAt = parseTime(updatedAt)
 		hits = append(hits, Hit{Record: record, Score: score})
 	}
 	return hits, rows.Err()
+}
+
+// fuse reranks keyword candidates by combining their relevance order with
+// their recency order, and returns the best limit of them.
+func fuse(hits []Hit, limit int) []Hit {
+	if len(hits) <= 1 {
+		return hits
+	}
+
+	// hits arrive in bm25 order, so position is the relevance rank.
+	fused := make([]Hit, len(hits))
+	copy(fused, hits)
+
+	byRecency := make([]int, len(hits))
+	for i := range byRecency {
+		byRecency[i] = i
+	}
+	sort.SliceStable(byRecency, func(a, b int) bool {
+		return hits[byRecency[a]].Record.UpdatedAt.After(hits[byRecency[b]].Record.UpdatedAt)
+	})
+
+	score := make([]float64, len(hits))
+	for rank, index := range byRecency {
+		score[index] += 1 / (rrfK + float64(rank))
+	}
+	for rank := range hits {
+		score[rank] += 1 / (rrfK + float64(rank))
+	}
+	for i := range fused {
+		fused[i].Score = score[i]
+	}
+
+	// Ties are common and not a rounding artifact: two results that swap places
+	// between the two rankings score identically, which is what reciprocal rank
+	// fusion is supposed to do. Something still has to break it, and for a
+	// memory store the newer fact is the right answer, because the usual reason
+	// two memories say almost the same thing is that one replaced the other.
+	sort.SliceStable(fused, func(a, b int) bool {
+		left, right := fused[a], fused[b]
+		if left.Score != right.Score {
+			return left.Score > right.Score
+		}
+		if !left.Record.UpdatedAt.Equal(right.Record.UpdatedAt) {
+			return left.Record.UpdatedAt.After(right.Record.UpdatedAt)
+		}
+		return left.Record.Confidence > right.Record.Confidence
+	})
+	if len(fused) > limit {
+		fused = fused[:limit]
+	}
+	return fused
 }
 
 // ftsQuery turns free text into an FTS5 expression, quoting each term so

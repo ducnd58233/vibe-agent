@@ -102,8 +102,21 @@ type Record struct {
 	SupersedesID string     `json:"supersedesId,omitempty"`
 	UsedCount    int        `json:"usedCount"`
 	ExpiresAt    *time.Time `json:"expiresAt,omitempty"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	UpdatedAt    time.Time  `json:"updatedAt"`
+
+	// ValidFrom and ValidTo are when the fact was true, which is a different
+	// question from CreatedAt and UpdatedAt, when this store learned about it.
+	//
+	// Keeping both is what lets a contradiction be resolved without losing the
+	// history: the replaced fact is closed at the moment the replacement became
+	// true, so it stops being retrieved while the record of having believed it
+	// survives, and an as-of query can still reconstruct what was known then.
+	//
+	// A nil ValidTo means the fact is still held.
+	ValidFrom time.Time  `json:"validFrom"`
+	ValidTo   *time.Time `json:"validTo,omitempty"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // Validate reports whether a record is well formed, independent of policy.
