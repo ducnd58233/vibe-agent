@@ -41,6 +41,7 @@
       "mcp__ide__*",
       "mcp__chrome-devtools__*",
       "mcp__playwright__*",
+      "mcp__mobile__*",
       "WebFetch(domain:cursor.com)",
       "Bash(vibe-agent *)",
       "Read(schemas/**)",
