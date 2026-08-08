@@ -39,7 +39,9 @@ The fix is not a better command. It is **assertions about the device's own repor
 | Expected content in the view hierarchy | Is the right data on screen? | A hierarchy can list nodes that never painted |
 | Frame is not blank | Did anything paint? | A busy screen can show entirely wrong values |
 
-Collect all three. Each one covers a case the other two miss, and a blank screen fails all three at once — which is what makes the combination worth the setup cost.
+Collect all three. Each one covers a case the other two miss.
+
+**Measured on a live emulator, not assumed.** With the display asleep, `screencap` returned a single colour covering 100% of the frame — and `uiautomator dump` still reported every expected element as present, because the view tree outlives the display. A check built on the hierarchy alone, which is what most guidance suggests, passes that screen. The frame check is what caught it.
 
 **Only the second signal says anything about data.** Crash-free and non-blank together still pass a screen showing `Total: 0.00` where `Total: 42.00` belongs. If a check asserts no expected content, say so in the record rather than letting it read as a full pass.
 
@@ -64,6 +66,11 @@ adb shell cat /sdcard/window_dump.xml
 # 3. Frame. exec-out rather than shell, or line-ending translation corrupts the PNG.
 adb exec-out screencap -p > frame.png
 ```
+
+Two environment traps, both found by running the above rather than by reading about it:
+
+- **`adb` is usually not on `PATH`.** Installing Android Studio sets `ANDROID_HOME` and leaves `PATH` alone, so a script that calls `adb` by name fails on a normal machine with a running emulator. Resolve it from `ANDROID_HOME`/`ANDROID_SDK_ROOT` plus `platform-tools`.
+- **Git Bash and other MSYS shells rewrite device paths.** `/sdcard/window_dump.xml` arrives at `adb` as `C:/Program Files/Git/sdcard/window_dump.xml`. Set `MSYS_NO_PATHCONV=1`, use `//sdcard/...`, or invoke `adb` without a POSIX shell in between. Callers that exec directly, with no shell, are unaffected.
 
 Two things to get right:
 

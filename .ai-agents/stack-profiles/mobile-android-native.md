@@ -54,6 +54,8 @@ adb logcat -b crash -d                                   # assert no crash or AN
 - Give asserted elements stable `resource-id` values. In Compose, `Modifier.testTag` needs `testTagsAsResourceId` enabled before it appears in the dump.
 - Wait for the app to settle before sampling. A frame from the splash screen proves nothing either way, and an emulator that has not finished booting produces exactly the blank frame under investigation.
 - An unreadable signal is a failure, not a skip: a dropped `adb` connection otherwise looks like a healthy app.
+- **The view tree outlives the display.** With the screen asleep, `uiautomator dump` still lists every element while `screencap` returns one flat colour. A hierarchy-only check passes that screen; keep the frame check.
+- `adb` is usually not on `PATH` after an Android Studio install; resolve it from `ANDROID_HOME`/`ANDROID_SDK_ROOT` + `platform-tools`. In Git Bash, `/sdcard/...` is rewritten to a Windows path — use `MSYS_NO_PATHCONV=1` or `//sdcard/...`.
 
 ## Boundaries
 

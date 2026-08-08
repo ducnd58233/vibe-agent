@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -28,6 +29,59 @@ func NewDevice(spec ScreenSpec, workspaceRoot string) (Device, error) {
 	default:
 		return nil, fmt.Errorf("unknown screen platform %q; use %s or %s", spec.Platform, PlatformAndroid, PlatformIOS)
 	}
+}
+
+// AndroidSDKEnv are the variables that name an SDK location, in the order the
+// Android tooling itself prefers them.
+var AndroidSDKEnv = []string{"ANDROID_HOME", "ANDROID_SDK_ROOT"}
+
+// adbCommand resolves the adb executable.
+//
+// Installing Android Studio does not put platform-tools on PATH, which is the
+// common case rather than a broken one: the SDK sets ANDROID_HOME and leaves PATH
+// alone. Calling "adb" by name therefore failed on an ordinary developer machine
+// with a running emulator, and the failure looked like a missing tool rather than
+// a lookup this code never tried.
+//
+// PATH comes first so an explicitly installed adb wins over whatever an SDK
+// happens to ship.
+func adbCommand() string {
+	if resolved, err := exec.LookPath("adb"); err == nil {
+		return resolved
+	}
+	var roots []string
+	for _, key := range AndroidSDKEnv {
+		if value := os.Getenv(key); value != "" {
+			roots = append(roots, value)
+		}
+	}
+	if found := ToolInSDK("adb", roots); found != "" {
+		return found
+	}
+	// Fall back to the bare name so the error names the tool the reader expects,
+	// rather than an empty command.
+	return "adb"
+}
+
+// ToolInSDK looks for a platform-tools executable under the given SDK roots.
+//
+// Exported so the lookup can be tested without an SDK installed, which is the
+// only way it gets tested in CI.
+func ToolInSDK(name string, roots []string) string {
+	names := []string{name}
+	if runtime.GOOS == "windows" {
+		// A direct file check does not consult PATHEXT the way LookPath does.
+		names = []string{name + ".exe", name}
+	}
+	for _, root := range roots {
+		for _, candidate := range names {
+			path := filepath.Join(root, "platform-tools", candidate)
+			if info, err := os.Stat(path); err == nil && !info.IsDir() {
+				return path
+			}
+		}
+	}
+	return ""
 }
 
 // capture runs a command and returns stdout, with stderr folded into the error
@@ -74,7 +128,7 @@ func (a android) adb(args ...string) []string {
 }
 
 func (a android) ClearCrashLog(ctx context.Context) error {
-	_, err := capture(ctx, a.dir, "adb", a.adb("logcat", "-b", "crash", "-c")...)
+	_, err := capture(ctx, a.dir, adbCommand(), a.adb("logcat", "-b", "crash", "-c")...)
 	return err
 }
 
@@ -87,7 +141,7 @@ func (a android) Launch(ctx context.Context, command string, args []string) erro
 // only FATAL EXCEPTION, ANR, and tombstone records. Reading the main buffer would
 // mean sifting a working app's own logging for words like "error".
 func (a android) CrashLog(ctx context.Context) (string, error) {
-	out, err := capture(ctx, a.dir, "adb", a.adb("logcat", "-b", "crash", "-d")...)
+	out, err := capture(ctx, a.dir, adbCommand(), a.adb("logcat", "-b", "crash", "-d")...)
 	return string(out), err
 }
 
@@ -104,10 +158,10 @@ func (a android) CrashLog(ctx context.Context) (string, error) {
 //     idle, which surfaces here as an error rather than as missing content.
 func (a android) ViewHierarchy(ctx context.Context) (string, error) {
 	const remote = "/sdcard/window_dump.xml"
-	if _, err := capture(ctx, a.dir, "adb", a.adb("shell", "uiautomator", "dump", remote)...); err != nil {
+	if _, err := capture(ctx, a.dir, adbCommand(), a.adb("shell", "uiautomator", "dump", remote)...); err != nil {
 		return "", err
 	}
-	out, err := capture(ctx, a.dir, "adb", a.adb("shell", "cat", remote)...)
+	out, err := capture(ctx, a.dir, adbCommand(), a.adb("shell", "cat", remote)...)
 	if err != nil {
 		return "", err
 	}
@@ -121,7 +175,7 @@ func (a android) ViewHierarchy(ctx context.Context) (string, error) {
 // Screenshot uses exec-out rather than shell, so the PNG arrives as bytes without
 // adb's line-ending translation corrupting it.
 func (a android) Screenshot(ctx context.Context) ([]byte, error) {
-	return capture(ctx, a.dir, "adb", a.adb("exec-out", "screencap", "-p")...)
+	return capture(ctx, a.dir, adbCommand(), a.adb("exec-out", "screencap", "-p")...)
 }
 
 // simulator drives an iOS simulator over xcrun simctl.
