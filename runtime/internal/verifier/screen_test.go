@@ -9,6 +9,7 @@ import (
 	"image/png"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
 )
@@ -375,5 +376,94 @@ func TestNewDeviceRejectsAnUnknownPlatform(t *testing.T) {
 func TestScreenNeedsAScreenBlock(t *testing.T) {
 	if _, err := (Screen{}).Verify(context.Background(), Request{Check: "e2e"}); err == nil {
 		t.Error("Verify ran without a screen block")
+	}
+}
+
+// Found by mutation testing. `len(found) > 0` on the crash branch survived
+// negation, which meant no test ever put a crash log through Verify: fakeDevice's
+// crash field was never populated. One of the three headline signals had no
+// end-to-end coverage at all, and the unit test for CrashFindings did not notice
+// because it calls the parser directly.
+func TestACrashedAppFailsTheScreenCheck(t *testing.T) {
+	crashed := &fakeDevice{
+		crash: `--------- beginning of crash
+01-01 00:00:00.000  E AndroidRuntime: FATAL EXCEPTION: main
+01-01 00:00:00.000  E AndroidRuntime: Process: com.example, PID: 4242
+01-01 00:00:00.000  E AndroidRuntime: java.lang.NullPointerException`,
+		// Everything else looks healthy, which is the point: the crash has to fail
+		// this on its own.
+		hierarchy: goodTree,
+		shot:      busy(t),
+	}
+	result := verifyScreen(t, crashed, screenSpec())
+
+	if result.Check.Passed {
+		t.Fatalf("an app that died with a FATAL EXCEPTION passed: %s", result.Summary)
+	}
+	if !strings.Contains(result.Summary, "FATAL EXCEPTION") {
+		t.Errorf("the summary does not name what was found: %s", result.Summary)
+	}
+	if !strings.Contains(result.Detail, "java.lang.NullPointerException") {
+		t.Errorf("the log does not carry the stack trace, so there is nothing to debug from:\n%s", result.Detail)
+	}
+}
+
+func TestAnANRFailsTheScreenCheck(t *testing.T) {
+	hung := &fakeDevice{
+		crash:     "01-01 00:00:00.000  E ActivityManager: ANR in com.example (com.example/.Main)",
+		hierarchy: goodTree,
+		shot:      busy(t),
+	}
+	result := verifyScreen(t, hung, screenSpec())
+	if result.Check.Passed {
+		t.Fatalf("an app that stopped responding passed: %s", result.Summary)
+	}
+}
+
+// The other survivor: the bucket counter could be decremented without any test
+// noticing, because both blank cases were decided by the distinct-colour count
+// and nothing exercised the dominant-share branch. This is a frame with noise
+// spread across many buckets while one colour still holds essentially all of it,
+// which is what a real screenshot of an empty screen looks like after
+// compression.
+func TestANoisyButEffectivelyEmptyFrameIsBlank(t *testing.T) {
+	const size = 200
+	img := image.NewRGBA(image.Rect(0, 0, size, size))
+	for y := range size {
+		for x := range size {
+			img.Set(x, y, color.White)
+		}
+	}
+	// Scatter single off-white pixels into many separate buckets, so the distinct
+	// count is far past BlankDistinctMax while the dominant share is not.
+	for i := range 60 {
+		img.Set(i*3, i, color.RGBA{R: uint8(255 - i*3), G: uint8(255 - i*3), B: 255, A: 255})
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	measured, err := Blank(buf.Bytes())
+	if err != nil {
+		t.Fatalf("Blank: %v", err)
+	}
+	if measured.Distinct <= BlankDistinctMax {
+		t.Fatalf("the fixture does not exercise the dominant-share branch: %s", measured.Describe())
+	}
+	if !measured.Blank {
+		t.Errorf("a frame that is %.3f one colour was not blank (%s)", measured.Dominant, measured.Describe())
+	}
+}
+
+// A wait that does not wait is the splash-screen false negative: sample too
+// early and the frame proves nothing. The multiplier survived being mutated to a
+// division, so nothing checked the unit.
+func TestSettleIsInSeconds(t *testing.T) {
+	if got := (ScreenSpec{SettleSeconds: 3}).Settle(); got != 3*time.Second {
+		t.Errorf("Settle() = %v, want 3s; a wrong unit samples the splash screen", got)
+	}
+	if got := (ScreenSpec{}).Settle(); got != DefaultSettle {
+		t.Errorf("Settle() with no value = %v, want %v", got, DefaultSettle)
 	}
 }

@@ -133,16 +133,39 @@ See [`test-driven-development`](../skills/test-driven-development/SKILL.md) for 
 
 Coverage answers "was this line executed", which a useless test satisfies. Two better questions, in increasing cost:
 
-**1. Would deleting the code fail the test?** This is *extreme mutation testing*: remove a function body and see whether the suite notices. A function that is covered but survives having its body deleted is **pseudo-tested** — the case exercised it and checked nothing that mattered. Niedermayr, Juergens and Wagner introduced the technique; across 19 open-source projects the median share of pseudo-tested methods was **10.1%** ([study](https://arxiv.org/pdf/2103.08480)). This is the mechanical form of the wrapper and pass-through bans above.
+**1. Would changing the code fail the test?** Mutation testing alters the code and checks whether the suite notices. A mutant that **lives** means every test still passed with the behaviour changed, so nothing was asserting on it.
+
+Two variants, and they are not interchangeable:
+
+| Variant | What it changes | Answers |
+|---------|-----------------|---------|
+| **Operator mutation** (the usual kind) | Negates a condition, shifts a boundary, flips an operator | Which branches nothing asserts on |
+| **Extreme mutation** | Removes a whole function body | Which functions are **pseudo-tested**: covered, and checked nothing that mattered |
+
+Extreme mutation is the one that mechanises the wrapper and pass-through bans above. Niedermayr, Juergens and Wagner introduced it; across 19 open-source projects the median share of pseudo-tested methods was **10.1%** ([study](https://arxiv.org/pdf/2103.08480)).
 
 Tooling is per-stack and needs installing, so it is a deliberate opt-in rather than part of `make check`:
 
-| Stack | Tool |
-|-------|------|
-| Java | [PIT](https://pitest.org/) with the [Descartes](https://inria.hal.science/hal-01870976/document) engine (pseudo-tested methods specifically) |
-| Go | [gremlins](https://github.com/go-gremlins/gremlins) |
-| JS/TS | [Stryker](https://stryker-mutator.io/) |
-| Python | [mutmut](https://github.com/boxed/mutmut) |
+| Stack | Tool | Variant |
+|-------|------|---------|
+| Java | [PIT](https://pitest.org/) with the [Descartes](https://inria.hal.science/hal-01870976/document) engine | extreme |
+| Go | [gremlins](https://github.com/go-gremlins/gremlins) | operator only |
+| JS/TS | [Stryker](https://stryker-mutator.io/) | operator |
+| Python | [mutmut](https://github.com/boxed/mutmut) | operator |
+
+### Reading the output
+
+Notes from running `gremlins unleash` over this repository's own runtime, which is where the guidance below comes from rather than from the tool's README:
+
+- **A survivor is a question, not a defect.** Three classes come out of one run, and only the first is worth acting on:
+  - *a missing assertion* — the branch is real and nothing checks it;
+  - *an equivalent mutant* — the change cannot alter observable behaviour, so no test can kill it;
+  - *plumbing that depends on the environment* — a `PATH` lookup, an OS-specific fallback. Testing these means injecting seams into production code for no behavioural gain.
+- **Set the timeout coefficient before trusting the numbers.** A default that is too tight reported every mutant in one package as `TIMED OUT`, which looks like a hanging test suite and is really a bound computed from a fast coverage run. Timeouts are counted separately from lived and killed, so a run full of them has no signal in either direction.
+- **Results are not reproducible run to run.** The same package reported 11 survivors and then 4. Treat a number as an indication and the individual survivor lines as the output that matters.
+- **Chase the survivors, not the percentage.** Efficacy climbs fastest by adding assertions to whatever is easiest to assert on, which is the same incentive that produces the tests banned above.
+
+What one pass actually found here, in code written the same day and fully passing its own suite: a headline signal with **no end-to-end test at all** (its unit test called the parser directly, so nothing exercised the branch that acts on the result), a validation rule asserted only in the JSON Schema and never in the loader that enforces it, a defaulting branch that would have turned an absent timeout into an already-expired one, and a config field the loader accepted with a negative value the schema forbids. None of those are visible in a coverage report.
 
 **2. Has this test ever failed?** Coplien's framing: *"Tests that continually pass are producing no information — or at least very little information, and the value of the information they produce may not be worth the expense of maintaining and running the tests"* ([essay](https://wikileaks.org/ciav7p1/cms/files/Why-Most-Unit-Testing-is-Waste.pdf)). Treat it as a prompt to check the test can still fail, not as licence to delete a regression guard — see the [counter-argument](https://henrikwarne.com/2014/09/04/a-response-to-why-most-unit-testing-is-waste/).
 

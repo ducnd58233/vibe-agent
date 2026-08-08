@@ -216,6 +216,18 @@ func (p *Plan) validate() error {
 			return fmt.Errorf("check %q has a screen block with no platform; use %s or %s",
 				name, verifier.PlatformAndroid, verifier.PlatformIOS)
 		}
+		// The schema requires a positive timeout and this loader did not, so a
+		// hand-written plan could set a negative one and get a bound in the past.
+		// Two statements of the same contract that disagree is the drift the
+		// cross-language check exists to catch; this closes it on the Go side.
+		if entry.TimeoutSeconds < 0 {
+			return fmt.Errorf("check %q has timeoutSeconds %d; a bound has to be positive",
+				name, entry.TimeoutSeconds)
+		}
+		if entry.Screen != nil && entry.Screen.SettleSeconds < 0 {
+			return fmt.Errorf("check %q has settleSeconds %d; a wait has to be positive",
+				name, entry.Screen.SettleSeconds)
+		}
 	}
 	return nil
 }

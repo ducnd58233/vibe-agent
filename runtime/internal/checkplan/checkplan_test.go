@@ -120,3 +120,97 @@ spec:
 		t.Fatal("a graph was accepted as a check plan")
 	}
 }
+
+// Found by mutation testing, not by reading the code. The platform check
+// survived having its condition negated, which meant nothing here exercised it:
+// the rule was asserted only in the JSON Schema, so the Go loader and the schema
+// were one edit away from disagreeing.
+func TestPlanRejectsAScreenBlockWithNoPlatform(t *testing.T) {
+	root := write(t, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    e2e:
+      verifier: screen
+      screen:
+        expectText: ["Total"]
+`)
+	_, err := Load(DefaultPath(root))
+	if err == nil {
+		t.Fatal("a screen block with no platform was accepted; it cannot pick a toolchain")
+	}
+	if !strings.Contains(err.Error(), "platform") {
+		t.Errorf("the error does not say what is missing: %v", err)
+	}
+}
+
+func TestPlanAcceptsAScreenBlockWithAPlatform(t *testing.T) {
+	root := write(t, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    e2e:
+      verifier: screen
+      screen:
+        platform: android
+        expectText: ["Total"]
+`)
+	plan, err := Load(DefaultPath(root))
+	if err != nil {
+		t.Fatalf("a valid screen block was refused: %v", err)
+	}
+	entry, err := plan.Entry("e2e")
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	if entry.Screen == nil || entry.Screen.Platform != "android" {
+		t.Errorf("the screen block did not survive loading: %+v", entry.Screen)
+	}
+}
+
+// The schema bounds a timeout at 1 second and this loader did not, so the two
+// statements of the same contract could drift.
+func TestPlanRejectsANegativeBound(t *testing.T) {
+	for _, body := range []string{
+		`apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      command: go
+      timeoutSeconds: -30
+`,
+		`apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    e2e:
+      verifier: screen
+      screen:
+        platform: android
+        settleSeconds: -5
+`,
+	} {
+		if _, err := Load(DefaultPath(write(t, body))); err == nil {
+			t.Errorf("a negative bound was accepted:\n%s", body)
+		}
+	}
+}
+
+// An entry with no timeout must fall back to the package default, not to zero.
+// Zero reaches context.WithTimeout as an already-expired deadline, so every
+// check would time out the moment it started. Nothing asserted the default,
+// which is why the boundary survived mutation.
+func TestAnEntryWithNoTimeoutGetsTheDefault(t *testing.T) {
+	plan, err := Load(DefaultPath(write(t, minimal)))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	entry, err := plan.Entry("unit")
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	if got := entry.Timeout(); got != DefaultTimeout {
+		t.Errorf("Timeout() = %v, want %v; zero would expire before the check ran", got, DefaultTimeout)
+	}
+}
