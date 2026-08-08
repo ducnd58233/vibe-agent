@@ -64,7 +64,7 @@ Use the Makefile. `make help` lists everything.
 ```sh
 make check      # gofmt, vet, and every test including the e2e suite
 make build      # dist/vibe-agent for this platform
-make install    # onto $(go env GOPATH)/bin for local use
+make install    # into ~/.local/bin, the same place the installers use
 make release    # all six targets plus SHA256SUMS
 ```
 
@@ -72,9 +72,12 @@ make release    # all six targets plus SHA256SUMS
 
 **Hooks call `vibe-agent` by name, so they run whatever is on `PATH` — not the source you just edited.** A passing `go test ./...` says nothing about what a session will execute.
 
-Run `make install` after any change here, and `vibe-agent doctor` to confirm it took. Two failures this closes, both of which happened:
+Run `make install` after any change here, and `vibe-agent doctor` to confirm it took. `make install` writes to `$VIBE_INSTALL_DIR`, defaulting to `~/.local/bin` — the same location [`scripts/install-runtime.sh`](../scripts/install-runtime.sh) and [`.ps1`](../scripts/install-runtime.ps1) use, so there is one copy rather than one per installation route. It then reports when `PATH` resolves `vibe-agent` to a different build, because a shadowed install is invisible and its symptom is a hook behaving like a version you replaced.
+
+Three failures this closes, all of which happened:
 
 - A binary predating `post-tool-use` kept answering the other five hooks and refused that one. It read as a broken hook rather than an out-of-date install, and nothing compared the two: `make install` writes without checking, and the version string was `dev` on both sides so a version comparison proved nothing. A local build now stamps its commit.
+- The three installation routes wrote to three different directories: `GOPATH/bin` here, `~/.local/bin` from the shell installer, and a third under `%LOCALAPPDATA%` from the PowerShell one. A machine ended up holding several binaries at different versions, and `PATH` order decided which the hooks called — so a `make install` could be silently ineffective because a copy installed elsewhere still won. All three now share one location, and all three report when `PATH` resolves `vibe-agent` to a different build.
 - On Windows, `install` wrote an extensionless file. Git Bash can execute it; nothing else can resolve it by name. Worse, once the `.exe` existed too, a POSIX shell still picked the older extensionless one, so `vibe-agent` meant a different build depending on who asked. `make install` now appends `GOEXE`, and `doctor` reports the shadow if an old file is still there.
 
 `doctor` reads the events `.claude/settings.json` and `.cursor/hooks.json` register, then asks the binary on `PATH` which ones it handles. It asks that binary rather than reporting its own list, because the process running `doctor` is not necessarily the one answering hooks — and that difference is the whole failure.

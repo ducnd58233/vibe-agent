@@ -20,6 +20,14 @@ EXE     := $(shell go env GOEXE)
 GIT_SHA   := $(shell git rev-parse --short HEAD 2>/dev/null)
 GIT_DIRTY := $(shell git diff --quiet 2>/dev/null || echo "-dirty")
 VERSION   ?= $(if $(GIT_SHA),dev-$(GIT_SHA)$(GIT_DIRTY),dev)
+
+# One install location, shared with scripts/install-runtime.{sh,ps1}. These used
+# to write to three different directories: GOPATH/bin here, ~/.local/bin from the
+# shell installer, and %LOCALAPPDATA%\Programsibe-agent from the PowerShell
+# one. A machine could then hold several vibe-agent binaries at different
+# versions, and PATH order decided which one the hooks called — so `make install`
+# could appear to do nothing because a copy installed elsewhere still won.
+INSTALL_DIR ?= $(if $(VIBE_INSTALL_DIR),$(VIBE_INSTALL_DIR),$(HOME)/.local/bin)
 DIST    := dist
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
@@ -43,9 +51,29 @@ all: check build
 build:
 	go build -ldflags="$(LDFLAGS)" -o $(DIST)/$(BINARY)$(EXE) ./cmd
 
-## install: put the binary on the Go bin path for local use
+## install: build and install to INSTALL_DIR, then check nothing else shadows it
 install:
-	go build -ldflags="$(LDFLAGS)" -o "$(shell go env GOPATH)/bin/$(BINARY)$(EXE)" ./cmd
+	@mkdir -p "$(INSTALL_DIR)"
+	go build -ldflags="$(LDFLAGS)" -o "$(INSTALL_DIR)/$(BINARY)$(EXE)" ./cmd
+	@echo "installed $(INSTALL_DIR)/$(BINARY)$(EXE) ($(VERSION))"
+	@# Hooks resolve the binary by name, so what matters is which copy PATH finds,
+	@# not which one was just written. Reporting the difference is the whole point:
+	@# a shadowed install is invisible, and the symptom is a hook answering with
+	@# behaviour from a build you replaced.
+	@resolved=$$(command -v $(BINARY) 2>/dev/null || true); \
+	if [ -z "$$resolved" ]; then \
+	  echo "warning: $(BINARY) is not on PATH. Hooks invoke it by name, so none run."; \
+	  echo "         add it with: export PATH=\"$(INSTALL_DIR):\$$PATH\""; \
+	  exit 0; \
+	fi; \
+	mine=$$("$(INSTALL_DIR)/$(BINARY)$(EXE)" version 2>/dev/null || echo unknown); \
+	theirs=$$("$$resolved" version 2>/dev/null || echo unknown); \
+	if [ "$$mine" != "$$theirs" ]; then \
+	  echo "warning: PATH resolves $(BINARY) to a different build:"; \
+	  echo "           $$resolved ($$theirs)"; \
+	  echo "         so this install does not change what the hooks run."; \
+	  echo "         remove that copy, or put $(INSTALL_DIR) earlier on PATH."; \
+	fi
 
 ## test: run every package test, including the consumer-repo end-to-end suite
 test:

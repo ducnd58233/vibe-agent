@@ -97,6 +97,26 @@ report_success() {
       echo "  export PATH=\"${INSTALL_DIR}:\$PATH\""
       ;;
   esac
+
+  # What matters is which copy PATH finds, not which one was just written. A
+  # shadowed install is invisible, and its symptom is a hook behaving like a
+  # version you thought you replaced. Reported here, in the PowerShell installer,
+  # and by `make install`, because all three write the binary and any of them can
+  # be the one being shadowed.
+  local resolved
+  resolved="$(command -v "$BINARY" 2>/dev/null || true)"
+  if [ -n "$resolved" ] && [ -n "$installed" ]; then
+    local winner
+    winner="$("$resolved" version 2>/dev/null | head -1 || true)"
+    if [ -n "$winner" ] && [ "$winner" != "$installed" ]; then
+      echo
+      echo "warning: PATH resolves ${BINARY} to a different build:"
+      echo "           ${resolved} (${winner})"
+      echo "         so this install does not change what the hooks run."
+      echo "         remove that copy, or put ${INSTALL_DIR} earlier on PATH."
+    fi
+  fi
+
   echo
   echo "check the install with:"
   echo "  ${BINARY} version"

@@ -13,11 +13,23 @@
 .PARAMETER FromSource
   Skip the release lookup and build from runtime/ directly.
 
+.PARAMETER SkipPathUpdate
+  Leave the user PATH alone. Also honoured as $env:VIBE_SKIP_PATH_UPDATE. Use it
+  when installing to a temporary directory, which would otherwise be added to
+  PATH permanently.
+
 .PARAMETER Version
   Release to install, for example v0.1.0. Defaults to the latest release.
 
 .PARAMETER InstallDir
-  Where to place the binary. Defaults to %LOCALAPPDATA%\Programs\vibe-agent.
+  Where to place the binary. Defaults to $env:VIBE_INSTALL_DIR, then
+  %USERPROFILE%\.local\bin.
+
+  One location, shared with install-runtime.sh and with `make install` in
+  runtime/. They used to write to three different directories, so a machine could
+  end up with several vibe-agent binaries and PATH order decided which one the
+  hooks called. A `make install` was then silently ineffective, because a copy
+  installed elsewhere still won.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts/install-runtime.ps1
@@ -26,9 +38,10 @@
 [CmdletBinding()]
 param(
   [string]$Version = 'latest',
-  [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'Programs\vibe-agent'),
+  [string]$InstallDir = $(if ($env:VIBE_INSTALL_DIR) { $env:VIBE_INSTALL_DIR } else { Join-Path $env:USERPROFILE '.local\bin' }),
   [string]$Repo = 'ducnd58233/vibe-agent',
-  [switch]$FromSource
+  [switch]$FromSource,
+  [switch]$SkipPathUpdate
 )
 
 $ErrorActionPreference = 'Stop'
@@ -44,6 +57,24 @@ function Show-Result {
     } else {
         Write-Host "installed $Target"
     }
+    # What matters is which copy PATH finds, not which one was just written. A
+    # shadowed install is invisible, and its symptom is a hook behaving like a
+    # version you thought you replaced. Reported here, in install-runtime.sh, and
+    # by `make install`, because all three write the binary and any of them can be
+    # the one being shadowed.
+    $resolved = Get-Command vibe-agent -ErrorAction SilentlyContinue
+    if ($resolved -and $installed) {
+        $winner = ''
+        try { $winner = (& $resolved.Source version 2>$null | Select-Object -First 1).Trim() } catch { }
+        if ($winner -and $winner -ne $installed) {
+            Write-Host ''
+            Write-Warning "PATH resolves vibe-agent to a different build:"
+            Write-Warning "  $($resolved.Source) ($winner)"
+            Write-Warning "so this install does not change what the hooks run."
+            Write-Warning "Remove that copy, or put $InstallDir earlier on PATH."
+        }
+    }
+
     Write-Host ''
     Write-Host 'check the install with:'
     Write-Host '  vibe-agent version'
@@ -90,7 +121,16 @@ vibe-agent, then rerun this script.
 
 function Add-ToUserPath {
     param([string]$Directory)
-    # Hooks invoke the binary by name, so PATH matters.
+
+    # Hooks invoke the binary by name, so PATH matters. This is the only part of
+    # the script that changes state outside the install directory, which is why it
+    # can be turned off: a scripted or throwaway install to a temporary directory
+    # would otherwise leave that directory on the user's PATH permanently.
+    if ($SkipPathUpdate -or $env:VIBE_SKIP_PATH_UPDATE) {
+        Write-Host "skipping the PATH update; add $Directory yourself if hooks need it"
+        return
+    }
+
     $userPath = [Environment]::GetEnvironmentVariable('PATH', 'User')
     if ($userPath -notlike "*$Directory*") {
         [Environment]::SetEnvironmentVariable('PATH', "$userPath;$Directory", 'User')
