@@ -122,3 +122,51 @@ func keysOf(m map[string][]string) []string {
 	}
 	return keys
 }
+
+// An absent binary is a supported state, said so in two places: the runtime is
+// "optional: every asset works with this binary absent", and a missing one "makes
+// every hook a quiet no-op". The first version of this check reported it as a
+// defect, which broke every environment that runs the binary by path instead of
+// installing it — including this repository's own CI, where nothing installs it.
+//
+// The distinction that matters is severity. Absent is announced; stale is
+// invisible and half-works.
+func TestAnAbsentBinaryIsNotADoctorFailure(t *testing.T) {
+	root := t.TempDir()
+	writeConfig(t, root, filepath.Join(".claude", "settings.json"), `{
+  "hooks": {
+    "PostToolUse": [{"hooks": [{"command": "vibe-agent hook post-tool-use"}]}]
+  }
+}`)
+
+	// An empty PATH is the state a fresh clone is in.
+	t.Setenv("PATH", t.TempDir())
+
+	report := &diagnostics{}
+	checkHookWiring(report, root)
+
+	if report.problems != 0 {
+		t.Errorf("doctor reported %d problems with no binary installed; "+
+			"the design calls that a supported state, and CI runs in it",
+			report.problems)
+	}
+}
+
+// The other half. A config wiring an event no build implements is a real defect
+// whether or not anything is installed, because no install will fix it.
+func TestAnUnimplementedEventIsADoctorFailure(t *testing.T) {
+	root := t.TempDir()
+	writeConfig(t, root, filepath.Join(".claude", "settings.json"), `{
+  "hooks": {
+    "Whenever": [{"hooks": [{"command": "vibe-agent hook before-everything"}]}]
+  }
+}`)
+	t.Setenv("PATH", t.TempDir())
+
+	report := &diagnostics{}
+	checkHookWiring(report, root)
+
+	if report.problems == 0 {
+		t.Error("a hook wired to an event no build implements was reported as fine")
+	}
+}

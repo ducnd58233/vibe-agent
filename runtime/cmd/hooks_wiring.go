@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -101,6 +102,18 @@ func contains(list []string, want string) bool {
 	return false
 }
 
+// errNotInstalled marks the one state this file must not report as a defect.
+//
+// An absent binary is a supported configuration, said so in two places: the
+// runtime is "optional: every asset works with this binary absent", and a missing
+// one "makes every hook a quiet no-op". Reporting it as a failure would contradict
+// the design and fail every environment that runs the binary by path instead of
+// installing it, which is what a test harness does.
+//
+// Staleness is the opposite. Nothing supports it, nothing announces it, and the
+// hooks half-work. That stays a failure.
+var errNotInstalled = errors.New("vibe-agent is not on PATH")
+
 // pathBinaryEvents asks the vibe-agent on PATH which events it handles.
 //
 // Deliberately not this process's own list. doctor may be running from
@@ -121,7 +134,7 @@ func pathBinaryEvents(ctx context.Context) (path string, events []string, err er
 				"%s exists but has no %s extension, so only a POSIX shell can run it by name; "+
 					"rebuild with `cd runtime && make install`", stranded, exeSuffix())
 		}
-		return "", nil, fmt.Errorf("no vibe-agent on PATH; hooks call it by name, so none of them run: %w", err)
+		return "", nil, errNotInstalled
 	}
 
 	// A resolvable binary is not the end of it. On Windows an extensionless
@@ -185,9 +198,16 @@ func checkHookWiring(report *diagnostics, toolkitRoot string) {
 			"; either the event name is wrong or this build is older than the config")
 
 	// The staleness comparison. Its own failure is reported rather than skipped:
-	// "could not ask" is not "the binary is fine".
+	// "could not ask" is not "the binary is fine". The one exception is an absent
+	// binary, which the design supports.
 	binary, supported, err := pathBinaryEvents(context.Background())
-	if err != nil {
+	switch {
+	case errors.Is(err, errNotInstalled):
+		fmt.Println("  note  no vibe-agent on PATH, so the hooks these configs register do not run. " +
+			"That is a supported state: every asset works without it. " +
+			"Install with `cd runtime && make install` to turn them on.")
+		return
+	case err != nil:
 		report.check("the vibe-agent on PATH handles every registered hook", false, err.Error())
 		return
 	}
