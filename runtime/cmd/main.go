@@ -31,6 +31,7 @@ Usage:
   vibe-agent graph validate [--graph <id>]
   vibe-agent mcp serve
   vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|stop|subagent-stop> [--client claude|cursor]
+  vibe-agent hook --events
   vibe-agent memory list [--status <status>]
   vibe-agent memory confirm --id <id>
   vibe-agent memory forget --id <id>
@@ -52,6 +53,11 @@ diff rather than a flag.
 A check the plan does not declare is skipped, with the plan named as the reason.
 A skipped check satisfies a guard only where the graph sets acceptsSkipped, and
 "run flag" writes a scope flag only while the run sits at a human gate.
+
+Hooks call this binary by name, so they run whatever is on PATH rather than the
+source it was built from. Run "make install" after changing the runtime, and
+"doctor" to confirm the binary on PATH handles every hook the host configs
+register.
 
 Hooks mostly inform. Two of them refuse:
 

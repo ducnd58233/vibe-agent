@@ -68,6 +68,17 @@ make install    # onto $(go env GOPATH)/bin for local use
 make release    # all six targets plus SHA256SUMS
 ```
 
+### Changing this module means reinstalling it
+
+**Hooks call `vibe-agent` by name, so they run whatever is on `PATH` — not the source you just edited.** A passing `go test ./...` says nothing about what a session will execute.
+
+Run `make install` after any change here, and `vibe-agent doctor` to confirm it took. Two failures this closes, both of which happened:
+
+- A binary predating `post-tool-use` kept answering the other five hooks and refused that one. It read as a broken hook rather than an out-of-date install, and nothing compared the two: `make install` writes without checking, and the version string was `dev` on both sides so a version comparison proved nothing. A local build now stamps its commit.
+- On Windows, `install` wrote an extensionless file. Git Bash can execute it; nothing else can resolve it by name. Worse, once the `.exe` existed too, a POSIX shell still picked the older extensionless one, so `vibe-agent` meant a different build depending on who asked. `make install` now appends `GOEXE`, and `doctor` reports the shadow if an old file is still there.
+
+`doctor` reads the events `.claude/settings.json` and `.cursor/hooks.json` register, then asks the binary on `PATH` which ones it handles. It asks that binary rather than reporting its own list, because the process running `doctor` is not necessarily the one answering hooks — and that difference is the whole failure.
+
 Regenerate the golden manifest after an intentional shape change:
 
 ```sh

@@ -58,6 +58,47 @@ const (
 	EventPostToolUse Event = "post-tool-use"
 )
 
+// Events is every event this build handles.
+//
+// One list, because the same set was previously written out three times: here as
+// constants, again as a prose error message in the CLI, and again in each host's
+// config. A build whose config registered an event it did not implement was
+// therefore possible, and it happened: a binary predating post-tool-use kept
+// answering the other five while rejecting that one, which reads as a broken hook
+// rather than as an out-of-date install.
+//
+// `doctor` diffs this against what the host configs register, so the mismatch is
+// reported before a session runs into it.
+func Events() []Event {
+	return []Event{
+		EventSessionStart,
+		EventUserPromptSubmit,
+		EventPreToolUse,
+		EventPostToolUse,
+		EventStop,
+		EventSubagentStop,
+	}
+}
+
+// Handles reports whether this build knows an event.
+func Handles(event Event) bool {
+	for _, known := range Events() {
+		if known == event {
+			return true
+		}
+	}
+	return false
+}
+
+// EventNames is Events as strings, for messages and comparisons.
+func EventNames() []string {
+	names := make([]string, 0, len(Events()))
+	for _, event := range Events() {
+		names = append(names, string(event))
+	}
+	return names
+}
+
 // Request is a hook invocation.
 type Request struct {
 	Event         Event
@@ -157,7 +198,15 @@ func Run(req Request, out io.Writer) error {
 	case EventPostToolUse:
 		return journal(req, body)
 	default:
-		return fmt.Errorf("unknown hook event %q", req.Event)
+		// Naming the events this build does handle turns the message into a
+		// diagnosis. The original text said only that the event was unknown, which
+		// reads as a configuration typo when the usual cause is a binary older
+		// than the config that calls it.
+		return fmt.Errorf("unknown hook event %q; this build handles %s. "+
+			"A host config registering an event listed nowhere here is usually a "+
+			"binary older than the config: reinstall it (cd runtime && make install) "+
+			"and run `vibe-agent doctor`",
+			req.Event, strings.Join(EventNames(), ", "))
 	}
 }
 

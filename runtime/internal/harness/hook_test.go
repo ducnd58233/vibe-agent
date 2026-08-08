@@ -183,3 +183,39 @@ func TestUnknownEventIsAnError(t *testing.T) {
 		t.Error("an unknown hook event was accepted")
 	}
 }
+
+// Events() is what doctor trusts when it says a hook is implemented, and Run's
+// switch is what actually implements one. A constant added to the list and not to
+// the switch would pass every wiring check and then fail at runtime, which is the
+// shape of the bug this whole check exists for, one layer down.
+func TestEveryAdvertisedEventIsActuallyHandled(t *testing.T) {
+	for _, event := range Events() {
+		var out bytes.Buffer
+		err := Run(Request{
+			Event:         event,
+			WorkspaceRoot: t.TempDir(),
+			Stdin:         strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"ls"}}`),
+		}, &out)
+		// A hook with nothing to say returns nil. What it must not do is refuse the
+		// event, which is what an unhandled one does.
+		if err != nil && strings.Contains(err.Error(), "unknown hook event") {
+			t.Errorf("Events() advertises %q and Run does not handle it", event)
+		}
+	}
+}
+
+// The refusal has to name a cause. "unknown hook event" alone reads as a typo in
+// the config, and the cause is almost always a binary older than the config
+// calling it, which is a different fix.
+func TestTheRefusalNamesWhatThisBuildHandles(t *testing.T) {
+	var out bytes.Buffer
+	err := Run(Request{Event: "post-tool-usage", WorkspaceRoot: t.TempDir()}, &out)
+	if err == nil {
+		t.Fatal("a misspelled event was accepted")
+	}
+	for _, want := range []string{"post-tool-use", "make install"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not mention %q, so it does not point at the fix: %v", want, err)
+		}
+	}
+}

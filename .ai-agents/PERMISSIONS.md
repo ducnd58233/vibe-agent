@@ -51,6 +51,8 @@ The optional [`runtime/`](../runtime) binary is an actuator with its own boundar
 | Evidence | A check is `passed` only from `exit_code`, `file_assert`, `ci_api`, or `human_event`. There is no source for model assertion, in the schema or in the code. |
 | Irreversible actions | Merge, deploy, and publish sit behind a `human_gate` node. The runtime never merges, pushes, or checks out; the `git` verifier only observes. |
 | Degradation | A missing binary makes every hook a quiet no-op. The control plane must never wedge a coding session. |
+| Staleness | A **stale** binary is not quiet: it answers the hooks it knows and refuses the rest, which reads as a broken hook rather than an out-of-date install. The refusal names the events the build handles and points at `make install`. `vibe-agent doctor` compares the events the host configs register against what the binary on `PATH` actually handles, so the mismatch is reported before a session runs into it. |
+| Binary identity | Hooks resolve `vibe-agent` by name, so the binary answering them is whatever `PATH` finds — not necessarily the one just built. On Windows an extensionless file shadows the `.exe` for any POSIX shell, meaning two builds can answer depending on which shell asks. `doctor` reports that too. |
 
 ## Device and browser automation: exploration, not evidence
 

@@ -5,7 +5,21 @@
 # toolchain is needed to build and no SQLite install is needed to run.
 
 BINARY  := vibe-agent
-VERSION ?= dev
+# GOEXE is ".exe" on Windows and empty elsewhere. Without it, install wrote an
+# extensionless file that Git Bash can execute and Windows cannot resolve by
+# name, so hooks worked from a POSIX shell and nothing else could find the
+# binary. The release target already appended the extension per platform; these
+# two did not.
+EXE     := $(shell go env GOEXE)
+
+# A local build stamps the commit it came from, so `doctor` can tell an install
+# apart from the source beside it. It used to be "dev" on both sides, which made
+# a version comparison prove nothing: a ten-day-old binary and a fresh one
+# reported the same string. A dirty tree is marked, because the commit alone
+# would describe a build that no longer matches its own source.
+GIT_SHA   := $(shell git rev-parse --short HEAD 2>/dev/null)
+GIT_DIRTY := $(shell git diff --quiet 2>/dev/null || echo "-dirty")
+VERSION   ?= $(if $(GIT_SHA),dev-$(GIT_SHA)$(GIT_DIRTY),dev)
 DIST    := dist
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
@@ -27,11 +41,11 @@ all: check build
 
 ## build: compile for the current platform into dist/
 build:
-	go build -ldflags="$(LDFLAGS)" -o $(DIST)/$(BINARY) ./cmd
+	go build -ldflags="$(LDFLAGS)" -o $(DIST)/$(BINARY)$(EXE) ./cmd
 
 ## install: put the binary on the Go bin path for local use
 install:
-	go build -ldflags="$(LDFLAGS)" -o "$(shell go env GOPATH)/bin/$(BINARY)" ./cmd
+	go build -ldflags="$(LDFLAGS)" -o "$(shell go env GOPATH)/bin/$(BINARY)$(EXE)" ./cmd
 
 ## test: run every package test, including the consumer-repo end-to-end suite
 test:

@@ -33,6 +33,7 @@ func doctorCommand(args []string) error {
 	fmt.Printf("  toolkit   %s\n\n", toolkitRoot)
 
 	checkGraphs(report, toolkitRoot)
+	checkHookWiring(report, toolkitRoot)
 	checkCheckPlan(report, workspaceRoot, toolkitRoot)
 	checkMemory(report, workspaceRoot)
 	checkRunState(report, workspaceRoot)
