@@ -155,8 +155,21 @@ def main() -> int:
         f"exception with a `{ALLOW_MARKER}` comment on the line."
     )
 
-    # PostToolUse accepts the common output fields only; hookSpecificOutput is PreToolUse-only.
-    print(json.dumps({"systemMessage": report}))
+    # Both fields on purpose. systemMessage reaches the person; additionalContext
+    # reaches the model, which is the one that has to fix the file. Whichever the
+    # installed host does not support is ignored, and a warning only the human can
+    # see is a warning the agent will repeat next edit.
+    print(
+        json.dumps(
+            {
+                "systemMessage": report,
+                "hookSpecificOutput": {
+                    "hookEventName": "PostToolUse",
+                    "additionalContext": report,
+                },
+            }
+        )
+    )
     return 0
 
 

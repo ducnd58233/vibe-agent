@@ -48,6 +48,9 @@
       },
       {
         "command": "python3 .ai-agents/hooks/ui-slop-guard.py"
+      },
+      {
+        "command": "python3 .ai-agents/hooks/core-logic-test-guard.py"
       }
     ],
     "subagentStop": [

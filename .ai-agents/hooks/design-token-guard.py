@@ -69,7 +69,22 @@ def main() -> int:
         "Prefer semantic design tokens/CSS variables unless this is an intentional exception. "
         "Add 'design-token-guard: allow-raw-color' near the file header to acknowledge."
     )
-    print(message, file=sys.stderr)
+    # This used to print to stderr with exit 0, which delivers the warning
+    # nowhere the model can act on: a host hands stderr back to the model only on
+    # exit 2, and a guard must not fail the edit to get heard. JSON on stdout is
+    # the supported channel. Both fields are sent because systemMessage reaches
+    # the person and additionalContext reaches the model that has to fix it.
+    print(
+        json.dumps(
+            {
+                "systemMessage": message,
+                "hookSpecificOutput": {
+                    "hookEventName": "PostToolUse",
+                    "additionalContext": message,
+                },
+            }
+        )
+    )
     return 0
 
 
