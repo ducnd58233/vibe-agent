@@ -38,6 +38,22 @@ Applies to consumer repositories building native iOS applications with Swift, Sw
 - `swift test`
 - `swift build`
 
+## Render verification (MUST)
+
+`xcodebuild test` exiting 0 means its assertions passed, not that a screen rendered. Where a task claims a screen works, verify it — see [`mobile-ui-verification.md`](../references/mobile-ui-verification.md).
+
+`simctl` covers two of the three signals; the third has to come from inside the app:
+
+```sh
+xcrun simctl io booted screenshot frame.png              # assert not blank
+xcrun simctl spawn booted log show --last 2m   --predicate "eventType == 'faultEvent'"                # assert no fault
+```
+
+- There is **no `uiautomator` equivalent on iOS**. Assert expected content with XCUITest queries on accessibility identifiers, which is also what makes the assertions survive a view rename.
+- At least one assertion must name **expected content**. A crash-free, non-blank screen can still show the wrong values.
+- The simulator's crash reports are cumulative with no clearable buffer, so bound the query by time or a stale report will outlive the run that produced it.
+- An unreadable signal is a failure, not a skip.
+
 ## Boundaries
 
 - Do not block the main actor/thread with network, file, decoding, image processing, or CPU-heavy work

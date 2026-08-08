@@ -40,6 +40,25 @@ Compose with [`lang-typescript.md`](lang-typescript.md) for type-system concerns
 - `npm run android`
 - `npm run ios`
 
+## Render verification (MUST)
+
+`npm run test` and `npm run android` say nothing about what reached the display, and a saved screenshot proves only that a file exists. Verify the render from the device's own reported state — see [`mobile-ui-verification.md`](../references/mobile-ui-verification.md).
+
+React Native renders **native views**, so the platform view hierarchy works here and is the strongest signal available:
+
+```sh
+adb logcat -b crash -c                                   # before launch
+adb shell uiautomator dump /sdcard/window_dump.xml       # after it settles
+adb shell cat /sdcard/window_dump.xml                    # assert expected content
+adb exec-out screencap -p > frame.png                    # assert not blank
+adb logcat -b crash -d                                   # assert no crash or ANR
+```
+
+- Set `testID` on the elements a check asserts on. Every driver locates elements by identifier, label, or XPath, so a rename breaks the check whichever driver is in use; stable identifiers are what reduce that churn.
+- At least one assertion must name **expected content**, not just "not blank". Crash-free and non-blank together still pass a screen showing the wrong numbers.
+- A **redbox is not a crash**: an unhandled JS exception leaves the crash buffer clean and the screen busy. Assert that the redbox's own text is absent.
+- On iOS there is no `uiautomator` equivalent; assert content from an XCUITest or in-app test and use `xcrun simctl` for the screenshot and fault log.
+
 ## Boundaries
 
 - Do not assume web DOM APIs are available

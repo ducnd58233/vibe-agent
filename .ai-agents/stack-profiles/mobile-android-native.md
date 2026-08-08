@@ -38,6 +38,23 @@ Applies to consumer repositories building native Android applications with Kotli
 - `./gradlew lint`
 - `./gradlew assembleDebug`
 
+## Render verification (MUST)
+
+`./gradlew connectedAndroidTest` exiting 0 means its assertions passed, not that a user would see anything. Where a task claims a screen works, verify it from the device — see [`mobile-ui-verification.md`](../references/mobile-ui-verification.md).
+
+```sh
+adb logcat -b crash -c                                   # before launch
+adb shell uiautomator dump /sdcard/window_dump.xml       # after it settles
+adb shell cat /sdcard/window_dump.xml                    # assert expected content
+adb exec-out screencap -p > frame.png                    # assert not blank
+adb logcat -b crash -d                                   # assert no crash or ANR
+```
+
+- Clear the crash buffer before launching, or a stale trace fails every run. Match `FATAL EXCEPTION` and `ANR in` rather than testing whether the buffer is empty: it opens with a banner even when nothing crashed.
+- Give asserted elements stable `resource-id` values. In Compose, `Modifier.testTag` needs `testTagsAsResourceId` enabled before it appears in the dump.
+- Wait for the app to settle before sampling. A frame from the splash screen proves nothing either way, and an emulator that has not finished booting produces exactly the blank frame under investigation.
+- An unreadable signal is a failure, not a skip: a dropped `adb` connection otherwise looks like a healthy app.
+
 ## Boundaries
 
 - Do not perform network/database work on the main thread

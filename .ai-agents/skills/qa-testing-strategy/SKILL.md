@@ -22,6 +22,7 @@ TDD proves code behavior at implementation time; QA strategy proves user-facing 
 1. **Load context**
    - Read acceptance criteria, specs, risk areas, target users, supported browsers/devices, existing tests, and applicable stack profiles.
    - Use [`references/qa-testing-strategy.md`](../../references/qa-testing-strategy.md) and [`references/testing-patterns.md`](../../references/testing-patterns.md).
+   - For an emulator, simulator, or handset, use [`references/mobile-ui-verification.md`](../../references/mobile-ui-verification.md). A suite exiting 0 is not evidence the app rendered.
 2. **Define risk and coverage**
    - Map features to happy paths, edge cases, permissions, errors, data boundaries, localization, accessibility, performance, security, and platform matrix.
 3. **Split manual vs automation**

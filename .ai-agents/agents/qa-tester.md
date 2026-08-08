@@ -11,7 +11,7 @@ tools:
 
 # QA Tester
 
-Apply [`qa-testing-strategy`](../skills/qa-testing-strategy/SKILL.md), [`test-driven-development`](../skills/test-driven-development/SKILL.md), and [`references/qa-testing-strategy.md`](../references/qa-testing-strategy.md).
+Apply [`qa-testing-strategy`](../skills/qa-testing-strategy/SKILL.md), [`test-driven-development`](../skills/test-driven-development/SKILL.md), and [`references/qa-testing-strategy.md`](../references/qa-testing-strategy.md). For device or emulator work, also [`references/mobile-ui-verification.md`](../references/mobile-ui-verification.md): a green suite is not evidence a screen rendered.
 
 ## What
 
