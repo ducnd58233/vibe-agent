@@ -121,6 +121,25 @@ func TestCommandNeedsACommand(t *testing.T) {
 	}
 }
 
+// A check plan that names a tool this machine does not have is a real and
+// ordinary mistake, so it must fail closed rather than error out or pass. It
+// also must not be described as an exit code: nothing exited.
+func TestCommandThatCannotStartIsUnprovenNotPassed(t *testing.T) {
+	result, err := Command{}.Verify(context.Background(), Request{
+		Check: "absent", WorkspaceRoot: t.TempDir(),
+		Command: "vibe-agent-no-such-tool-exists", Args: []string{"--version"},
+	})
+	if err != nil {
+		t.Fatalf("a missing tool should be a failed check, not a Verify error: %v", err)
+	}
+	if result.Check.Passed {
+		t.Error("a command that never ran was recorded as a pass")
+	}
+	if !strings.Contains(result.Summary, "could not start") {
+		t.Errorf("summary describes it as having run: %q", result.Summary)
+	}
+}
+
 func TestFilesPassesWhenEveryPathHasContent(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "docs", "SPEC.md"), "content")

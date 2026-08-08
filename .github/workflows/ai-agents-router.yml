@@ -8,6 +8,7 @@ on:
       - 'schemas/**'
       - 'scripts/**'
       - 'runtime/**'
+      - 'vibe-checks.yaml'
       - '.gitignore'
       - '.github/workflows/ai-agents-router.yml'
   pull_request:
@@ -17,6 +18,7 @@ on:
       - 'schemas/**'
       - 'scripts/**'
       - 'runtime/**'
+      - 'vibe-checks.yaml'
       - '.gitignore'
       - '.github/workflows/ai-agents-router.yml'
 

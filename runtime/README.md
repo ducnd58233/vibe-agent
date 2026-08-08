@@ -21,6 +21,7 @@ runtime/
     main.go               entry point and the dispatch table
     common.go             shared path flags and output helpers
     run.go                run start, run status
+    verify.go             run a verifier node's check and record what it found
     checkpoint.go         record evidence and advance the graph
     graph.go              graph validate
     mcp.go                mcp serve
@@ -29,11 +30,13 @@ runtime/
     doctor.go             workspace health checks
   internal/
     graph/                workflow graph model, loader, static validation
+    checkplan/            vibe-checks.yaml: what command produces which check
     loop/                 the runner: transitions, budget, blocker stop rule
     checkpoint/           the one write path: apply evidence, once
+      verify.go           the only producer of runtime-origin evidence
     verifier/             command, files, git. The things that produce evidence
     memory/               SQLite store, FTS search, write policy, promotion
-    mcp/                  stdio server, six tools
+    mcp/                  stdio server, seven tools
     harness/              hook adapters for Claude and Cursor
       gate.go             the refusals: protected pushes, merges, state writes
       recall.go           retrieval that does not wait to be asked
@@ -80,6 +83,26 @@ State lands in `tmp/my-feature/manifest.json` with the log at `tmp/my-feature/ev
 A check is `passed` only when real evidence produced it. `CheckSource` has four values: `exit_code`, `file_assert`, `ci_api`, `human_event`. There is deliberately no value for model assertion, so no code path lets model output mark its own work complete.
 
 `Load` applies the same rule as `SetCheck`, so a hand-edited manifest gets the same scrutiny as one this package wrote.
+
+## Provenance is claimed, or it is produced
+
+`--source exit_code` says what *kind* of evidence a check claims to be. It does not say a process ran. Anyone who could type the flag could walk a verifier node without verifying anything, and `exit_code` on `true` is a true statement.
+
+Two things close that, and both live outside the model's reach:
+
+1. **A verifier node's check can only be written by a verifier.** `checkpoint` refuses it and names the command that would work. The authority to write runtime-origin evidence is an unexported field on an unexported type in `internal/checkpoint`, obtainable only by calling `Verify`, which sets it after a verifier has returned. No other package can grant itself that, and the compiler is what enforces it.
+2. **The command is not the caller's to choose either.** `verify` runs what [`vibe-checks.yaml`](../vibe-checks.yaml) declares for that check. Swapping a real suite for something weaker is a diff on a tracked file rather than an argument nobody reviews.
+
+```sh
+vibe-agent verify --slug my-feature --dry-run   # what would run, and from where
+vibe-agent verify --slug my-feature             # run it and record the result
+```
+
+There is no `--passed` on `verify`. A failing check exits 0: the run recorded the failure and routed on it, which is the loop working, and a non-zero exit would make a host treat that as a broken tool call.
+
+One escape hatch, deliberately visible. A check the plan declares `verifier: human` has no runtime verifier, so a person records it with `checkpoint --source human_event`. It costs a tracked diff to grant, and a plan full of them is a fact about the repo worth seeing rather than a setting to forget.
+
+`doctor` reports any verifier node in any graph whose check the plan does not declare, because a run that discovers this mid-delivery discovers it at the expensive time.
 
 ## What is deterministic, and what is not
 
@@ -154,3 +177,5 @@ Keyword search with metadata filters remains the deliberate first choice. Embedd
 - `scripts/check-schemas.py` validates that golden file against the schema.
 
 Without both, the writer and the contract drift and nothing notices until a run fails to load.
+
+[`schemas/check-plan.schema.json`](../schemas/check-plan.schema.json) is held the same way: `internal/checkplan` is one implementation, and `check-schemas.py` validates this repo's real [`vibe-checks.yaml`](../vibe-checks.yaml) against the schema. A plan the Go loader accepts and the schema rejects is a drift the first stalled run would find otherwise.

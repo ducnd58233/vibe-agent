@@ -1,9 +1,12 @@
 package checkpoint
 
 import (
+	"os"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
@@ -57,6 +60,180 @@ func apply(t *testing.T, root string, outcome loop.Outcome) *Result {
 		t.Fatalf("Apply: %v", err)
 	}
 	return result
+}
+
+// declarePlan writes a check plan into the workspace. The plan is what decides
+// who may write a verifier node's check, so most of these tests need one.
+func declarePlan(t *testing.T, root, body string) {
+	t.Helper()
+	if err := os.WriteFile(checkplan.DefaultPath(root), []byte(body), 0o644); err != nil {
+		t.Fatalf("write plan: %v", err)
+	}
+}
+
+// atTestNode walks a fresh run to the `test` node, the first verifier in the
+// delivery graph. Human gates and agent nodes are unaffected by the origin rule,
+// so reaching a verifier is the only way to exercise it.
+func atTestNode(t *testing.T, root string) {
+	t.Helper()
+	apply(t, root, intakeConfirmed())           // intake -> spec
+	apply(t, root, loop.Outcome{})              // spec -> approve_spec
+	apply(t, root, humanCheck("spec_approved")) // -> plan
+	apply(t, root, loop.Outcome{})              // plan -> approve_plan
+	apply(t, root, humanCheck("plan_approved")) // -> build
+	apply(t, root, loop.Outcome{})              // build -> test
+
+	current, err := state.Load(state.ManifestPath(root, "demo"))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if current.CurrentNode != "test" {
+		t.Fatalf("walked to %q, want test", current.CurrentNode)
+	}
+}
+
+func humanCheck(name string) loop.Outcome {
+	return loop.Outcome{Check: &loop.NamedCheck{
+		Name:  name,
+		Check: state.Check{Passed: true, Source: state.SourceHumanEvent, At: at()},
+	}}
+}
+
+func unitPassed() loop.Outcome {
+	return loop.Outcome{Check: &loop.NamedCheck{
+		Name:  "unit",
+		Check: state.Check{Passed: true, Source: state.SourceExitCode, At: at()},
+	}}
+}
+
+// The hole this closes. `--source exit_code` proves the string is one of four
+// allowed values; it does not prove a process ran. Anyone who could type it
+// could walk a verifier node without verifying, which is how a mobile app on a
+// white screen reached a passing e2e check.
+func TestCallerSuppliedEvidenceIsRefusedAtAVerifierNode(t *testing.T) {
+	root := workspace(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      command: go
+      args: [test, ./...]
+`)
+	atTestNode(t, root)
+
+	_, err := Apply(Request{
+		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
+		Outcome: unitPassed(), Now: at(),
+	})
+	if err == nil {
+		t.Fatal("a typed exit_code advanced a verifier node; nothing ran")
+	}
+	if !strings.Contains(err.Error(), "verify") {
+		t.Errorf("the refusal does not point at the command that would work: %v", err)
+	}
+}
+
+// The same evidence, produced by a verifier in this process, must advance. A
+// rule that refused both would just wedge the loop.
+func TestRuntimeProducedEvidenceAdvancesAVerifierNode(t *testing.T) {
+	root := workspace(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      command: go
+      args: [test, ./...]
+`)
+	atTestNode(t, root)
+
+	result, err := Apply(Request{
+		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
+		Outcome: unitPassed(), origin: originRuntime, Now: at(),
+	})
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if result.Transition == nil || result.Transition.To != "e2e" {
+		t.Fatalf("runtime evidence did not advance to e2e: %+v", result.Transition)
+	}
+}
+
+// Some checks genuinely have no runtime verifier. The escape hatch stays in git:
+// the workspace declares `verifier: human` for that check, and only then may a
+// person record it. Declaring it is a reviewable diff; typing a flag is not.
+func TestAHumanDeclaredCheckStillTakesAHumanEvent(t *testing.T) {
+	root := workspace(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      verifier: human
+      description: a person runs the suite and reports it
+`)
+	atTestNode(t, root)
+
+	human := unitPassed()
+	human.Check.Check.Source = state.SourceHumanEvent
+	result, err := Apply(Request{
+		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
+		Outcome: human, Now: at(),
+	})
+	if err != nil {
+		t.Fatalf("a declared human check was refused: %v", err)
+	}
+	if result.Transition == nil || result.Transition.To != "e2e" {
+		t.Fatalf("did not advance: %+v", result.Transition)
+	}
+}
+
+// A human-declared check is a person's word, so it must not be accepted while
+// claiming to be a process. Otherwise the declaration would launder provenance.
+func TestAHumanDeclaredCheckRefusesAProcessSource(t *testing.T) {
+	root := workspace(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      verifier: human
+`)
+	atTestNode(t, root)
+
+	if _, err := Apply(Request{
+		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
+		Outcome: unitPassed(), Now: at(),
+	}); err == nil {
+		t.Fatal("a human-declared check accepted exit_code from a caller")
+	}
+}
+
+// With no entry, nothing may write the check. Falling back to "allow it" would
+// make an unconfigured repo the most permissive one.
+func TestAVerifierNodeWithNoPlanEntryCannotAdvance(t *testing.T) {
+	root := workspace(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    e2e:
+      command: npm
+      args: [run, e2e]
+`)
+	atTestNode(t, root)
+
+	_, err := Apply(Request{
+		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
+		Outcome: unitPassed(), origin: originRuntime, Now: at(),
+	})
+	if err == nil {
+		t.Fatal("an undeclared check advanced")
+	}
+	if !strings.Contains(err.Error(), checkplan.FileName) {
+		t.Errorf("the refusal does not name the file to edit: %v", err)
+	}
 }
 
 func TestApplyAdvancesTheRun(t *testing.T) {

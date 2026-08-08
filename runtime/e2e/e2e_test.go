@@ -68,8 +68,44 @@ func consumerRepo(t *testing.T) string {
 	write(t, filepath.Join(root, "AGENTS.md"), "# Consumer rules\n\nDomain constraints live here.\n")
 	write(t, filepath.Join(root, ".gitignore"), "/tmp/\n/.agent-state/\n")
 	write(t, filepath.Join(root, "src", "main.go"), "package main\n\nfunc main() {}\n")
+	write(t, filepath.Join(root, "vibe-checks.yaml"), passingPlan)
 	return root
 }
+
+// passingPlan declares every verifier node's check as a command that exits 0.
+//
+// `go version` is the portable stand-in: the suite already skips without a Go
+// toolchain, so it is present wherever these tests run, and it needs no network
+// or fixture. tasks_remaining is the one check with no runtime verifier, so the
+// plan says so out loud rather than letting a caller decide per invocation.
+const passingPlan = `apiVersion: vibe-agent/v1
+kind: CheckPlan
+metadata:
+  description: Fixture plan for the delivery walk.
+spec:
+  checks:
+    unit:
+      command: go
+      args: [version]
+    e2e:
+      command: go
+      args: [version]
+    pr_open:
+      command: go
+      args: [version]
+    ci:
+      command: go
+      args: [version]
+    reviews:
+      command: go
+      args: [version]
+    ship:
+      command: go
+      args: [version]
+    tasks_remaining:
+      verifier: human
+      description: a person decides whether another in-scope task remains
+`
 
 type cli struct {
 	t       *testing.T
@@ -131,33 +167,45 @@ func TestConsumerRepoRunsAGoalToCompletion(t *testing.T) {
 	}
 
 	// Walk the delivery loop on evidence alone, exactly as a host would.
+	//
+	// The `verify` steps are the ones a caller cannot fake. Every verifier node
+	// now gets its check from a command the workspace declared in
+	// vibe-checks.yaml, so this walk exercises the real path rather than typing
+	// the conclusion at each gate.
 	steps := []struct {
-		check  string
+		verify bool   // produce the check by running the plan's command
+		check  string // otherwise checkpoint this check by hand
 		source string
 		flag   string
 		want   string
 	}{
-		{"intake_confirmed", "human_event", "--passed", "spec"},
-		{"", "", "", "approve_spec"},
-		{"spec_approved", "human_event", "--passed", "plan"},
-		{"", "", "", "approve_plan"},
-		{"plan_approved", "human_event", "--passed", "build"},
-		{"", "", "", "test"},
-		{"unit", "exit_code", "--passed", "e2e"},
-		{"e2e", "file_assert", "--skipped", "review"},
-		{"", "", "", "open_pr"},
-		{"pr_open", "ci_api", "--passed", "pr_checks"},
-		{"ci", "ci_api", "--passed", "external_reviews"},
-		{"reviews", "ci_api", "--passed", "ship"},
-		{"ship", "exit_code", "--passed", "approve_merge"},
-		{"merge_approved", "human_event", "--passed", "task_complete"},
-		{"tasks_remaining", "file_assert", "--failed", "done"},
+		{false, "intake_confirmed", "human_event", "--passed", "spec"},
+		{false, "", "", "", "approve_spec"},
+		{false, "spec_approved", "human_event", "--passed", "plan"},
+		{false, "", "", "", "approve_plan"},
+		{false, "plan_approved", "human_event", "--passed", "build"},
+		{false, "", "", "", "test"},
+		{true, "unit", "", "", "e2e"},
+		{true, "e2e", "", "", "review"},
+		{false, "", "", "", "open_pr"},
+		{true, "pr_open", "", "", "pr_checks"},
+		{true, "ci", "", "", "external_reviews"},
+		{true, "reviews", "", "", "ship"},
+		{true, "ship", "", "", "approve_merge"},
+		{false, "merge_approved", "human_event", "--passed", "task_complete"},
+		{false, "tasks_remaining", "human_event", "--failed", "done"},
 	}
 
 	for i, step := range steps {
-		args := []string{"checkpoint", "--slug", "webhook-idempotency"}
-		if step.check != "" {
-			args = append(args, "--check", step.check, "--source", step.source, step.flag)
+		var args []string
+		switch {
+		case step.verify:
+			args = []string{"verify", "--slug", "webhook-idempotency"}
+		case step.check != "":
+			args = []string{"checkpoint", "--slug", "webhook-idempotency",
+				"--check", step.check, "--source", step.source, step.flag}
+		default:
+			args = []string{"checkpoint", "--slug", "webhook-idempotency"}
 		}
 		out := run.mustRun(args...)
 		if !strings.Contains(out, "-> "+step.want) {
@@ -185,11 +233,16 @@ func TestConsumerRepoRunsAGoalToCompletion(t *testing.T) {
 		t.Errorf("final status = %v, want done", final["status"])
 	}
 
-	// A skipped check must remain distinguishable from a passed one.
+	// The e2e check must carry an exit code. That field is what distinguishes a
+	// result a process produced from a conclusion someone typed: only the command
+	// verifier writes it, and it is the reason this walk cannot be faked.
 	checks := final["checks"].(map[string]any)
 	e2e := checks["e2e"].(map[string]any)
-	if e2e["passed"] == true {
-		t.Error("a skipped e2e check was recorded as passed")
+	if _, recorded := e2e["exitCode"]; !recorded {
+		t.Errorf("the e2e check has no exit code, so nothing ran to produce it: %v", e2e)
+	}
+	if e2e["source"] != "exit_code" {
+		t.Errorf("e2e source = %v, want exit_code from the verifier", e2e["source"])
 	}
 
 	events := filepath.Join(root, "tmp", "webhook-idempotency", "events.ndjson")
@@ -200,6 +253,127 @@ func TestConsumerRepoRunsAGoalToCompletion(t *testing.T) {
 	lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
 	if len(lines) != len(steps)+1 {
 		t.Errorf("event log has %d lines, want %d (one start plus one per transition)", len(lines), len(steps)+1)
+	}
+}
+
+// walkTo drives a fresh run to a node by way of the gates in front of it. It
+// stops before the node it names, so the caller decides what happens there.
+func walkTo(t *testing.T, run cli, slug, node string) {
+	t.Helper()
+	steps := [][]string{
+		{"--check", "intake_confirmed", "--source", "human_event", "--passed"},
+		{},
+		{"--check", "spec_approved", "--source", "human_event", "--passed"},
+		{},
+		{"--check", "plan_approved", "--source", "human_event", "--passed"},
+		{},
+	}
+	for _, extra := range steps {
+		out := run.mustRun(append([]string{"checkpoint", "--slug", slug}, extra...)...)
+		if strings.Contains(out, "-> "+node) {
+			return
+		}
+	}
+	t.Fatalf("never reached %q", node)
+}
+
+// The reported bug, at the process boundary.
+//
+// An agent that ran a mobile app on an emulator, saw a white screen, and typed
+// the passing checkpoint used to walk straight past the e2e gate. --source
+// exit_code says what kind of evidence a check claims to be; it does not say a
+// process ran. Now the only thing that can write a verifier node's check is a
+// verifier, and the refusal has to name the command that would work.
+func TestAVerifierNodeCannotBeWalkedByAssertion(t *testing.T) {
+	root := consumerRepo(t)
+	run := cli{t, buildBinary(t), root, toolkitRoot(t)}
+	run.mustRun("run", "start", "--slug", "asserted", "--goal", "prove a typed pass is refused")
+	walkTo(t, run, "asserted", "test")
+
+	out, err := run.run("checkpoint", "--slug", "asserted",
+		"--check", "unit", "--source", "exit_code", "--passed")
+	if err == nil {
+		t.Fatalf("a typed exit_code advanced a verifier node:\n%s", out)
+	}
+	if !strings.Contains(out, "verify") {
+		t.Errorf("the refusal does not name the command that would work:\n%s", out)
+	}
+
+	// Skipping is the same hole wearing a different flag: the e2e_ok guard
+	// accepts a skipped check, so a caller that can skip can bypass the gate.
+	if out, err := run.run("checkpoint", "--slug", "asserted",
+		"--check", "unit", "--source", "file_assert", "--skipped"); err == nil {
+		t.Errorf("a hand-written skip advanced a verifier node:\n%s", out)
+	}
+
+	status := run.mustRun("run", "status", "--slug", "asserted")
+	if !strings.Contains(status, "node       test") {
+		t.Errorf("the run left the verifier node anyway:\n%s", status)
+	}
+}
+
+// The other half: when the planned command really fails, the run must route back
+// to build rather than stall or pass. This is the mobile case working correctly.
+func TestAFailingPlannedCommandRoutesBackToBuild(t *testing.T) {
+	root := consumerRepo(t)
+	write(t, filepath.Join(root, "vibe-checks.yaml"), `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      command: go
+      args: [run, ./does-not-exist]
+`)
+	run := cli{t, buildBinary(t), root, toolkitRoot(t)}
+	run.mustRun("run", "start", "--slug", "failing", "--goal", "prove a real failure routes back")
+	walkTo(t, run, "failing", "test")
+
+	// verify exits 0 on a failing check on purpose: the loop handled the failure,
+	// which is not a broken tool call.
+	out := run.mustRun("verify", "--slug", "failing")
+	if !strings.Contains(out, "-> build") {
+		t.Fatalf("a failing check did not route back to build:\n%s", out)
+	}
+	if !strings.Contains(out, "unit fail") {
+		t.Errorf("the failure was not reported as one:\n%s", out)
+	}
+
+	status := run.mustRun("run", "status", "--slug", "failing", "--json")
+	var final map[string]any
+	if err := json.Unmarshal([]byte(status), &final); err != nil {
+		t.Fatalf("status is not JSON: %v\n%s", err, status)
+	}
+	unit := final["checks"].(map[string]any)["unit"].(map[string]any)
+	if unit["passed"] == true {
+		t.Error("a command that exited non-zero was recorded as passed")
+	}
+	if unit["exitCode"] == nil {
+		t.Error("the failing check carries no exit code")
+	}
+}
+
+// A check nobody declared must not resolve to anything. An unconfigured repo is
+// the one most likely to hit this, so it is the one that must fail closed.
+func TestVerifyRefusesACheckTheWorkspaceDidNotDeclare(t *testing.T) {
+	root := consumerRepo(t)
+	write(t, filepath.Join(root, "vibe-checks.yaml"), `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    lint:
+      command: go
+      args: [version]
+`)
+	run := cli{t, buildBinary(t), root, toolkitRoot(t)}
+	run.mustRun("run", "start", "--slug", "undeclared", "--goal", "prove an undeclared check fails closed")
+	walkTo(t, run, "undeclared", "test")
+
+	out, err := run.run("verify", "--slug", "undeclared")
+	if err == nil {
+		t.Fatalf("an undeclared check verified:\n%s", out)
+	}
+	if !strings.Contains(out, "unit") {
+		t.Errorf("the error does not name the missing check:\n%s", out)
 	}
 }
 

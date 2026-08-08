@@ -51,6 +51,10 @@ func (c Command) Verify(ctx context.Context, req Request) (Result, error) {
 
 	exitCode := cmd.ProcessState.ExitCode()
 	timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
+	// A command that could not start has no ProcessState. That is the case when
+	// the plan names a tool this machine does not have, which is common enough
+	// to deserve saying plainly rather than reporting as an exit code.
+	neverRan := cmd.ProcessState == nil
 
 	// A process the runtime killed never produced a verdict. Reporting its exit
 	// code as a failure would be a lie about what happened.
@@ -81,6 +85,10 @@ func (c Command) Verify(ctx context.Context, req Request) (Result, error) {
 	switch {
 	case timedOut:
 		result.Summary = fmt.Sprintf("%s timed out after %s", commandLine, timeout)
+	case neverRan:
+		// Not a failing check in the usual sense, but still not a passing one: the
+		// check is unproven, and unproven has to read as not passed.
+		result.Summary = fmt.Sprintf("%s could not start: %v", commandLine, runErr)
 	case runErr != nil:
 		result.Summary = fmt.Sprintf("%s exited %d after %s", commandLine, exitCode, elapsed.Round(time.Millisecond))
 	default:

@@ -25,6 +25,7 @@ const usage = `vibe-agent - outer-loop control plane
 Usage:
   vibe-agent run start --slug <slug> --goal <text> [--graph <id>]
   vibe-agent run status --slug <slug> [--json]
+  vibe-agent verify --slug <slug> [--dry-run]
   vibe-agent checkpoint --slug <slug> --check <name> --source <source> [--passed|--failed|--skipped]
   vibe-agent graph validate [--graph <id>]
   vibe-agent mcp serve
@@ -40,6 +41,12 @@ tmp/<slug>/events.ndjson, both under the workspace root and both gitignored.
 
 Evidence sources: exit_code, file_assert, ci_api, human_event. There is no
 source for model assertion, so nothing can mark its own work complete.
+
+A verifier node's check comes from "verify", which runs what vibe-checks.yaml at
+the workspace root declares for that check. "checkpoint" cannot write it: a
+--source argument names a kind of evidence without producing any. The one
+exception is a check the plan declares "verifier: human", which is a tracked
+diff rather than a flag.
 
 Hooks mostly inform. Two of them refuse:
 
@@ -90,6 +97,8 @@ func run(args []string) error {
 		return runCommand(args[1:])
 	case "checkpoint":
 		return checkpointCommand(args[1:])
+	case "verify":
+		return verifyCommand(args[1:])
 	case "graph":
 		return graphCommand(args[1:])
 	case "mcp":

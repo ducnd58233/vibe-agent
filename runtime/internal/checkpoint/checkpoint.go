@@ -22,10 +22,38 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
 )
+
+// origin is who produced the evidence in a request.
+//
+// The distinction is not bureaucratic. state.CheckSource records what *kind* of
+// evidence a check claims to be, and any caller can type one of the four allowed
+// strings. origin records whether this process watched it happen.
+//
+// It is unexported, and so is the Request field holding it, which is the point:
+// no package outside this one can grant itself the runtime's authority. The only
+// way to obtain it is to call Verify, which sets it after a verifier has
+// actually returned.
+type origin string
+
+const (
+	// originCaller is evidence that arrived as arguments: a CLI flag or an MCP
+	// tool parameter. It is a claim about a result, not the result.
+	//
+	// It is the zero value on purpose, so a new surface that forgets to say
+	// where its evidence came from is treated as the untrusted case.
+	originCaller origin = ""
+	// originRuntime is evidence a verifier in this process produced.
+	originRuntime origin = "runtime"
+)
+
+// silence the unused warning for the zero-value name, which documents the
+// default even though nothing needs to write it.
+var _ = originCaller
 
 // Request is one checkpoint.
 type Request struct {
@@ -34,6 +62,9 @@ type Request struct {
 	GraphDir string
 	Slug     string
 	Outcome  loop.Outcome
+	// origin says whether the runtime produced this evidence or a caller
+	// supplied it. Unexported so only Verify can claim the former.
+	origin origin
 	// Now is injectable so tests do not depend on the clock.
 	Now time.Time
 }
@@ -76,6 +107,9 @@ func Apply(req Request) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := req.authorize(loaded, run.CurrentNode); err != nil {
+		return nil, err
+	}
 
 	logPath := state.EventLogPath(req.WorkspaceRoot, req.Slug)
 	key := Key(req.Outcome)
@@ -112,6 +146,69 @@ func Apply(req Request) (*Result, error) {
 		return nil, err
 	}
 	return &Result{Run: run, Graph: loaded, Transition: transition}, nil
+}
+
+// authorize decides whether this request may write the check at all.
+//
+// Verifier nodes are the only nodes with a rule, because they are the only nodes
+// whose evidence is supposed to come from something other than a person. A human
+// gate's check *is* a human's word, so it keeps arriving from a caller.
+//
+// The rule reads from the workspace's check plan rather than from the request,
+// so widening it means editing a file in git.
+func (r Request) authorize(loaded *graph.Graph, currentNode string) error {
+	if r.Outcome.Check == nil {
+		return nil
+	}
+	node, ok := loaded.Node(currentNode)
+	if !ok || node.Type != graph.NodeVerifier {
+		return nil
+	}
+	name := r.Outcome.Check.Name
+
+	plan, err := checkplan.Load(checkplan.DefaultPath(r.WorkspaceRoot))
+	if err != nil {
+		return fmt.Errorf("node %q verifies %q, so the workspace has to declare how: %w", currentNode, name, err)
+	}
+	entry, err := plan.Entry(name)
+	if err != nil {
+		return err
+	}
+
+	if entry.Human() {
+		if r.origin == originRuntime {
+			return fmt.Errorf("check %q is declared %s in %s; the runtime does not produce it",
+				name, checkplan.HumanVerifier, plan.Path())
+		}
+		// A person's word must be recorded as a person's word. Accepting
+		// exit_code here would let the declaration launder provenance: the
+		// manifest would claim a process ran when the plan says none exists.
+		if r.Outcome.Check.Check.Source != state.SourceHumanEvent {
+			return fmt.Errorf("check %q is declared %s in %s, so it needs source %s, not %s",
+				name, checkplan.HumanVerifier, plan.Path(), state.SourceHumanEvent, r.Outcome.Check.Check.Source)
+		}
+		return nil
+	}
+
+	if r.origin != originRuntime {
+		return fmt.Errorf("check %q at node %q comes from a verifier, not from arguments; "+
+			"run `vibe-agent verify --slug %s` so %s produces the evidence, "+
+			"or declare the check %s in %s if a person decides it",
+			name, currentNode, r.Slug, verifierName(node, entry), checkplan.HumanVerifier, plan.Path())
+	}
+	return nil
+}
+
+// verifierName is the implementation that will produce a check, for an error
+// message that names something the reader can look up.
+func verifierName(node graph.Node, entry checkplan.Entry) string {
+	if entry.Verifier != "" {
+		return "the " + entry.Verifier + " verifier"
+	}
+	if node.Verifier != "" {
+		return "the " + string(node.Verifier) + " verifier"
+	}
+	return "a verifier"
 }
 
 // replays reports whether the most recent transition recorded this same

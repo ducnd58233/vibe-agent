@@ -38,7 +38,7 @@ func (d Deps) now() time.Time {
 	return d.Now().UTC()
 }
 
-// NewServer builds the stdio server with the six-tool surface.
+// NewServer builds the stdio server with the seven-tool surface.
 func NewServer(version string, deps Deps) *Server {
 	return &Server{
 		Name:    "vibe-agent",
@@ -47,9 +47,9 @@ func NewServer(version string, deps Deps) *Server {
 	}
 }
 
-// Tools is the whole surface. Verifiers run inside vibe_checkpoint rather than
-// being exposed individually, so evidence is always recorded with the
-// transition it justifies.
+// Tools is the whole surface. Verifiers are not exposed individually: they run
+// inside vibe_verify, so evidence is always recorded with the transition it
+// justifies and never handed back for a caller to reinterpret.
 func Tools(deps Deps) []Tool {
 	return []Tool{
 		{
@@ -84,9 +84,18 @@ func Tools(deps Deps) []Tool {
 		},
 		{
 			Name:        "vibe_checkpoint",
-			Description: "Record evidence for the current node and advance the graph. Evidence must come from a command exit code, a file assertion, a CI response, or a human approval.",
+			Description: "Record evidence for the current node and advance the graph. Evidence must come from a command exit code, a file assertion, a CI response, or a human approval. A verifier node's check cannot be recorded here; call vibe_verify.",
 			InputSchema: schema(`{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"},"check":{"type":"object","required":["name","passed","source"],"properties":{"name":{"type":"string"},"passed":{"type":"boolean"},"skipped":{"type":"boolean"},"source":{"type":"string","enum":["exit_code","file_assert","ci_api","human_event"]},"ref":{"type":"string"}}},"result":{"type":"object","additionalProperties":{"type":"boolean"}},"blocker":{"type":"string"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return runCheckpoint(deps, raw) },
+		},
+		{
+			// No verdict parameter, by design. The tool runs what the workspace's
+			// vibe-checks.yaml declares for the current node's check and records
+			// what happened. A caller cannot supply the outcome or the command.
+			Name:        "vibe_verify",
+			Description: "Run the current verifier node's check as declared in vibe-checks.yaml and record what it found. This is the only way a verifier node advances. Takes no verdict: the result is the verifier's.",
+			InputSchema: schema(`{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"},"check":{"type":"string","description":"Fail unless the current node writes this check"},"dryRun":{"type":"boolean","description":"Report what would run without running it"}}}`),
+			Handler:     func(raw json.RawMessage) (any, error) { return runVerify(deps, raw) },
 		},
 	}
 }
@@ -249,6 +258,66 @@ func runStatus(deps Deps, raw json.RawMessage) (any, error) {
 		return nil, err
 	}
 	return describe(loaded, run), nil
+}
+
+// runVerify produces a verifier node's evidence. The handler is short because
+// checkpoint.Verify owns the sequence; duplicating it here is how the CLI and
+// this tool would drift.
+func runVerify(deps Deps, raw json.RawMessage) (any, error) {
+	var args struct {
+		Slug   string `json:"slug"`
+		Check  string `json:"check"`
+		DryRun bool   `json:"dryRun"`
+	}
+	if err := json.Unmarshal(raw, &args); err != nil {
+		return nil, err
+	}
+
+	request := checkpoint.VerifyRequest{
+		WorkspaceRoot: deps.WorkspaceRoot,
+		GraphDir:      graph.DefaultDir(deps.ToolkitRoot),
+		Slug:          args.Slug,
+		Check:         args.Check,
+		Now:           deps.now(),
+	}
+
+	if args.DryRun {
+		resolved, err := checkpoint.Resolve(request)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{
+			"dryRun": true, "node": resolved.Node, "check": resolved.Check,
+			"verifier": resolved.Kind, "plan": resolved.PlanPath,
+			"command": resolved.Entry.Command, "args": resolved.Entry.Args,
+			"timeoutSeconds": int(resolved.Timeout.Seconds()),
+		}, nil
+	}
+
+	result, err := checkpoint.Verify(context.Background(), request)
+	if err != nil {
+		return nil, err
+	}
+
+	applied := result.Applied
+	out := describe(applied.Graph, applied.Run)
+	out["check"] = result.Check
+	out["verifier"] = result.Kind
+	out["passed"] = result.Verifier.Check.Passed
+	out["evidence"] = result.Verifier.Summary
+	if result.Verifier.LogPath != "" {
+		out["log"] = result.Verifier.LogPath
+	}
+	if applied.Duplicate {
+		out["duplicate"] = true
+		out["note"] = "This exact evidence was the last checkpoint recorded, so nothing advanced."
+		return out, nil
+	}
+	out["transition"] = map[string]any{
+		"from": applied.Transition.From, "to": applied.Transition.To,
+		"via": applied.Transition.Via, "terminal": applied.Transition.Terminal,
+	}
+	return out, nil
 }
 
 func runCheckpoint(deps Deps, raw json.RawMessage) (any, error) {

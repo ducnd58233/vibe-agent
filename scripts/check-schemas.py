@@ -14,6 +14,7 @@ would otherwise survive only as prose:
   - a graph edge condition is a guard name, never an expression
   - a run-state check records real provenance, never model assertion
   - a memory record carries evidence, and procedural memory is not stored
+  - a check plan entry says how the check is produced, never nothing
 
 Needs jsonschema (scripts/requirements.txt).
 
@@ -27,6 +28,7 @@ import sys
 from pathlib import Path
 
 try:
+    import yaml
     from jsonschema import Draft202012Validator
 except ImportError as exc:
     sys.exit(
@@ -108,8 +110,24 @@ def merged(base: dict, **overrides) -> dict:
     return instance
 
 
+def base_plan() -> dict:
+    return {
+        "apiVersion": "vibe-agent/v1",
+        "kind": "CheckPlan",
+        "spec": {"checks": {"unit": {"command": "go", "args": ["test", "./..."]}}},
+    }
+
+
+def plan_with(entry: dict) -> dict:
+    """A plan whose single check is the given entry."""
+    instance = base_plan()
+    instance["spec"] = {"checks": {"unit": entry}}
+    return instance
+
+
 def cases(schemas: dict[str, dict]) -> list[tuple[dict, str, dict, bool]]:
     graph, run, memory = schemas["workflow-graph"], schemas["run-state"], schemas["memory-record"]
+    plan = schemas["check-plan"]
     return [
         (graph, "graph accepts a minimal valid document", base_graph(), True),
         (graph, "graph rejects an expression where a guard name belongs",
@@ -154,6 +172,26 @@ def cases(schemas: dict[str, dict]) -> list[tuple[dict, str, dict, bool]]:
          merged(base_memory(), sourceType="model_inference"), False),
         (memory, "memory rejects confidence above 1", merged(base_memory(), confidence=1.5), False),
         (memory, "memory accepts the confirmed status", merged(base_memory(), status="confirmed"), True),
+
+        (plan, "plan accepts a minimal valid document", base_plan(), True),
+        # The load-bearing one. An entry that declares nothing would resolve to a
+        # verifier with no command, and a caller ignoring the error would read
+        # that as a check with no problems.
+        (plan, "plan rejects an entry that says nothing about how the check runs",
+         plan_with({"timeoutSeconds": 60}), False),
+        (plan, "plan rejects an entry that is only a description",
+         plan_with({"description": "we run the suite"}), False),
+        (plan, "plan accepts a check a person decides, stated explicitly",
+         plan_with({"verifier": "human", "description": "a judgement call"}), True),
+        (plan, "plan rejects an unknown verifier kind",
+         plan_with({"verifier": "screenshot", "command": "true"}), False),
+        (plan, "plan rejects a misspelled entry key",
+         plan_with({"commnad": "go"}), False),
+        (plan, "plan rejects an empty checks map", merged(base_plan(), spec={"checks": {}}), False),
+        (plan, "plan rejects a check name run state would refuse to store",
+         merged(base_plan(), spec={"checks": {"Unit Tests": {"command": "go"}}}), False),
+        (plan, "plan rejects a graph masquerading as a plan",
+         merged(base_plan(), kind="WorkflowGraph"), False),
     ]
 
 
@@ -164,7 +202,7 @@ def main() -> int:
         print(f"check-schemas: missing {schemas_dir}", file=sys.stderr)
         return 1
 
-    names = ["workflow-graph", "run-state", "memory-record"]
+    names = ["workflow-graph", "run-state", "memory-record", "check-plan"]
     schemas: dict[str, dict] = {}
     failures = 0
 
@@ -203,6 +241,7 @@ def main() -> int:
 
     fixtures = check_go_fixtures(root, schemas["run-state"])
     failures += fixtures[0]
+    failures += check_workspace_plan(root, schemas["check-plan"])
 
     print()
     if failures:
@@ -214,6 +253,32 @@ def main() -> int:
         f"{fixtures[1]} Go {noun})"
     )
     return 0
+
+
+def check_workspace_plan(root: Path, plan_schema: dict) -> int:
+    """Validate this repo's own vibe-checks.yaml against the schema.
+
+    The contract test across the language boundary, the same shape as
+    check_go_fixtures. The Go loader in runtime/internal/checkplan and this schema
+    are two independent statements of what a plan may contain; without a real
+    document checked against both, they drift and the first person to notice is
+    someone whose run stalls.
+    """
+    path = root / "vibe-checks.yaml"
+    if not path.is_file():
+        return 0
+
+    print()
+    instance = yaml.safe_load(path.read_text(encoding="utf-8"))
+    errors = list(Draft202012Validator(plan_schema).iter_errors(instance))
+    label = "vibe-checks.yaml validates against check-plan.schema.json"
+    if not errors:
+        print(f"  ok    {label}")
+        return 0
+    print(f"  FAIL  {label}", file=sys.stderr)
+    for error in errors[:3]:
+        print(f"          {list(error.path)}: {error.message}", file=sys.stderr)
+    return 1
 
 
 def check_go_fixtures(root: Path, run_schema: dict) -> tuple[int, int]:

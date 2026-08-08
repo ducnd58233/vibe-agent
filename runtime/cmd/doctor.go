@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
@@ -31,6 +33,7 @@ func doctorCommand(args []string) error {
 	fmt.Printf("  toolkit   %s\n\n", toolkitRoot)
 
 	checkGraphs(report, toolkitRoot)
+	checkCheckPlan(report, workspaceRoot, toolkitRoot)
 	checkMemory(report, workspaceRoot)
 	checkRunState(report, workspaceRoot)
 	checkGitignore(report, workspaceRoot)
@@ -63,6 +66,48 @@ func checkGraphs(report *diagnostics, toolkitRoot string) {
 		return
 	}
 	report.check(fmt.Sprintf("workflow graphs load and validate (%d)", len(graphs)), true, "")
+}
+
+// checkCheckPlan reports whether the workspace declares how its checks are
+// produced, and whether every verifier node in every graph is covered.
+//
+// A missing plan is a warning rather than a failure: a workspace that has not
+// started a run does not need one yet. A plan that misses a check a graph will
+// reach is a failure, because the run would stall at that node with no way past
+// it, and finding that mid-delivery is the expensive time to find it.
+func checkCheckPlan(report *diagnostics, workspaceRoot, toolkitRoot string) {
+	path := checkplan.DefaultPath(workspaceRoot)
+	if _, err := os.Stat(path); err != nil {
+		fmt.Printf("  note  no %s yet; verifier nodes need one before a run reaches them\n", checkplan.FileName)
+		return
+	}
+
+	plan, err := checkplan.Load(path)
+	if err != nil {
+		report.check("check plan loads and validates", false, err.Error())
+		return
+	}
+	report.check(fmt.Sprintf("check plan loads and validates (%d checks)", len(plan.Names())), true, "")
+
+	graphs, err := graph.LoadDir(graph.DefaultDir(toolkitRoot))
+	if err != nil {
+		return // already reported by checkGraphs
+	}
+	for id, loaded := range graphs {
+		var missing []string
+		for name, node := range loaded.Spec.Nodes {
+			if node.Type != graph.NodeVerifier || node.Check == "" {
+				continue
+			}
+			if _, err := plan.Entry(node.Check); err != nil {
+				missing = append(missing, fmt.Sprintf("%s (node %s)", node.Check, name))
+			}
+		}
+		sort.Strings(missing)
+		report.check("graph "+id+": every verifier node has a planned check",
+			len(missing) == 0,
+			"undeclared in "+checkplan.FileName+": "+strings.Join(missing, ", "))
+	}
 }
 
 func checkMemory(report *diagnostics, workspaceRoot string) {

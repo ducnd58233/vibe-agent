@@ -72,12 +72,13 @@ func toolText(t *testing.T, reply map[string]any) string {
 	return content[0].(map[string]any)["text"].(string)
 }
 
-// Six tools, deliberately. A long tool list makes routing worse.
-func TestSurfaceIsExactlySixTools(t *testing.T) {
+// Seven tools, deliberately. A long tool list makes routing worse.
+func TestSurfaceIsExactlySevenTools(t *testing.T) {
 	server := NewServer("test", newDeps(t))
 	want := map[string]bool{
 		"vibe_bootstrap": true, "vibe_memory_search": true, "vibe_memory_propose": true,
 		"vibe_run_start": true, "vibe_run_status": true, "vibe_checkpoint": true,
+		"vibe_verify": true,
 	}
 	if len(server.Tools) != len(want) {
 		t.Errorf("got %d tools, want %d", len(server.Tools), len(want))
@@ -96,15 +97,43 @@ func TestSurfaceIsExactlySixTools(t *testing.T) {
 	}
 }
 
-// Verifiers are not exposed individually: evidence is recorded with the
-// transition it justifies, never on its own.
-func TestVerifiersAreNotExposedAsTools(t *testing.T) {
+// Individual verifiers stay unexposed. vibe_verify runs whichever one the graph
+// and the check plan name, and records the result with the transition it
+// justifies. A per-verifier tool would let a caller pick the weakest one, or run
+// a verifier and then decide separately what to write down.
+func TestIndividualVerifiersAreNotExposedAsTools(t *testing.T) {
 	server := NewServer("test", newDeps(t))
 	for _, tool := range server.Tools {
-		if strings.Contains(tool.Name, "verify") || strings.Contains(tool.Name, "verifier") {
-			t.Errorf("verifier exposed as a tool: %q", tool.Name)
+		for _, kind := range []string{"command", "files", "git"} {
+			if strings.Contains(tool.Name, kind) {
+				t.Errorf("tool %q exposes the %s verifier directly", tool.Name, kind)
+			}
 		}
 	}
+}
+
+// vibe_verify must not accept a verdict. A "passed" parameter would make it a
+// synonym for vibe_checkpoint and reopen the hole it exists to close.
+func TestVerifyTakesNoVerdict(t *testing.T) {
+	server := NewServer("test", newDeps(t))
+	for _, tool := range server.Tools {
+		if tool.Name != "vibe_verify" {
+			continue
+		}
+		var parsed struct {
+			Properties map[string]any `json:"properties"`
+		}
+		if err := json.Unmarshal(tool.InputSchema, &parsed); err != nil {
+			t.Fatalf("schema: %v", err)
+		}
+		for _, forbidden := range []string{"passed", "failed", "skipped", "source", "exitCode"} {
+			if _, present := parsed.Properties[forbidden]; present {
+				t.Errorf("vibe_verify accepts %q, so a caller could supply the outcome", forbidden)
+			}
+		}
+		return
+	}
+	t.Fatal("vibe_verify is not on the surface")
 }
 
 func TestHandshakeAndToolListing(t *testing.T) {
@@ -121,8 +150,8 @@ func TestHandshakeAndToolListing(t *testing.T) {
 		t.Errorf("protocolVersion = %v", result["protocolVersion"])
 	}
 	tools := replies[1]["result"].(map[string]any)["tools"].([]any)
-	if len(tools) != 6 {
-		t.Errorf("listed %d tools, want 6", len(tools))
+	if len(tools) != len(server.Tools) {
+		t.Errorf("listed %d tools, want %d", len(tools), len(server.Tools))
 	}
 }
 

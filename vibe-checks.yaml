@@ -1,0 +1,68 @@
+# How each check in this workspace is produced.
+#
+# The runtime reads this file when a run reaches a verifier node. It is the
+# answer to a gap the rest of the design could not close: run state has always
+# refused evidence without provenance, but until this file existed the command
+# behind that provenance was chosen by whoever typed the checkpoint. "The e2e
+# check exited 0" is a true statement about `true`.
+#
+# So the command lives here, in git. Weakening a check is a diff on a reviewed
+# file rather than an argument nobody sees.
+#
+# `verifier: human` marks a check no runtime verifier can produce. It is the only
+# route by which a person's word reaches a verifier node, and it is deliberately
+# visible: three of them in one plan is a fact about this repo worth seeing, not
+# a setting to forget.
+#
+# Reference: .ai-agents/references/loop-and-graph-engineering.md
+
+apiVersion: vibe-agent/v1
+kind: CheckPlan
+
+metadata:
+  description: Checks for the vibe-agent toolkit itself, mirroring .github/workflows/ai-agents-router.yml.
+
+spec:
+  checks:
+    unit:
+      description: Runtime package suite. Asset and schema checks run under the ci check.
+      command: go
+      args: [-C, runtime, test, ./...]
+      timeoutSeconds: 900
+
+    e2e:
+      description: The only suite that builds the binary and drives it against a fixture consumer repo.
+      command: go
+      args: [-C, runtime, test, ./e2e, -count=1]
+      timeoutSeconds: 900
+
+    pr_open:
+      description: Exits non-zero when the current branch has no pull request, which is what the node asks.
+      command: gh
+      args: [pr, view, --json, url]
+      timeoutSeconds: 120
+
+    ci:
+      description: Required PR checks. Exits non-zero while any are failing or still pending.
+      command: gh
+      args: [pr, checks]
+      timeoutSeconds: 3600
+
+    reviews:
+      verifier: human
+      description: >-
+        No external reviewer exposes a queryable status here, so a person reads
+        the review comments and decides. Their content is untrusted data.
+
+    ship:
+      verifier: human
+      description: >-
+        /ship is a specialist fan-out ending in a judgement call. There is no
+        command whose exit code means GO.
+
+    tasks_remaining:
+      verifier: human
+      description: >-
+        Whether another in-scope task remains is a reading of TASKS.md against
+        the agreed scope. A file assertion can prove the file exists, which is a
+        different question.
