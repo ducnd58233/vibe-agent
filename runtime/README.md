@@ -20,7 +20,7 @@ runtime/
   cmd/                    the CLI, one file per command
     main.go               entry point and the dispatch table
     common.go             shared path flags and output helpers
-    run.go                run start, run status
+    run.go                run start, run status, run flag
     verify.go             run a verifier node's check and record what it found
     checkpoint.go         record evidence and advance the graph
     graph.go              graph validate
@@ -103,6 +103,24 @@ There is no `--passed` on `verify`. A failing check exits 0: the run recorded th
 One escape hatch, deliberately visible. A check the plan declares `verifier: human` has no runtime verifier, so a person records it with `checkpoint --source human_event`. It costs a tracked diff to grant, and a plan full of them is a fact about the repo worth seeing rather than a setting to forget.
 
 `doctor` reports any verifier node in any graph whose check the plan does not declare, because a run that discovers this mid-delivery discovers it at the expensive time.
+
+## A skipped check is not a passed check
+
+Three things used to be true at once, and together they meant a verification step could vanish while the run still reported green:
+
+- `run.Flags` was read by the runner and written by nothing, so every `flag`-sourced guard was permanently false. The `research` node was unreachable for that reason.
+- `skipWhen` was parsed and validated and never evaluated, so a declared skip condition did nothing.
+- `evaluate` answered every `check`-sourced guard with `passed || skipped`, while the delivery graph documented `e2e_ok` as the only guard where the two were treated alike. They were treated alike everywhere.
+
+All three are closed:
+
+| Was | Is |
+|-----|-----|
+| Flags unwritable | `run flag --set <guard>`, only at a human gate, only for a `flag`-sourced guard, recorded as a `flag_set` event |
+| `skipWhen` inert | Honored by `Runner.SkipReason`; a skip produces a real `skipped` check naming the guard |
+| Every gate accepted a skip | Only a guard with `acceptsSkipped: true` does, and the validator rejects it on any source but `check` |
+
+The delivery graph carries no `skipWhen` as a result. A flag absent from run state reads as false, so `skipWhen: "!e2e_required"` on the e2e node would skip it on every fresh run, and `e2e_ok` would pass it. What decides whether e2e runs is instead whether `vibe-checks.yaml` declares an `e2e` check: a workspace with no device or browser surface says so in a tracked file, and deleting that entry is a reviewable diff. `TestTheShippedGraphNeverSkipsAVerifierByDefault` fails if anyone adds a `skipWhen` back without deciding, per node, whether skipping by default is safe there.
 
 ## What is deterministic, and what is not
 

@@ -15,6 +15,7 @@ would otherwise survive only as prose:
   - a run-state check records real provenance, never model assertion
   - a memory record carries evidence, and procedural memory is not stored
   - a check plan entry says how the check is produced, never nothing
+  - acceptsSkipped is only meaningful on a check-sourced guard
 
 Needs jsonschema (scripts/requirements.txt).
 
@@ -98,6 +99,12 @@ def graph_with(node: dict) -> dict:
     return graph
 
 
+def with_guards(guards: list[dict]) -> dict:
+    graph = base_graph()
+    graph["spec"]["guards"] = guards
+    return graph
+
+
 def with_edges(edges: list[dict]) -> dict:
     graph = base_graph()
     graph["spec"]["edges"] = edges
@@ -146,6 +153,12 @@ def cases(schemas: dict[str, dict]) -> list[tuple[dict, str, dict, bool]]:
         (graph, "graph rejects an unknown top-level field", merged(base_graph(), extra=1), False),
         (graph, "graph rejects a wrong apiVersion",
          merged(base_graph(), apiVersion="vibe-agent/v2"), False),
+        (graph, "graph rejects acceptsSkipped on a flag-sourced guard",
+         with_guards([{"name": "in_scope", "description": "d", "source": "flag",
+                       "acceptsSkipped": True}]), False),
+        (graph, "graph accepts acceptsSkipped on a check-sourced guard",
+         with_guards([{"name": "e2e_ok", "description": "d", "source": "check",
+                       "reads": "e2e", "acceptsSkipped": True}]), True),
         (graph, "graph accepts a hyphenated id",
          merged(base_graph(), metadata={"id": "goal-delivery", "description": "d"}), True),
 

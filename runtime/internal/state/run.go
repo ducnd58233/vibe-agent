@@ -194,6 +194,25 @@ func (r *Run) SetCheckAt(name string, check Check, now time.Time) error {
 	return nil
 }
 
+// SetFlagAt records a scope decision and stamps UpdatedAt.
+//
+// Flags carry no provenance field, unlike checks, because they are not evidence
+// about the work: they say which parts of the graph apply. Who may write one is
+// therefore a question for the surface that offers it, not for this struct. The
+// name is validated here so a flag can never be stored under a key no guard
+// could be declared with.
+func (r *Run) SetFlagAt(name string, value bool, now time.Time) error {
+	if !namePattern.MatchString(name) {
+		return fmt.Errorf("flag name %q must be lowercase with underscores", name)
+	}
+	if r.Flags == nil {
+		r.Flags = map[string]bool{}
+	}
+	r.Flags[name] = value
+	r.UpdatedAt = now.UTC()
+	return nil
+}
+
 // Validate reports whether the run is internally consistent. Load applies it to
 // every manifest it reads, so a hand-edited file gets the same scrutiny as one
 // this package wrote.
@@ -215,6 +234,11 @@ func (r *Run) Validate() error {
 	}
 	if r.MaxTransitions < 1 {
 		return fmt.Errorf("maxTransitions must be at least 1, got %d", r.MaxTransitions)
+	}
+	for name := range r.Flags {
+		if !namePattern.MatchString(name) {
+			return fmt.Errorf("flag name %q must be lowercase with underscores", name)
+		}
 	}
 	for name, check := range r.Checks {
 		if !namePattern.MatchString(name) {

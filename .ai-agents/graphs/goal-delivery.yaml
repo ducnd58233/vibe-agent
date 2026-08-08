@@ -24,10 +24,6 @@ spec:
       description: Intake found facts that are missing from the repo and need outside sources.
       source: flag
 
-    - name: e2e_required
-      description: Spec puts UI flows, full-runtime, docker, k8s, or mobile in scope.
-      source: flag
-
     - name: spec_approved
       description: Human accepted docs/<slug>/SPEC.md.
       source: check
@@ -44,9 +40,15 @@ spec:
       reads: unit
 
     - name: e2e_ok
-      description: E2E check passed, or was skipped because e2e_required is false. A skipped check is not a passed check; this guard is the only place the two are treated alike.
+      description: >-
+        E2E check passed, or was skipped because vibe-checks.yaml declares no e2e
+        check for this workspace. This is the only guard in the graph that accepts
+        a skip, and it does so because a workspace with no browser, container, or
+        device surface has nothing to run here. The skip therefore has to come
+        from a tracked file rather than from an argument.
       source: check
       reads: e2e
+      acceptsSkipped: true
 
     - name: changes_requested
       description: Local review returned findings that must be fixed before the PR proceeds.
@@ -139,10 +141,14 @@ spec:
 
     e2e:
       type: verifier
-      description: Browser, compose, k8s, or mobile verification. Skipped only when the spec puts none of them in scope.
+      description: >-
+        Browser, compose, k8s, or mobile verification. Skipped only when
+        vibe-checks.yaml declares no e2e check, which is a tracked statement that
+        this workspace has none. There is deliberately no flag for it: a flag
+        absent from run state reads as false, so a skipWhen condition here would
+        skip the node by default and e2e_ok would pass it.
       verifier: command
       check: e2e
-      skipWhen: "!e2e_required"
 
     review:
       type: agent

@@ -62,12 +62,37 @@ edges:
 
 | `source` | Read from |
 |----------|-----------|
-| `flag` | `flags[<key>]` in run state, set at intake or from the spec |
+| `flag` | `flags[<key>]` in run state, written by `vibe-agent run flag` and only while the run sits at a human gate |
 | `check` | `checks[<key>].passed` in run state, written only by real evidence |
 | `result` | The outcome recorded for the node that just ran |
 | `runtime` | Maintained by the runner itself (transition budget, repeated-blocker count). No node produces it. |
 
 `reads` names the key. A guard is a **question** (`unit_passed`); a check is an **evidence slot** (`unit`). They are usually not the same word, and leaving the mapping implicit buries it in runtime code. Set `reads` whenever the key differs from the guard name.
+
+### A skipped check is not a passed check
+
+`acceptsSkipped: true` lets a skipped check satisfy a `check`-sourced guard. It is **off by default**, and that default is load-bearing: a gate that opens on a skip opens on the strength of something not having run.
+
+```yaml
+  - name: e2e_ok
+    description: >-
+      E2E passed, or the workspace declares no e2e check. The only guard here
+      that accepts a skip, because a workspace with no browser or device surface
+      has nothing to run.
+    source: check
+    reads: e2e
+    acceptsSkipped: true
+```
+
+Set it only where a genuinely absent surface would otherwise strand the run, and say why in the `description`. The validator rejects it on any guard whose source is not `check`, since nothing else can be skipped.
+
+### `skipWhen`, and why a flag is the wrong way to skip
+
+A verifier node may declare `skipWhen: <guard>`, and the runner honors it at execution time. A skip produces a real `skipped` check with the guard named as the reason; it is never recorded as a pass.
+
+**A `flag`-sourced guard absent from run state reads as `false`.** So `skipWhen: "!e2e_required"` skips that node on every fresh run, and if its guard also sets `acceptsSkipped`, the gate passes without anything running. That combination is how a verification step disappears while the run still reports green.
+
+Prefer making the absence of the work the thing that skips it: a check the workspace's `vibe-checks.yaml` does not declare is skipped with the plan named as the reason, and removing that entry is a reviewable diff. Reach for `skipWhen` only when the condition is genuinely about the run rather than about the repository.
 
 The checker enforces both directions: every `check`-sourced guard must read a key some node actually writes, and no two nodes may write the same key, since the second would silently overwrite the first one's evidence.
 

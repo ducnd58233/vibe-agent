@@ -155,6 +155,40 @@ func (r *Runner) Advance(run *state.Run, outcome Outcome) (*Transition, error) {
 	return transition, nil
 }
 
+// SkipReason reports whether a node's declared skip condition holds, and why.
+//
+// The condition was parsed and validated from the day skipWhen existed, and
+// never read. A graph could therefore declare that a step was conditional and
+// the runtime would run it unconditionally: of the two states the graph
+// described, only one was real. This is the missing half.
+//
+// It answers for the node the caller names rather than the current one, so a
+// caller can ask before entering a node as well as on arrival.
+func (r *Runner) SkipReason(run *state.Run, nodeID string) (string, bool) {
+	node, ok := r.Graph.Node(nodeID)
+	if !ok || node.SkipWhen == "" {
+		return "", false
+	}
+
+	name, negated := node.SkipCondition()
+	// A guard that fails to resolve is not a reason to skip. Skipping on an
+	// unresolvable condition would turn a graph bug into a silently dropped
+	// verification, which is the more expensive of the two failures.
+	value, err := r.evaluate(run, Outcome{}, name)
+	if err != nil {
+		return "", false
+	}
+	if value == negated {
+		return "", false
+	}
+
+	condition := name
+	if negated {
+		condition = "!" + name
+	}
+	return fmt.Sprintf("the graph declares this node skipped when %s", condition), true
+}
+
 // resolve picks the edge to follow. Conditional edges are tried in order, then
 // the fallback. A node with neither a matching guard nor a fallback is a graph
 // bug, which the validator rejects, so reaching that here means the graph
@@ -192,10 +226,11 @@ func (r *Runner) evaluate(run *state.Run, outcome Outcome, name string) (bool, e
 		if !recorded {
 			return false, nil
 		}
-		// A skipped check satisfies a guard only because the graph declared the
-		// skip. Treating skipped as passed everywhere would erase the
-		// distinction the state schema keeps.
-		return check.Passed || check.Skipped, nil
+		// A skipped check satisfies a guard only where the graph opted in. This
+		// used to be unconditional, which erased the distinction the state schema
+		// keeps: any check that got skipped opened its own gate, whatever the
+		// graph intended.
+		return check.Passed || (check.Skipped && guard.AcceptsSkipped), nil
 	case graph.GuardResult:
 		return outcome.Result[guard.Name], nil
 	case graph.GuardRuntime:

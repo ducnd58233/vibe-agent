@@ -123,6 +123,17 @@ func (p *Plan) Entry(name string) (Entry, error) {
 	return entry, nil
 }
 
+// Has reports whether the plan declares a check.
+//
+// Separate from Entry because the two questions have different answers when the
+// check is absent. Entry treats absence as an error, which is right for a caller
+// about to run something. A caller deciding whether the workspace has such a
+// check at all needs to ask without producing a failure.
+func (p *Plan) Has(name string) bool {
+	_, ok := p.Spec.Checks[name]
+	return ok
+}
+
 // Names lists the declared checks in a stable order.
 func (p *Plan) Names() []string {
 	names := make([]string, 0, len(p.Spec.Checks))

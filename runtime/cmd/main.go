@@ -25,6 +25,7 @@ const usage = `vibe-agent - outer-loop control plane
 Usage:
   vibe-agent run start --slug <slug> --goal <text> [--graph <id>]
   vibe-agent run status --slug <slug> [--json]
+  vibe-agent run flag --slug <slug> (--set|--clear) <guard> [--note <text>]
   vibe-agent verify --slug <slug> [--dry-run]
   vibe-agent checkpoint --slug <slug> --check <name> --source <source> [--passed|--failed|--skipped]
   vibe-agent graph validate [--graph <id>]
@@ -47,6 +48,10 @@ the workspace root declares for that check. "checkpoint" cannot write it: a
 --source argument names a kind of evidence without producing any. The one
 exception is a check the plan declares "verifier: human", which is a tracked
 diff rather than a flag.
+
+A check the plan does not declare is skipped, with the plan named as the reason.
+A skipped check satisfies a guard only where the graph sets acceptsSkipped, and
+"run flag" writes a scope flag only while the run sits at a human gate.
 
 Hooks mostly inform. Two of them refuse:
 

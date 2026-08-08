@@ -160,6 +160,12 @@ func (r Request) authorize(loaded *graph.Graph, currentNode string) error {
 	if r.Outcome.Check == nil {
 		return nil
 	}
+	// Verify already resolved the plan and the skip condition before producing
+	// this, so re-deriving them here would only create a second place for the two
+	// answers to disagree. Nothing outside this package can set the field.
+	if r.origin == originRuntime {
+		return nil
+	}
 	node, ok := loaded.Node(currentNode)
 	if !ok || node.Type != graph.NodeVerifier {
 		return nil
@@ -176,10 +182,6 @@ func (r Request) authorize(loaded *graph.Graph, currentNode string) error {
 	}
 
 	if entry.Human() {
-		if r.origin == originRuntime {
-			return fmt.Errorf("check %q is declared %s in %s; the runtime does not produce it",
-				name, checkplan.HumanVerifier, plan.Path())
-		}
 		// A person's word must be recorded as a person's word. Accepting
 		// exit_code here would let the declaration launder provenance: the
 		// manifest would claim a process ran when the plan says none exists.
@@ -190,13 +192,10 @@ func (r Request) authorize(loaded *graph.Graph, currentNode string) error {
 		return nil
 	}
 
-	if r.origin != originRuntime {
-		return fmt.Errorf("check %q at node %q comes from a verifier, not from arguments; "+
-			"run `vibe-agent verify --slug %s` so %s produces the evidence, "+
-			"or declare the check %s in %s if a person decides it",
-			name, currentNode, r.Slug, verifierName(node, entry), checkplan.HumanVerifier, plan.Path())
-	}
-	return nil
+	return fmt.Errorf("check %q at node %q comes from a verifier, not from arguments; "+
+		"run `vibe-agent verify --slug %s` so %s produces the evidence, "+
+		"or declare the check %s in %s if a person decides it",
+		name, currentNode, r.Slug, verifierName(node, entry), checkplan.HumanVerifier, plan.Path())
 }
 
 // verifierName is the implementation that will produce a check, for an error

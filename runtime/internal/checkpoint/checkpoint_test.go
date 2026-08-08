@@ -1,6 +1,7 @@
 package checkpoint
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -210,9 +211,9 @@ spec:
 	}
 }
 
-// With no entry, nothing may write the check. Falling back to "allow it" would
-// make an unconfigured repo the most permissive one.
-func TestAVerifierNodeWithNoPlanEntryCannotAdvance(t *testing.T) {
+// A caller may not write a check the plan does not declare, and the refusal has
+// to name the file, because the fix is to edit it.
+func TestACallerCannotWriteAnUndeclaredCheck(t *testing.T) {
 	root := workspace(t)
 	declarePlan(t, root, `apiVersion: vibe-agent/v1
 kind: CheckPlan
@@ -226,13 +227,68 @@ spec:
 
 	_, err := Apply(Request{
 		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
-		Outcome: unitPassed(), origin: originRuntime, Now: at(),
+		Outcome: unitPassed(), Now: at(),
 	})
 	if err == nil {
 		t.Fatal("an undeclared check advanced")
 	}
 	if !strings.Contains(err.Error(), checkplan.FileName) {
 		t.Errorf("the refusal does not name the file to edit: %v", err)
+	}
+}
+
+// A plan that omits a check is the workspace saying it has no such check, which
+// is a statement in a tracked file. The run may pass the node on it, but the
+// manifest must record a skip and not a pass, and the reason must name what
+// caused it.
+func TestAnUndeclaredCheckIsSkippedNotPassed(t *testing.T) {
+	root := workspace(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    e2e:
+      command: npm
+      args: [run, e2e]
+`)
+	atTestNode(t, root)
+
+	result, err := Verify(context.Background(), VerifyRequest{
+		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo", Now: at(),
+	})
+	if err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	if result.Verifier.Check.Passed {
+		t.Fatal("an undeclared check was recorded as passed")
+	}
+	if !result.Verifier.Check.Skipped {
+		t.Error("an undeclared check was not marked skipped")
+	}
+	if !strings.Contains(result.Verifier.Summary, checkplan.FileName) {
+		t.Errorf("the skip reason does not say what caused it: %q", result.Verifier.Summary)
+	}
+}
+
+// skipWhen is now honored at execution time, which makes a declared skip
+// condition load-bearing. A flag absent from run state reads as false, so
+// `skipWhen: "!x"` on a node skips that node by default, and the delivery graph's
+// e2e_ok guard accepts a skip as satisfying. That combination is the reported bug
+// with the runtime cooperating.
+//
+// So the shipped graph must not carry one. This fails if anyone adds it back
+// without deciding, per node, whether skipping by default is safe there.
+func TestTheShippedGraphNeverSkipsAVerifierByDefault(t *testing.T) {
+	loaded, err := graph.LoadByID(graphDir, "goal-delivery")
+	if err != nil {
+		t.Fatalf("load graph: %v", err)
+	}
+	for id, node := range loaded.Spec.Nodes {
+		if node.SkipWhen != "" {
+			t.Fatalf("node %q declares skipWhen %q; a flag absent from run state reads as false, "+
+				"so this would skip by default. Whether that is safe needs deciding per node.",
+				id, node.SkipWhen)
+		}
 	}
 }
 

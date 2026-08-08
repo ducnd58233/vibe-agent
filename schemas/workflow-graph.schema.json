@@ -66,8 +66,26 @@
               "reads": {
                 "$ref": "#/$defs/identifier",
                 "description": "Key this guard resolves against, for source flag or check. Required when the key differs from the guard name, which is the normal case: a guard is a question (unit_passed) while a check is an evidence slot (unit)."
+              },
+              "acceptsSkipped": {
+                "type": "boolean",
+                "default": false,
+                "description": "Lets a skipped check satisfy this guard. Off by default: a skipped check is not a passed check, and a gate that opens on a skip opens on the strength of something not having run. Say in the description why the skip is acceptable."
               }
-            }
+            },
+            "allOf": [
+              {
+                "$comment": "Only a check can be skipped. An omitted source defaults to flag, so opting in has to state it.",
+                "if": {
+                  "required": ["acceptsSkipped"],
+                  "properties": { "acceptsSkipped": { "const": true } }
+                },
+                "then": {
+                  "required": ["source"],
+                  "properties": { "source": { "const": "check" } }
+                }
+              }
+            ]
           }
         },
         "nodes": {

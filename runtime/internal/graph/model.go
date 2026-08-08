@@ -106,6 +106,15 @@ type Guard struct {
 	// (unit_passed); a check is an evidence slot (unit). When they differ, the
 	// mapping is stated here rather than left to runtime convention.
 	Reads string `yaml:"reads"`
+	// AcceptsSkipped lets a skipped check satisfy this guard.
+	//
+	// Off by default, and that default is the point. A skipped check is not a
+	// passed check, so treating the two alike opens a gate on the strength of
+	// something not having run. The runner used to do this for every
+	// check-sourced guard, which meant any check that got skipped satisfied its
+	// own gate. Where a graph genuinely wants it, it says so here and the reason
+	// belongs in the description.
+	AcceptsSkipped bool `yaml:"acceptsSkipped"`
 }
 
 // Key is the state key this guard resolves against.
@@ -140,6 +149,13 @@ type Node struct {
 
 	// terminal
 	Status TerminalStatus `yaml:"status"`
+}
+
+// SkipCondition returns the guard name in SkipWhen and whether it is negated,
+// mirroring Edge.Negated. Both conditions use the same syntax, so both need the
+// same accessor rather than callers reimplementing the "!" prefix.
+func (n Node) SkipCondition() (string, bool) {
+	return splitCondition(n.SkipWhen)
 }
 
 // Edge is a transition. When is a guard name, optionally negated with "!".

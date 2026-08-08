@@ -31,6 +31,13 @@ type VerifyRequest struct {
 	Now      time.Time
 }
 
+func (r VerifyRequest) now() time.Time {
+	if r.Now.IsZero() {
+		return time.Now().UTC()
+	}
+	return r.Now.UTC()
+}
+
 // VerifyResult is what the verifier produced and what the run did about it.
 type VerifyResult struct {
 	Check string
@@ -50,7 +57,15 @@ type Plan struct {
 	Entry    checkplan.Entry
 	Timeout  time.Duration
 	Request  verifier.Request
+
+	// SkipReason, when set, is why nothing will run. A skipped check is recorded
+	// as skipped, never as passed, so a reader of the manifest can still tell
+	// what was actually exercised.
+	SkipReason string
 }
+
+// Skipped reports whether resolving decided nothing should run.
+func (p *Plan) Skipped() bool { return p.SkipReason != "" }
 
 // Resolve works out how the current node's check would be produced, without
 // producing it. Verify calls this first, so a dry run and a real run cannot
@@ -76,10 +91,32 @@ func Resolve(req VerifyRequest) (*Plan, error) {
 		return nil, fmt.Errorf("node %q writes check %q, not %q", run.CurrentNode, node.Check, req.Check)
 	}
 
+	// The graph's own condition comes first: a node the graph declares out of
+	// scope should not need a plan entry at all.
+	if reason, skip := loop.New(loaded).SkipReason(run, run.CurrentNode); skip {
+		return &Plan{Node: run.CurrentNode, Check: node.Check, SkipReason: reason}, nil
+	}
+
 	plan, err := checkplan.Load(checkplan.DefaultPath(req.WorkspaceRoot))
 	if err != nil {
 		return nil, err
 	}
+
+	// A plan that does not declare this check is the workspace saying it has no
+	// such check. That is a statement in a tracked file, which is why it is
+	// allowed to skip rather than stall; deleting the entry is a reviewable diff.
+	//
+	// It is not the same as having no plan at all, which errors above: absence of
+	// the whole file is a workspace that has not been set up, and treating that as
+	// "no checks needed" would make an unconfigured repo the most permissive one.
+	if !plan.Has(node.Check) {
+		return &Plan{
+			Node: run.CurrentNode, Check: node.Check, PlanPath: plan.Path(),
+			SkipReason: fmt.Sprintf("%s declares no %s check; declared checks are %v",
+				checkplan.FileName, node.Check, plan.Names()),
+		}, nil
+	}
+
 	entry, err := plan.Entry(node.Check)
 	if err != nil {
 		return nil, err
@@ -136,18 +173,25 @@ func Verify(ctx context.Context, req VerifyRequest) (*VerifyResult, error) {
 		return nil, err
 	}
 
-	registry := req.Registry
-	if registry == nil {
-		registry = verifier.Default()
-	}
-	impl, err := registry.Get(resolved.Kind)
-	if err != nil {
-		return nil, err
-	}
-
-	produced, err := impl.Verify(ctx, resolved.Request)
-	if err != nil {
-		return nil, err
+	var produced verifier.Result
+	if resolved.Skipped() {
+		// verifier.Skipped is where a skip becomes evidence: source file_assert,
+		// passed false, skipped true. Until this call site existed the function was
+		// unreachable, and the only way a check got marked skipped was a caller
+		// typing --skipped, which is the hole this whole change closes.
+		produced = verifier.Skipped(resolved.SkipReason, req.now())
+	} else {
+		registry := req.Registry
+		if registry == nil {
+			registry = verifier.Default()
+		}
+		impl, err := registry.Get(resolved.Kind)
+		if err != nil {
+			return nil, err
+		}
+		if produced, err = impl.Verify(ctx, resolved.Request); err != nil {
+			return nil, err
+		}
 	}
 
 	applied, err := Apply(Request{

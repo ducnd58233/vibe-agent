@@ -90,8 +90,24 @@ func (g *Graph) validateGuards() Problems {
 		if guard.Reads != "" && !identifierPattern.MatchString(guard.Reads) {
 			problems = append(problems, fmt.Sprintf("guard %q reads %q, which is not a valid key", guard.Name, guard.Reads))
 		}
+		// Only checks can be skipped, so the setting means nothing anywhere else.
+		// Silently ignoring it would let a graph read as though it had granted
+		// something it did not.
+		if guard.AcceptsSkipped && guard.Source != GuardCheck {
+			problems = append(problems, fmt.Sprintf(
+				"guard %q sets acceptsSkipped but reads from %s; only a check can be skipped",
+				guard.Name, orFlag(guard.Source)))
+		}
 	}
 	return problems
+}
+
+// orFlag names the effective source, since an empty source means flag.
+func orFlag(source GuardSource) GuardSource {
+	if source == "" {
+		return GuardFlag
+	}
+	return source
 }
 
 func (g *Graph) validateNodes() Problems {

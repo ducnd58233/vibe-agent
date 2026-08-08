@@ -352,9 +352,93 @@ spec:
 	}
 }
 
-// A check nobody declared must not resolve to anything. An unconfigured repo is
-// the one most likely to hit this, so it is the one that must fail closed.
-func TestVerifyRefusesACheckTheWorkspaceDidNotDeclare(t *testing.T) {
+// A workspace with no e2e suite must not stall at the e2e gate, and must not
+// have it recorded as a pass either. The plan omitting the check is the tracked
+// statement that there is none, and the manifest has to say skipped.
+func TestAPlanThatOmitsACheckSkipsItVisibly(t *testing.T) {
+	root := consumerRepo(t)
+	write(t, filepath.Join(root, "vibe-checks.yaml"), `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      command: go
+      args: [version]
+`)
+	run := cli{t, buildBinary(t), root, toolkitRoot(t)}
+	run.mustRun("run", "start", "--slug", "no-e2e", "--goal", "prove an omitted check skips visibly")
+	walkTo(t, run, "no-e2e", "test")
+	run.mustRun("verify", "--slug", "no-e2e") // test -> e2e
+
+	out := run.mustRun("verify", "--slug", "no-e2e")
+	if !strings.Contains(out, "e2e skipped") {
+		t.Fatalf("an omitted check was not reported as skipped:\n%s", out)
+	}
+	if !strings.Contains(out, "vibe-checks.yaml") {
+		t.Errorf("the skip does not say what caused it:\n%s", out)
+	}
+	if !strings.Contains(out, "-> review") {
+		t.Errorf("the run did not proceed past the gate:\n%s", out)
+	}
+
+	status := run.mustRun("run", "status", "--slug", "no-e2e", "--json")
+	var final map[string]any
+	if err := json.Unmarshal([]byte(status), &final); err != nil {
+		t.Fatalf("status is not JSON: %v", err)
+	}
+	e2e := final["checks"].(map[string]any)["e2e"].(map[string]any)
+	if e2e["passed"] == true {
+		t.Error("a skipped e2e check was recorded as passed")
+	}
+	if e2e["skipped"] != true {
+		t.Errorf("the skip marker is missing, so a reader cannot tell nothing ran: %v", e2e)
+	}
+}
+
+// Flags were readable from the day the runner existed and nothing wrote one, so
+// every flag-sourced guard was permanently false. In the delivery graph that made
+// the research node unreachable: no run could ever take that edge. This is the
+// writer, and the constraint that comes with it.
+func TestAFlagOpensABranchThatWasUnreachable(t *testing.T) {
+	root := consumerRepo(t)
+	run := cli{t, buildBinary(t), root, toolkitRoot(t)}
+	run.mustRun("run", "start", "--slug", "flagged", "--goal", "prove a flag routes the run")
+
+	// A flag no guard reads would change nothing, so it is refused rather than
+	// stored where nobody would notice it.
+	if out, err := run.run("run", "flag", "--slug", "flagged", "--set", "not_a_guard"); err == nil {
+		t.Errorf("a flag no guard reads was accepted:\n%s", out)
+	}
+	// A check-sourced guard is not settable either: that would be a way to write
+	// evidence through the flag door.
+	if out, err := run.run("run", "flag", "--slug", "flagged", "--set", "spec_approved"); err == nil {
+		t.Errorf("a check-sourced guard was settable as a flag:\n%s", out)
+	}
+
+	run.mustRun("run", "flag", "--slug", "flagged", "--set", "research_required",
+		"--note", "the spec needs outside sources")
+
+	out := run.mustRun("checkpoint", "--slug", "flagged",
+		"--check", "intake_confirmed", "--source", "human_event", "--passed")
+	if !strings.Contains(out, "-> research") {
+		t.Fatalf("the flag did not route the run to research:\n%s", out)
+	}
+
+	// Outside a human gate there is nobody being asked, so there is nobody whose
+	// answer this would be recording.
+	if out, err := run.run("run", "flag", "--slug", "flagged", "--clear", "research_required"); err == nil {
+		t.Errorf("a flag was set while the run was at %q:\n%s", "research", out)
+	}
+}
+
+// A skipped check must not open a gate that did not ask for it.
+//
+// The runner used to answer every check-sourced guard with
+// `passed || skipped`, while the delivery graph documented e2e_ok as the only
+// place the two were treated alike. They were treated alike everywhere, so a
+// workspace whose plan omitted `unit` walked past the unit gate on the strength
+// of the suite not having run. Only e2e_ok opts in now.
+func TestASkippedCheckDoesNotOpenAGateThatDidNotOptIn(t *testing.T) {
 	root := consumerRepo(t)
 	write(t, filepath.Join(root, "vibe-checks.yaml"), `apiVersion: vibe-agent/v1
 kind: CheckPlan
@@ -365,15 +449,15 @@ spec:
       args: [version]
 `)
 	run := cli{t, buildBinary(t), root, toolkitRoot(t)}
-	run.mustRun("run", "start", "--slug", "undeclared", "--goal", "prove an undeclared check fails closed")
+	run.mustRun("run", "start", "--slug", "undeclared", "--goal", "prove a skip does not pass the unit gate")
 	walkTo(t, run, "undeclared", "test")
 
-	out, err := run.run("verify", "--slug", "undeclared")
-	if err == nil {
-		t.Fatalf("an undeclared check verified:\n%s", out)
+	out := run.mustRun("verify", "--slug", "undeclared")
+	if !strings.Contains(out, "unit skipped") {
+		t.Fatalf("an undeclared check was not reported as skipped:\n%s", out)
 	}
-	if !strings.Contains(out, "unit") {
-		t.Errorf("the error does not name the missing check:\n%s", out)
+	if !strings.Contains(out, "-> build") {
+		t.Fatalf("a skipped unit check passed its own gate:\n%s", out)
 	}
 }
 

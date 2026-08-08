@@ -1,6 +1,7 @@
 package loop
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -327,5 +328,181 @@ func TestRemainingTasksLoopBackToBuild(t *testing.T) {
 	})
 	if transition.To != "build" {
 		t.Errorf("task_complete -> %q, want build", transition.To)
+	}
+}
+
+// skipGraph is a fixture rather than the shipped graph. The delivery graph has
+// no skipWhen after this change, on purpose: relying on a flag whose absence
+// reads as false would skip e2e by default, which is the failure the whole
+// design is about. skipWhen stays a runner feature, so it needs a graph that
+// uses it.
+const skipGraph = `apiVersion: vibe-agent/v1
+kind: WorkflowGraph
+metadata:
+  id: skippable
+  description: One verifier node the graph can declare out of scope.
+spec:
+  initial: check
+  maxTransitions: 10
+  guards:
+    - name: not_applicable
+      description: The workspace declared this check out of scope.
+      source: flag
+    - name: check_ok
+      description: The check passed or was declared out of scope.
+      source: check
+      reads: unit
+      acceptsSkipped: true
+  nodes:
+    check:
+      type: verifier
+      description: The only real step.
+      verifier: command
+      check: unit
+      skipWhen: not_applicable
+    done:
+      type: terminal
+      description: Finished.
+      status: done
+    failed:
+      type: terminal
+      description: Stopped.
+      status: failed
+  edges:
+    - from: check
+      to: done
+      when: check_ok
+    - from: check
+      to: failed
+      when: "!check_ok"
+`
+
+func skippableRunner(t *testing.T) (*Runner, *state.Run) {
+	t.Helper()
+	loaded, err := graph.Parse([]byte(skipGraph))
+	if err != nil {
+		t.Fatalf("parse fixture graph: %v", err)
+	}
+	runner := &Runner{Graph: loaded, Now: at}
+	run, err := state.NewRun("demo", "goal", loaded.Metadata.ID, loaded.Spec.MaxTransitions, at())
+	if err != nil {
+		t.Fatalf("NewRun: %v", err)
+	}
+	if err := runner.Enter(run); err != nil {
+		t.Fatalf("Enter: %v", err)
+	}
+	return runner, run
+}
+
+// skipWhen was parsed and validated but never read at execution time, so a graph
+// could declare a skip condition and the runtime would ignore it. Whichever way
+// it resolved, one of the two states the graph described did not exist.
+func TestSkipWhenIsHonoredAtExecutionTime(t *testing.T) {
+	runner, run := skippableRunner(t)
+
+	reason, skip := runner.SkipReason(run, run.CurrentNode)
+	if skip {
+		t.Fatalf("a node whose flag is unset was skipped: %q", reason)
+	}
+
+	run.Flags = map[string]bool{"not_applicable": true}
+	reason, skip = runner.SkipReason(run, run.CurrentNode)
+	if !skip {
+		t.Fatal("skipWhen was declared and the flag was set, but the node was not skipped")
+	}
+	if !strings.Contains(reason, "not_applicable") {
+		t.Errorf("the reason does not name the guard that caused it: %q", reason)
+	}
+}
+
+// A node with no skipWhen must never be skippable, whatever the flags say.
+// Otherwise a flag name colliding with something else would silently drop a step.
+func TestANodeWithoutSkipWhenIsNeverSkipped(t *testing.T) {
+	runner := newRunner(t)
+	run := newRun(t, runner)
+	run.Flags = map[string]bool{"not_applicable": true, "e2e_required": false}
+
+	for id := range runner.Graph.Spec.Nodes {
+		if reason, skip := runner.SkipReason(run, id); skip {
+			node, _ := runner.Graph.Node(id)
+			if node.SkipWhen == "" {
+				t.Errorf("node %q has no skipWhen but was skipped: %q", id, reason)
+			}
+		}
+	}
+}
+
+// A skipped check is recorded as skipped. The delivery graph's e2e_ok guard
+// accepts either, which is a routing decision; the manifest must still keep the
+// two apart so a reader can tell what actually ran.
+func TestASkippedCheckAdvancesWithoutBeingAPass(t *testing.T) {
+	runner, run := skippableRunner(t)
+	run.Flags = map[string]bool{"not_applicable": true}
+
+	transition, err := runner.Advance(run, Outcome{Check: &NamedCheck{
+		Name:  "unit",
+		Check: state.Check{Skipped: true, Source: state.SourceFileAssert, At: at()},
+	}})
+	if err != nil {
+		t.Fatalf("Advance: %v", err)
+	}
+	if transition.To != "done" {
+		t.Fatalf("a skipped check did not satisfy the guard: went to %q", transition.To)
+	}
+	if run.Checks["unit"].Passed {
+		t.Error("a skipped check was stored as passed")
+	}
+	if !run.Checks["unit"].Skipped {
+		t.Error("a skipped check lost its skipped marker")
+	}
+}
+
+// The bug this closes. The runner used to return `check.Passed || check.Skipped`
+// for every check-sourced guard, so any check that got skipped satisfied its own
+// gate. The delivery graph even documented e2e_ok as the only place the two were
+// treated alike, and that was not what the code did.
+//
+// Skipped now satisfies a guard only where the graph opted in.
+func TestASkippedCheckSatisfiesOnlyAGuardThatOptedIn(t *testing.T) {
+	runner := newRunner(t)
+
+	optedIn, ok := runner.Graph.Guard("e2e_ok")
+	if !ok {
+		t.Fatal("the delivery graph has no e2e_ok guard")
+	}
+	if !optedIn.AcceptsSkipped {
+		t.Error("e2e_ok does not accept a skip, so a workspace with no e2e surface would stall")
+	}
+
+	for _, guard := range runner.Graph.Spec.Guards {
+		if guard.Name != "e2e_ok" && guard.AcceptsSkipped {
+			t.Errorf("guard %q accepts a skip; only e2e_ok is meant to", guard.Name)
+		}
+	}
+}
+
+// A skipped unit check must not open the unit gate. Before the opt-in, a
+// workspace whose plan omitted `unit` walked straight past it.
+func TestASkippedCheckDoesNotOpenAGateThatDidNotOptIn(t *testing.T) {
+	runner := newRunner(t)
+	run := newRun(t, runner)
+
+	// intake -> spec -> approve_spec -> plan -> approve_plan -> build -> test
+	advance(t, runner, run, Outcome{Check: approve("intake_confirmed")})
+	advance(t, runner, run, Outcome{})
+	advance(t, runner, run, Outcome{Check: approve("spec_approved")})
+	advance(t, runner, run, Outcome{})
+	advance(t, runner, run, Outcome{Check: approve("plan_approved")})
+	advance(t, runner, run, Outcome{})
+	if run.CurrentNode != "test" {
+		t.Fatalf("walked to %q, want test", run.CurrentNode)
+	}
+
+	transition := advance(t, runner, run, Outcome{Check: &NamedCheck{
+		Name:  "unit",
+		Check: state.Check{Skipped: true, Source: state.SourceFileAssert, At: at()},
+	}})
+	if transition.To != "build" {
+		t.Errorf("a skipped unit check routed to %q; skipping the suite must not pass its gate", transition.To)
 	}
 }

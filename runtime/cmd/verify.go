@@ -49,6 +49,11 @@ func verifyCommand(args []string) error {
 		if err != nil {
 			return err
 		}
+		if resolved.Skipped() {
+			fmt.Printf("would skip %s at node %s\n", resolved.Check, resolved.Node)
+			fmt.Printf("  reason     %s\n", resolved.SkipReason)
+			return nil
+		}
 		fmt.Printf("would verify %s at node %s\n", resolved.Check, resolved.Node)
 		fmt.Printf("  verifier   %s\n", resolved.Kind)
 		fmt.Printf("  plan       %s\n", resolved.PlanPath)
@@ -71,7 +76,14 @@ func verifyCommand(args []string) error {
 		return err
 	}
 
-	fmt.Printf("%s %s (%s verifier)\n", result.Check, verdict(result.Verifier.Check), result.Kind)
+	if result.Kind == "" {
+		// Nothing ran, so naming a verifier would be wrong. The reason is the
+		// evidence here, and it has to be visible: a skip that reads like a pass is
+		// the failure this whole path exists to prevent.
+		fmt.Printf("%s skipped\n", result.Check)
+	} else {
+		fmt.Printf("%s %s (%s verifier)\n", result.Check, verdict(result.Verifier.Check), result.Kind)
+	}
 	fmt.Printf("  evidence   %s\n", result.Verifier.Summary)
 	if result.Verifier.LogPath != "" {
 		fmt.Printf("  log        %s\n", result.Verifier.LogPath)

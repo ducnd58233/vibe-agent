@@ -13,16 +13,106 @@ import (
 
 func runCommand(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("run needs a subcommand: start or status")
+		return fmt.Errorf("run needs a subcommand: start, status, or flag")
 	}
 	switch args[0] {
 	case "start":
 		return runStart(args[1:])
 	case "status":
 		return runStatus(args[1:])
+	case "flag":
+		return runFlag(args[1:])
 	default:
-		return fmt.Errorf("unknown run subcommand %q; try start or status", args[0])
+		return fmt.Errorf("unknown run subcommand %q; try start, status, or flag", args[0])
 	}
+}
+
+// runFlag records a scope decision on a run.
+//
+// Flags were readable from the day the runner existed and no code path wrote
+// one, so every flag-sourced guard was permanently false and any graph branch
+// behind one was unreachable. This is the missing writer.
+//
+// Two constraints, because a flag can change which steps a run takes and an
+// unconstrained writer would be a way to route around verification:
+//
+//  1. Only while the run sits at a human gate. A flag is a scope answer, and a
+//     human gate is the moment the graph has arranged for someone to be asked
+//     something. Outside one there is nobody to have answered.
+//  2. Recorded in the event log, so the decision has a timestamp and a node
+//     rather than appearing in the manifest with no account of where it came
+//     from.
+func runFlag(args []string) error {
+	flags := newFlagSet("run flag")
+	paths := addRootFlags(flags)
+	slug := flags.String("slug", "", "goal slug (required)")
+	set := flags.String("set", "", "flag to turn on")
+	clear := flags.String("clear", "", "flag to turn off")
+	note := flags.String("note", "", "why, for the event log")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *slug == "" {
+		return fmt.Errorf("run flag needs --slug")
+	}
+	if (*set == "") == (*clear == "") {
+		return fmt.Errorf("run flag needs exactly one of --set or --clear")
+	}
+
+	name, value := *set, true
+	if *clear != "" {
+		name, value = *clear, false
+	}
+
+	workspaceRoot, toolkitRoot, err := paths.resolve()
+	if err != nil {
+		return err
+	}
+	manifest := state.ManifestPath(workspaceRoot, *slug)
+	current, err := state.Load(manifest)
+	if err != nil {
+		return err
+	}
+
+	loaded, err := graph.LoadByID(graph.DefaultDir(toolkitRoot), current.GraphID)
+	if err != nil {
+		return err
+	}
+	if guard, ok := loaded.Guard(name); !ok {
+		return fmt.Errorf("graph %q declares no guard %q; a flag nothing reads would change nothing",
+			current.GraphID, name)
+	} else if guard.Source != graph.GuardFlag {
+		return fmt.Errorf("guard %q reads from %s, not from flags; setting a flag would not affect it",
+			name, guard.Source)
+	}
+
+	node, ok := loaded.Node(current.CurrentNode)
+	if !ok || node.Type != graph.NodeHumanGate {
+		return fmt.Errorf("the run is at node %q, which is not a human gate; "+
+			"a flag is a scope decision and there is nobody being asked here",
+			current.CurrentNode)
+	}
+
+	if err := current.SetFlagAt(name, value, time.Now()); err != nil {
+		return err
+	}
+
+	payload, err := json.Marshal(map[string]any{"flag": name, "value": value, "note": *note})
+	if err != nil {
+		return fmt.Errorf("encode flag event: %w", err)
+	}
+	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, *slug),
+		state.Event{Type: "flag_set", Node: current.CurrentNode, At: current.UpdatedAt, Payload: payload},
+	); err != nil {
+		return err
+	}
+	if err := state.Save(manifest, current); err != nil {
+		return err
+	}
+
+	fmt.Printf("%s = %t\n", name, value)
+	fmt.Printf("  recorded at %s\n", current.CurrentNode)
+	return nil
 }
 
 // runStart creates a run and places it at the graph's initial node.
