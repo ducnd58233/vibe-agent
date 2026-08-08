@@ -47,11 +47,15 @@ const (
 	VerifierCommand VerifierKind = "command"
 	VerifierFiles   VerifierKind = "files"
 	VerifierGit     VerifierKind = "git"
+	// VerifierScreen proves an app rendered: no crash, the expected content in
+	// the view hierarchy, and a frame that is not blank. An exit code cannot
+	// answer any of those.
+	VerifierScreen VerifierKind = "screen"
 )
 
 func (k VerifierKind) valid() bool {
 	switch k {
-	case VerifierCommand, VerifierFiles, VerifierGit:
+	case VerifierCommand, VerifierFiles, VerifierGit, VerifierScreen:
 		return true
 	}
 	return false

@@ -229,8 +229,8 @@
               "description": true,
               "timeoutSeconds": true,
               "verifier": {
-                "enum": ["command", "files", "git"],
-                "description": "Verifier implementation that produces the evidence."
+                "enum": ["command", "files", "git", "screen"],
+                "description": "Verifier implementation that produces the evidence. screen proves an app rendered rather than that a command exited."
               },
               "check": {
                 "$ref": "#/$defs/identifier",

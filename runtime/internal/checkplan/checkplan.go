@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/verifier"
 )
 
 // APIVersion and Kind are the only values this loader accepts. They match the
@@ -61,6 +63,11 @@ type Entry struct {
 	// Paths is for the files verifier.
 	Paths []string `yaml:"paths"`
 
+	// Screen is for the screen verifier, which needs more than a command line.
+	// The type lives in the verifier package because that is what gives the
+	// fields meaning; this package only carries them from YAML.
+	Screen *verifier.ScreenSpec `yaml:"screen"`
+
 	TimeoutSeconds int `yaml:"timeoutSeconds"`
 
 	// Description is for humans reading the plan. The runtime ignores it.
@@ -82,7 +89,7 @@ func (e Entry) Human() bool { return e.Verifier == HumanVerifier }
 // human-decided check is complete with no command, since the person is the
 // mechanism.
 func (e Entry) runnable() bool {
-	return e.Human() || e.Command != "" || len(e.Paths) > 0
+	return e.Human() || e.Command != "" || len(e.Paths) > 0 || e.Screen != nil
 }
 
 // Spec is the plan itself.
@@ -203,7 +210,11 @@ func (p *Plan) validate() error {
 	for _, name := range p.Names() {
 		entry := p.Spec.Checks[name]
 		if !entry.runnable() {
-			return fmt.Errorf("check %q declares no command and no paths; there is nothing to run", name)
+			return fmt.Errorf("check %q declares no command, paths, or screen; there is nothing to run", name)
+		}
+		if entry.Screen != nil && entry.Screen.Platform == "" {
+			return fmt.Errorf("check %q has a screen block with no platform; use %s or %s",
+				name, verifier.PlatformAndroid, verifier.PlatformIOS)
 		}
 	}
 	return nil

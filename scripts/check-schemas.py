@@ -205,6 +205,23 @@ def cases(schemas: dict[str, dict]) -> list[tuple[dict, str, dict, bool]]:
          merged(base_plan(), spec={"checks": {"Unit Tests": {"command": "go"}}}), False),
         (plan, "plan rejects a graph masquerading as a plan",
          merged(base_plan(), kind="WorkflowGraph"), False),
+        (plan, "plan accepts a screen check with content assertions",
+         plan_with({"verifier": "screen", "screen": {
+             "platform": "android",
+             "launch": "adb",
+             "launchArgs": ["shell", "am", "start", "-n", "com.example/.Main"],
+             "settleSeconds": 8,
+             "expectText": ["Total: 42.00"],
+             "forbidText": ["Unhandled JS Exception"],
+         }}), True),
+        # A screen block with no platform cannot pick a toolchain, and defaulting
+        # one would silently drive the wrong device.
+        (plan, "plan rejects a screen block with no platform",
+         plan_with({"verifier": "screen", "screen": {"expectText": ["hi"]}}), False),
+        (plan, "plan rejects an unknown screen platform",
+         plan_with({"verifier": "screen", "screen": {"platform": "web"}}), False),
+        (plan, "plan rejects a misspelled screen key",
+         plan_with({"verifier": "screen", "screen": {"platform": "android", "expectTest": ["hi"]}}), False),
     ]
 
 

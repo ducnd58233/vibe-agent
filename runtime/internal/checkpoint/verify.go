@@ -158,6 +158,7 @@ func Resolve(req VerifyRequest) (*Plan, error) {
 			Args:          entry.Args,
 			LogDir:        node.Check,
 			Paths:         entry.Paths,
+			Screen:        entry.Screen,
 		},
 	}, nil
 }

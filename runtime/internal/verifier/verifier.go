@@ -8,6 +8,8 @@ package verifier
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
@@ -36,6 +38,9 @@ type Request struct {
 
 	// Git verifier
 	Expect GitExpectation
+
+	// Screen verifier
+	Screen *ScreenSpec
 }
 
 // Result is one verification outcome plus a human-readable account of it.
@@ -50,7 +55,7 @@ type Result struct {
 
 // Verifier turns a request into evidence.
 type Verifier interface {
-	// Kind is the graph's verifier name: command, files, or git.
+	// Kind is the graph's verifier name: command, files, git, or screen.
 	Kind() string
 	Verify(ctx context.Context, req Request) (Result, error)
 }
@@ -64,6 +69,7 @@ func Default() Registry {
 		"command": Command{},
 		"files":   Files{},
 		"git":     Git{},
+		"screen":  Screen{},
 	}
 }
 
@@ -71,9 +77,19 @@ func Default() Registry {
 func (r Registry) Get(kind string) (Verifier, error) {
 	verifier, ok := r[kind]
 	if !ok {
-		return nil, fmt.Errorf("no verifier %q; known verifiers are command, files, git", kind)
+		return nil, fmt.Errorf("no verifier %q; known verifiers are %s", kind, strings.Join(r.Kinds(), ", "))
 	}
 	return verifier, nil
+}
+
+// Kinds lists the registered verifier names in a stable order.
+func (r Registry) Kinds() []string {
+	kinds := make([]string, 0, len(r))
+	for kind := range r {
+		kinds = append(kinds, kind)
+	}
+	sort.Strings(kinds)
+	return kinds
 }
 
 // Skipped builds the result for a node the graph told the runtime to skip.

@@ -43,6 +43,61 @@
     }
   },
   "$defs": {
+    "screen": {
+      "type": "object",
+      "required": ["platform"],
+      "additionalProperties": false,
+      "description": "How to prove an app rendered. Three independent signals: the crash buffer is empty, the expected content is in the view hierarchy, and the frame is not blank. A blank white screen fails all three, which an exit-code check cannot see.",
+      "properties": {
+        "platform": {
+          "enum": ["android", "ios"],
+          "description": "android drives adb; ios drives xcrun simctl, which exposes no view hierarchy, so content has to be asserted from inside the app there."
+        },
+        "device": {
+          "type": "string",
+          "minLength": 1,
+          "description": "adb serial or simulator UDID. Omit when exactly one target is attached."
+        },
+        "launch": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Command that installs and starts the app. Without it the verifier measures whatever is already on screen."
+        },
+        "launchArgs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "settleSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600,
+          "description": "Wait after launch before sampling. A frame sampled during the splash screen proves nothing either way."
+        },
+        "expectText": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Strings that must appear in the view hierarchy. The only signal here that says anything about data rather than pixels."
+        },
+        "expectResourceIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "View identifiers that must be present."
+        },
+        "forbidText": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Strings that must not appear. A framework error page is not an OS-level crash, so the crash buffer stays clean for a React Native redbox or a Flutter error widget; naming their text is what catches those."
+        },
+        "allowBlank": {
+          "type": "boolean",
+          "default": false,
+          "description": "Turns off the blank-frame check for a screen that is legitimately one flat colour."
+        }
+      }
+    },
     "checkName": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9_]*$",
@@ -60,6 +115,9 @@
           "required": ["paths"]
         },
         {
+          "required": ["screen"]
+        },
+        {
           "properties": {
             "verifier": {
               "const": "human"
@@ -70,7 +128,7 @@
       ],
       "properties": {
         "verifier": {
-          "enum": ["command", "files", "git", "human"],
+          "enum": ["command", "files", "git", "screen", "human"],
           "description": "Overrides the graph node's verifier kind. `human` means no runtime verifier can produce this check and a person decides it, which is the only route by which caller-supplied evidence reaches a verifier node."
         },
         "command": {
@@ -92,6 +150,9 @@
             "minLength": 1
           },
           "description": "For the files verifier. Proves the paths exist and hold something, which is a weaker claim than most checks need."
+        },
+        "screen": {
+          "$ref": "#/$defs/screen"
         },
         "timeoutSeconds": {
           "type": "integer",

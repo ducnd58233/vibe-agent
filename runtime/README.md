@@ -34,7 +34,12 @@ runtime/
     loop/                 the runner: transitions, budget, blocker stop rule
     checkpoint/           the one write path: apply evidence, once
       verify.go           the only producer of runtime-origin evidence
-    verifier/             command, files, git. The things that produce evidence
+    verifier/             the things that produce evidence
+      command.go          a subprocess exit code
+      files.go            paths exist and are non-empty
+      git.go              repository state, observed never changed
+      screen.go           an app rendered: no crash, expected content, not blank
+      device.go           adb and simctl, the only shell this verifier needs
     memory/               SQLite store, FTS search, write policy, promotion
     mcp/                  stdio server, seven tools
     harness/              hook adapters for Claude and Cursor
@@ -103,6 +108,29 @@ There is no `--passed` on `verify`. A failing check exits 0: the run recorded th
 One escape hatch, deliberately visible. A check the plan declares `verifier: human` has no runtime verifier, so a person records it with `checkpoint --source human_event`. It costs a tracked diff to grant, and a plan full of them is a fact about the repo worth seeing rather than a setting to forget.
 
 `doctor` reports any verifier node in any graph whose check the plan does not declare, because a run that discovers this mid-delivery discovers it at the expensive time.
+
+## Proving an app rendered
+
+An exit code cannot answer "did the user see the right thing". `flutter test integration_test` exits 0 whether the app painted a list or a white rectangle, so a repo whose mobile e2e check is only a command has a gate that a broken app walks through.
+
+The `screen` verifier asks the device three separate questions:
+
+| Signal | How | Catches |
+|--------|-----|---------|
+| Nothing crashed | `adb logcat -b crash -d`, cleared before launch | `FATAL EXCEPTION`, ANR, native tombstones |
+| The expected content is on screen | `adb shell uiautomator dump`, matched against `expectText` and `expectResourceIds` | wrong data, an empty list, a permanent spinner |
+| The frame is not blank | `adb exec-out screencap -p`, quantised colour histogram | a white or black screen with no crash to show for it |
+
+They are independent because each has a blind spot the others do not. A crash-free app can show nothing; a busy screen can show the wrong numbers; a hierarchy can list nodes that never painted.
+
+`forbidText` covers the case none of the three would catch on its own: a React Native redbox or a Flutter error widget is not an OS-level crash, so the crash buffer stays clean and the screen is busy. Naming the framework's own error text is what fails it.
+
+Two limits worth knowing before trusting a pass:
+
+- **Flutter renders to one canvas**, and that canvas is not accessible unless the app enables semantics. The dump then holds a single node, so a Flutter check has to assert content from inside the app instead. The Android adapter reports this rather than returning an empty tree, because empty would read as "the content is not there" when the truth is "nothing was measured".
+- **iOS has no `uiautomator` equivalent.** `simctl` gives crash reports and screenshots; content on iOS comes from an XCUITest or a framework-level integration test.
+
+The blank-frame test is deliberately conservative. The first version counted pixels near the frame's average colour, following US patent 7536078, and it failed on the commonest real case: a spinner on white drags the average away from white, leaving nothing near it and reporting 0% for the emptiest screen in the set. It now counts how many quantised colours the frame occupies at all, and fires only when there are almost none. Anti-aliased text alone puts a working screen well past that, which is the point: a verifier that failed real screens would be switched off, and that costs more than the cases it would catch.
 
 ## A skipped check is not a passed check
 
