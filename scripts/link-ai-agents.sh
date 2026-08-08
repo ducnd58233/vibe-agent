@@ -295,9 +295,14 @@ install_commit_attribution_hook() {
 
 # Fetches the optional runtime binary that the wired hooks invoke by name.
 #
-# Skipped when the binary is already present, when LINK_SKIP_RUNTIME is set, and
-# in CI, where a network download would make an unrelated outage look like a
-# broken link script.
+# Always fetches, even when a binary is already present. It used to skip in that
+# case, which meant a consumer who installed once never got another update: the
+# hooks kept calling a binary that fell further behind the configs registering
+# them. That failure is invisible from the outside, because a stale binary answers
+# the events it knows and refuses the rest.
+#
+# Skipped only when LINK_SKIP_RUNTIME is set, and in CI, where a network download
+# would make an unrelated outage look like a broken link script.
 #
 # Never fails the link run. The runtime is optional by design: without it every
 # hook is a quiet no-op and the markdown assets work exactly as before.
@@ -312,17 +317,31 @@ install_runtime() {
     echo "Runtime install skipped (CI). Run bash scripts/install-runtime.sh to install it."
     return 0
   fi
-  if command -v vibe-agent >/dev/null 2>&1; then
-    echo "Runtime already installed: $(command -v vibe-agent) ($(vibe-agent version 2>/dev/null || echo 'version unknown'))"
-    return 0
-  fi
   if [[ ! -f "$installer" ]]; then
     echo "No install-runtime.sh next to this script; skipped runtime install." >&2
     return 0
   fi
 
-  echo "Installing the optional runtime binary..."
+  local before=""
+  if command -v vibe-agent >/dev/null 2>&1; then
+    before="$(vibe-agent version 2>/dev/null || echo unknown)"
+    echo "Refreshing the runtime binary (installed: ${before})..."
+  else
+    echo "Installing the optional runtime binary..."
+  fi
+
   if bash "$installer"; then
+    # Report the change rather than only the fact of a download, so an unchanged
+    # version is visible as unchanged instead of looking like work was done.
+    if command -v vibe-agent >/dev/null 2>&1; then
+      local after
+      after="$(vibe-agent version 2>/dev/null || echo unknown)"
+      if [[ -n "$before" && "$before" == "$after" ]]; then
+        echo "Runtime already current: ${after}"
+      elif [[ -n "$before" ]]; then
+        echo "Runtime updated: ${before} -> ${after}"
+      fi
+    fi
     return 0
   fi
   echo "Runtime install did not complete. This is not fatal: the toolkit works without it." >&2

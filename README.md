@@ -143,6 +143,8 @@ vibe-agent version
 vibe-agent doctor
 ```
 
+**Rerunning is how you update.** Both scripts fetch every time; neither skips because a binary is already there, and `link-ai-agents` runs the installer on every link so a consumer repo stays current. Skipping used to be the behaviour, and it meant a repo that installed once never got another version: the hooks kept calling a binary that fell behind the configs registering them, which fails invisibly because a stale binary answers the events it knows and refuses the rest. `vibe-agent doctor` reports that mismatch if it happens anyway.
+
 If no release is reachable and Go happens to be installed, the scripts build from `runtime/` instead and say so. That fallback is what keeps a fresh clone usable; a release is the normal path and needs no Go.
 
 ### Where binaries come from

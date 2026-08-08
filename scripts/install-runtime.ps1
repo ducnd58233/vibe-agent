@@ -37,11 +37,55 @@ $runtimeDir = Join-Path $PSScriptRoot '../runtime'
 
 function Show-Result {
     param([string]$Target)
-    Write-Host "installed $Target"
+    $installed = ''
+    try { $installed = (& $Target version 2>$null | Select-Object -First 1).Trim() } catch { }
+    if ($installed) {
+        Write-Host "installed $Target ($installed)"
+    } else {
+        Write-Host "installed $Target"
+    }
     Write-Host ''
     Write-Host 'check the install with:'
     Write-Host '  vibe-agent version'
     Write-Host '  vibe-agent doctor'
+}
+
+# Replaces the binary in place, tolerating the case where it is running.
+#
+# This script now fetches on every link run rather than skipping when a binary
+# exists, so overwriting a live one is the normal case, not the rare one. Windows
+# refuses to delete or overwrite a loaded image but allows renaming it, which is
+# what makes an in-place replacement possible at all: move the old one aside,
+# put the new one in place, and clear the leftover when the process lets go.
+function Install-Binary {
+    param([string]$Downloaded, [string]$Target)
+
+    if (-not (Test-Path -LiteralPath $Target)) {
+        Move-Item -LiteralPath $Downloaded -Destination $Target -Force
+        return
+    }
+
+    $aside = "$Target.old"
+    Remove-Item -LiteralPath $aside -Force -ErrorAction SilentlyContinue
+    try {
+        Move-Item -LiteralPath $Target -Destination $aside -Force
+    } catch {
+        throw @"
+Could not replace ${Target}: $($_.Exception.Message)
+
+Something is holding the file open. Close any terminal or editor running
+vibe-agent, then rerun this script.
+"@
+    }
+
+    try {
+        Move-Item -LiteralPath $Downloaded -Destination $Target -Force
+    } catch {
+        # Put the working binary back rather than leaving nothing installed.
+        Move-Item -LiteralPath $aside -Destination $Target -Force
+        throw
+    }
+    Remove-Item -LiteralPath $aside -Force -ErrorAction SilentlyContinue
 }
 
 function Add-ToUserPath {
@@ -104,21 +148,56 @@ $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
   default { throw "Unsupported architecture: $env:PROCESSOR_ARCHITECTURE. Build from source: cd runtime; make install" }
 }
 
-if ($Version -eq 'latest') {
-  Write-Host 'resolving the latest release'
+# Asset names embed the version, and the rolling build's version carries a commit
+# sha nobody can predict: vibe-agent_0.0.0-main.<sha>_windows_amd64.exe. So the
+# release JSON is the source of truth for what to download, rather than a URL
+# assembled from guesses. Assembling it is what this script used to do, and every
+# lookup 404ed into a source build that needs Go, which a release exists to avoid.
+function Get-Release {
+  param([string]$Endpoint)
   try {
-    $release = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases/latest"
-    $Version = $release.tag_name -replace '^runtime/', ''
+    return Invoke-RestMethod "https://api.github.com/repos/$Repo/releases/$Endpoint"
   } catch {
-    $Version = ''
-  }
-  if (-not $Version) {
-    Install-FromSource -Reason "No published release found for $Repo."
+    return $null
   }
 }
 
-$asset = "vibe-agent_${Version}_windows_${arch}.exe"
-$base = "https://github.com/$Repo/releases/download/runtime/$Version"
+# Resolution order, matching install-runtime.sh:
+#   1. an explicit version, when one was passed
+#   2. the newest stable release
+#   3. the rolling build from main, which is a prerelease and so is invisible to
+#      the /releases/latest endpoint. Skipping it left Windows with no release at
+#      all until the first stable tag existed.
+function Resolve-Release {
+  if ($Version -ne 'latest') {
+    return Get-Release "tags/runtime/$Version"
+  }
+
+  Write-Host 'looking for a published release'
+  $release = Get-Release 'latest'
+  if ($release) { return $release }
+
+  Write-Host 'no stable release yet, trying the rolling build from main'
+  return Get-Release 'tags/runtime/latest'
+}
+
+$release = Resolve-Release
+if (-not $release) {
+  if ($Version -ne 'latest') {
+    Install-FromSource -Reason "No release tagged runtime/$Version."
+  }
+  Install-FromSource -Reason "No published release found for $Repo."
+}
+
+# Match on the platform suffix rather than reconstructing the name, so this keeps
+# working whatever the version string turned out to be.
+$assetInfo = $release.assets | Where-Object { $_.name -like "*_windows_${arch}.exe" } | Select-Object -First 1
+if (-not $assetInfo) {
+  Install-FromSource -Reason "Release $($release.tag_name) has no asset for windows/$arch."
+}
+$sumsInfo = $release.assets | Where-Object { $_.name -eq 'SHA256SUMS' } | Select-Object -First 1
+
+$asset = $assetInfo.name
 $temp = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
 New-Item -ItemType Directory -Path $temp -Force | Out-Null
 
@@ -126,29 +205,37 @@ try {
   Write-Host "downloading $asset"
   $downloaded = Join-Path $temp $asset
   try {
-    Invoke-WebRequest -Uri "$base/$asset" -OutFile $downloaded -UseBasicParsing
+    Invoke-WebRequest -Uri $assetInfo.browser_download_url -OutFile $downloaded -UseBasicParsing
   } catch {
-    Install-FromSource -Reason "Release $Version has no asset for windows/$arch."
+    Install-FromSource -Reason "Download of $asset failed."
   }
 
   # A binary that runs with the session's own privileges is worth verifying.
-  try {
+  if ($sumsInfo) {
     $sums = Join-Path $temp 'SHA256SUMS'
-    Invoke-WebRequest -Uri "$base/SHA256SUMS" -OutFile $sums -UseBasicParsing
-    $expected = (Select-String -Path $sums -Pattern ([regex]::Escape($asset)) |
-      Select-Object -First 1).Line -replace '\s.*$', ''
-    $actual = (Get-FileHash -Path $downloaded -Algorithm SHA256).Hash.ToLower()
-    if ($expected -and $expected.ToLower() -ne $actual) {
-      throw 'Checksum mismatch; do not run this file.'
+    try {
+      Invoke-WebRequest -Uri $sumsInfo.browser_download_url -OutFile $sums -UseBasicParsing
+      $line = (Select-String -Path $sums -Pattern ([regex]::Escape($asset)) | Select-Object -First 1).Line
+      $expected = ($line -replace '\s.*$', '').ToLower()
+      $actual = (Get-FileHash -Path $downloaded -Algorithm SHA256).Hash.ToLower()
+      if ($expected -and $expected -ne $actual) {
+        throw "Checksum mismatch for ${asset}; do not run this file."
+      }
+      if (-not $expected) {
+        Write-Warning "SHA256SUMS has no entry for $asset, skipping verification."
+      } else {
+        Write-Host 'checksum verified'
+      }
+    } catch [System.Net.WebException] {
+      Write-Warning "Could not fetch SHA256SUMS, skipping verification."
     }
-    Write-Host 'checksum verified'
-  } catch [System.Net.WebException] {
-    Write-Warning "No SHA256SUMS published for $Version, skipping verification."
+  } else {
+    Write-Warning "No SHA256SUMS published alongside this asset, skipping verification."
   }
 
   New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
   $target = Join-Path $InstallDir $binary
-  Move-Item -Path $downloaded -Destination $target -Force
+  Install-Binary -Downloaded $downloaded -Target $target
 
   Add-ToUserPath -Directory $InstallDir
   Show-Result -Target $target

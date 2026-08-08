@@ -8,6 +8,11 @@
 # it falls back to building from runtime/, which does. That fallback is what
 # makes the toolkit usable before the first release exists.
 #
+# Downloads every time it runs. It does not skip because a binary is already
+# present: the link script used to do that, and a consumer who installed once
+# never got another update, so the hooks kept calling a binary that fell further
+# behind the configs registering them.
+#
 # Usage:
 #   bash scripts/install-runtime.sh                 # latest release, else build
 #   bash scripts/install-runtime.sh v0.1.0          # a specific version
@@ -77,7 +82,13 @@ EOF
 }
 
 report_success() {
-  echo "installed ${INSTALL_DIR}/${BINARY}${ext}"
+  local installed=""
+  installed="$("${INSTALL_DIR}/${BINARY}${ext}" version 2>/dev/null | head -1 || true)"
+  if [ -n "$installed" ]; then
+    echo "installed ${INSTALL_DIR}/${BINARY}${ext} (${installed})"
+  else
+    echo "installed ${INSTALL_DIR}/${BINARY}${ext}"
+  fi
   case ":${PATH}:" in
     *":${INSTALL_DIR}:"*) ;;
     *)
