@@ -136,6 +136,13 @@ type payload struct {
 		Command      string `json:"command"`
 		FilePath     string `json:"file_path"`
 		NotebookPath string `json:"notebook_path"`
+
+		// Content is what Write sends; NewString is what Edit sends. The
+		// credential gate needs the text going in, not only its destination:
+		// a key reaching a file is the event, and the path says nothing about
+		// it.
+		Content   string `json:"content"`
+		NewString string `json:"new_string"`
 	} `json:"tool_input"`
 	Command  string `json:"command"`
 	FilePath string `json:"file_path"`
@@ -159,6 +166,19 @@ func (p payload) text() string {
 		return p.UserPrompt
 	}
 	return p.Prompt
+}
+
+// writtenText returns every piece of text this tool call would put somewhere:
+// the body of a write, the replacement half of an edit, and the shell command
+// itself, since a heredoc writes a file without any tool_input at all.
+func (p payload) writtenText() string {
+	parts := make([]string, 0, 3)
+	for _, candidate := range []string{p.ToolInput.Content, p.ToolInput.NewString, p.shellCommand()} {
+		if candidate != "" {
+			parts = append(parts, candidate)
+		}
+	}
+	return strings.Join(parts, "\n")
 }
 
 // writeTarget returns the file a file-writing tool is aimed at.

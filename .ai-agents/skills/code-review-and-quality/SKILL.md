@@ -11,7 +11,6 @@ disable-model-invocation: true
 
 Do not assume a global stack — inspect manifests and existing patterns. When working **in a repository that includes this toolkit**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md) when present, select every applicable profile row for your task, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
 
-
 ## Overview
 
 Multi-dimensional code review with quality gates. Every change gets reviewed before merge — no exceptions. Review covers five axes: correctness, readability, architecture, security, and performance.
@@ -359,13 +358,3 @@ After review is complete:
 ## Related references
 
 - [`security-checklist.md`](../../references/security-checklist.md), [`performance-checklist.md`](../../references/performance-checklist.md), [`testing-patterns.md`](../../references/testing-patterns.md)
-
-## Permissions and authority
-
-**Typical tools:** Read, Grep, Glob, Edit; Shell only for running repo-documented lint/tests when validating recommendations.
-
-**Paths:** Follow `.ai-agents/PERMISSIONS.md`; never read credential or secret material.
-
-**Browser / DevTools:** For browser-centric skills, prefer Cursor browser MCP or human-driven Chrome DevTools — do not assume unattended cloud browser access.
-
-

@@ -12,28 +12,96 @@ Follow [`goal-driven-delivery`](../skills/goal-driven-delivery/SKILL.md) and [`r
 - Optional constraints (deadline, stack, out-of-scope)
 - Optional existing artifacts (`docs/<slug>/SPEC.md`, `TASKS.md`)
 
-## Runtime-backed mode (optional)
+## Runtime is required (MUST)
 
-The phases below are also encoded as an executable graph, [`graphs/goal-delivery.yaml`](../graphs/goal-delivery.yaml). When the [`runtime`](../../runtime) binary is installed, let it own the transitions instead of tracking them by reading this file:
+`/goal` runs on the runtime. It does not have a markdown-only mode. This section is the
+**canonical statement** of that rule for the whole delivery pipeline; `/build`, `/test`,
+`/review`, and `/ship` point here rather than restating it.
+
+### Preflight, before Phase 0
 
 ```sh
-vibe-agent run start --slug <slug> --goal "<objective>"
-vibe-agent run status --slug <slug>       # current node and what completes it
+vibe-agent doctor
+```
+
+If the binary is not on `PATH`, or `doctor` reports problems, **stop. Run no phase.** Report:
+
+```text
+/goal requires the vibe-agent runtime, which is not installed.
+  bash scripts/install-runtime.sh                                      # macOS, Linux, Git Bash
+  powershell -ExecutionPolicy Bypass -File scripts/install-runtime.ps1 # Windows
+Then run `vibe-agent doctor` and start /goal again.
+```
+
+Do not offer to proceed without it. Tracking phases by reading a markdown file is the failure
+mode this rule exists to remove: it is the model marking its own work complete.
+
+### The four parts, and what each one owns
+
+| Part | Owns | Command surface |
+|---|---|---|
+| **graph** | Which node runs next and on what evidence. [`graphs/goal-delivery.yaml`](../graphs/goal-delivery.yaml), 17 nodes | `vibe-agent graph` |
+| **runtime** | Run state, evidence provenance, refusals | `run start`, `run status`, `run flag`, `checkpoint`, `verify` |
+| **loop** | Re-entry until a terminal node, and the three-strike stop | Automatic; `MaxBlockerAttempts = 3` |
+| **memory** | What earlier runs learned, recalled every phase | `memory list`, `memory confirm`, `memory forget` |
+
+```sh
+vibe-agent run start  --slug <slug> --goal "<objective>"
+vibe-agent run status --slug <slug>          # the node, and what completes it
+vibe-agent verify     --slug <slug>          # runs what vibe-checks.yaml declares
 vibe-agent checkpoint --slug <slug> --check <name> --source <source> --passed
 ```
 
-Rules in this mode:
+### Rules in this mode (MUST)
 
-- **Follow the node the runtime reports.** Do not infer or manually advance workflow state.
-- **Evidence has provenance.** `--source` is one of `exit_code`, `file_assert`, `ci_api`, `human_event`. There is no source for model assertion, so a step cannot be marked done by claiming it is.
-- **The graph wins.** When this prose and the graph disagree, the graph is canonical and the prose is stale.
+- **Follow the node the runtime reports.** Never infer the phase, never advance manually. There is
+  no `run advance`: nodes move because `verify` or `checkpoint` recorded evidence.
+- **Evidence has provenance.** `--source` is one of `exit_code`, `file_assert`, `ci_api`,
+  `human_event`. There is no source for model assertion. A verifier node's check can only be
+  written by a verifier, enforced by the compiler, not by convention.
+- **The command is not yours to choose.** `verify` runs what [`vibe-checks.yaml`](../../vibe-checks.yaml)
+  declares. Substituting a weaker command is a tracked diff, not an argument.
+- **The graph wins.** When this prose and the graph disagree, the graph is canonical.
+- **A failing check is not an error.** `verify` exits 0 on failure: the run recorded it and routed
+  on it. That is the loop working.
 
-Without the binary, everything below still applies and the agent tracks phases by reading this file. The runtime is optional; the workflow is not.
+### Until done means until a terminal node
+
+The loop does not end because the model believes it is finished. It ends at `done` or `failed`.
+Three hooks keep it there, and two of them refuse:
+
+| Hook | What it does for `/goal` |
+|---|---|
+| `session-start` | Injects active runs and memory; steers a fresh session back into the run already in flight |
+| `user-prompt-submit` | Injects the current node and matching memories on **every** prompt |
+| `stop` | **Refuses to end the turn** while a run sits mid-graph with nothing recorded |
+| `pre-tool-use` | **Refuses** a push to `main`, an unapproved `gh pr merge`, a hand-write to run state, and a live credential literal |
+| `post-tool-use` | Journals the tool call; proposes a memory when a command reported a non-zero exit |
+
+`stop` blocks at most once per turn, and never for a run awaiting a human or one past three
+blocker attempts, because neither can be moved by another model turn.
+
+### Memory (MUST)
+
+- **Read every phase.** `user-prompt-submit` injects matching memories automatically. Do not
+  re-derive what a previous run already established; check what arrived before searching.
+- **Write on failure.** `post-tool-use` proposes a memory when a command exits non-zero, and
+  confirms it from that exit code. Failure memories carry an expiry, because "this command fails"
+  is true about a moment.
+- **Retrieval returns confirmed memories only.** A person confirms with
+  `vibe-agent memory confirm --id <id>`; the model cannot confirm its own.
+- **Never store a credential.** The policy filter rejects credential-shaped candidates before they
+  reach disk. Do not work around it.
 
 ## Completion condition
 
+**The run is done when `vibe-agent run status` reports the `done` terminal node, and not before.**
+The list below is what the graph requires to get there; it is a reading aid, not a second checklist
+to tick by hand.
+
 Stop only when:
 
+0. `run status` reports terminal `done` (or `failed`, which is a stop, not a completion),
 1. All in-scope tasks in `docs/<slug>/TASKS.md` are done,
 2. Verification commands from the spec pass (run them; do not assume),
 3. **E2E / full-runtime verification** completed when in scope (browser, docker, k8s, mobile sim per spec and stack; see below),
@@ -111,6 +179,8 @@ Optional personas (user or phase invokes; no persona-to-persona chains): [`archi
 
 - Commit attribution stripped by [`strip-ai-attribution`](../hooks/strip-ai-attribution.sh) when link script installed.
 - UI guard: [`design-token-guard.py`](../hooks/design-token-guard.py) when configured in workspace hooks.
+- Disclosure guard: [`sensitive-data-guard.py`](../hooks/sensitive-data-guard.py) when configured in workspace hooks.
+- **Redact before writing `tmp/<slug>/` evidence.** PR comments, test output, and captured responses routinely carry tokens and personal data, and evidence records are written on every phase. See [`goal-verification-records.md`](../references/goal-verification-records.md) and [`secure-by-default`](../skills/secure-by-default/SKILL.md).
 
 ## Required status reporting
 
@@ -156,7 +226,3 @@ Do **not** use when a reviewed spec exists and the user only wants the next `/bu
 
 - Master: [`ROUTER.md`](../ROUTER.md) → [`commands/ROUTER.md`](ROUTER.md).
 - Skill body: [`goal-driven-delivery`](../skills/goal-driven-delivery/SKILL.md).
-
-## Permissions & authority
-
-Inherits session permissions for read, edit, test, build, git, and research tools per [`.ai-agents/PERMISSIONS.md`](../PERMISSIONS.md). Must not merge to `main` without `/ship` GO and human approval.

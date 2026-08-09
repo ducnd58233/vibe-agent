@@ -110,7 +110,7 @@ Existing review agents remain available: `code-reviewer`, `security-auditor`, `t
   - [`ROUTER.md`](.ai-agents/ROUTER.md): top-level asset routing index
   - [`PERMISSIONS.md`](.ai-agents/PERMISSIONS.md): permission and authority guidance
 - [`schemas/`](schemas): JSON Schema contracts for graphs, run state, and memory records
-- [`runtime/`](runtime): optional Go control plane (see below); everything else works without it
+- [`runtime/`](runtime): Go control plane (see below); **required** by the delivery pipeline (`/goal`, `/build`, `/test`, `/review`, `/ship`), optional for everything else
 - [`.claude/`](.claude): Claude settings; `skills`, `agents`, and `commands` are generated links after running the link script
 - [`.cursor/`](.cursor): Cursor rules/hooks; `skills` and `commands` are generated links after running the link script
 - [`.codex/`](.codex): Codex project config; `.codex/agents/*.toml` is generated from `.ai-agents/agents`
@@ -120,7 +120,7 @@ Existing review agents remain available: `code-reviewer`, `security-auditor`, `t
 
 ## Runtime (optional)
 
-The toolkit is markdown-first. Every skill, command, and reference works with nothing installed.
+The toolkit is markdown-first for **reference** assets: every skill and reference reads fine with nothing installed. The **delivery pipeline** is the exception. `/goal`, `/build`, `/test`, `/review`, and `/ship` require the runtime and refuse to run without it, because tracking delivery phases by reading a markdown file is the model marking its own work complete. See [`commands/goal.md`](.ai-agents/commands/goal.md) section "Runtime is required".
 
 The **runtime** adds what markdown cannot do: it enforces workflow transitions instead of describing them, persists run state so a lost session resumes, and keeps evidence-backed memory across runs. It owns only the **outer** loop. Claude Code, Codex, Cursor, and opencode keep their own model and tool loops.
 

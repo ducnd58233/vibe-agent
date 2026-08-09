@@ -2,6 +2,8 @@
 description: Pre-ship parallel review - specialist fan-out, then GO/NO-GO
 ---
 
+**Runtime required (MUST).** GO is recorded as the `ship` check, which [`vibe-checks.yaml`](../../vibe-checks.yaml) declares `verifier: human` because no exit code means GO. Merge stays refused by `pre-tool-use` until `merge_approved` is recorded. Rules: [`goal.md`](goal.md) section "Runtime is required".
+
 Follow [`shipping-and-launch`](../skills/shipping-and-launch/SKILL.md) and [`references/orchestration-patterns.md`](../references/orchestration-patterns.md).
 
 `/ship` fans out selected personas on the same change, then merges in the main session.
@@ -74,7 +76,3 @@ Invoke before risky merges/releases or when blast radius is non-trivial.
 
 - Use when ship-readiness is the core question.
 - Do not use for trivial changes that do not warrant fan-out review.
-
-## Permissions & authority
-
-Inherits session permissions; parallel orchestration must follow tool boundaries and no persona-to-persona delegation rule.

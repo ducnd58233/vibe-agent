@@ -80,3 +80,25 @@ These servers also reach outside the repository: a device, a network, a real bro
 - [ ] Broad `allow` entries (`Bash(*)`, `Edit(*)`, `Write(*)`, `WebFetch(domain:*)`, `mcp__*`) are avoided or justified.
 - [ ] A browser or device MCP server is used for investigation only; nothing it returns is recorded as a check.
 - [ ] New checks in [`vibe-checks.yaml`](../vibe-checks.yaml) name a command that would actually fail on a broken build, and any `verifier: human` entry says in its `description` why no runtime verifier can produce it.
+
+## Default authority for skills, agents, and commands
+
+This is the **single home** for the defaults that used to be repeated as a `## Permissions & authority`
+section in every asset file. Thirty-four assets carried the same three sentences; changing the policy
+meant editing thirty-four files, and any one of them could be missed.
+
+Unless an asset says otherwise in its own body or its YAML `tools:` map:
+
+- **Tools:** `Read`, `Grep`, `Glob`, `Edit`. Shell only for running repo-documented lint, test, and
+  build commands when validating a recommendation.
+- **Paths:** follow the allow/ask/deny rules in this file. Never read credential or secret material;
+  the deny list is the boundary, not a suggestion.
+- **Browser and DevTools:** for browser-centric work prefer a browser MCP or human-driven DevTools.
+  Do not assume unattended cloud browser access.
+- **Grounding:** never describe a file, path, or result not actually opened or run. Report
+  `ACCESS-FAILED: <path>` instead of inferring.
+- **Subagents:** a persona's authority is its YAML `tools:` map. A persona never invokes another
+  persona; see [`references/orchestration-patterns.md`](references/orchestration-patterns.md).
+
+An asset states permissions in its own file **only when it diverges** from the above, and says what
+diverges and why. Restating the default is what created the drift this section removes.

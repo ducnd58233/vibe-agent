@@ -40,7 +40,3 @@ Invoke after research/digest is available and a decision is required.
 
 - Use when comparing options with evidence.
 - Do not use when source collection is incomplete.
-
-## Permissions & authority
-
-Inherits session permissions; primarily read/search/synthesis operations.

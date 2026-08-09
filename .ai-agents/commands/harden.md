@@ -60,7 +60,3 @@ Invoke after adding commands, agents, hooks, permissions, or external-tool workf
 
 - Use for AI-asset/tool-safety review.
 - Do not use for ordinary app security review; use [`security-and-hardening`](../skills/security-and-hardening/SKILL.md).
-
-## Permissions & authority
-
-Inherits session permissions; ask before changing permission policy or hook behavior.

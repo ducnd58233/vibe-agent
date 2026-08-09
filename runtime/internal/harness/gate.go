@@ -65,7 +65,88 @@ func verdict(req Request, body payload) *BlockError {
 	if blocked := shellVerdict(req, body.shellCommand()); blocked != nil {
 		return blocked
 	}
+	if blocked := credentialVerdict(body); blocked != nil {
+		return blocked
+	}
 	return stateWriteVerdict(req, body)
+}
+
+// credentialLiteral matches the credential shapes that have no honest reason to
+// be typed into a repository. They are deliberately the narrow set: a shape that
+// is sometimes legitimate belongs in the warn-only Python guard
+// (.ai-agents/hooks/sensitive-data-guard.py), not here, because a refusal that
+// fires on honest work gets the whole gate disabled.
+//
+// The patterns come from internal/memory/policy.go, which already refuses these
+// into the memory database. Same judgement, wider scope: memory was never the
+// only way a credential reaches disk.
+//
+// Each pattern is written so it does not match its own source text, which is why
+// this file can contain them. `gh[pousr]_` needs a letter from that class next,
+// and the literal here has `[`. The same trick holds for the rest.
+var credentialLiteral = []*regexp.Regexp{
+	regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),
+	regexp.MustCompile(`gh[pousr]_[A-Za-z0-9]{16,}`),
+	regexp.MustCompile(`\bsk-[A-Za-z0-9_-]{16,}`),
+	regexp.MustCompile(`xox[baprs]-[A-Za-z0-9-]{10,}`),
+	regexp.MustCompile(`\bAKIA[0-9A-Z]{16}\b`),
+	regexp.MustCompile(`(?i)aws_secret_access_key\s*[:=]\s*\S{16,}`),
+}
+
+// credentialAllowMarker lets a line hold one of these shapes on purpose, which a
+// test fixture and this project's own documentation both need. It is a single
+// greppable string rather than a config setting, so every exemption in the
+// repository can be listed with one search and reviewed as a diff.
+const credentialAllowMarker = "vibe-agent: allow-credential-literal" // sensitive-data-guard: allow this is the marker's definition, not a credential
+
+// credentialVerdict refuses to let a live credential be written into the
+// workspace.
+//
+// Unlike stateWriteVerdict this does not require an active run. Run state is
+// meaningful only inside a run; a private key landing in source is the same
+// event whether or not anyone started one, and gating it on run state would
+// leave the common case, a repository using the toolkit without a run, wide
+// open.
+func credentialVerdict(body payload) *BlockError {
+	text := body.writtenText()
+	if text == "" {
+		return nil
+	}
+
+	for line := range strings.SplitSeq(text, "\n") {
+		if strings.Contains(line, credentialAllowMarker) {
+			continue
+		}
+		for _, pattern := range credentialLiteral {
+			if match := pattern.FindString(line); match != "" {
+				return &BlockError{Reason: credentialReason(match, body.writeTarget())}
+			}
+		}
+	}
+	return nil
+}
+
+// credentialReason names the shape without echoing the value, since a hook
+// reason is written to logs and transcripts that are exactly the channels this
+// gate exists to keep credentials out of.
+func credentialReason(match, target string) string {
+	shape := match
+	if len(shape) > 12 {
+		shape = shape[:12] + "..."
+	}
+	lines := []string{
+		fmt.Sprintf("Blocked: this writes a live credential (%s) into the workspace.", shape), // sensitive-data-guard: allow refusal text; shape is truncated above
+	}
+	if target != "" {
+		lines = append(lines, "  target: "+target)
+	}
+	return strings.Join(append(lines,
+		"Committed history is permanent, so the only real fix afterwards is rotation.",
+		"Read it from the configured secret source instead, and keep a placeholder in the file.",
+		"If this shape is deliberate, such as a test fixture, mark that line with:",
+		"  "+credentialAllowMarker,
+		"That marker is greppable on purpose: every exemption should be reviewable as a diff.",
+	), "\n")
 }
 
 // shellVerdict returns a BlockError when the command is the irreversible step

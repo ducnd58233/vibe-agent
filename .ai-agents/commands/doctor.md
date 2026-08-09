@@ -15,7 +15,7 @@ Run a repo-health audit for this AI asset toolkit.
    - `python3 scripts/check-graphs-test.py` so the checker itself is still rejecting broken graphs
    - `vibe-agent doctor` when the binary is installed: graphs load, memory database opens, every `tmp/<slug>/manifest.json` is schema-valid, and `/tmp/` plus `/.agent-state/` are gitignored
    - `cd runtime && go vet ./... && go test ./...` when changing the runtime
-   - Report the binary as **not installed** rather than assuming it is absent-by-design; the runtime is optional, so a missing binary is a finding, not a failure
+   - Report the binary as **not installed** rather than assuming it is absent-by-design. A missing binary is a **blocking** finding for the delivery pipeline (`/goal`, `/build`, `/test`, `/review`, `/ship` refuse without it) and a non-blocking note for reference-only use. See [`goal.md`](goal.md) section "Runtime is required"
 3. Check hook command paths referenced in `.claude/settings.json` and `.cursor/hooks.json` exist.
 4. Check link/discovery paths:
    - `.claude/skills`, `.claude/agents`, `.claude/commands`
@@ -63,7 +63,3 @@ Invoke after adding/removing assets, changing hooks, changing permissions, or cl
 
 - Use when validating toolkit health.
 - Do not use for product-code review; use [`review.md`](review.md) or [`ship.md`](ship.md).
-
-## Permissions & authority
-
-Inherits session permissions; should remain read-mostly except for explicitly requested fixes.

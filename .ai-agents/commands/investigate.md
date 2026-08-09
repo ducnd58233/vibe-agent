@@ -57,7 +57,3 @@ Invoke for multi-faceted questions needing research, analysis, and source audit.
 - Use when one persona is insufficient for confidence on an **evidence/citation** question.
 - Do not use for small, single-lane tasks.
 - Do not use for repository/code investigation grounded in a single local tree - route to `Explore` or direct tools instead (see Phase 0).
-
-## Permissions & authority
-
-Inherits session permissions; orchestration must respect persona boundaries and allowed tools.

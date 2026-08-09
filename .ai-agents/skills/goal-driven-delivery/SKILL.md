@@ -20,6 +20,8 @@ Turn a user objective into verified, shippable work by running a **phased pipeli
 
 This skill is the body behind [`/goal`](../../commands/goal.md). It **composes** existing commands; it does not spawn persona chains (see [`orchestration-patterns.md`](../../references/orchestration-patterns.md) anti-pattern B).
 
+**The runtime is required, not optional (MUST).** `/goal` runs on the graph, the runtime, the loop, and memory together; there is no markdown-only mode. Preflight with `vibe-agent doctor` and stop if it fails. The canonical rules, command surface, hook behavior, and memory contract live in one place, [`goal.md`](../../commands/goal.md) section "Runtime is required" - this skill deliberately does not restate them, because two copies of a rule drift.
+
 ## Not the same as native `/goal`
 
 | | **This toolkit `/goal`** | **Claude Code `/goal`** | **Codex CLI `/goal`** |
@@ -59,12 +61,6 @@ Invoke via [`/goal`](../../commands/goal.md) when the user wants autonomous-styl
 - Primary command: [`goal.md`](../../commands/goal.md).
 - Related: [`spec.md`](../../commands/spec.md), [`plan.md`](../../commands/plan.md), [`build.md`](../../commands/build.md), [`ship.md`](../../commands/ship.md).
 - Patterns: [`orchestration-patterns.md`](../../references/orchestration-patterns.md) pattern 4 and goal extension.
-
-## Permissions & authority
-
-Inherits session permissions across read, edit, test, build, git, and optional web research. Must follow [`PERMISSIONS.md`](../../PERMISSIONS.md). `/build` and `/ship` git gates in [`git-workflow-and-versioning`](../git-workflow-and-versioning/SKILL.md) apply throughout.
-
----
 
 ## Completion condition
 

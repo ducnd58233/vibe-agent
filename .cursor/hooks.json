@@ -51,6 +51,9 @@
       },
       {
         "command": "python3 .ai-agents/hooks/core-logic-test-guard.py"
+      },
+      {
+        "command": "python3 .ai-agents/hooks/sensitive-data-guard.py"
       }
     ],
     "subagentStop": [
