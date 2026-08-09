@@ -12,6 +12,8 @@ description: >-
 
 ## Overview
 
+<context>
+
 This skill is a **write-time** constraint, not a review-time checklist. It applies while code is
 being produced, because a leak that reaches a commit has already been published to anyone with
 repository access, and a leak that reaches a client bundle has been published to the world.
@@ -47,8 +49,11 @@ Treat as sensitive unless the value is provably public:
 
 When a value's class is genuinely unclear, treat it as sensitive and say so. The cost of a wrong
 "sensitive" call is one extra redaction. The cost of a wrong "public" call is a disclosure.
+</context>
 
 ## Always do
+
+<required>
 
 - **Name the sink before writing to it.** Before any `log`, `print`, `console`, response body,
   analytics event, or persisted record, state what is going in. Whole objects are the failure mode:
@@ -66,16 +71,22 @@ When a value's class is genuinely unclear, treat it as sensitive and say so. The
 - **Store client-side by capability, not by convenience.** Auth material belongs in the platform's
   protected store or an httpOnly cookie, not in web local or session storage and not in mobile
   plaintext preference files.
+</required>
 
 ## Ask first
+
+<escalation>
 
 - Adding a new sink for user data: a log destination, an analytics provider, a crash reporter, a
   session-replay tool, or a third-party SDK on a client surface.
 - Widening a DTO, response body, or event payload with a field that was not previously exposed.
 - Relaxing an existing redaction, filter, or deny rule.
 - Committing any fixture, snapshot, or recorded response captured from a real environment.
+</escalation>
 
 ## Never do
+
+<required>
 
 - Never write a credential-shaped literal into source, test, fixture, config, or commit message.
   Use a placeholder plus the configured secret source.
@@ -85,8 +96,11 @@ When a value's class is genuinely unclear, treat it as sensitive and say so. The
   browser history, and referrer headers.
 - Never disable or narrow a leak guard to make an edit pass. Fix the value or mark an explicit,
   reasoned exception.
+</required>
 
 ## Applying this during each command
+
+<rules>
 
 | Command | The constraint it must add |
 |---|---|
@@ -101,8 +115,11 @@ When a value's class is genuinely unclear, treat it as sensitive and say so. The
 `/code-simplify` is the one most often missed. Tests stay green while a widened DTO, an inlined
 error object, or a moved log line creates a disclosure, because no test asserts what a sink must
 *not* receive.
+</rules>
 
 ## Relation to the deterministic guard
+
+<context>
 
 [`hooks/sensitive-data-guard.py`](../../hooks/sensitive-data-guard.py) is the sensor for the subset
 a regular expression can settle. It is a floor, not the ceiling:
@@ -115,8 +132,11 @@ A clean guard run is not evidence that this skill was applied.
 [`references/tool-safety-and-permissions.md`](../../references/tool-safety-and-permissions.md)
 states the matching rule for permissions: never rely on model judgment alone to avoid secrets. The
 converse also holds. Never rely on the sensor alone.
+</context>
 
 ## Verification
+
+<verification>
 
 - [ ] Every sink added or changed by the diff was named, and its payload is known field by field
 - [ ] No credential-shaped literal in the diff, including tests and fixtures
@@ -125,6 +145,7 @@ converse also holds. Never rely on the sensor alone.
 - [ ] Auth material is in a protected store, not web local storage or plaintext mobile preferences
 - [ ] Redaction lives at the boundary and a new caller inherits it
 - [ ] Guard exceptions, if any, are marked inline with a stated reason
+</verification>
 
 ## What
 
@@ -141,7 +162,6 @@ skill moves the constraint to the moment of writing.
 
 Classify the value, name the sink, redact at the boundary, split the error shape, and keep server
 secrets out of client builds. Consult the channel reference for surface-specific detail.
-
 ## When
 
 Invoke by default for any work touching auth, user data, logging, error handling, configuration, or
