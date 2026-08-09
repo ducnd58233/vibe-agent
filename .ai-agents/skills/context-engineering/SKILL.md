@@ -11,7 +11,6 @@ disable-model-invocation: true
 
 Do not assume a global stack — inspect manifests and existing patterns. When working **in a repository that includes this toolkit**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md) when present, select every applicable profile row for your task, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
 
-
 ## Overview
 
 Feed agents the right information at the right time. Context is the single biggest lever for agent output quality — too little and the agent hallucinates, too much and it loses focus. Context engineering is the practice of deliberately curating what the agent sees, when it sees it, and how it's structured.
@@ -305,13 +304,3 @@ After setting up context, confirm:
 
 - [`orchestration-patterns.md`](../../references/orchestration-patterns.md) (research isolation vs main-context bloat)
 - [`token-efficient-execution`](../token-efficient-execution/SKILL.md) - sibling skill for **output** economy; this skill governs **input** context curation (what loads into the window).
-
-## Permissions and authority
-
-**Typical tools:** Read, Grep, Glob, Edit; Shell only for running repo-documented lint/tests when validating recommendations.
-
-**Paths:** Follow `.ai-agents/PERMISSIONS.md`; never read credential or secret material.
-
-**Browser / DevTools:** For browser-centric skills, prefer Cursor browser MCP or human-driven Chrome DevTools — do not assume unattended cloud browser access.
-
-

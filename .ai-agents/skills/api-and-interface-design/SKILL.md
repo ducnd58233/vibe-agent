@@ -11,7 +11,6 @@ disable-model-invocation: true
 
 Do not assume a global stack — inspect manifests and existing patterns. When working **in a repository that includes this toolkit**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md) when present, select every applicable profile row for your task, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
 
-
 ## Overview
 
 Design stable, well-documented interfaces that are hard to misuse. Good interfaces make the right thing easy and the wrong thing hard. This applies to REST APIs, GraphQL schemas, module boundaries, component props, and any surface where one piece of code talks to another.
@@ -304,13 +303,3 @@ After designing an API:
 
 - [`backend-engineering`](../backend-engineering/SKILL.md) (internal layering after contracts are fixed)
 - [`security-checklist.md`](../../references/security-checklist.md) (input boundaries), [`testing-patterns.md`](../../references/testing-patterns.md) (API integration examples)
-
-## Permissions and authority
-
-**Typical tools:** Read, Grep, Glob, Edit; Shell only for running repo-documented lint/tests when validating recommendations.
-
-**Paths:** Follow `.ai-agents/PERMISSIONS.md`; never read credential or secret material.
-
-**Browser / DevTools:** For browser-centric skills, prefer Cursor browser MCP or human-driven Chrome DevTools — do not assume unattended cloud browser access.
-
-

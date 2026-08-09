@@ -80,3 +80,15 @@ When you add, rename, or remove a skill folder under `skills/`:
 2. Keep column content aligned with each `SKILL.md` **`description`** and triggers.
 
 Same PR or commit as the new asset when possible.
+
+---
+
+## Do not restate the defaults (MUST)
+
+Write a `## Permissions & authority` section **only when this asset diverges** from the defaults in
+[`PERMISSIONS.md`](../PERMISSIONS.md) "Default authority for skills, agents, and commands", and say
+what diverges and why. Restating the default is what produced thirty-four identical copies that all
+had to be edited together.
+
+The same rule applies to any block that already lives somewhere canonical: the stack-profile pointer,
+the grounding rule, the git gates. Link to the one home instead of copying it.

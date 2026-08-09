@@ -11,7 +11,6 @@ disable-model-invocation: true
 
 Do not assume a global stack — inspect manifests and existing patterns. When working **in a repository that includes this toolkit**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md) when present, select every applicable profile row for your task, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
 
-
 ## Overview
 
 Document decisions, not just code. The most valuable documentation captures the *why* — the context, constraints, and considerations that led to a decision. Code shows *what* was built; documentation explains *why it was built this way* and *what alternatives were considered*. This context is essential for future humans and agents working in the codebase.
@@ -287,13 +286,3 @@ After documenting:
 ## Related references
 
 - [`orchestration-patterns.md`](../../references/orchestration-patterns.md) (when to document new workflows vs code-only changes)
-
-## Permissions and authority
-
-**Typical tools:** Read, Grep, Glob, Edit; Shell only for running repo-documented lint/tests when validating recommendations.
-
-**Paths:** Follow `.ai-agents/PERMISSIONS.md`; never read credential or secret material.
-
-**Browser / DevTools:** For browser-centric skills, prefer Cursor browser MCP or human-driven Chrome DevTools — do not assume unattended cloud browser access.
-
-

@@ -123,9 +123,3 @@ execution and evidence-based completion are required.
 
 - Use when reliability and disciplined change management are priorities.
 - Do not use as heavyweight ceremony for clearly trivial edits.
-
-## Permissions & authority
-
-- Tools: standard repo tools (Read/Glob/rg/Shell) as required.
-- Paths: no extra path permissions beyond task scope.
-- Cursor: reinforce via `.cursor/rules` and repository charter.

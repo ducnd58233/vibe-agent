@@ -41,7 +41,3 @@ Invoke when current, verifiable evidence is required.
 
 - Use when research depth is needed before analysis/implementation.
 - Do not use when evidence is already collected and only synthesis is needed.
-
-## Permissions & authority
-
-Inherits session permissions; primarily uses read/search/web-fetch style capabilities.

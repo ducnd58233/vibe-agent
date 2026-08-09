@@ -102,9 +102,3 @@ beneficial and detail can remain on-demand.
 - Use when output efficiency, low-noise delivery, and strict scope are primary.
 - Do not use as a hard cap when the user requests deep reasoning detail.
 - This skill governs **output** economy; to curate **input** context (which files/retrieval load into the window), use [`context-engineering`](../context-engineering/SKILL.md).
-
-## Permissions & authority
-
-- Tools: standard repo tools (Read/Glob/rg/Shell) based on task needs.
-- Paths: no additional sensitive-path access required beyond task scope.
-- Cursor: enforced via `.cursor/rules` + existing repo rules.

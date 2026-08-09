@@ -11,7 +11,6 @@ disable-model-invocation: true
 
 Do not assume a global stack — inspect manifests and existing patterns. When working **in a repository that includes this toolkit**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md) when present, select every applicable profile row for your task, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
 
-
 ## Overview
 
 Use Chrome DevTools MCP to give your agent eyes into the browser. This bridges the gap between static code analysis and live browser execution — the agent can see what the user sees, inspect the DOM, read console logs, analyze network requests, and capture performance data. Instead of guessing what's happening at runtime, verify it.
@@ -311,13 +310,3 @@ After any browser-facing change:
 ## Related references
 
 - [`testing-patterns.md`](../../references/testing-patterns.md) (E2E patterns), [`performance-checklist.md`](../../references/performance-checklist.md) (runtime/Web Vitals)
-
-## Permissions and authority
-
-**Typical tools:** Read, Grep, Glob, Edit; Shell only for running repo-documented lint/tests when validating recommendations.
-
-**Paths:** Follow `.ai-agents/PERMISSIONS.md`; never read credential or secret material.
-
-**Browser / DevTools:** For browser-centric skills, prefer Cursor browser MCP or human-driven Chrome DevTools — do not assume unattended cloud browser access.
-
-

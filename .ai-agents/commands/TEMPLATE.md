@@ -68,3 +68,15 @@ When you add, rename, or remove a command file in `commands/`:
 1. Update **[`ROUTER.md`](ROUTER.md)** in this folder **in the same change**: add a row (user goal / use case, filename, preconditions); delete or edit rows when removing commands.
 
 Same PR or commit as the new asset when possible.
+
+---
+
+## Do not restate the defaults (MUST)
+
+Write a `## Permissions & authority` section **only when this asset diverges** from the defaults in
+[`PERMISSIONS.md`](../PERMISSIONS.md) "Default authority for skills, agents, and commands", and say
+what diverges and why. Restating the default is what produced thirty-four identical copies that all
+had to be edited together.
+
+The same rule applies to any block that already lives somewhere canonical: the stack-profile pointer,
+the grounding rule, the git gates. Link to the one home instead of copying it.
