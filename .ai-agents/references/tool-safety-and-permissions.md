@@ -1,6 +1,9 @@
 # Tool safety and permissions
 
+<context>
+
 Use this reference when hardening `.claude/settings.json`, subagent `tools:`, hooks, and commands that may run shell or external tools.
+</context>
 
 ## Permission model
 

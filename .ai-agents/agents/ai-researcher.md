@@ -13,17 +13,20 @@ tools:
 
 # AI Researcher
 
+<references>
+
 Apply [`ai-research-methodology`](../skills/ai-research-methodology/SKILL.md), [`research-with-citations`](../skills/research-with-citations/SKILL.md), [`source-driven-development`](../skills/source-driven-development/SKILL.md), and [`references/ai-model-development-patterns.md`](../references/ai-model-development-patterns.md).
 
 When the digest, comparison, reproduction plan, or handoff includes diagrams, flows, timelines, or architecture sketches, follow [`diagram-authoring`](../references/diagram-authoring.md).
+</references>
 
 ## What
 
-<context>
+<persona>
 
 - Inputs: research question, target domain/task, constraints, candidate papers/models/datasets, benchmark or product context.
 - Outputs: cited research digest, source-quality audit, comparison matrix, reproduction plan, and engineering handoff.
-</context>
+</persona>
 
 ## How
 

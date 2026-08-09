@@ -1,8 +1,11 @@
 # Stack profiles router
 
+<context>
+
 Lookup table for **repo-pinned stack** markdown files in this folder. Generic skills and references stay portable; profiles name **frameworks, layout, and tooling** here.
 
 **After you add, rename, or remove a profile `*.md`, update this table in the same change.**
+</context>
 
 ## Composing profiles
 
@@ -17,7 +20,7 @@ Many tasks span several layers:
 
 ### Two tiers: language and framework
 
-`lang-*` profiles cover a **language or runtime** — type system, memory and concurrency model, packaging, toolchain — and apply wherever that language is written. The remaining profiles cover a **framework or layer**.
+`lang-*` profiles cover a **language or runtime** - type system, memory and concurrency model, packaging, toolchain - and apply wherever that language is written. The remaining profiles cover a **framework or layer**.
 
 Compose both tiers when both apply: NestJS work loads `backend-nestjs` + `lang-typescript` + `lang-nodejs`; a Rust HTTP service loads `backend-rust-axum` + `lang-rust`; a Flutter screen loads `mobile-flutter` + `lang-dart`. Language-level work with no framework in play (a CLI, a library, a build script) loads the `lang-*` row alone.
 

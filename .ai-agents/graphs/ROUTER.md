@@ -1,5 +1,7 @@
 # Graphs router
 
+<context>
+
 Lookup table for executable workflow graphs in this folder. **After you add, rename, or remove a `.yaml` graph, update this table in the same change.**
 
 A graph is the control flow for a multi-phase workflow: which node runs next, and on what evidence. The matching command file stays the human-facing description and the matching skill stays the phase semantics. The graph is the only place transitions are defined.
@@ -11,6 +13,7 @@ A graph is the control flow for a multi-phase workflow: which node runs next, an
 **Contract:** every graph validates against [`schemas/workflow-graph.schema.json`](../../schemas/workflow-graph.schema.json).
 
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md).
+</context>
 
 ## When a graph is the wrong tool
 

@@ -59,7 +59,7 @@ Use repo-documented commands first. Typical examples:
 
 - `any` erases checking and spreads silently. Prefer `unknown` at boundaries and narrow explicitly; when `any` is genuinely required, scope it as tightly as possible and say why
 - Type assertions (`as`) and non-null assertions (`!`) claim knowledge the compiler does not have. Each one is a claim you must be able to justify; prefer narrowing, discriminated unions, or a schema check
-- Types describe compile time only. Data crossing a runtime boundary — network, filesystem, environment, user input, `JSON.parse` — must be validated, not asserted
+- Types describe compile time only. Data crossing a runtime boundary - network, filesystem, environment, user input, `JSON.parse` - must be validated, not asserted
 - Do not disable a compiler option or lint rule repo-wide to fix a local error
 - Discriminated unions model mutually exclusive state better than optional fields; prefer them for state machines and result types
 - Enabling `strict` changes semantics. Migrate incrementally by directory or file, not by turning it off

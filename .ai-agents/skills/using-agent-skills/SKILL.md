@@ -33,8 +33,8 @@ Product/domain expectations live in root [`../../../AGENTS.md`](../../../AGENTS.
 The workspace root wins; this toolkit is the fallback. Resolve most specific first:
 
 1. Explicit instruction in the current session.
-2. Workspace-root agent rules — `AGENTS.md`, `CLAUDE.md`, `CLAUDE.local.md`, `.cursor/rules/`, or the harness equivalent.
-3. Conventions already in the consumer repo — its own `TEMPLATE.md`, existing file/folder patterns, lint and formatter config.
+2. Workspace-root agent rules - `AGENTS.md`, `CLAUDE.md`, `CLAUDE.local.md`, `.cursor/rules/`, or the harness equivalent.
+3. Conventions already in the consumer repo - its own `TEMPLATE.md`, existing file/folder patterns, lint and formatter config.
 4. This toolkit's `.ai-agents/` assets.
 
 **Detect before assuming:** look for levels 2–3 at the workspace root before applying a toolkit default. On conflict, follow the local rule and state the divergence; a local rule may tighten a safety, permission, or verification boundary, but if it would weaken one, surface the conflict instead of applying it. Full rule: "Local-first precedence" in root [`../../../AGENTS.md`](../../../AGENTS.md).

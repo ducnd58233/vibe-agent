@@ -1,6 +1,9 @@
 # Database query analysis patterns
 
+<context>
+
 Use this reference for SQL and NoSQL query correctness, performance, and error diagnosis.
+</context>
 
 ## Universal workflow
 

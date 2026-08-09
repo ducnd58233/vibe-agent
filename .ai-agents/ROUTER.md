@@ -27,5 +27,5 @@ All assets are reusable and **domain-agnostic**; keep product-domain implementat
 
 **Permissions:** See [`PERMISSIONS.md`](PERMISSIONS.md) and align [`.claude/settings.json`](../.claude/settings.json) when assets need new tool patterns.
 
-**Meta:** How routing fits the skill system — [`skills/using-agent-skills/SKILL.md`](skills/using-agent-skills/SKILL.md).
+**Meta:** How routing fits the skill system - [`skills/using-agent-skills/SKILL.md`](skills/using-agent-skills/SKILL.md).
 </routing>

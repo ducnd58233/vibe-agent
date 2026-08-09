@@ -2,11 +2,17 @@
 description: Pre-ship parallel review - specialist fan-out, then GO/NO-GO
 ---
 
+<prerequisites>
+
 **Runtime required (MUST).** GO is recorded as the `ship` check, which [`vibe-checks.yaml`](../../vibe-checks.yaml) declares `verifier: human` because no exit code means GO. Merge stays refused by `pre-tool-use` until `merge_approved` is recorded. Rules: [`goal.md`](goal.md) section "Runtime is required".
+</prerequisites>
+
+<context>
 
 Follow [`shipping-and-launch`](../skills/shipping-and-launch/SKILL.md) and [`references/orchestration-patterns.md`](../references/orchestration-patterns.md).
 
 `/ship` fans out selected personas on the same change, then merges in the main session.
+</context>
 
 ## Phase A - Parallel fan-out
 
@@ -35,13 +41,13 @@ Synthesize: quality blockers, security blockers, coverage gaps, design-system/vi
 
 ### UI evidence gate (MUST, when the change touches UI)
 
-Treat these as **blockers**, not observations — they are deterministic, so a missing result is a NO-GO input rather than a judgment call:
+Treat these as **blockers**, not observations - they are deterministic, so a missing result is a NO-GO input rather than a judgment call:
 
 - `ui-slop-guard` and `design-token-guard` are clean, or each exception is marked inline with a stated reason.
 - An automated accessibility audit reports **zero** WCAG failures, or every remaining failure is explained and explicitly accepted.
 - Render evidence exists at the supported breakpoints.
 
-Where a check could not run, it must be reported as `UNVERIFIED: <reason>` — never as a pass. Run [`/design`](design.md) in audit mode to produce the missing evidence before re-running `/ship`.
+Where a check could not run, it must be reported as `UNVERIFIED: <reason>` - never as a pass. Run [`/design`](design.md) in audit mode to produce the missing evidence before re-running `/ship`.
 
 ## Phase C - Decision
 

@@ -1,5 +1,5 @@
 ---
-description: Audit AI asset health: routers, links, hook paths, permissions posture, and generated discovery paths
+description: "Audit AI asset health: routers, links, hook paths, permissions posture, and generated discovery paths"
 ---
 
 Run a repo-health audit for this AI asset toolkit.

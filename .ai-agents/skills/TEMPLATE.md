@@ -1,10 +1,13 @@
 # Skill authoring template
 
+<context>
+
 Use this contract when **creating a new skill**. Implement the skill as `skills/<skill-name>/SKILL.md`. Copy the checklist below into your draft and fill every section before opening a PR.
 
 Official skill shape reference: [Claude Code skills](https://code.claude.com/docs/en/skills), Cursor project skills (`SKILL.md` + YAML frontmatter).
 
 ---
+</context>
 
 ## What
 
@@ -31,7 +34,7 @@ Map content into **`SKILL.md`** like this:
 
 | Section in this template | Where it goes in `SKILL.md` |
 |--------------------------|------------------------------|
-| What / Why / When (summary) | YAML **`description`** — discovery and routing ([skills](https://code.claude.com/docs/en/skills)). |
+| What / Why / When (summary) | YAML **`description`** - discovery and routing ([skills](https://code.claude.com/docs/en/skills)). |
 | How | Markdown body under `# Instructions` (and optional `## Examples`). |
 
 ---
@@ -50,7 +53,7 @@ Keep `description` third-person, concrete, and include trigger terms so Claude C
 
 ---
 
-- **Invocation:** Slash name, auto-invoke only if justified — state triggers explicitly.
+- **Invocation:** Slash name, auto-invoke only if justified - state triggers explicitly.
 - **Lifecycle:** One-shot workflow vs recurring pattern.
 </routing>
 
@@ -62,10 +65,10 @@ Document tool and path needs so maintainers can align [`.claude/settings.json`](
 
 | Topic | Notes |
 |-------|--------|
-| **Tools** | e.g. Read, Grep, Bash — list tools this skill expects to use. |
-| **Paths** | Sensitive paths (`Read(./secrets/**)`) — call out so rules use `allow` / `ask` / `deny` appropriately. |
-| **Suggested rules (examples)** | e.g. `Read(./src/**)`, `Bash(npm run test*)` — **deny overrides allow** in Claude Code. |
-| **Cursor** | No `settings.json` permission matrix — note workspace trust and [`.cursor/rules`](../../.cursor/rules). |
+| **Tools** | e.g. Read, Grep, Bash - list tools this skill expects to use. |
+| **Paths** | Sensitive paths (`Read(./secrets/**)`) - call out so rules use `allow` / `ask` / `deny` appropriately. |
+| **Suggested rules (examples)** | e.g. `Read(./src/**)`, `Bash(npm run test*)` - **deny overrides allow** in Claude Code. |
+| **Cursor** | No `settings.json` permission matrix - note workspace trust and [`.cursor/rules`](../../.cursor/rules). |
 
 After adding or tightening permissions in templates, update [`.ai-agents/PERMISSIONS.md`](../PERMISSIONS.md) if project-wide policy changes.
 

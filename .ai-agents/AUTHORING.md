@@ -1,5 +1,7 @@
 # Authoring and setup
 
+<context>
+
 Everything an agent needs **only when creating toolkit assets or setting a repo up**. It lived in the
 root [`AGENTS.md`](../AGENTS.md), which every session loads in full, so a rule needed once per month
 was costing tokens on every turn. AGENTS.md keeps the rules that govern behavior each turn and points
@@ -7,6 +9,7 @@ here for the rest.
 
 Read this file when you are: adding or changing an asset, wiring a harness, or mounting the toolkit
 into a consumer repo. Skip it otherwise.
+</context>
 
 ## Project layout
 
@@ -138,6 +141,7 @@ frontmatter, a tag nested inside itself, or nesting past one level.
 |---|---|
 | Any asset under `.ai-agents/` | `bash scripts/check-ai-agents-routers.sh` or `powershell -File scripts/check-ai-agents-routers.ps1` (dependency-free) |
 | An always-loaded file or any tagged asset | `bash scripts/check-xml-tags.sh` - pairing, nesting depth, unknown tags, and tags above frontmatter |
+| Any asset's YAML frontmatter | `python3 scripts/check-frontmatter.py` - invalid frontmatter does not error, it silently demotes the first body line to the description |
 | Anything, before trusting a harness read | `bash scripts/check-generated-views.sh` - a canonical edit does not reach the harness until the link script re-runs |
 | `.ai-agents/graphs/*.yaml` or `schemas/*.json` | `python3 scripts/check-graphs.py` and `python3 scripts/check-schemas.py` |
 | [`runtime/`](../runtime) | `cd runtime && make check` |

@@ -1,5 +1,7 @@
 # Routing evals (intent → expected asset)
 
+<context>
+
 Lightweight, deterministic fixtures for the toolkit's routing layer. Each row pairs a
 representative **user intent** with the asset the router should select.
 
@@ -8,9 +10,10 @@ link below resolves to a real file, so a renamed or deleted target fails fast. T
 intent→asset mapping is also a human-checkable regression list: after changing routers or
 skill scopes, confirm these still hold.
 
-This is **not** a model-graded eval — it verifies the routing target exists and stays
+This is **not** a model-graded eval - it verifies the routing target exists and stays
 named as documented. For model/skill behavioral evaluation patterns see
 [`agent-evaluation-patterns.md`](agent-evaluation-patterns.md).
+</context>
 
 ## Fixtures
 

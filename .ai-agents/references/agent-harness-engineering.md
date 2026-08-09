@@ -1,6 +1,9 @@
 # Agent harness engineering
 
+<context>
+
 Use this reference when designing or auditing the system around AI coding agents: instructions, routers, context selection, tool access, validation loops, observability, and intervention records.
+</context>
 
 ## Definition
 

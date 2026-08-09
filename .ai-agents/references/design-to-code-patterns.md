@@ -1,6 +1,9 @@
 # Design-to-code and MCP patterns
 
+<context>
+
 Use this reference when implementing or reviewing UI from design tools, screenshots, prototypes, or MCP-provided design context.
+</context>
 
 ## Expert workflow
 

@@ -1,12 +1,15 @@
 # Orchestration Patterns
 
+<context>
+
 Reference catalog of agent orchestration patterns this toolkit endorses, plus anti-patterns to avoid. Read this before adding a slash command that coordinates multiple personas, or before introducing a persona that wraps existing ones.
 
-**Canonical assets:** [`.ai-agents/`](../README.md) — skills (`skills/*/SKILL.md`), personas (`agents/*.md`), commands (`commands/*.md`). [Master router](../ROUTER.md) lists families; each subfolder has a `ROUTER.md`.
+**Canonical assets:** [`.ai-agents/`](../README.md) - skills (`skills/*/SKILL.md`), personas (`agents/*.md`), commands (`commands/*.md`). [Master router](../ROUTER.md) lists families; each subfolder has a `ROUTER.md`.
 
 The governing rule: **the user (or a slash command) is the orchestrator. Personas do not invoke other personas.** Skills are mandatory hops inside a persona’s workflow.
 
 ---
+</context>
 
 ## Endorsed patterns
 
@@ -115,7 +118,7 @@ Spawn read-only exploration that returns a digest (large read → small summary)
 | Commands | `.ai-agents/commands/*.md` as slash prompts | `.cursor/commands` junction → same files; Cursor `/` menu |
 | Subagents | `agents/*.md` in `.ai-agents/agents` | Same files as behavioral prompts; composer does not auto-load slash syntax |
 
-Platform rules from upstream still apply on Claude Code (e.g. subagents cannot spawn subagents). For Agent Teams and plugin frontmatter details, consult the `agent-assets` sources in [`external-source-registry.md`](external-source-registry.md) — read in place, and verify against current official docs before relying on upstream platform claims.
+Platform rules from upstream still apply on Claude Code (e.g. subagents cannot spawn subagents). For Agent Teams and plugin frontmatter details, consult the `agent-assets` sources in [`external-source-registry.md`](external-source-registry.md) - read in place, and verify against current official docs before relying on upstream platform claims.
 
 ---
 </rules>
@@ -126,7 +129,7 @@ Platform rules from upstream still apply on Claude Code (e.g. subagents cannot s
 
 ### A. Router persona (“meta-orchestrator”)
 
-Pure routing with no domain value — adds hops and token cost. Use [`ROUTER.md`](../ROUTER.md) and commands instead.
+Pure routing with no domain value - adds hops and token cost. Use [`ROUTER.md`](../ROUTER.md) and commands instead.
 
 ### B. Persona calls another persona
 
@@ -142,7 +145,7 @@ Orchestration depth should stay ≤ 1 from a slash command to leaf personas; mer
 
 ### E. Fan-out over a single local source of truth
 
-Fanning multiple personas across the **same** local repository tree is redundant (they read the same files) and *multiplies* the chance that ≥1 lane fails its sandbox/path resolution or hallucinates structure — then forces the merge step to adjudicate reliability. Fan-out requires each lane to add a *different kind* of finding (checklist above); pure re-reading does not qualify. For repository-grounded investigation prefer the read-only `Explore` agent or direct `Read`/`Grep`/`Glob`, and apply the repo-access preflight before trusting any lane's structural claims.
+Fanning multiple personas across the **same** local repository tree is redundant (they read the same files) and *multiplies* the chance that ≥1 lane fails its sandbox/path resolution or hallucinates structure - then forces the merge step to adjudicate reliability. Fan-out requires each lane to add a *different kind* of finding (checklist above); pure re-reading does not qualify. For repository-grounded investigation prefer the read-only `Explore` agent or direct `Read`/`Grep`/`Glob`, and apply the repo-access preflight before trusting any lane's structural claims.
 
 ---
 </antipatterns>
@@ -168,10 +171,10 @@ One perspective on one artifact?
 
 Levers from Anthropic's agent-engineering reports, applied to this toolkit. Use them to keep fan-out fast and cheap.
 
-- **Fan out only for independent threads.** Multi-agent systems consume ~15× the tokens of a single chat, and token usage alone explains ~80% of performance variance; the win materializes only when subtasks are genuinely independent — shared-context and most coding tasks are a poor fit ([multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system)). This is the quantitative basis for anti-pattern §E and the §3 checklist.
-- **Concise output formats.** Switching agent/tool outputs to a concise format cut token use by up to ~65% in Anthropic's measurements. Keep each lane's return to its digest/verdict — not raw file dumps or transcripts ([multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system)). Pair with [`token-efficient-execution`](../skills/token-efficient-execution/SKILL.md).
+- **Fan out only for independent threads.** Multi-agent systems consume ~15× the tokens of a single chat, and token usage alone explains ~80% of performance variance; the win materializes only when subtasks are genuinely independent - shared-context and most coding tasks are a poor fit ([multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system)). This is the quantitative basis for anti-pattern §E and the §3 checklist.
+- **Concise output formats.** Switching agent/tool outputs to a concise format cut token use by up to ~65% in Anthropic's measurements. Keep each lane's return to its digest/verdict - not raw file dumps or transcripts ([multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system)). Pair with [`token-efficient-execution`](../skills/token-efficient-execution/SKILL.md).
 - **Filesystem hand-off, not telephone.** For large investigations, have lanes write digests to `./reports` (this repo's `plansDirectory`) and pass file references, rather than funneling full content through the orchestrator's context window ([multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system)).
-- **Right-size the worker model.** Run parallel lanes on a cheaper/faster model and reserve the strongest model for synthesis — Anthropic ran Sonnet workers under an Opus lead. Use the Agent tool's `model` override per lane.
+- **Right-size the worker model.** Run parallel lanes on a cheaper/faster model and reserve the strongest model for synthesis - Anthropic ran Sonnet workers under an Opus lead. Use the Agent tool's `model` override per lane.
 - **Progressive disclosure.** Keep agent/skill metadata lean (~100 tokens) and push detail into bodies/references loaded on demand, so unused reference material never enters context ([building effective agents](https://www.anthropic.com/research/building-effective-agents)).
 </references>
 
@@ -179,5 +182,5 @@ Levers from Anthropic's agent-engineering reports, applied to this toolkit. Use 
 
 <context>
 
-Add only after repeated real use, a concrete repo artifact, and a clear anti-pattern shadow — the same bar the `agent-assets` upstreams in [`external-source-registry.md`](external-source-registry.md) apply.
+Add only after repeated real use, a concrete repo artifact, and a clear anti-pattern shadow - the same bar the `agent-assets` upstreams in [`external-source-registry.md`](external-source-registry.md) apply.
 </context>

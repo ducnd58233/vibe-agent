@@ -94,7 +94,7 @@ Do not use when:
 
 ### 5) Grounded claims (no fabrication)
 
-- Never describe a file, directory, path, command result, or source you have not actually opened, listed, or run — quote the observed tool output as the basis.
+- Never describe a file, directory, path, command result, or source you have not actually opened, listed, or run - quote the observed tool output as the basis.
 - If a provided path or resource is inaccessible (not found, empty, out of sandbox), report `ACCESS-FAILED: <path>` and stop, rather than inferring or guessing structure.
 - Applies to every harness and to both primary agents and subagents; never let an unreachable input become an invented answer.
 </rules>

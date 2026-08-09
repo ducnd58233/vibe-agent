@@ -1,6 +1,9 @@
 # Goal verification records (`tmp/`)
 
+<context>
+
 Local evidence from [`/goal`](../commands/goal.md) runs: test output, E2E artifacts, PR check snapshots, and external review digests. **Not committed**; add `tmp/` to the workspace `.gitignore`.
+</context>
 
 ## Location
 

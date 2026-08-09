@@ -1,6 +1,9 @@
 # Agent authoring patterns
 
+<context>
+
 Use this reference when creating or reviewing skills, commands, agents, hooks, and stack profiles.
+</context>
 
 ## Principles
 

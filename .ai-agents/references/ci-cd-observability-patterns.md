@@ -1,6 +1,9 @@
 # CI/CD and observability patterns
 
+<context>
+
 Use this reference when reviewing delivery automation, monitoring, alerting, and release readiness.
+</context>
 
 ## Delivery patterns
 

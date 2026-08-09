@@ -29,7 +29,7 @@ Applies to consumer repositories running JavaScript or TypeScript on Node.js at 
 
 Non-exhaustive examples. Any tool here may be renamed, deprecated, or replaced. Detect what the repo actually uses from its lockfile and scripts, and verify current commands and flags against official docs ([`source-driven-development`](../skills/source-driven-development/SKILL.md)) before running anything.
 
-- Package managers: for example npm, pnpm, Yarn, Bun — the lockfile present decides which one the repo uses
+- Package managers: for example npm, pnpm, Yarn, Bun - the lockfile present decides which one the repo uses
 - Version management: for example nvm, fnm, Volta, or the `engines` field
 - Process management in production: for example systemd, PM2, container orchestration
 - Diagnostics: built-in `--inspect`, `--cpu-prof`, `--heap-prof`, `node:diagnostics_channel`; for example clinic.js for higher-level analysis
@@ -58,10 +58,10 @@ Use repo-documented commands first. Typical examples:
 
 <required>
 
-- The event loop is single-threaded per process. Synchronous CPU-bound work, large synchronous JSON handling, and sync filesystem calls block every pending request — move them to worker threads or a separate process
+- The event loop is single-threaded per process. Synchronous CPU-bound work, large synchronous JSON handling, and sync filesystem calls block every pending request - move them to worker threads or a separate process
 - Honor stream backpressure: piping without respecting it turns a slow consumer into unbounded memory growth
 - Never mix `await` with unhandled promise rejection paths; an unhandled rejection terminates the process by default in current Node versions
-- ESM and CommonJS are not interchangeable. Named exports from CJS are not always statically analyzable, `require` of ESM is restricted, and `__dirname` has no direct ESM equivalent — resolve interop deliberately
+- ESM and CommonJS are not interchangeable. Named exports from CJS are not always statically analyzable, `require` of ESM is restricted, and `__dirname` has no direct ESM equivalent - resolve interop deliberately
 - Implement graceful shutdown: stop accepting work, drain in-flight requests, close resources, then exit. Abrupt exit loses in-flight state
 - Do not add a dependency for something the standard library already provides
 - Treat `process.env` as untrusted strings: absent, empty, and malformed are all possible; validate at startup and fail fast

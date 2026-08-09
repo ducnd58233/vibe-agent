@@ -1,6 +1,9 @@
-﻿# Diagram authoring
+# Diagram authoring
+
+<context>
 
 Reusable guidance for diagrams in generated markdown docs, specs, plans, research digests, architecture notes, and handoff reports.
+</context>
 
 ## What
 

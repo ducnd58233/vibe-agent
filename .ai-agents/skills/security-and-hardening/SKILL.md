@@ -11,7 +11,7 @@ disable-model-invocation: true
 
 <context>
 
-Security-first development practices for web applications. Treat every external input as hostile, every secret as sacred, and every authorization check as mandatory. Security isn't a phase — it's a constraint on every line of code that touches user data, authentication, or external systems.
+Security-first development practices for web applications. Treat every external input as hostile, every secret as sacred, and every authorization check as mandatory. Security isn't a phase - it's a constraint on every line of code that touches user data, authentication, or external systems.
 </context>
 
 ## When to Use
@@ -33,7 +33,7 @@ Security-first development practices for web applications. Treat every external 
 ### Always Do (No Exceptions)
 
 - **Validate all external input** at the system boundary (API routes, form handlers)
-- **Parameterize all database queries** — never concatenate user input into SQL
+- **Parameterize all database queries** - never concatenate user input into SQL
 - Are database queries built from **trusted** filters only (especially for document stores: no raw user-controlled operator documents / unsafe operators)?
 - **Encode output** to prevent XSS (use framework auto-escaping, don't bypass it)
 - **Use HTTPS** for all external communication
@@ -156,7 +156,7 @@ app.use(helmet.contentSecurityPolicy({
   },
 }));
 
-// CORS — restrict to known origins
+// CORS - restrict to known origins
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || 'http://localhost:3000',
   credentials: true,
@@ -223,7 +223,7 @@ function validateUpload(file: UploadedFile) {
   if (file.size > MAX_SIZE) {
     throw new ValidationError('File too large (max 5MB)');
   }
-  // Don't trust the file extension — check magic bytes if critical
+  // Don't trust the file extension - check magic bytes if critical
 }
 ```
 

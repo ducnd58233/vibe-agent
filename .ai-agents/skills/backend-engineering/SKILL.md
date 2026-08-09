@@ -1,7 +1,7 @@
 ---
 name: backend-engineering
 description: >-
-  Structures backend code as modular bounded packages with layered clean architecture—controllers/transports, services, repositories, infra, config—transactions in services only, one table per repository, explicit DTOs at edges. Use when designing or refactoring HTTP/gRPC/async workers or server-side domains.
+  Structures backend code as modular bounded packages with layered clean architecture - controllers/transports, services, repositories, infra, config - transactions in services only, one table per repository, explicit DTOs at edges. Use when designing or refactoring HTTP/gRPC/async workers or server-side domains.
 disable-model-invocation: true
 ---
 
@@ -11,7 +11,7 @@ disable-model-invocation: true
 
 <context>
 
-Apply **modular bounded contexts** with **clear layering**: transport code stays thin, orchestration lives in services, persistence is isolated behind repositories, and infrastructure (DB drivers, queues, outbound HTTP) stays at the rim. Loose coupling favors **explicit contracts** between modules—not shared singletons or cross-imports into sibling feature internals.
+Apply **modular bounded contexts** with **clear layering**: transport code stays thin, orchestration lives in services, persistence is isolated behind repositories, and infrastructure (DB drivers, queues, outbound HTTP) stays at the rim. Loose coupling favors **explicit contracts** between modules - not shared singletons or cross-imports into sibling feature internals.
 
 **Relationship:** [`api-and-interface-design`](../api-and-interface-design/SKILL.md) defines **external contracts** (HTTP shapes, versioned APIs, boundary validation). **This skill** owns **internal module layout**, **transaction borders**, **repository scope**, and **type mapping between layers.**
 </context>
@@ -51,9 +51,9 @@ backend/
 
 Rules:
 
-1. **`infra/`**: technology adapters only—no business rules leaking upward without interfaces.
-2. **`config/`**: no feature logic—reads env/files and supplies typed config to composition root.
-3. **`modules/<context>/`**: one **bounded context** per folder; avoid importing another module’s **internal** subpackages—depend on **published ports** (interfaces) or shared **kernel** types when truly cross-cutting.
+1. **`infra/`**: technology adapters only - no business rules leaking upward without interfaces.
+2. **`config/`**: no feature logic - reads env/files and supplies typed config to composition root.
+3. **`modules/<context>/`**: one **bounded context** per folder; avoid importing another module’s **internal** subpackages - depend on **published ports** (interfaces) or shared **kernel** types when truly cross-cutting.
 </procedure>
 
 ## Layer responsibilities
@@ -72,7 +72,7 @@ Rules:
 ### Modular structure and coupling
 
 - **Bounded modules:** group by capability or subdomain; keep **internals private** (`internal/` in Go, package-private patterns elsewhere).
-- **Loose coupling:** depend on **stable interfaces** (ports) declared next to consumers or shared domain—not concrete infra types from unrelated modules.
+- **Loose coupling:** depend on **stable interfaces** (ports) declared next to consumers or shared domain - not concrete infra types from unrelated modules.
 
 ### Transactions (NON-NEGOTIABLE)
 
@@ -83,11 +83,11 @@ Rules:
 ### Repository scope (NON-NEGOTIABLE)
 
 - **Exactly one primary persisted table (or one clearly defined document/collection) per repository class** / type.
-- No “god repository” that reads/writes unrelated tables. **Joins across tables** for a use case are orchestrated in the **service** through **multiple** repositories (or a read model pattern—still not one mega-repository).
+- No “god repository” that reads/writes unrelated tables. **Joins across tables** for a use case are orchestrated in the **service** through **multiple** repositories (or a read model pattern - still not one mega-repository).
 
 ### Types at boundaries (NON-NEGOTIABLE)
 
-- **Transport → service:** use **request/response DTOs** (structs, records, Pydantic models, …) defined for the application boundary—not ORM entities leaking from handlers.
+- **Transport → service:** use **request/response DTOs** (structs, records, Pydantic models, …) defined for the application boundary - not ORM entities leaking from handlers.
 - **Service → repository:** use **persistence types** (ORM models, row structs, DB schema shapes) **inside** the repository adapter; **map explicitly** between service-level types and persistence types in the service or in dedicated mappers colocated with the repository package.
 - **Never** return ORM entities directly from HTTP/gRPC handlers to clients.
 </rules>
@@ -125,7 +125,7 @@ Client
 
 After structural work:
 
-- [ ] Every inbound transport calls **one entry** method on a service for the use case—not scattered repo calls from controllers.
+- [ ] Every inbound transport calls **one entry** method on a service for the use case - not scattered repo calls from controllers.
 - [ ] No transactional API on repositories except accepting an existing session/tx from caller.
 - [ ] Each repository maps to **one** table/collection naming doc or invariant comment.
 - [ ] Modules do not circular-import sibling feature internals.
@@ -136,7 +136,7 @@ After structural work:
 
 <references>
 
-- [`api-and-interface-design`](../api-and-interface-design/SKILL.md) — public contracts and evolution.
+- [`api-and-interface-design`](../api-and-interface-design/SKILL.md) - public contracts and evolution.
 - [`security-and-hardening`](../security-and-hardening/SKILL.md), [`references/security-checklist.md`](../../references/security-checklist.md).
-- [`test-driven-development`](../test-driven-development/SKILL.md) — fixtures for services with fake repos.
+- [`test-driven-development`](../test-driven-development/SKILL.md) - fixtures for services with fake repos.
 </references>

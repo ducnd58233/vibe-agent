@@ -1,8 +1,11 @@
 # Performance Checklist
 
+<references>
+
 Quick reference for web and API performance. Use alongside the [`performance-optimization`](../skills/performance-optimization/SKILL.md) skill.
 
 **Workspace-specific stack notes** for the current project: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md).
+</references>
 
 ## Core Web Vitals Targets
 
@@ -65,10 +68,10 @@ When TTFB is slow (> 800ms), check each component in DevTools Network waterfall:
 
 ### Persistence (document drivers and ORMs)
 
-- [ ] No N+1 patterns — batch loads, `IN`-style queries, aggregation when appropriate
+- [ ] No N+1 patterns - batch loads, `IN`-style queries, aggregation when appropriate
 - [ ] Indexes on filter/sort fields used in list endpoints
 - [ ] List endpoints paginated (cursor or skip/limit with caps); never unbounded full scans by default
-- [ ] Projection / field selection — avoid returning oversized documents by default
+- [ ] Projection / field selection - avoid returning oversized documents by default
 - [ ] Connection pool sized for deployment; monitor slow query logs
 
 ### HTTP API Layer
@@ -81,7 +84,7 @@ When TTFB is slow (> 800ms), check each component in DevTools Network waterfall:
 ### LLM orchestration
 
 - [ ] Tool calls bounded (timeouts, max iterations); streaming where UX needs it
-- [ ] Avoid loading huge contexts — summarize or retrieve selectively
+- [ ] Avoid loading huge contexts - summarize or retrieve selectively
 
 ### Infrastructure
 

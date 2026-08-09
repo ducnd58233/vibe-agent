@@ -53,7 +53,7 @@ Compose with [`lang-typescript.md`](lang-typescript.md) for type-system concerns
 
 <required>
 
-`npm run test` and `npm run android` say nothing about what reached the display, and a saved screenshot proves only that a file exists. Verify the render from the device's own reported state — see [`mobile-ui-verification.md`](../references/mobile-ui-verification.md).
+`npm run test` and `npm run android` say nothing about what reached the display, and a saved screenshot proves only that a file exists. Verify the render from the device's own reported state - see [`mobile-ui-verification.md`](../references/mobile-ui-verification.md).
 
 React Native renders **native views**, so the platform view hierarchy works here and is the strongest signal available:
 

@@ -1,5 +1,7 @@
 # Sensitive Data Exposure
 
+<context>
+
 Organized by **leak channel**, not by vulnerability class. The question a channel answers is the
 one an agent actually faces mid-edit: *this value is about to go somewhere, can the wrong person
 read it there?*
@@ -13,6 +15,7 @@ depth.
 **Scope split:** this file names **channels and rules**, which generalize. Concrete mechanisms
 (which store, which flag, which library) belong in [`stack-profiles/`](../stack-profiles/ROUTER.md),
 per the tool-agnostic rule in root [`AGENTS.md`](../../AGENTS.md).
+</context>
 
 ## The audience test
 

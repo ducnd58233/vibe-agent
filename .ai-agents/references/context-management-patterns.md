@@ -1,6 +1,9 @@
 # Context management patterns
 
+<context>
+
 Use this reference when designing assets that need many files, long docs, research, or multi-step execution.
+</context>
 
 ## Patterns
 

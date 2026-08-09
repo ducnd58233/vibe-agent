@@ -1,7 +1,7 @@
 ---
 name: debugging-and-error-recovery
 description: >-
-  Uses systematic debugging for web, HTTP API, persistence, and orchestration failures—evidence before fixes. Use when tests fail, prod errors spike, or behavior is unexplained.
+  Uses systematic debugging for web, HTTP API, persistence, and orchestration failures - evidence before fixes. Use when tests fail, prod errors spike, or behavior is unexplained.
 disable-model-invocation: true
 ---
 

@@ -1,8 +1,11 @@
 # Testing Patterns Reference
 
+<references>
+
 Quick reference for tests across common web + API stacks. Use alongside the [`test-driven-development`](../skills/test-driven-development/SKILL.md) skill.
 
-**Workspace-specific tooling** for the current project: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) — load every profile row that matches your slice.
+**Workspace-specific tooling** for the current project: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) - load every profile row that matches your slice.
+</references>
 
 ## Table of Contents
 
@@ -169,18 +172,18 @@ Tooling is per-stack and needs installing, so it is a deliberate opt-in rather t
 Notes from running `gremlins unleash` over this repository's own runtime, which is where the guidance below comes from rather than from the tool's README:
 
 - **A survivor is a question, not a defect.** Three classes come out of one run, and only the first is worth acting on:
-  - *a missing assertion* — the branch is real and nothing checks it;
-  - *an equivalent mutant* — the change cannot alter observable behaviour, so no test can kill it;
-  - *plumbing that depends on the environment* — a `PATH` lookup, an OS-specific fallback. Testing these means injecting seams into production code for no behavioural gain.
+  - *a missing assertion* - the branch is real and nothing checks it;
+  - *an equivalent mutant* - the change cannot alter observable behaviour, so no test can kill it;
+  - *plumbing that depends on the environment* - a `PATH` lookup, an OS-specific fallback. Testing these means injecting seams into production code for no behavioural gain.
 - **Set the timeout coefficient before trusting the numbers.** A default that is too tight reported every mutant in one package as `TIMED OUT`, which looks like a hanging test suite and is really a bound computed from a fast coverage run. Timeouts are counted separately from lived and killed, so a run full of them has no signal in either direction.
 - **Results are not reproducible run to run.** The same package reported 11 survivors and then 4. Treat a number as an indication and the individual survivor lines as the output that matters.
 - **Chase the survivors, not the percentage.** Efficacy climbs fastest by adding assertions to whatever is easiest to assert on, which is the same incentive that produces the tests banned above.
 
 What one pass actually found here, in code written the same day and fully passing its own suite: a headline signal with **no end-to-end test at all** (its unit test called the parser directly, so nothing exercised the branch that acts on the result), a validation rule asserted only in the JSON Schema and never in the loader that enforces it, a defaulting branch that would have turned an absent timeout into an already-expired one, and a config field the loader accepted with a negative value the schema forbids. None of those are visible in a coverage report.
 
-**2. Has this test ever failed?** Coplien's framing: *"Tests that continually pass are producing no information — or at least very little information, and the value of the information they produce may not be worth the expense of maintaining and running the tests"* ([essay](https://wikileaks.org/ciav7p1/cms/files/Why-Most-Unit-Testing-is-Waste.pdf)). Treat it as a prompt to check the test can still fail, not as licence to delete a regression guard — see the [counter-argument](https://henrikwarne.com/2014/09/04/a-response-to-why-most-unit-testing-is-waste/).
+**2. Has this test ever failed?** Coplien's framing: *"Tests that continually pass are producing no information - or at least very little information, and the value of the information they produce may not be worth the expense of maintaining and running the tests"* ([essay](https://wikileaks.org/ciav7p1/cms/files/Why-Most-Unit-Testing-is-Waste.pdf)). Treat it as a prompt to check the test can still fail, not as licence to delete a regression guard - see the [counter-argument](https://henrikwarne.com/2014/09/04/a-response-to-why-most-unit-testing-is-waste/).
 
-The cheap signals — no assertion, an assertion only on the environment, an assertion only that a mock was called — are caught automatically by [`core-logic-test-guard.py`](../hooks/core-logic-test-guard.py) on every write to a test file.
+The cheap signals - no assertion, an assertion only on the environment, an assertion only that a mock was called - are caught automatically by [`core-logic-test-guard.py`](../hooks/core-logic-test-guard.py) on every write to a test file.
 </rules>
 
 ## Test Anti-Patterns

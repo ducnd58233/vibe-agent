@@ -1,6 +1,9 @@
 # Agent evaluation patterns
 
+<context>
+
 Use this reference when validating whether an agent, skill, command, or hook actually improves outcomes.
+</context>
 
 ## Evaluation surfaces
 
