@@ -9,8 +9,6 @@ disable-model-invocation: true
 
 ## Stack profile for current workspace
 
-When working **in a repository that includes this toolkit**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md) when present, select applicable profiles, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
-
 Use package and language-tool commands from the current workspace scripts when illustrating verify steps.
 
 ## Overview

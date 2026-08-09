@@ -9,8 +9,6 @@ disable-model-invocation: true
 
 ## Stack profile for current workspace
 
-Do not assume a global stack — inspect manifests and existing patterns. When working **in a repository that includes this toolkit**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md) when present, select every applicable profile row for your task, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
-
 Refines raw ideas into sharp, actionable concepts worth building through structured divergent and convergent thinking.
 
 ## How It Works

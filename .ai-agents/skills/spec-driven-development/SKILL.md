@@ -7,10 +7,6 @@ disable-model-invocation: true
 
 # Spec-Driven Development
 
-## Stack profile for current workspace
-
-When working **in a repository that includes this toolkit**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md) when present, select applicable profiles for the planned work, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
-
 ## Overview
 
 Write a structured specification before implementation. The spec is the shared truth for **what**, **why**, and **done means**.
