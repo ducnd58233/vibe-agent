@@ -7,10 +7,6 @@ disable-model-invocation: true
 
 # Source-Driven Development
 
-## Stack profile for current workspace
-
-When working **in a repository that includes this toolkit**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md) when present, select applicable profiles, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
-
 ## Overview
 
 Framework-specific decisions should trace to **authoritative, version-appropriate documentation**, not memory. State detected versions from lockfiles / manifests, then implement and **cite** sources.

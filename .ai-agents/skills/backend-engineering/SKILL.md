@@ -7,10 +7,6 @@ disable-model-invocation: true
 
 # Backend Engineering
 
-## Stack profile for current workspace
-
-Do not assume a global stack — inspect manifests and existing patterns. When working **in a repository that includes this toolkit**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md) when present, select every applicable profile row for your task, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
-
 ## Overview
 
 Apply **modular bounded contexts** with **clear layering**: transport code stays thin, orchestration lives in services, persistence is isolated behind repositories, and infrastructure (DB drivers, queues, outbound HTTP) stays at the rim. Loose coupling favors **explicit contracts** between modules—not shared singletons or cross-imports into sibling feature internals.

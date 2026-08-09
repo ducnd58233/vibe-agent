@@ -9,8 +9,6 @@ disable-model-invocation: true
 
 ## Stack profile for current workspace
 
-Concrete deploy/stack notes for the **current workspace**: start at [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md); read every profile relevant to infra/runtime. Product/domain: [`AGENTS.md`](../../../AGENTS.md).
-
 Cross-check detailed lists (generic guides; repo addenda in stack profile): [`references/security-checklist.md`](../../references/security-checklist.md), [`references/performance-checklist.md`](../../references/performance-checklist.md), [`references/accessibility-checklist.md`](../../references/accessibility-checklist.md).
 
 ## Overview

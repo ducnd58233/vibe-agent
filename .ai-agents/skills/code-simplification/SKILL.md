@@ -9,8 +9,6 @@ disable-model-invocation: true
 
 ## Stack profile for current workspace
 
-Do not assume a global stack — inspect manifests and existing patterns. When working **in a repository that includes this toolkit**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md) when present, select every applicable profile row for your task, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
-
 > Inspired by the Claude Code Simplifier plugin in `anthropics/claude-plugins-official` (see the `agent-assets` rows in [`external-source-registry.md`](../../references/external-source-registry.md)). Adapted here as a model-agnostic, process-driven skill for any AI coding agent.
 
 ## Overview

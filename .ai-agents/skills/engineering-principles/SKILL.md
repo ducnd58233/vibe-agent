@@ -8,7 +8,7 @@ description: >-
 
 ## Stack profile for current workspace
 
-Apply these principles within the conventions of the detected stack; do not impose foreign idioms. When working **in a repository that includes this toolkit**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md) when present, select applicable profiles, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
+Apply these principles within the conventions of the detected stack; do not impose foreign idioms.
 
 ## Overview
 

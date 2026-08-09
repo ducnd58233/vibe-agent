@@ -10,10 +10,6 @@ disable-model-invocation: true
 
 # Goal-Driven Delivery
 
-## Stack profile for current workspace
-
-When working **in a repository that includes this toolkit**, open [`stack-profiles/ROUTER.md`](../../stack-profiles/ROUTER.md) when present, select applicable profiles, and read those files. Product/domain expectations: root [`AGENTS.md`](../../../AGENTS.md).
-
 ## Overview
 
 Turn a user objective into verified, shippable work by running a **phased pipeline** with explicit checkpoints. Re-read artifacts on disk (`docs/<slug>/SPEC.md`, `TASKS.md`) at each phase instead of relying on chat memory.
