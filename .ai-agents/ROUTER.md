@@ -19,6 +19,7 @@ All assets are reusable and **domain-agnostic**; keep product-domain implementat
 | Full delivery from user objective (`/goal`) | [`commands/goal.md`](commands/goal.md) + [`skills/goal-driven-delivery/SKILL.md`](skills/goal-driven-delivery/SKILL.md) |
 | Executable control flow for a multi-phase workflow (nodes, edges, gates) | [`graphs/ROUTER.md`](graphs/ROUTER.md) |
 | Lifecycle automation (format on save, CI hooks, guardrails) | [`hooks/ROUTER.md`](hooks/ROUTER.md) |
+| Creating an asset, wiring a harness, mounting into a consumer repo | [`AUTHORING.md`](AUTHORING.md) - layout, authoring rules, checks table, clone and link steps |
 
 **Creating new assets:** Follow that folder’s **`TEMPLATE.md`** (e.g. [skills/TEMPLATE.md](skills/TEMPLATE.md), [stack-profiles/TEMPLATE.md](stack-profiles/TEMPLATE.md), [agents/TEMPLATE.md](agents/TEMPLATE.md), [commands/TEMPLATE.md](commands/TEMPLATE.md), [hooks/TEMPLATE.md](hooks/TEMPLATE.md)).
 
