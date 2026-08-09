@@ -38,6 +38,12 @@ jobs:
       - name: Verify ROUTER.md tables match folder contents
         run: bash scripts/check-ai-agents-routers.sh
 
+      - name: Check XML section tags
+        run: bash scripts/check-xml-tags.sh
+
+      - name: Check generated harness views
+        run: bash scripts/check-generated-views.sh
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'

@@ -50,11 +50,75 @@ into a consumer repo. Skip it otherwise.
   [`.claude/settings.json`](../.claude/settings.json) and [`PERMISSIONS.md`](PERMISSIONS.md). Deny
   overrides allow.
 
+## XML section tags
+
+Always-loaded files wrap their sections in XML tags. This is **prompt content, not a file format**.
+Anthropic's prompt guidance says XML tags "help Claude parse complex prompts unambiguously,
+especially when your prompt mixes instructions, context, examples, and variable inputs", and advises
+"consistent, descriptive tag names across your prompts". Nothing in it is about files on disk.
+
+Converting assets to HTML or XML files was considered and rejected on evidence: Claude Code requires
+a `SKILL.md`, and Cursor requires `.mdc` and ignores a plain `.md` in `.cursor/rules`. Neither
+documents HTML or XML support. Files stay Markdown; only the body gains tags.
+
+### The tag set
+
+Bounded on purpose. A vocabulary nobody can remember gets used inconsistently, and inconsistent tags
+are worse than none: they teach the model a partition that does not hold.
+
+**Charter files** (loaded every turn):
+
+| Tag | Holds |
+|---|---|
+| `<scope>` | What this repository is and is not |
+| `<precedence>` | Which source of rules wins, in order |
+| `<always_on>` | Behavior that applies on every turn |
+| `<delivery_gates>` | Gates in front of branches, merges, attribution, secrets |
+| `<claude_specific>`, `<other_harnesses>` | Harness-specific pointers |
+
+**Asset files** (skills, agents, commands, references):
+
+| Tag | Holds | The question it answers |
+|---|---|---|
+| `<persona>` | Role, authority, and boundary of a subagent | Who am I acting as? |
+| `<prerequisites>` | What must be read, installed, or true before starting | Can I start yet? |
+| `<context>` | Background needed to judge well, not to execute | What do I need to understand? |
+| `<required>` | Non-negotiable rules. Violating one is a defect | What blocks me? |
+| `<rules>` | Operative guidance that judgment may weigh | What should guide me? |
+| `<procedure>` | Ordered steps | What do I do, in what order? |
+| `<inputs>` / `<outputs>` | The contract at each end | What comes in, what must come out? |
+| `<verification>` | How completion is proven, not asserted | How do I know it worked? |
+| `<antipatterns>` | Named failure modes and rationalizations | What am I likely to get wrong? |
+| `<routing>` | When to use this, and when not to | Is this the right asset? |
+| `<escalation>` | Conditions to stop and ask a human | When do I stop? |
+
+**`<required>` versus `<rules>` is the distinction that earns the whole scheme.** A weak model
+flattens a document into one list of suggestions. Splitting the blocking rules from the advisory ones
+tells it which line it may trade away under pressure and which it may not. If a block would be
+correct to violate given a good reason, it is `<rules>`. If violating it is always a defect, it is
+`<required>`.
+
+### Rules for using them
+
+- Tags go **after** YAML frontmatter, never before. Frontmatter must stay the first bytes of the file
+  or the skill and rule loaders will not parse it.
+- Open and close on their own lines, so the Markdown around them still renders.
+- **Do not nest.** A flat partition is the point; nesting rebuilds the ambiguity tags removed.
+- **Do not tag a single paragraph.** A tag earns its place when a model needs to act on that block
+  alone. Six tags in a forty-line file is noise.
+- Use the smallest set that partitions the file. Most assets need three or four, not eleven.
+- A tag pair costs roughly six tokens. On a charter file that is free; across the whole corpus it
+  adds up, so tag what is genuinely multi-part and leave short files alone.
+
+`scripts/check-xml-tags.sh` fails on an unbalanced tag, an unknown tag, or a tag placed above
+frontmatter.
+
 ## Checks to run
 
 | After changing | Run |
 |---|---|
 | Any asset under `.ai-agents/` | `bash scripts/check-ai-agents-routers.sh` or `powershell -File scripts/check-ai-agents-routers.ps1` (dependency-free) |
+| An always-loaded file or any tagged asset | `bash scripts/check-xml-tags.sh` - balance, nesting, unknown tags, and tags above frontmatter |
 | Anything, before trusting a harness read | `bash scripts/check-generated-views.sh` - a canonical edit does not reach the harness until the link script re-runs |
 | `.ai-agents/graphs/*.yaml` or `schemas/*.json` | `python3 scripts/check-graphs.py` and `python3 scripts/check-schemas.py` |
 | [`runtime/`](../runtime) | `cd runtime && make check` |

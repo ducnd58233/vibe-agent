@@ -9,15 +9,23 @@ Everything needed once per task or per setup lives in [`.ai-agents/AUTHORING.md`
 project layout, authoring rules, the checks table, clone and link steps, and consumer-repo mounting.
 Read that file when creating an asset or wiring a repo, not before.
 
-**Scope:** this repository is not a product-domain codebase; domain behavior belongs in each
-consuming repo's own `AGENTS.md`. It does ship infrastructure: validation scripts under
-[`scripts/`](scripts) and the control plane under [`runtime/`](runtime).
+Sections below are wrapped in XML tags so a model can address one block at a time. The tags are
+content, not a file format: these files stay Markdown because Claude Code requires `SKILL.md` and
+Cursor requires `.mdc`, and neither documents HTML or XML support. See
+[`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) for the tag set and when to use it.
+
+<scope>
+This repository is not a product-domain codebase; domain behavior belongs in each consuming repo's
+own `AGENTS.md`. It does ship infrastructure: validation scripts under [`scripts/`](scripts) and the
+control plane under [`runtime/`](runtime).
 
 **Stance:** favor reusable patterns, explicit routing, stable permission boundaries, progressive
 disclosure, and minimal duplication across tools. Every rule below follows from those five.
+</scope>
 
 ## Precedence (MUST)
 
+<precedence>
 When the workspace root has its own rules, templates, or conventions, **those win** and this toolkit
 is the fallback. Resolve most specific first:
 
@@ -34,8 +42,11 @@ boundary; when it would **weaken** one, surface the conflict and ask.
 
 **Single source of truth:** edit assets under [`.ai-agents/`](.ai-agents), never a generated link
 path. When a rule already has a home, link to it instead of restating it.
+</precedence>
 
 ## Always-on execution baseline
+
+<always_on>
 
 - **Guardrails first:** [`karpathy-guardrails`](.ai-agents/skills/karpathy-guardrails/SKILL.md) for
   assumption checks, simplicity bias, surgical diffs, verification-first completion.
@@ -81,8 +92,11 @@ path. When a rule already has a home, link to it instead of restating it.
   the **workspace root** - the directory containing `.vibe-agent/`, or the repo root when this
   toolkit is standalone. `<slug>` is short kebab-case for the work. Never inside `.vibe-agent/`, never
   scattered. Confirm the slug with the user when it is not obvious.
+</always_on>
 
 ## Delivery gates (MUST)
+
+<delivery_gates>
 
 - **Runtime required.** `/goal`, `/build`, `/test`, `/review`, and `/ship` run on the control plane
   and refuse without it. Preflight with `vibe-agent doctor`. Canonical rules, command surface, hook
@@ -101,3 +115,4 @@ path. When a rule already has a home, link to it instead of restating it.
   `prepare-commit-msg` hook the link script installs. Do not re-add it by hand.
 - **Secrets.** Never commit credentials. Read secrets only through configured secure paths or
   environment variables.
+</delivery_gates>
