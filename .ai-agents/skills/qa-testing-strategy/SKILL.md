@@ -7,17 +7,18 @@ disable-model-invocation: true
 
 # QA Testing Strategy
 
-## What
-
-Plan, execute, and review manual and automated testing for release confidence across functional, exploratory, regression, compatibility, accessibility, security, and performance concerns.
-
 ## Why
+
+<context>
 
 TDD proves code behavior at implementation time; QA strategy proves user-facing quality, risk coverage, release readiness, and manual-to-automation conversion. Expert testers combine scripted checks, exploratory charters, automation, evidence capture, and risk-based prioritization.
 
 **Automated tests in code** follow [`test-driven-development`](../test-driven-development/SKILL.md): core/business logic only — no file/env/container discovery tests. Environment and infra checks belong in manual charters, CI, or fixture setup, not unit/integration test bodies.
+</context>
 
 ## How
+
+<procedure>
 
 1. **Load context**
    - Read acceptance criteria, specs, risk areas, target users, supported browsers/devices, existing tests, and applicable stack profiles.
@@ -38,25 +39,32 @@ TDD proves code behavior at implementation time; QA strategy proves user-facing 
    - Prioritize defects by user impact.
    - Convert recurring manual cases into automation.
    - Update regression suites and release signoff criteria.
-
-## When
-
-Use for manual QA, automation QA, tester workflows, release testing, coverage audits, exploratory testing, and cross-platform test matrices. Use [`test-driven-development`](../test-driven-development/SKILL.md) when writing tests first for implementation behavior.
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 - Pair with [`browser-testing-with-devtools`](../browser-testing-with-devtools/SKILL.md) for browser runtime evidence.
 - Pair with [`frontend-ui-engineering`](../frontend-ui-engineering/SKILL.md) for accessibility and UI quality.
 - Pair with [`shipping-and-launch`](../shipping-and-launch/SKILL.md) for release signoff.
 - Pair with [`security-and-hardening`](../security-and-hardening/SKILL.md) for auth/data/input test scope.
 
+Use for manual QA, automation QA, tester workflows, release testing, coverage audits, exploratory testing, and cross-platform test matrices. Use [`test-driven-development`](../test-driven-development/SKILL.md) when writing tests first for implementation behavior.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: Read, Grep, Glob, Edit; Shell for repo-documented test commands; browser/devtools tools when available.
 - Paths: tests, specs, QA docs, fixtures, reports; no secrets or private user data.
 - Ask before long E2E runs, external-service tests, production/staging mutations, or device-farm/cloud test jobs.
+</required>
 
 ## Verification
+
+<verification>
 
 - [ ] Acceptance criteria map to manual or automated coverage.
 - [ ] Critical journeys have clear evidence and signoff status.
@@ -64,10 +72,14 @@ Use for manual QA, automation QA, tester workflows, release testing, coverage au
 - [ ] Manual findings include reproducible steps and environment details.
 - [ ] Flaky or skipped tests are tracked, not ignored.
 - [ ] UI changes carry render evidence and a zero-failure accessibility audit, or explicit `UNVERIFIED` reasons.
+</verification>
 
 ## References
+
+<references>
 
 - https://playwright.dev/docs/best-practices
 - https://testing-library.com/docs/guiding-principles
 - https://owasp.org/www-project-web-security-testing-guide/
 - https://astqb.org/4-4-experience-based-test-techniques/
+</references>

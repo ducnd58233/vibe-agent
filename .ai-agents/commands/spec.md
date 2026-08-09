@@ -14,23 +14,12 @@ Produce a spec covering: objective, tech stack, **commands** (real workspace scr
 
 Write the spec to `docs/<slug>/SPEC.md` at the workspace root (the directory that contains `.vibe-agent/`; the repo root when this toolkit is used standalone). `<slug>` is a short kebab-case name for the work; confirm it with the user when it is not obvious. See the "Generated docs output location" rule in [`AGENTS.md`](../../AGENTS.md). Confirm the spec before coding.
 
-## What
-
-Produce a structured implementation spec before coding.
-
-## Why
-
-Aligns scope, constraints, and acceptance criteria early.
-
-## How
-
-Follow the existing spec workflow and output expectations above.
-
-## When
-
-Invoke for new features, ambiguous requests, or major refactors.
-
 ## Routing & discovery
+
+<routing>
 
 - Use when implementation is not yet fully specified.
 - Do not use when a reviewed spec already exists and execution is requested.
+
+Invoke for new features, ambiguous requests, or major refactors.
+</routing>

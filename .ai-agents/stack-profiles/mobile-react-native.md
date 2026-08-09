@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories building iOS and Android applications with React Native or Expo, including navigation, native modules, mobile performance, offline state, accessibility, and release validation.
 
 Compose with [`lang-typescript.md`](lang-typescript.md) for type-system concerns.
@@ -11,8 +13,11 @@ Compose with [`lang-typescript.md`](lang-typescript.md) for type-system concerns
 - React Native screen, component, navigation, or native bridge work
 - Expo, Metro, Hermes, New Architecture, native module, or platform-specific changes
 - Mobile performance, gesture, animation, list virtualization, offline/cache, or app-store release concerns
+</routing>
 
 ## Detection
+
+<context>
 
 - `package.json` includes `react-native` or `expo`
 - `metro.config.*`, `app.json`, `app.config.*`, `ios/`, `android/`
@@ -31,16 +36,22 @@ Compose with [`lang-typescript.md`](lang-typescript.md) for type-system concerns
 - Keep screens feature-scoped; keep reusable native-safe components in shared UI packages
 - Keep platform-specific code explicit with `.ios.*`, `.android.*`, or native module boundaries
 - Keep JS-thread hot paths small; use native/animated worklets where appropriate for gestures/animations
+</context>
 
 ## Commands
+
+<procedure>
 
 - `npm run lint`
 - `npm run typecheck`
 - `npm run test`
 - `npm run android`
 - `npm run ios`
+</procedure>
 
 ## Render verification (MUST)
+
+<required>
 
 `npm run test` and `npm run android` say nothing about what reached the display, and a saved screenshot proves only that a file exists. Verify the render from the device's own reported state — see [`mobile-ui-verification.md`](../references/mobile-ui-verification.md).
 
@@ -72,11 +83,15 @@ adb logcat -b crash -d                                   # assert no crash or AN
 - Prefer FlatList/FlashList-style virtualization for long lists
 - Validate permissions, secure storage, network TLS assumptions, and deep-link handling
 - Check dependency compatibility with the active React Native / Expo SDK and New Architecture posture
+</required>
 
 ## References
+
+<references>
 
 - https://reactnative.dev/docs/getting-started
 - https://reactnative.dev/docs/performance
 - https://reactnative.dev/docs/accessibility
 - https://docs.expo.dev/
 - https://docs.expo.dev/guides/new-architecture/
+</references>

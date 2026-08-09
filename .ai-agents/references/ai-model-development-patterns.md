@@ -4,6 +4,8 @@ Use this reference when building, adapting, evaluating, documenting, or monitori
 
 ## Expert operating principles
 
+<rules>
+
 - **Start with the product task, not the model.** Define user need, decision boundary, latency/cost budget, failure tolerance, and acceptance metrics before selecting a model.
 - **Use the simplest useful baseline.** Compare heuristics, retrieval, rules, pretrained APIs, classical ML, fine-tuning, and training-from-scratch before choosing complexity.
 - **Treat data as the primary artifact.** Track source, license, consent, labeling process, splits, leakage checks, schema, quality, bias risks, and dataset version.
@@ -11,8 +13,11 @@ Use this reference when building, adapting, evaluating, documenting, or monitori
 - **Evaluate by slices and failure modes.** Report aggregate metrics plus slices for domain, language, class, geography, device, demographic/proxy risks, long-tail examples, and adversarial cases where relevant.
 - **Document intended use and limits.** Maintain model cards and dataset cards for models/datasets that may be reused, shipped, or audited.
 - **Monitor after deployment.** Track input drift, prediction drift, data quality, performance labels when available, latency, errors, cost, and business guardrails.
+</rules>
 
 ## Lifecycle checklist
+
+<verification>
 
 1. **Task framing**
    - Define task type: classification, regression, ranking, retrieval, generation, detection, segmentation, ASR/TTS, embedding, recommendation, control, or agent workflow.
@@ -41,8 +46,11 @@ Use this reference when building, adapting, evaluating, documenting, or monitori
    - Define reference data, monitoring frequency, alert thresholds, owner, triage playbook, retraining trigger, and retirement criteria.
 10. **Documentation**
    - Produce or update experiment report, model card, dataset card, evaluation report, deployment notes, and unresolved risks.
+</verification>
 
 ## Domain-specific cues
+
+<rules>
 
 | Area | Watch for | Typical metrics |
 |---|---|---|
@@ -65,15 +73,21 @@ Include when a model/dataset can be reused, deployed, or audited:
 - limitations, bias/safety/privacy risks
 - operational constraints: latency, hardware, cost, monitoring, rollback
 - owner, date, and update policy
+</rules>
 
 ## Related references
+
+<references>
 
 - [`agent-evaluation-patterns.md`](agent-evaluation-patterns.md)
 - [`context-management-patterns.md`](context-management-patterns.md)
 - [`ci-cd-observability-patterns.md`](ci-cd-observability-patterns.md)
 - [`security-checklist.md`](security-checklist.md)
+</references>
 
 ## Source anchors
+
+<rules>
 
 - Google Cloud MLOps guidance emphasizes automation and monitoring across ML construction, including integration, testing, release, deployment, and infrastructure management.
 - Google Rules of ML recommends treating most early ML work as engineering: solid pipelines and features before complex algorithms.
@@ -81,3 +95,4 @@ Include when a model/dataset can be reused, deployed, or audited:
 - Hugging Face dataset cards document dataset contents, context, creation process, and bias considerations.
 - OpenAI evaluation guidance recommends continuous evaluation and growing eval sets over time for nondeterministic AI systems.
 - Azure ML monitoring guidance highlights data drift, prediction drift, data quality, feature attribution drift, model performance, reference data, thresholds, and alert frequency.
+</rules>

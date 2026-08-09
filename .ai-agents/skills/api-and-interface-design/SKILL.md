@@ -9,17 +9,25 @@ disable-model-invocation: true
 
 ## Overview
 
+<context>
+
 Design stable, well-documented interfaces that are hard to misuse. Good interfaces make the right thing easy and the wrong thing hard. This applies to REST APIs, GraphQL schemas, module boundaries, component props, and any surface where one piece of code talks to another.
+</context>
 
 ## When to Use
+
+<routing>
 
 - Designing new API endpoints
 - Defining module boundaries or contracts between teams
 - Creating component prop interfaces
 - Establishing database schema that informs API shape
 - Changing existing public interfaces
+</routing>
 
 ## Core Principles
+
+<rules>
 
 ### Hyrum's Law
 
@@ -154,8 +162,11 @@ interface CreateTaskInput {
 | Response fields | camelCase | `{ createdAt, updatedAt, taskId }` |
 | Boolean fields | is/has/can prefix | `isComplete`, `hasAttachments` |
 | Enum values | UPPER_SNAKE | `"IN_PROGRESS"`, `"COMPLETED"` |
+</rules>
 
 ## REST API Patterns
+
+<context>
 
 ### Resource Design
 
@@ -260,8 +271,11 @@ type UserId = string & { readonly __brand: 'UserId' };
 // Prevents accidentally passing a UserId where a TaskId is expected
 function getTask(id: TaskId): Promise<Task> { ... }
 ```
+</context>
 
 ## Common Rationalizations
+
+<antipatterns>
 
 | Rationalization | Reality |
 |---|---|
@@ -282,8 +296,11 @@ function getTask(id: TaskId): Promise<Task> { ... }
 - List endpoints without pagination
 - Verbs in REST URLs (`/api/createTask`, `/api/getUsers`)
 - Third-party API responses used without validation or sanitization
+</antipatterns>
 
 ## Verification
+
+<verification>
 
 After designing an API:
 
@@ -294,8 +311,12 @@ After designing an API:
 - [ ] New fields are additive and optional (backward compatible)
 - [ ] Naming follows consistent conventions across all endpoints
 - [ ] API documentation or types are committed alongside the implementation
+</verification>
 
 ## Related references
 
+<references>
+
 - [`backend-engineering`](../backend-engineering/SKILL.md) (internal layering after contracts are fixed)
 - [`security-checklist.md`](../../references/security-checklist.md) (input boundaries), [`testing-patterns.md`](../../references/testing-patterns.md) (API integration examples)
+</references>

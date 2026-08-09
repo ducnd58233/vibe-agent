@@ -7,15 +7,9 @@ disable-model-invocation: true
 
 # Agent Harness Engineering
 
-## What
-
-Design and harden the system around AI agents so work is routed, constrained, observable, verifiable, and maintainable.
-
-## Why
-
-Agent quality is not just model quality. Reliability comes from the model plus its harness: guidance, context, tools, permissions, feedback loops, and evidence. Weak harnesses create stale routing, unsafe tool use, hidden failures, bloated prompts, and unrepeatable results.
-
 ## How
+
+<procedure>
 
 1. **Route and scope**
    - Start at [`../../ROUTER.md`](../../ROUTER.md), then open relevant folder routers.
@@ -49,14 +43,11 @@ Agent quality is not just model quality. Reliability comes from the model plus i
    - For graphs and schemas, run `python3 scripts/check-graphs.py` and `python3 scripts/check-schemas.py`.
    - For runtime changes, run `cd runtime && go vet ./... && go test ./...`.
    - Include checks run, failures found, and residual risks in the final report.
-
-## When
-
-Use for AI-agent toolkit changes, consumer-repo harness setup, MCP/tool integration boundaries, routing drift, generated Codex agent issues, hook/permission hardening, and evaluation coverage.
-
-Do not use for ordinary application implementation unless the agent workflow or tooling around that implementation is the thing being changed.
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 - Pair with [`using-agent-skills`](../using-agent-skills/SKILL.md) when asset selection is unclear.
 - Pair with [`context-engineering`](../context-engineering/SKILL.md) for large-context or retrieval problems.
@@ -64,13 +55,22 @@ Do not use for ordinary application implementation unless the agent workflow or 
 - Pair with [`devops-platform-delivery`](../devops-platform-delivery/SKILL.md) when sensors run in CI/CD.
 - Delegate review to [`../../agents/agent-systems-auditor.md`](../../agents/agent-systems-auditor.md) for independent harness audit.
 
+Use for AI-agent toolkit changes, consumer-repo harness setup, MCP/tool integration boundaries, routing drift, generated Codex agent issues, hook/permission hardening, and evaluation coverage.
+Do not use for ordinary application implementation unless the agent workflow or tooling around that implementation is the thing being changed.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: Read, Grep, Glob, Edit; Shell only for repo-documented validation or link scripts.
 - Paths: `.ai-agents/**`, tool config directories, scripts, docs, CI config; never secret paths.
 - Ask before changing broad permissions, enabling new MCP servers, running destructive commands, deploying, or mutating external systems.
+</required>
 
 ## Verification
+
+<verification>
 
 - [ ] Relevant routers consulted and updated.
 - [ ] Guides and sensors mapped.
@@ -78,3 +78,4 @@ Do not use for ordinary application implementation unless the agent workflow or 
 - [ ] Permissions and approval boundaries documented.
 - [ ] Generated tool assets validated when applicable.
 - [ ] Final report includes evidence and unresolved risks.
+</verification>

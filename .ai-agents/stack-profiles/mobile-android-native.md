@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories building native Android applications with Kotlin/Java, Jetpack, Compose or XML views, coroutines/Flow, app architecture, performance, accessibility, and release tooling.
 
 ## When to load
@@ -9,8 +11,11 @@ Applies to consumer repositories building native Android applications with Kotli
 - Android screen, ViewModel, repository, navigation, permission, service, or WorkManager work
 - Jetpack Compose, XML view, coroutine, Flow, Room, Retrofit/Ktor, Hilt, or Gradle changes
 - Android performance, startup, baseline profile, accessibility, offline/cache, or lifecycle decisions
+</routing>
 
 ## Detection
+
+<context>
 
 - `settings.gradle*`, `build.gradle*`, `gradle/libs.versions.toml`
 - `app/src/main/AndroidManifest.xml`, `src/main/java/`, `src/main/kotlin/`
@@ -30,15 +35,21 @@ Applies to consumer repositories building native Android applications with Kotli
 - Keep UI state in ViewModel-like presentation layer; keep repositories/data sources behind interfaces
 - Keep composables small and stable; isolate side effects with lifecycle-aware APIs
 - Keep platform permissions, foreground services, background work, and notifications explicit
+</context>
 
 ## Commands
+
+<procedure>
 
 - `./gradlew test`
 - `./gradlew connectedAndroidTest`
 - `./gradlew lint`
 - `./gradlew assembleDebug`
+</procedure>
 
 ## Render verification (MUST)
+
+<required>
 
 `./gradlew connectedAndroidTest` exiting 0 means its assertions passed, not that a user would see anything. Where a task claims a screen works, verify it from the device — see [`mobile-ui-verification.md`](../references/mobile-ui-verification.md).
 
@@ -69,11 +80,15 @@ adb logcat -b crash -d                                   # assert no crash or AN
 - Use lifecycle-aware collection, stable Compose models, lazy lists, and baseline profiles for startup/runtime hotspots
 - Validate permissions, exported components, deep links, WebViews, secure storage, and network security config
 - Benchmark before broad Compose stability or recomposition rewrites
+</required>
 
 ## References
+
+<references>
 
 - https://developer.android.com/topic/architecture
 - https://developer.android.com/compose
 - https://developer.android.com/develop/ui/compose/performance
 - https://developer.android.com/kotlin/coroutines
 - https://developer.android.com/topic/performance
+</references>

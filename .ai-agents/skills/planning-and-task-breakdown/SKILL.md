@@ -9,9 +9,14 @@ disable-model-invocation: true
 
 ## Overview
 
+<context>
+
 Decompose work into small, verifiable tasks with explicit acceptance criteria. Good task breakdown is the difference between an agent that completes work reliably and one that produces a tangled mess. Every task should be small enough to implement, test, and verify in a single focused session.
+</context>
 
 ## When to Use
+
+<routing>
 
 - You have a spec and need to break it into implementable units
 - A task feels too large or vague to start
@@ -20,8 +25,11 @@ Decompose work into small, verifiable tasks with explicit acceptance criteria. G
 - The implementation order isn't obvious
 
 **When NOT to use:** Single-file changes with obvious scope, or when the spec already contains well-defined tasks.
+</routing>
 
 ## The Planning Process
+
+<procedure>
 
 ### Step 1: Enter Plan Mode
 
@@ -125,8 +133,11 @@ Add explicit checkpoints:
 - [ ] Core user flow works end-to-end
 - [ ] Review with human before proceeding
 ```
+</procedure>
 
 ## Task Sizing Guidelines
+
+<rules>
 
 | Size | Files | Scope | Example |
 |------|-------|-------|---------|
@@ -143,8 +154,11 @@ If a task is L or larger, it should be broken into smaller tasks. An agent perfo
 - You cannot describe the acceptance criteria in 3 or fewer bullet points
 - It touches two or more independent subsystems (e.g., auth and billing)
 - You find yourself writing "and" in the task title (a sign it is two tasks)
+</rules>
 
 ## Plan Document Template
+
+<context>
 
 **Output location:** Write the plan to `docs/<slug>/PLAN.md` and the task list to `docs/<slug>/TASKS.md` at the workspace root (the directory containing `.vibe-agent/`, or the repo root when this toolkit is standalone), reusing the same `<slug>` as the spec. See the "Generated docs output location" rule in [`AGENTS.md`](../../../AGENTS.md).
 
@@ -190,16 +204,22 @@ If a task is L or larger, it should be broken into smaller tasks. An agent perfo
 ## Open Questions
 - [Question needing human input]
 ```
+</context>
 
 ## Parallelization Opportunities
+
+<rules>
 
 When multiple agents or sessions are available:
 
 - **Safe to parallelize:** Independent feature slices, tests for already-implemented features, documentation
 - **Must be sequential:** Database migrations, shared state changes, dependency chains
 - **Needs coordination:** Features that share an API contract (define the contract first, then parallelize)
+</rules>
 
 ## Common Rationalizations
+
+<antipatterns>
 
 | Rationalization | Reality |
 |---|---|
@@ -216,8 +236,11 @@ When multiple agents or sessions are available:
 - All tasks are XL-sized
 - No checkpoints between tasks
 - Dependency order isn't considered
+</antipatterns>
 
 ## Verification
+
+<verification>
 
 Before starting implementation, confirm:
 
@@ -228,7 +251,11 @@ Before starting implementation, confirm:
 - [ ] Checkpoints exist between major phases
 - [ ] Plan and tasks written to `docs/<slug>/` at the workspace root (sibling of `.vibe-agent/`)
 - [ ] The human has reviewed and approved the plan
+</verification>
 
 ## Related references
 
+<references>
+
 - [`orchestration-patterns.md`](../../references/orchestration-patterns.md) (sequential pipelines vs parallel fan-out)
+</references>

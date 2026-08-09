@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories building browser UI with React outside a more specific framework profile such as Next.js, including Vite, CRA, Remix-like client code, component libraries, forms, state, and data-fetching integration.
 
 Compose with [`lang-typescript.md`](lang-typescript.md) for type-system concerns.
@@ -11,8 +13,11 @@ Compose with [`lang-typescript.md`](lang-typescript.md) for type-system concerns
 - React component, hook, page, or client-side routing work
 - UI state, server-state cache, form, accessibility, or rendering performance decisions
 - Vite / SPA / component-library changes where no more specific framework profile applies
+</routing>
 
 ## Detection
+
+<context>
 
 - `package.json` includes `react` and `react-dom`
 - `vite`, `@vitejs/plugin-react`, `react-router`, `tanstack`, `swr`, `zustand`, `redux`, `storybook`, or `vitest`
@@ -32,15 +37,21 @@ Compose with [`lang-typescript.md`](lang-typescript.md) for type-system concerns
 - Keep presentational components separate from data-fetching/container logic when complexity grows
 - Keep server state in query/cache libraries or route loaders, not ad hoc global stores
 - Use semantic HTML and accessible labels before adding ARIA
+</context>
 
 ## Commands
+
+<procedure>
 
 - `npm run lint`
 - `npm run typecheck`
 - `npm run test`
 - `npm run build`
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - Do not introduce framework-specific assumptions such as Next.js server components unless detected
 - Do not deep-import sibling feature internals; route through shared contracts or colocated hooks
@@ -52,11 +63,15 @@ Compose with [`lang-typescript.md`](lang-typescript.md) for type-system concerns
 - Validate and encode untrusted rendered content; avoid unsafe HTML unless sanitized
 - Measure rendering regressions with React Profiler or browser tooling before large memoization changes
 - Stabilize list keys, virtualize large lists, split heavy bundles, and keep suspense/loading/error states explicit
+</required>
 
 ## References
+
+<references>
 
 - https://react.dev/learn
 - https://react.dev/learn/managing-state
 - https://react.dev/reference/react
 - https://vite.dev/guide/
 - https://testing-library.com/docs/react-testing-library/intro/
+</references>

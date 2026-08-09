@@ -6,6 +6,8 @@ Run a repo-health audit for this AI asset toolkit.
 
 ## Checks
 
+<verification>
+
 1. Read [`ROUTER.md`](../ROUTER.md), folder routers, and [`PERMISSIONS.md`](../PERMISSIONS.md).
 2. Run router validation:
    - Windows: `powershell -File scripts/check-ai-agents-routers.ps1`
@@ -26,8 +28,11 @@ Run a repo-health audit for this AI asset toolkit.
    - `Bash(*)`, `Edit(*)`, `Write(*)`, `WebFetch(domain:*)`, `mcp__*`
 6. Check routing evals: step 2's validation asserts every **Expected asset** link in [`routing-evals.md`](../references/routing-evals.md) resolves. Spot-check that the listed intents still route to the expected asset after scope/router changes.
 7. Report stale router rows, missing files, missing hooks, broad permissions, broken routing-eval targets, and recommended fixes.
+</verification>
 
 ## Required output
+
+<outputs>
 
 ```markdown
 ## AI Asset Doctor
@@ -42,24 +47,14 @@ Run a repo-health audit for this AI asset toolkit.
 
 ### Next actions
 ```
-
-## What
-
-Audit the health of reusable AI assets and discovery/config wiring.
-
-## Why
-
-Finds drift before agents fail at runtime.
-
-## How
-
-Use the checks and required output above.
-
-## When
-
-Invoke after adding/removing assets, changing hooks, changing permissions, or cloning/linking a consumer repo.
+</outputs>
 
 ## Routing & discovery
 
+<routing>
+
 - Use when validating toolkit health.
 - Do not use for product-code review; use [`review.md`](review.md) or [`ship.md`](ship.md).
+
+Invoke after adding/removing assets, changing hooks, changing permissions, or cloning/linking a consumer repo.
+</routing>

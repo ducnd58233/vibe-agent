@@ -9,13 +9,18 @@ disable-model-invocation: true
 
 ## Stack profile for current workspace
 
+<context>
+
 > Inspired by the Claude Code Simplifier plugin in `anthropics/claude-plugins-official` (see the `agent-assets` rows in [`external-source-registry.md`](../../references/external-source-registry.md)). Adapted here as a model-agnostic, process-driven skill for any AI coding agent.
 
 ## Overview
 
 Simplify code by reducing complexity while preserving exact behavior. The goal is not fewer lines — it's code that is easier to read, understand, modify, and debug. Every simplification must pass a simple test: "Would a new team member understand this faster than the original?"
+</context>
 
 ## When to Use
+
+<routing>
 
 - After a feature is working and tests pass, but the implementation feels heavier than it needs to be
 - During code review when readability or complexity issues are flagged
@@ -30,8 +35,11 @@ Simplify code by reducing complexity while preserving exact behavior. The goal i
 - You don't understand what the code does yet — comprehend before you simplify
 - The code is performance-critical and the "simpler" version would be measurably slower
 - You're about to rewrite the module entirely — simplifying throwaway code wastes effort
+</routing>
 
 ## The Five Principles
+
+<procedure>
 
 ### 1. Preserve Behavior Exactly
 
@@ -187,8 +195,11 @@ COMPARE BEFORE AND AFTER:
 ```
 
 If the "simplified" version is harder to understand or review, revert. Not every simplification attempt succeeds.
+</procedure>
 
 ## Language-Specific Guidance
+
+<context>
 
 ### TypeScript / JavaScript
 
@@ -297,8 +308,11 @@ function UserBadge({ user }: Props) {
 // Before — consider whether context or composition solves this better.
 // This is a judgment call — flag it, don't auto-refactor.
 ```
+</context>
 
 ## Common Rationalizations
+
+<antipatterns>
 
 | Rationalization | Reality |
 |---|---|
@@ -319,8 +333,11 @@ function UserBadge({ user }: Props) {
 - Simplifying code you don't fully understand
 - Batching many simplifications into one large, hard-to-review commit
 - Refactoring code outside the scope of the current task without being asked
+</antipatterns>
 
 ## Verification
+
+<verification>
 
 After completing a simplification pass:
 
@@ -333,7 +350,11 @@ After completing a simplification pass:
 - [ ] No error handling was removed or weakened
 - [ ] No dead code was left behind (unused imports, unreachable branches)
 - [ ] A teammate or review agent would approve the change as a net improvement
+</verification>
 
 ## Related references
 
+<references>
+
 - [`orchestration-patterns.md`](../../references/orchestration-patterns.md) (avoid meta-orchestrators; keep changes review-sized)
+</references>

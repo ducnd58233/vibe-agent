@@ -1,5 +1,7 @@
 # References router
 
+<routing>
+
 Lookup table for shared checklists and pattern docs under this folder. These files support skills (they are not Agent Skills `SKILL.md`).
 
 **After you add, rename, or remove a reference file, update this table in the same change.**
@@ -32,3 +34,4 @@ Lookup table for shared checklists and pattern docs under this folder. These fil
 | Routing fixtures: intent → expected asset, checked by `/doctor` | [`routing-evals.md`](routing-evals.md) | `agent-systems-auditor`, `using-agent-skills` |
 
 **Workspace-specific tooling** is indexed in [`../stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md). Checklists here stay generic; load matching `*.md` profiles from that router when needed.
+</routing>

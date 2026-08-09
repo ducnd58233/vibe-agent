@@ -7,15 +7,9 @@ disable-model-invocation: true
 
 # AI Model Engineering
 
-## What
-
-Engineer AI/ML model systems from problem framing through data, baselines, training/adaptation, evaluation, documentation, serving, and monitoring.
-
-## Why
-
-AI systems fail when teams optimize model code while ignoring data quality, baselines, leakage, reproducibility, slice performance, safety, latency, cost, and post-deploy drift. This skill keeps model work evidence-based and production-aware.
-
 ## How
+
+<procedure>
 
 1. **Load context**
    - Inspect manifests, notebooks, data/model docs, train/eval scripts, inference code, configs, and monitoring docs.
@@ -43,14 +37,11 @@ AI systems fail when teams optimize model code while ignoring data quality, base
    - Define owners, alert thresholds, triage playbook, retraining trigger, and retirement criteria.
 8. **Document**
    - Produce experiment report, model card, dataset card, evaluation report, deployment notes, and unresolved risks.
-
-## When
-
-Use for model implementation, fine-tuning, training scripts, inference services, evaluations, model/dataset documentation, and monitoring design across AI domains.
-
-Do not use for generic data analysis only; use [`mlops-lifecycle`](../mlops-lifecycle/SKILL.md) when the main work is pipeline/registry/deployment operations.
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 - Pair with [`ai-research-methodology`](../ai-research-methodology/SKILL.md) when the task requires literature review, reproduction, or novel method comparison.
 - Pair with [`research-with-citations`](../research-with-citations/SKILL.md) for current model/paper/tool research.
@@ -59,13 +50,22 @@ Do not use for generic data analysis only; use [`mlops-lifecycle`](../mlops-life
 - Pair with [`observability-monitoring`](../observability-monitoring/SKILL.md) for dashboards, alerts, and telemetry implementation.
 - Hand off production pipelines, model registry, serving infrastructure, CI/CD/CT, and drift monitoring to [`mlops-lifecycle`](../mlops-lifecycle/SKILL.md); this skill owns model design, training/adaptation, evaluation, and model/data documentation.
 
+Use for model implementation, fine-tuning, training scripts, inference services, evaluations, model/dataset documentation, and monitoring design across AI domains.
+Do not use for generic data analysis only; use [`mlops-lifecycle`](../mlops-lifecycle/SKILL.md) when the main work is pipeline/registry/deployment operations.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: Read, Grep, Glob, Edit; Shell for repo-documented tests/evals/train dry-runs.
 - Paths: model source, configs, evals, docs, manifests, notebooks, monitoring configs; do not read secrets or sensitive datasets unless explicitly authorized.
 - Ask before launching expensive training, GPU/cloud jobs, dataset mutation, model publication, production deployment, or external data upload.
+</required>
 
 ## Verification
+
+<verification>
 
 - [ ] Task, baseline, metrics, and guardrails are explicit.
 - [ ] Data source, split, leakage, license, and quality risks are documented.
@@ -74,3 +74,4 @@ Do not use for generic data analysis only; use [`mlops-lifecycle`](../mlops-life
 - [ ] Serving plan includes latency/cost/resource and rollback constraints.
 - [ ] Monitoring signals, owner, thresholds, and retraining/retirement criteria are defined.
 - [ ] Model card and dataset card are updated when applicable.
+</verification>

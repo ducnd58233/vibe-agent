@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories that train, evaluate, register, deploy, monitor, or retrain machine-learning models, including classical ML, deep learning, batch inference, online inference, feature pipelines, and model governance.
 
 ## When to load
@@ -10,8 +12,11 @@ Applies to consumer repositories that train, evaluate, register, deploy, monitor
 - Adding CI/CD/CT for models, datasets, features, prompts, or evaluation suites
 - Implementing model monitoring, drift detection, lineage, reproducibility, promotion, rollback, or A/B tests
 - Integrating MLflow, Kubeflow, KServe, Airflow, Dagster, Prefect, DVC, Feast, or cloud ML platforms
+</routing>
 
 ## Detection
+
+<context>
 
 - `mlflow`, `kubeflow`, `kserve`, `airflow`, `dagster`, `prefect`, `dvc`, `feast`, `bentoml`, `ray`, `sklearn`, `pytorch`, `tensorflow`
 - Paths such as `models/`, `notebooks/`, `pipelines/`, `features/`, `training/`, `inference/`, `data/`, `evals/`
@@ -32,14 +37,20 @@ Applies to consumer repositories that train, evaluate, register, deploy, monitor
 - Keep notebooks exploratory; production training/evaluation should be scripts/pipelines with deterministic configs
 - Promote models through dev/staging/prod with explicit gates and rollback to previous model version
 - Keep online inference code thin and observable; keep heavy training/data work in pipelines
+</context>
 
 ## Commands
+
+<procedure>
 
 - Use repo-documented ML commands first
 - Typical examples: `pytest`, `python -m <train>`, `mlflow ui`, `dvc repro`, `dvc status`, `kubectl apply --dry-run=server`, `kfp` pipeline validation
 - Never launch expensive training, cloud jobs, or production deployment without explicit approval
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - Do not promote a model without evaluation results, lineage, artifact version, and rollback path
 - Do not couple notebooks directly to production jobs without extracting deterministic scripts
@@ -52,11 +63,15 @@ Applies to consumer repositories that train, evaluate, register, deploy, monitor
 - Gate model deployment on automated evaluation and human approval for high-impact decisions
 - Track model lineage from dataset/version to artifact to deployment
 - Add shadow/canary/A-B rollout where model behavior risk is significant
+</required>
 
 ## References
+
+<references>
 
 - https://docs.cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning
 - https://mlflow.org/docs/latest/index.html
 - https://www.mlflow.org/docs/latest/ml/tracking
 - https://www.mlflow.org/docs/latest/ml/model-registry/workflow/
 - https://www.kubeflow.org/docs/
+</references>

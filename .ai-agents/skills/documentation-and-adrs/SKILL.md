@@ -9,9 +9,14 @@ disable-model-invocation: true
 
 ## Overview
 
+<context>
+
 Document decisions, not just code. The most valuable documentation captures the *why* — the context, constraints, and considerations that led to a decision. Code shows *what* was built; documentation explains *why it was built this way* and *what alternatives were considered*. This context is essential for future humans and agents working in the codebase.
+</context>
 
 ## When to Use
+
+<routing>
 
 - Making a significant architectural decision
 - Choosing between competing approaches
@@ -21,8 +26,11 @@ Document decisions, not just code. The most valuable documentation captures the 
 - When you find yourself explaining the same thing repeatedly
 
 **When NOT to use:** Don't document obvious code. Don't add comments that restate what the code already says. Don't write docs for throwaway prototypes.
+</routing>
 
 ## Architecture Decision Records (ADRs)
+
+<rules>
 
 ADRs capture the reasoning behind significant technical decisions. They're the highest-value documentation you can write.
 
@@ -90,8 +98,11 @@ PROPOSED → ACCEPTED → (SUPERSEDED or DEPRECATED)
 
 - **Don't delete old ADRs.** They capture historical context.
 - When a decision changes, write a new ADR that references and supersedes the old one.
+</rules>
 
 ## Inline Documentation
+
+<context>
 
 ### When to Comment
 
@@ -188,8 +199,11 @@ paths:
         '422':
           description: Validation error
 ```
+</context>
 
 ## README Structure
+
+<procedure>
 
 Every project should have a README that covers:
 
@@ -219,8 +233,11 @@ Link to ADRs for details.
 ## Contributing
 How to contribute, coding standards, PR process.
 ```
+</procedure>
 
 ## Changelog Maintenance
+
+<context>
 
 For shipped features:
 
@@ -238,8 +255,11 @@ For shipped features:
 ### Changed
 - Task list now loads 50 items per page (was 20) for better UX (#126)
 ```
+</context>
 
 ## Documentation for Agents
+
+<rules>
 
 Special consideration for AI agent context:
 
@@ -247,8 +267,11 @@ Special consideration for AI agent context:
 - **Spec files** — Keep specs updated so agents build the right thing
 - **ADRs** — Help agents understand why past decisions were made (prevents re-deciding)
 - **Inline gotchas** — Prevent agents from falling into known traps
+</rules>
 
 ## Common Rationalizations
+
+<antipatterns>
 
 | Rationalization | Reality |
 |---|---|
@@ -267,8 +290,11 @@ Special consideration for AI agent context:
 - TODO comments that have been there for weeks
 - No ADRs in a project with significant architectural choices
 - Documentation that restates the code instead of explaining intent
+</antipatterns>
 
 ## Verification
+
+<verification>
 
 After documenting:
 
@@ -278,7 +304,11 @@ After documenting:
 - [ ] Known gotchas are documented inline where they matter
 - [ ] No commented-out code remains
 - [ ] Rules files (CLAUDE.md etc.) are current and accurate
+</verification>
 
 ## Related references
 
+<references>
+
 - [`orchestration-patterns.md`](../../references/orchestration-patterns.md) (when to document new workflows vs code-only changes)
+</references>

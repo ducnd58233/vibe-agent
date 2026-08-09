@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories building backend services with NestJS: modules and dependency injection, controllers and providers, pipes, guards, interceptors, filters, and the transport layers Nest supports (HTTP, microservices, GraphQL, WebSockets). Compose with [`lang-typescript.md`](lang-typescript.md) for type-system work and [`lang-nodejs.md`](lang-nodejs.md) for runtime behavior.
 
 ## When to load
@@ -11,8 +13,11 @@ Applies to consumer repositories building backend services with NestJS: modules 
 - Request pipeline work: validation pipes, guards, interceptors, exception filters, middleware
 - Configuration, lifecycle hooks, or graceful shutdown
 - Testing Nest units and end-to-end with the testing module
+</routing>
 
 ## Detection
+
+<context>
 
 - `package.json` depends on `@nestjs/core`, `@nestjs/common`
 - `nest-cli.json`, `src/main.ts` calling `NestFactory`
@@ -36,16 +41,22 @@ Non-exhaustive examples. Any package here may be renamed, deprecated, or replace
 - Organize by feature module, each owning its controllers, providers, and DTOs; shared code goes in an explicit shared module
 - DTOs define the transport contract; entities define persistence. Keep them separate even when the fields overlap
 - Generate scaffolding with the Nest CLI rather than hand-writing wiring
+</context>
 
 ## Commands
+
+<procedure>
 
 Use repo-documented commands first. Typical examples:
 
 - Run: `nest start --watch` or the repo's dev script
 - Build: `nest build`
 - Test: `jest` unit runs and the repo's end-to-end configuration
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - Keep controllers thin: parse, delegate, return. Business logic belongs in providers, not in the request handler
 - Validate at the edge with a pipe rather than inside services; a service should be able to trust its inputs
@@ -62,10 +73,14 @@ Use repo-documented commands first. Typical examples:
 - Never return an entity containing secrets or password hashes; use an explicit response DTO or serialization interceptor
 - Set timeouts and bound payload size at the adapter level
 - Watch for N+1 queries introduced by lazy relations in the ORM; verify with query logging
+</required>
 
 ## References
+
+<references>
 
 - https://docs.nestjs.com/
 - https://docs.nestjs.com/fundamentals/injection-scopes
 - https://docs.nestjs.com/techniques/validation
 - https://docs.nestjs.com/fundamentals/testing
+</references>

@@ -9,15 +9,9 @@ disable-model-invocation: true
 
 # Evidence-Based Analysis
 
-## What
-
-Turn research evidence into a transparent recommendation with criteria, comparison, confidence, and dissent capture.
-
-## Why
-
-Teams often jump from evidence to conclusion without showing weighting, uncertainty, or source quality. This workflow makes reasoning auditable.
-
 ## How
+
+<procedure>
 
 1. FRAME
    - Define decision objective, constraints, and criteria up front.
@@ -37,25 +31,29 @@ Confidence labels per conclusion:
 - `MEDIUM`: mostly consistent with minor gaps
 - `LOW`: limited or indirect evidence
 - `UNVERIFIED`: missing direct supporting evidence
-
-## When
-
-Use for:
-- Option comparisons
-- Architecture or tool selection
-- Tradeoff memos / ADR preparation
-
-Avoid when:
-- No evidence exists yet (run research first).
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 - Input source typically comes from [`research-with-citations`](../research-with-citations/SKILL.md).
 - Hand off to [`idea-refine`](../idea-refine/SKILL.md) for alternative generation.
 - Hand off to [`spec-driven-development`](../spec-driven-development/SKILL.md) when a recommendation becomes implementation scope.
 - Hand off to [`documentation-and-adrs`](../documentation-and-adrs/SKILL.md) for final decision records.
 
+Use for:
+- Option comparisons
+- Architecture or tool selection
+- Tradeoff memos / ADR preparation
+Avoid when:
+- No evidence exists yet (run research first).
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: `Read`, `Grep`, `Glob`, `WebSearch`, `WebFetch`
 - Authority: read-only analysis and synthesis.
+</required>

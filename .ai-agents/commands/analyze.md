@@ -10,33 +10,28 @@ Primary persona: [`data-analyst`](../agents/data-analyst.md).
 
 ## Inputs
 
+<inputs>
+
 - Existing digest/report, or scoped evidence set
 - Decision objective and constraints
+</inputs>
 
 ## Required output
+
+<outputs>
 
 1. Decision frame
 2. Comparison table including `Source`
 3. Recommendation with alternatives
 4. Confidence per conclusion (`HIGH` / `MEDIUM` / `LOW` / `UNVERIFIED`)
-
-## What
-
-Transform gathered evidence into a recommendation with confidence labels.
-
-## Why
-
-Makes tradeoff logic transparent and auditable.
-
-## How
-
-Use the existing input/output contract and evidence-based analysis flow.
-
-## When
-
-Invoke after research/digest is available and a decision is required.
+</outputs>
 
 ## Routing & discovery
 
+<routing>
+
 - Use when comparing options with evidence.
 - Do not use when source collection is incomplete.
+
+Invoke after research/digest is available and a decision is required.
+</routing>

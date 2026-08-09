@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories building native iOS applications with Swift, SwiftUI or UIKit, Swift concurrency, Observation/Combine, accessibility, performance, and App Store release workflows.
 
 ## When to load
@@ -9,8 +11,11 @@ Applies to consumer repositories building native iOS applications with Swift, Sw
 - iOS screen, view model, navigation, persistence, networking, concurrency, or platform integration work
 - SwiftUI, UIKit, async/await, TaskGroup, actors, Observation, Combine, Core Data/SwiftData, or Xcode project changes
 - iOS performance, accessibility, lifecycle, permission, deep-link, push, or release decisions
+</routing>
 
 ## Detection
+
+<context>
 
 - `.xcodeproj`, `.xcworkspace`, `Package.swift`, `Podfile`, `Cartfile`
 - `Sources/`, `App/`, `*.swift`, `Info.plist`, `Assets.xcassets`
@@ -30,15 +35,21 @@ Applies to consumer repositories building native iOS applications with Swift, Sw
 - Keep view rendering separate from networking, persistence, and business orchestration
 - Use `@MainActor` deliberately for UI state; keep heavy work off the main actor
 - Keep platform capabilities, entitlements, permissions, background modes, and deep links explicit
+</context>
 
 ## Commands
+
+<procedure>
 
 - `xcodebuild test -scheme <Scheme> -destination <Destination>`
 - `xcodebuild build -scheme <Scheme> -destination <Destination>`
 - `swift test`
 - `swift build`
+</procedure>
 
 ## Render verification (MUST)
+
+<required>
 
 `xcodebuild test` exiting 0 means its assertions passed, not that a screen rendered. Where a task claims a screen works, verify it — see [`mobile-ui-verification.md`](../references/mobile-ui-verification.md).
 
@@ -66,11 +77,15 @@ xcrun simctl spawn booted log show --last 2m   --predicate "eventType == 'faultE
 - Profile startup, scrolling, memory, and main-thread stalls with Instruments
 - Validate accessibility labels, dynamic type, VoiceOver order, reduced motion, and color contrast
 - Protect secrets with Keychain/secure storage; validate deep links, pasteboard, WebViews, and ATS assumptions
+</required>
 
 ## References
+
+<references>
 
 - https://developer.apple.com/documentation/swiftui
 - https://developer.apple.com/documentation/swift/concurrency
 - https://developer.apple.com/documentation/Observation
 - https://developer.apple.com/accessibility/
 - https://developer.apple.com/documentation/xcode/understanding-and-improving-swiftui-performance
+</references>

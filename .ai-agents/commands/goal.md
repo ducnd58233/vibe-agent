@@ -8,11 +8,16 @@ Follow [`goal-driven-delivery`](../skills/goal-driven-delivery/SKILL.md) and [`r
 
 ## Inputs
 
+<inputs>
+
 - User objective (may be ambiguous at first)
 - Optional constraints (deadline, stack, out-of-scope)
 - Optional existing artifacts (`docs/<slug>/SPEC.md`, `TASKS.md`)
+</inputs>
 
 ## Runtime is required (MUST)
+
+<required>
 
 `/goal` runs on the runtime. It does not have a markdown-only mode. This section is the
 **canonical statement** of that rule for the whole delivery pipeline; `/build`, `/test`,
@@ -92,8 +97,11 @@ blocker attempts, because neither can be moved by another model turn.
   `vibe-agent memory confirm --id <id>`; the model cannot confirm its own.
 - **Never store a credential.** The policy filter rejects credential-shaped candidates before they
   reach disk. Do not work around it.
+</required>
 
 ## Completion condition
+
+<verification>
 
 **The run is done when `vibe-agent run status` reports the `done` terminal node, and not before.**
 The list below is what the graph requires to get there; it is a reading aid, not a second checklist
@@ -111,8 +119,11 @@ Stop only when:
 7. The human confirms satisfaction.
 
 Merge to `main` only after **GO** and **explicit human approval** ([`build.md`](build.md), [`ship.md`](ship.md)).
+</verification>
 
 ## Phase 0 — Intake (MUST run first)
+
+<procedure>
 
 1. Restate the objective and list unknowns.
 2. **Ask** focused questions when requirements are ambiguous or conflicting ([`karpathy-guardrails`](../skills/karpathy-guardrails/SKILL.md), [`AGENTS.md`](../../AGENTS.md)). Do not implement until clarified.
@@ -174,15 +185,21 @@ For each **incomplete** task in `TASKS.md`:
 - **Three** failed ship cycles on the same blocker → stop; report root cause; ask human.
 
 Optional personas (user or phase invokes; no persona-to-persona chains): [`architect-planner`](../agents/architect-planner.md), [`test-engineer`](../agents/test-engineer.md), [`code-reviewer`](../agents/code-reviewer.md), plus conditional specialists in [`ship.md`](ship.md).
+</procedure>
 
 ## Hooks and git
+
+<references>
 
 - Commit attribution stripped by [`strip-ai-attribution`](../hooks/strip-ai-attribution.sh) when link script installed.
 - UI guard: [`design-token-guard.py`](../hooks/design-token-guard.py) when configured in workspace hooks.
 - Disclosure guard: [`sensitive-data-guard.py`](../hooks/sensitive-data-guard.py) when configured in workspace hooks.
 - **Redact before writing `tmp/<slug>/` evidence.** PR comments, test output, and captured responses routinely carry tokens and personal data, and evidence records are written on every phase. See [`goal-verification-records.md`](../references/goal-verification-records.md) and [`secure-by-default`](../skills/secure-by-default/SKILL.md).
+</references>
 
 ## Required status reporting
+
+<rules>
 
 After each phase, report briefly:
 
@@ -202,27 +219,15 @@ GOAL STATUS:
 - Blockers: …
 - Next step: …
 ```
-
-## What
-
-Run full delivery from objective to shippable, verified work with explicit loops.
-
-## Why
-
-Reduces skipped clarification, unverified assumptions, premature merges, and multi-task PR bundling.
-
-## How
-
-Execute phases 0–7 above; re-read `docs/<slug>/` artifacts each phase.
-
-## When
-
-- User gives a goal/outcome, not a single-file edit.
-- End-to-end feature, migration, or multi-step fix with acceptance criteria.
-
-Do **not** use when a reviewed spec exists and the user only wants the next `/build` task.
+</rules>
 
 ## Routing & discovery
 
+<routing>
+
 - Master: [`ROUTER.md`](../ROUTER.md) → [`commands/ROUTER.md`](ROUTER.md).
 - Skill body: [`goal-driven-delivery`](../skills/goal-driven-delivery/SKILL.md).
+- User gives a goal/outcome, not a single-file edit.
+- End-to-end feature, migration, or multi-step fix with acceptance criteria.
+Do **not** use when a reviewed spec exists and the user only wants the next `/build` task.
+</routing>

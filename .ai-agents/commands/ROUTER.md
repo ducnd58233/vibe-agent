@@ -1,5 +1,7 @@
 # Commands router
 
+<routing>
+
 Slash-style prompts live in this folder as `*.md`. **Claude Code** commonly resolves them via `.claude/commands` linked to this folder; **Cursor** can resolve **`.cursor/commands`** to the same target when link-based discovery is configured (for example via [`scripts/link-ai-agents`](../../scripts/link-ai-agents.ps1)).
 
 **After you add, rename, or remove a command file, update this table in the same change.**
@@ -22,3 +24,4 @@ Slash-style prompts live in this folder as `*.md`. **Claude Code** commonly reso
 | Harden AI asset safety | [`harden.md`](harden.md) | Review permissions, hooks, tool boundaries |
 
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md).
+</routing>

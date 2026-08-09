@@ -14,6 +14,8 @@ named as documented. For model/skill behavioral evaluation patterns see
 
 ## Fixtures
 
+<references>
+
 | User intent | Expected family | Expected asset |
 |-------------|-----------------|----------------|
 | Write a failing test first, then implement | skill | [`test-driven-development`](../skills/test-driven-development/SKILL.md) |
@@ -37,8 +39,11 @@ named as documented. For model/skill behavioral evaluation patterns see
 | Security review: auth, injection, secrets, LLM tool surface | agent | [`security-auditor.md`](../agents/security-auditor.md) |
 | Isolated five-axis code review persona | agent | [`code-reviewer.md`](../agents/code-reviewer.md) |
 | Audit the agent/skill system itself | agent | [`agent-systems-auditor.md`](../agents/agent-systems-auditor.md) |
+</references>
 
 ## Maintenance
+
+<rules>
 
 - Add a row when you add a routable asset users will ask for by intent.
 - When you rename or move an asset, update its row in the same change; the `/doctor`
@@ -47,3 +52,4 @@ named as documented. For model/skill behavioral evaluation patterns see
 - Boundary-sensitive pairs are intentionally pinned here (model-engineering vs MLOps,
   context-engineering vs token-efficient-execution, product-lifecycle vs shipping/idea)
   so seam drift surfaces as a failing route.
+</rules>

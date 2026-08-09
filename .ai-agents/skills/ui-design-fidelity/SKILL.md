@@ -9,6 +9,8 @@ disable-model-invocation: true
 
 ## What
 
+<context>
+
 Produce UI whose visual choices trace to the project's design system rather than to model defaults, and prove it with deterministic checks instead of self-assessment.
 
 Inputs: the UI task, the project's registry (tokens + components), any design source. Outputs: implemented UI, a stated registry level, and verification evidence.
@@ -23,8 +25,11 @@ Two consequences shape this skill:
 - **Verification:** benchmarks that gate on *zero* automated accessibility failures plus explicit assertions catch what model self-review misses ([microsoft/a11y-llm-eval](https://github.com/microsoft/a11y-llm-eval)). Frontier models still ship measurable a11y defects unaided ([A11YN](https://arxiv.org/html/2510.13914v1)).
 
 Non-goals: this skill does not choose a brand identity, replace a designer, or restructure an existing design system.
+</context>
 
 ## How
+
+<procedure>
 
 ### 1. Load the registry (do this before designing)
 
@@ -88,27 +93,33 @@ Use [`browser-testing-with-devtools`](../browser-testing-with-devtools/SKILL.md)
 - Zero WCAG failures, or each remaining failure explained and accepted
 
 If no browser is available, say so explicitly and mark the visual and a11y checks `UNVERIFIED` with the reason. Do not assert visual correctness you did not observe.
-
-## When
-
-Use when building or reshaping user-facing UI, when output looks generic, when auditing screens for design-system drift, or when a UI change needs evidence before review.
-
-Use [`frontend-ui-engineering`](../frontend-ui-engineering/SKILL.md) alone for structural UI work with no visual-design question. Use [`product-design-systems`](../product-design-systems/SKILL.md) when the task is design-tool handoff (Figma/Canva/MCP) rather than generation quality.
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 - **Use when:** generating new UI, redesigning existing screens, auditing for AI aesthetic, establishing a registry in a repo that lacks one.
 - **Do not use when:** the change is backend-only, CLI-only, or a pure copy edit with no visual decision.
 - Invoked directly by [`/design`](../../commands/design.md); consulted by `product-design-reviewer` during [`/ship`](../../commands/ship.md).
 
+Use when building or reshaping user-facing UI, when output looks generic, when auditing screens for design-system drift, or when a UI change needs evidence before review.
+Use [`frontend-ui-engineering`](../frontend-ui-engineering/SKILL.md) alone for structural UI work with no visual-design question. Use [`product-design-systems`](../product-design-systems/SKILL.md) when the task is design-tool handoff (Figma/Canva/MCP) rather than generation quality.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - **Tools:** Read, Grep, Glob, Edit; Bash only for repo-documented lint/test/audit commands; browser or MCP tools only when configured and authorized.
 - **Paths:** UI source, components, tokens, stories, tests, docs. Never read credential or secret material.
 - **Ask before:** MCP asset downloads, adding dependencies, restructuring an existing design system, or bulk-rewriting components outside the task scope.
 - **Grounding:** never describe a rendered result you did not observe; report `ACCESS-FAILED: <path>` for inaccessible inputs.
+</required>
 
 ## Verification
+
+<verification>
 
 - [ ] Registry source named, or degradation level stated explicitly.
 - [ ] Any external design source was consulted only at level 4, treated as context, and its proposal confirmed.
@@ -120,8 +131,11 @@ Use [`frontend-ui-engineering`](../frontend-ui-engineering/SKILL.md) alone for s
 - [ ] Render evidence captured at supported breakpoints, or marked `UNVERIFIED` with reason.
 - [ ] Accessibility audit shows zero failures, or each remaining failure is explained.
 - [ ] Divergences from the registry documented.
+</verification>
 
 ## Related references
+
+<references>
 
 - [`ui-component-registry.md`](../../references/ui-component-registry.md), [`design-to-code-patterns.md`](../../references/design-to-code-patterns.md), [`accessibility-checklist.md`](../../references/accessibility-checklist.md)
 - [`frontend-ui-engineering`](../frontend-ui-engineering/SKILL.md), [`product-design-systems`](../product-design-systems/SKILL.md), [`browser-testing-with-devtools`](../browser-testing-with-devtools/SKILL.md)
@@ -134,3 +148,4 @@ Use [`frontend-ui-engineering`](../frontend-ui-engineering/SKILL.md) alone for s
 - https://claude.com/blog/improving-frontend-design-through-skills
 - https://www.intodesignsystems.com/blog/design-system-not-ready-for-ai-agents
 - https://www.w3.org/TR/wcag/
+</references>

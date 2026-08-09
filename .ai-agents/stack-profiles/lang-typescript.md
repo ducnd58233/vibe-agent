@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories writing TypeScript or JavaScript at the language level: the type system, module resolution, compiler and lint configuration, and the JS semantics that survive compilation. Runtime concerns live in [`lang-nodejs.md`](lang-nodejs.md); framework concerns live in the matching frontend or backend profile.
 
 ## When to load
@@ -11,8 +13,11 @@ Applies to consumer repositories writing TypeScript or JavaScript at the languag
 - `tsconfig.json`, module resolution, or build-output changes
 - Publishing a package's type surface, or consuming an untyped dependency
 - Migrating JavaScript to TypeScript, or tightening compiler strictness
+</routing>
 
 ## Detection
+
+<context>
 
 - `tsconfig.json`, `jsconfig.json`, `*.ts`, `*.tsx`, `*.mts`, `*.cts`
 - `package.json` with `types`/`typings`, `exports`, or a `typescript` dependency
@@ -35,16 +40,22 @@ Non-exhaustive examples. Any tool here may be renamed, deprecated, or replaced. 
 - In a monorepo, resolve which `tsconfig` actually applies to the file being edited; project references change the answer
 - Keep the public surface of a package explicit through `exports` and emitted declarations, not through deep imports
 - Match the file extension to the module system in use; `.mts`/`.cts` exist to disambiguate
+</context>
 
 ## Commands
+
+<procedure>
 
 Use repo-documented commands first. Typical examples:
 
 - Typecheck: `tsc --noEmit` (or the repo's typecheck script)
 - Lint: the repo's lint script; type-aware rules need the project's `tsconfig`
 - Test: the repo's test script
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - `any` erases checking and spreads silently. Prefer `unknown` at boundaries and narrow explicitly; when `any` is genuinely required, scope it as tightly as possible and say why
 - Type assertions (`as`) and non-null assertions (`!`) claim knowledge the compiler does not have. Each one is a claim you must be able to justify; prefer narrowing, discriminated unions, or a schema check
@@ -60,10 +71,14 @@ Use repo-documented commands first. Typical examples:
 - Avoid `eval`, dynamic `Function`, and untrusted dynamic `import()` targets
 - Prefer structural narrowing over deep runtime clones in hot paths
 - Type-level complexity has a compile-time cost; deeply recursive conditional types slow editors and CI
+</required>
 
 ## References
+
+<references>
 
 - https://www.typescriptlang.org/docs/handbook/intro.html
 - https://www.typescriptlang.org/tsconfig
 - https://typescript-eslint.io/
 - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference
+</references>

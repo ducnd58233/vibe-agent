@@ -6,6 +6,8 @@ Quick reference for application security. Use alongside the [`security-and-harde
 
 ## Table of Contents
 
+<routing>
+
 - [Pre-Commit Checks](#pre-commit-checks)
 - [Authentication](#authentication)
 - [Authorization](#authorization)
@@ -18,14 +20,20 @@ Quick reference for application security. Use alongside the [`security-and-harde
 - [LLM / Agent Surfaces](#llm--agent-surfaces)
 - [Error Handling](#error-handling)
 - [OWASP Top 10 Quick Reference](#owasp-top-10-quick-reference)
+</routing>
 
 ## Pre-Commit Checks
+
+<verification>
 
 - [ ] No secrets in code (`git diff --cached` review; use secret scanners in CI)
 - [ ] `.gitignore` covers: `.env`, `.env.local`, `*.pem`, `*.key`
 - [ ] `.env.example` uses placeholders only
+</verification>
 
 ## Authentication
+
+<rules>
 
 - [ ] Passwords hashed with bcrypt (≥12 rounds), scrypt, or argon2
 - [ ] Session cookies: `httpOnly`, `secure`, `sameSite` appropriate for your deployment
@@ -51,8 +59,11 @@ Quick reference for application security. Use alongside the [`security-and-harde
 - [ ] SQL: parameterized queries (if any SQL in stack)
 - [ ] HTML output escaped; avoid raw HTML sinks without sanitization
 - [ ] Redirect URLs allowlisted (prevent open redirect)
+</rules>
 
 ## Security Headers
+
+<context>
 
 Deploy with sensible defaults (adjust for your app):
 
@@ -68,15 +79,21 @@ Permissions-Policy: camera=(), microphone=(), geolocation=()
 ## CORS Configuration
 
 Restrict allowed origins in production; never use wildcard origins with credentials.
+</context>
 
 ## Data Protection
+
+<rules>
 
 - [ ] Sensitive fields omitted from API responses (`password_hash`, internal IDs if needed)
 - [ ] No secrets or full PII in logs or analytics
 - [ ] HTTPS for external traffic; TLS to the database when the provider requires it
 - [ ] Backups encrypted at rest if regulated data exists
+</rules>
 
 ## Dependency Security
+
+<context>
 
 ```bash
 # JavaScript
@@ -89,8 +106,11 @@ pip-audit  # or uv tool run pip-audit if configured
 ```
 
 Keep lockfiles committed; review major upgrades.
+</context>
 
 ## Document and NoSQL Stores
+
+<rules>
 
 - [ ] No raw user JSON merged into query/update filters (NoSQL injection)
 - [ ] Avoid server-side JS in queries, unbounded user regex, or user-built aggregation pipelines without allowlists
@@ -102,12 +122,18 @@ Keep lockfiles committed; review major upgrades.
 - [ ] Tool APIs allowlisted; no arbitrary shell or DB from model output
 - [ ] Prompt injection defenses: system/developer boundaries, output validation for actions
 - [ ] Rate limits and cost caps on LLM routes; audit logs for tool invocations
+</rules>
 
 ## Error Handling
 
+<context>
+
 Production responses must not leak stack traces, database internals, or secrets.
+</context>
 
 ## OWASP Top 10 Quick Reference
+
+<rules>
 
 | # | Vulnerability | Prevention |
 |---|---------------|------------|
@@ -125,3 +151,4 @@ Production responses must not leak stack traces, database internals, or secrets.
 ---
 
 Repository-specific layering (client/server validation libraries, driver notes): add or follow entries in profiles linked from [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md).
+</rules>

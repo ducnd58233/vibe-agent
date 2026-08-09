@@ -9,11 +9,16 @@ disable-model-invocation: true
 
 ## Overview
 
+<context>
+
 Apply **modular bounded contexts** with **clear layering**: transport code stays thin, orchestration lives in services, persistence is isolated behind repositories, and infrastructure (DB drivers, queues, outbound HTTP) stays at the rim. Loose coupling favors **explicit contracts** between modules—not shared singletons or cross-imports into sibling feature internals.
 
 **Relationship:** [`api-and-interface-design`](../api-and-interface-design/SKILL.md) defines **external contracts** (HTTP shapes, versioned APIs, boundary validation). **This skill** owns **internal module layout**, **transaction borders**, **repository scope**, and **type mapping between layers.**
+</context>
 
 ## When to Use
+
+<routing>
 
 - New service, bounded context, or API module skeleton.
 - Refactoring a “fat handler” into services and repositories.
@@ -21,8 +26,11 @@ Apply **modular bounded contexts** with **clear layering**: transport code stays
 - Code review targeting coupling, misplaced transactions, or repository sprawl.
 
 **When NOT to use:** Solely choosing REST vs GraphQL (see `api-and-interface-design`); client-only concerns (see `frontend-ui-engineering`).
+</routing>
 
 ## Target module layout
+
+<procedure>
 
 Adapt naming to repo conventions (Go packages, Rust modules, Java packages, Nest modules, FastAPI routers, …). Canonical **shape**:
 
@@ -46,8 +54,11 @@ Rules:
 1. **`infra/`**: technology adapters only—no business rules leaking upward without interfaces.
 2. **`config/`**: no feature logic—reads env/files and supplies typed config to composition root.
 3. **`modules/<context>/`**: one **bounded context** per folder; avoid importing another module’s **internal** subpackages—depend on **published ports** (interfaces) or shared **kernel** types when truly cross-cutting.
+</procedure>
 
 ## Layer responsibilities
+
+<rules>
 
 | Layer | Owns | Must not |
 |-------|------|----------|
@@ -79,8 +90,11 @@ Rules:
 - **Transport → service:** use **request/response DTOs** (structs, records, Pydantic models, …) defined for the application boundary—not ORM entities leaking from handlers.
 - **Service → repository:** use **persistence types** (ORM models, row structs, DB schema shapes) **inside** the repository adapter; **map explicitly** between service-level types and persistence types in the service or in dedicated mappers colocated with the repository package.
 - **Never** return ORM entities directly from HTTP/gRPC handlers to clients.
+</rules>
 
 ## Data flow (happy path)
+
+<context>
 
 ```text
 Client
@@ -90,8 +104,11 @@ Client
     → Service: commit → map to response DTO
   → Controller: serialize response
 ```
+</context>
 
 ## Anti-patterns
+
+<antipatterns>
 
 | Smell | Fix |
 |-------|-----|
@@ -100,8 +117,11 @@ Client
 | `begin_transaction()` inside repo | Move to service or UoW injected into service |
 | Shared mutable statics between modules | Inject dependencies; interfaces |
 | DTO ≡ ORM entity | Introduce mapping layer |
+</antipatterns>
 
 ## Verification
+
+<verification>
 
 After structural work:
 
@@ -110,9 +130,13 @@ After structural work:
 - [ ] Each repository maps to **one** table/collection naming doc or invariant comment.
 - [ ] Modules do not circular-import sibling feature internals.
 - [ ] DTO types used at controller boundary differ from persistence types where ORM bleed was a risk.
+</verification>
 
 ## Related references
+
+<references>
 
 - [`api-and-interface-design`](../api-and-interface-design/SKILL.md) — public contracts and evolution.
 - [`security-and-hardening`](../security-and-hardening/SKILL.md), [`references/security-checklist.md`](../../references/security-checklist.md).
 - [`test-driven-development`](../test-driven-development/SKILL.md) — fixtures for services with fake repos.
+</references>

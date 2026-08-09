@@ -7,15 +7,9 @@ disable-model-invocation: true
 
 # AI Research Methodology
 
-## What
-
-Research AI/ML methods rigorously and convert findings into reproducible experiments or implementation plans.
-
-## Why
-
-AI research changes quickly. Reliable adoption requires source quality checks, benchmark skepticism, reproduction planning, ablations, dataset/task alignment, and clear handoff from paper claims to engineering constraints.
-
 ## How
+
+<procedure>
 
 1. **Scope the research question**
    - Define target task/domain, constraints, baseline, success metric, deployment context, and what decision the research must inform.
@@ -38,30 +32,37 @@ AI research changes quickly. Reliable adoption requires source quality checks, b
 7. **Handoff to engineering**
    - Produce recommendation, selected method, rejected alternatives, implementation risks, data requirements, eval plan, monitoring implications, and open questions.
    - Pair with [`ai-model-engineering`](../ai-model-engineering/SKILL.md) for implementation.
-
-## When
-
-Use before adopting new AI methods, model families, datasets, benchmarks, evaluation frameworks, or papers; use when a task needs research-grade evidence rather than direct implementation.
-
-Do not use for ordinary coding or generic web research that is not AI/ML-method specific.
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 - Pair with [`ai-model-engineering`](../ai-model-engineering/SKILL.md) for build/train/eval/monitor follow-through.
 - Pair with [`evidence-based-analysis`](../evidence-based-analysis/SKILL.md) for final tradeoff recommendation.
 - Pair with [`mlops-lifecycle`](../mlops-lifecycle/SKILL.md) when research affects production model lifecycle.
 - Use [`../../references/ai-model-development-patterns.md`](../../references/ai-model-development-patterns.md) for lifecycle/evaluation/documentation checks.
 
+Use before adopting new AI methods, model families, datasets, benchmarks, evaluation frameworks, or papers; use when a task needs research-grade evidence rather than direct implementation.
+Do not use for ordinary coding or generic web research that is not AI/ML-method specific.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: Read, Grep, Glob, WebSearch, WebFetch; Shell only for repo-documented reproduction/eval commands.
 - Paths: papers, docs, eval artifacts, notebooks, model configs, experiment reports; no secrets or sensitive datasets without explicit authorization.
 - Ask before downloading large models/datasets, using paid APIs, launching GPU/cloud jobs, or running long experiments.
+</required>
 
 ## Verification
+
+<verification>
 
 - [ ] Research question and decision target are explicit.
 - [ ] Sources are cited and source quality is graded.
 - [ ] Claims distinguish paper-reported, independently reproduced, and unverified results.
 - [ ] Reproduction/experiment plan has metric, data, compute, seed/config, and stop criteria.
 - [ ] Recommendation includes implementation, eval, safety, and monitoring implications.
+</verification>

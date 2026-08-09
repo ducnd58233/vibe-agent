@@ -1,5 +1,7 @@
 # Router (master index)
 
+<routing>
+
 Use this file to **choose which asset family** to open before implementing work. Each subfolder has its own **`ROUTER.md`** with a concrete lookup table.
 All assets are reusable and **domain-agnostic**; keep product-domain implementations in consumer repositories.
 
@@ -26,3 +28,4 @@ All assets are reusable and **domain-agnostic**; keep product-domain implementat
 **Permissions:** See [`PERMISSIONS.md`](PERMISSIONS.md) and align [`.claude/settings.json`](../.claude/settings.json) when assets need new tool patterns.
 
 **Meta:** How routing fits the skill system — [`skills/using-agent-skills/SKILL.md`](skills/using-agent-skills/SKILL.md).
+</routing>

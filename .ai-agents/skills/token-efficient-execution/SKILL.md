@@ -11,6 +11,8 @@ description: >-
 
 ## Overview
 
+<context>
+
 This skill applies practical token-efficiency rules without sacrificing correctness:
 
 - keep responses concise by default
@@ -19,20 +21,29 @@ This skill applies practical token-efficiency rules without sacrificing correctn
 - prefer deterministic outputs over verbose explanation in routine flows
 
 The objective is **net token savings with no quality regression**.
+</context>
 
 ## Inputs
+
+<inputs>
 
 - User task and acceptance criteria
 - Relevant repo files and routing docs
 - Execution context (interactive explanation vs automation/high-volume loop)
+</inputs>
 
 ## Outputs
+
+<outputs>
 
 - Minimal, actionable responses
 - Focused code/file edits with low churn
 - Verification evidence (tests/checks) instead of long narrative
+</outputs>
 
 ## When to use
+
+<routing>
 
 Use when:
 
@@ -44,8 +55,11 @@ Do not use when:
 
 - The user explicitly requests deep explanation, alternatives, or teaching mode.
 - Architectural decisions require richer tradeoff discussion.
+</routing>
 
 ## Core rules
+
+<procedure>
 
 1. **Concise by default**
    - Do not add greetings, praise, or unnecessary restatements.
@@ -69,36 +83,26 @@ Do not use when:
 3. Implement or analyze with minimal surface area.
 4. Verify using concrete checks.
 5. Report outcome in concise, high-signal form.
+</procedure>
 
 ## Verification
+
+<verification>
 
 - [ ] Output is concise and directly task-aligned.
 - [ ] No unsolicited scope expansion.
 - [ ] Verification evidence is present where applicable.
 - [ ] User-requested verbosity overrides are respected.
-
-## What
-
-A reusable skill for reducing token overhead in engineering workflows while
-maintaining correctness and verifiability.
-
-## Why
-
-Default assistant verbosity and unnecessary elaboration can inflate cost and
-noise, especially in high-frequency agent loops.
-
-## How
-
-Apply concise communication, strict scope boundaries, and verification-first
-reporting with explicit user override for deeper explanations.
-
-## When
-
-Invoke in high-volume or execution-focused workflows where concise outputs are
-beneficial and detail can remain on-demand.
+</verification>
 
 ## Routing & discovery
+
+<routing>
 
 - Use when output efficiency, low-noise delivery, and strict scope are primary.
 - Do not use as a hard cap when the user requests deep reasoning detail.
 - This skill governs **output** economy; to curate **input** context (which files/retrieval load into the window), use [`context-engineering`](../context-engineering/SKILL.md).
+
+Invoke in high-volume or execution-focused workflows where concise outputs are
+beneficial and detail can remain on-demand.
+</routing>

@@ -8,42 +8,30 @@ References: [Cursor hooks](https://docs.cursor.com), [Claude Code hooks](https:/
 
 ## What
 
+<context>
+
 - **Script path:** `.ai-agents/hooks/<script-name>.<ext>`
 - **Language:** Shell / PowerShell / Node — must be executable in CI and locally.
 - **Event:** Which hook event(s) invoke this script (`afterFileEdit`, `beforeShellExecution`, Claude-specific events, etc.).
 
 ---
-
-## Why
-
-- **Problem:** What automation or guardrail does this hook provide?
-- **Success criteria:** Valid JSON on stdout (for JSON protocols), exit code expectations.
-- **Non-goals:** …
-
----
-
-## How
-
-- **Stdin/stdout:** Summarize the JSON contract your script implements (link product docs).
-- **Exit codes:** Document success vs failure (`failClosed` implications in Cursor).
-- **Wiring:** Exact entries added to `hooks.json` or Claude `settings.json` (event + `command` path from repo root).
-
----
-
-## When
-
-- **Runs on:** Event name(s); optional matchers (tool name, glob).
-- **Does not run on:** …
-
----
+</context>
 
 ## Routing & discovery
+
+<routing>
 
 Hooks are not “invoked by intent” like skills — document **which events** and **which repos/teams** should enable this hook.
 
 ---
 
+- **Runs on:** Event name(s); optional matchers (tool name, glob).
+- **Does not run on:** …
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 Hook processes often run **outside** the model’s tool sandbox and may spawn shells.
 
@@ -66,3 +54,4 @@ When you add, rename, or remove a hook script in `hooks/`:
 2. Note which **`hooks.json`** / Claude settings entries reference the script.
 
 Same PR or commit as the new asset when possible.
+</required>

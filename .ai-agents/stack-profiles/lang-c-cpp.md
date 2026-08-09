@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories writing C or C++ at the language and toolchain level: memory and object lifetime, undefined behavior, build systems, sanitizers, ABI and FFI boundaries. Independent of any application framework; compose with a domain profile when one applies.
 
 ## When to load
@@ -11,8 +13,11 @@ Applies to consumer repositories writing C or C++ at the language and toolchain 
 - Build-system, cross-compilation, or dependency changes
 - Designing a C ABI for FFI to another language
 - Choosing or raising the language standard for a target
+</routing>
 
 ## Detection
+
+<context>
 
 - `CMakeLists.txt`, `Makefile`, `meson.build`, `BUILD.bazel`, `configure.ac`
 - Sources: `*.c`, `*.h`, `*.cc`, `*.cpp`, `*.cxx`, `*.hpp`, `*.ipp`
@@ -37,8 +42,11 @@ Non-exhaustive examples. Any tool here may be renamed, deprecated, or replaced. 
 - Common split: public headers under `include/`, implementation under `src/`, tests under `tests/`
 - Generate or locate `compile_commands.json` so analysis tools see real flags
 - Keep the language standard explicit in the build files, not implied by compiler defaults
+</context>
 
 ## Commands
+
+<procedure>
 
 Use repo-documented commands first. Typical examples:
 
@@ -46,8 +54,11 @@ Use repo-documented commands first. Typical examples:
 - Test: `ctest --test-dir build --output-on-failure`
 - Sanitizer build: configure a separate build directory with the sanitizer flags the repo defines
 - Static analysis: `clang-tidy` driven by `compile_commands.json`
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - Treat undefined behavior as a correctness bug, not a style issue: signed overflow, out-of-bounds access, use-after-free, strict-aliasing violations, uninitialized reads, data races
 - C++: prefer RAII and ownership types over manual `new`/`delete`; follow the rule of zero, and rule of three/five only when a type genuinely manages a resource
@@ -62,10 +73,14 @@ Use repo-documented commands first. Typical examples:
 - Validate integer conversions and container indices at trust boundaries
 - Measure before optimizing; compiler optimization level and build type change results substantially
 - Run the test suite under sanitizers in CI where the project supports it — sanitizer findings are defects even when tests pass
+</required>
 
 ## References
+
+<references>
 
 - https://en.cppreference.com/w/
 - https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
 - https://clang.llvm.org/docs/index.html
 - https://cmake.org/cmake/help/latest/
+</references>

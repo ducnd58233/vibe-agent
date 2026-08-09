@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories that manage hosts, Linux services, packages, users, filesystems, process supervision, configuration management, backups, shell automation, and operational runbooks.
 
 ## When to load
@@ -10,8 +12,11 @@ Applies to consumer repositories that manage hosts, Linux services, packages, us
 - Working with Ansible inventories/playbooks/roles or other configuration-management assets
 - Debugging service startup, logs, permissions, filesystem, network, package, or resource-limit issues
 - Writing runbooks for operators or on-call system administration
+</routing>
 
 ## Detection
+
+<context>
 
 - `ansible.cfg`, `inventory`, `playbooks/`, `roles/`, `group_vars/`, `host_vars/`
 - `systemd/`, `*.service`, `*.timer`, `*.socket`, `cron`, `scripts/*.sh`
@@ -31,16 +36,22 @@ Applies to consumer repositories that manage hosts, Linux services, packages, us
 - Keep host-specific values in inventory/group/host vars; keep reusable logic in roles or shared scripts
 - Prefer logging to stdout/stderr for supervised services; let systemd/container infrastructure collect logs
 - Document backup, restore, and rollback steps next to operational automation
+</context>
 
 ## Commands
+
+<procedure>
 
 - `ansible-lint`
 - `ansible-playbook --check`
 - `shellcheck <script>`
 - `systemd-analyze verify <unit>`
 - `journalctl -u <service>`
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - Do not run host-mutating commands against production without explicit target inventory, dry-run/plan, and approval
 - Do not store SSH keys, passwords, tokens, or vault secrets in plaintext
@@ -53,10 +64,14 @@ Applies to consumer repositories that manage hosts, Linux services, packages, us
 - Add resource limits, restart policy, health checks, and log rotation for long-running services
 - Keep backups encrypted, restorable, and periodically tested
 - Verify time sync, DNS, TLS renewal, disk pressure, memory pressure, and dependency service reachability
+</required>
 
 ## References
+
+<references>
 
 - https://docs.ansible.com/projects/ansible-core/devel/playbook_guide/playbooks_intro.html
 - https://docs.ansible.com/projects/ansible/latest/getting_started/index.html
 - https://www.freedesktop.org/software/systemd/man/latest/journalctl.html
 - https://docs.docker.com/compose
+</references>

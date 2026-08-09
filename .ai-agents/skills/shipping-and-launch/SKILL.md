@@ -9,19 +9,27 @@ disable-model-invocation: true
 
 ## Stack profile for current workspace
 
+<context>
+
 Cross-check detailed lists (generic guides; repo addenda in stack profile): [`references/security-checklist.md`](../../references/security-checklist.md), [`references/performance-checklist.md`](../../references/performance-checklist.md), [`references/accessibility-checklist.md`](../../references/accessibility-checklist.md).
 
 ## Overview
 
 Ship safely: reversible deploys, observable behavior, incremental exposure — not only “it worked locally.”
+</context>
 
 ## When to Use
+
+<routing>
 
 - First production deploy or high-risk change.
 - Data or infra migration.
 - Enabling new AI/tool paths for users.
+</routing>
 
 ## Pre-Launch Checklist (summary)
+
+<verification>
 
 ### Code quality
 
@@ -55,8 +63,11 @@ Ship safely: reversible deploys, observable behavior, incremental exposure — n
 ### Documentation
 
 - [ ] README/runbook updates; ADRs for architectural choices; changelog if user-facing.
+</verification>
 
 ## Feature Flags
+
+<context>
 
 Prefer flags to decouple **deploy** from **release**. Define owner and removal deadline; test both ON and OFF in CI when feasible.
 
@@ -73,8 +84,11 @@ Track API errors, p95 latency, pool usage, LLM/tool failure rates, and client We
 ## Rollback Plan
 
 Document: triggers (error rate, latency), steps (disable flag vs redeploy previous artifact), DB considerations (forward-only migrations policy), target time-to-recover.
+</context>
 
 ## Verification
+
+<verification>
 
 Before deploy:
 
@@ -84,29 +98,22 @@ Before deploy:
 After deploy:
 
 - [ ] Health OK; error and latency dashboards nominal; smoke critical flows.
-
-## What
-
-Defines a release-readiness and launch workflow with risk-aware checks and explicit rollout discipline.
-
-## Why
-
-Reduces avoidable release risk by making verification, rollback readiness, and decision criteria explicit.
-
-## How
-
-Follow the existing instructions in this file as the execution flow; this section maps them to template headings without changing behavior.
-
-## When
-
-Use for deployment planning, go/no-go decisions, and release hardening.
+</verification>
 
 ## Routing & discovery
+
+<routing>
 
 - Use when delivery scope includes rollout, launch, or release risk.
 - Do not use when work is still in early ideation/spec stages without ship scope.
 
+Use for deployment planning, go/no-go decisions, and release hardening.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: may require read/edit/test/build/deploy tools depending on project pipeline.
 - Authority: inherit session/tooling permissions; do not bypass environment safeguards or policy gates.
+</required>

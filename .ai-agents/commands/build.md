@@ -12,6 +12,8 @@ This repo does **not** ship a separate `incremental-implementation` skill; use e
 
 ## Git rules (MUST follow before and during every task)
 
+<procedure>
+
 `/build` implements work on **task branches only**. Merging to `main` (or the team default branch) is **out of scope** for `/build`.
 
 ### Same branch/PR vs new branch/PR
@@ -48,24 +50,14 @@ For **one** task only (then stop or ask before starting the next task on a new b
 9. Mark the task complete in `TASKS.md` if that file is in scope; report branch name and PR link if created. **Do not merge to `main`.**
 
 On failure: [`debugging-and-error-recovery`](../skills/debugging-and-error-recovery/SKILL.md).
-
-## What
-
-Implement the next planned task incrementally with TDD guardrails.
-
-## Why
-
-Maintains delivery momentum while minimizing regressions.
-
-## How
-
-Use the RED/GREEN + verify + commit loop defined above.
-
-## When
-
-Invoke when a task plan exists and coding should begin.
+</procedure>
 
 ## Routing & discovery
 
+<routing>
+
 - Use when moving from approved plan to implementation.
 - Do not use when requirements/spec remain unresolved.
+
+Invoke when a task plan exists and coding should begin.
+</routing>

@@ -5,6 +5,8 @@ It is intentionally **domain-agnostic** and should not contain product-domain lo
 
 ## Layout
 
+<context>
+
 | Subfolder   | Purpose |
 |------------|---------|
 | `skills/`  | Folders with `SKILL.md` (Agent Skills style); **stack-agnostic** workflows. |
@@ -21,8 +23,11 @@ It is intentionally **domain-agnostic** and should not contain product-domain lo
 | [`skills/ROUTER.md`](skills/ROUTER.md) (and `agents/`, `commands/`, `graphs/`, `hooks/`) | **Per-folder routers** — intent → asset; update tables when files change. |
 | [`skills/TEMPLATE.md`](skills/TEMPLATE.md) (and same in other folders) | **Authoring contract** — required sections for new assets. |
 | [`PERMISSIONS.md`](PERMISSIONS.md) | Claude **permissions / authority** vs [`.claude/settings.json`](../.claude/settings.json). |
+</context>
 
 ## Authoring and routing (agents MUST)
+
+<procedure>
 
 1. **Creating** a new asset: follow the folder’s **`TEMPLATE.md`** (What, Why, How, When, Routing & discovery, Permissions & authority).
 2. **After creating:** update that folder’s **`ROUTER.md`** table (same PR/commit) so use cases and paths stay accurate. From this toolkit repository root, run `bash scripts/check-ai-agents-routers.sh`, or on Windows `powershell -File scripts/check-ai-agents-routers.ps1`, to verify tables match disk (CI runs this on `.ai-agents` changes). If you changed `agents/*.md`, also run `scripts/link-ai-agents.*` and `powershell -File scripts/check-codex-assets.ps1` so Codex generated agents stay in sync. If you changed `graphs/*.yaml` or `schemas/*.json`, also run the graph and schema checks below.
@@ -45,8 +50,11 @@ The router check is deliberately dependency-free so it runs on a fresh clone. Th
 Skills stay **general** by default; for the **current workspace**, open [`stack-profiles/ROUTER.md`](stack-profiles/ROUTER.md) when present and read every profile file that applies to the task (see [`stack-profiles/TEMPLATE.md`](stack-profiles/TEMPLATE.md) when adding profiles).
 
 Root [`AGENTS.md`](../AGENTS.md) and [`.cursor/rules/000-project-standards.mdc`](../.cursor/rules/000-project-standards.mdc) restate these rules for tools that load them automatically.
+</procedure>
 
 ## How each tool uses this tree
+
+<rules>
 
 | Tool         | What it reads | How it connects to `.ai-agents` |
 |-------------|----------------|----------------------------------|
@@ -61,8 +69,11 @@ Root [`AGENTS.md`](../AGENTS.md) and [`.cursor/rules/000-project-standards.mdc`]
 - `opencode` applies this baseline via `opencode.json` `instructions` entries that include `AGENTS.md` and router docs.
 - `codex` applies this baseline via [`.codex/config.toml`](../.codex/config.toml) `model_instructions_file = "../AGENTS.md"` (paths in project config are relative to `.codex/`).
 - Keep always-on guidance concise; use skill routing for detail to avoid instruction bloat.
+</rules>
 
 ## Linking `skills` / `agents` / `commands`
+
+<procedure>
 
 Claude Code and Cursor can discover **skills** and **commands** through `.claude` / `.cursor` link paths. If your environment uses linked discovery paths, run the link script to create **symlinks** or **junctions**:
 
@@ -157,8 +168,11 @@ If you want another repository to reuse this setup without copying asset files:
 4. Keep a consumer-repo-specific `AGENTS.md` for product/domain constraints while shared workflows remain under `<toolkit-root>/.ai-agents`.
 5. Add or adapt tool config at the consumer root as needed (for example `.claude/settings.json`, `.cursor/hooks.json`, `.cursor/rules/`, `opencode.json`, `.codex/config.toml`)—the link script only wires `skills` / `agents` / `commands` discovery paths.
 6. Review the consumer repo `opencode.json` permission paths (`src/**`, `tests/**`, etc.) and adapt them to that repo layout.
+</procedure>
 
 ## Hooks (shared scripts)
+
+<rules>
 
 - Implement hook logic **once** under `.ai-agents/hooks/`.
 - Reference the same path from:
@@ -173,3 +187,4 @@ Do not duplicate script bodies in `.cursor/hooks/` unless a tool requires that p
 - **Cursor** project rules use `.cursor/rules/*.mdc` (see [Cursor rules](https://docs.cursor.com)). Keep tool-specific or editor-specific rules there.
 - **Claude Code** optional `rules/*.md` live under `.claude/` in that product’s format; do not assume the same files work in Cursor without adaptation.
 - **Shared policy** for humans and all tools: [../AGENTS.md](../AGENTS.md).
+</rules>

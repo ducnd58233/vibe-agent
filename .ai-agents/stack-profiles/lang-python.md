@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories writing Python at the language level: typing, the async and concurrency model, packaging and environments, imports, and data-model semantics. Independent of any framework; compose with [`backend-fastapi.md`](backend-fastapi.md), [`datascience.md`](datascience.md), or [`mlops.md`](mlops.md) when the task is framework or pipeline work.
 
 ## When to load
@@ -11,8 +13,11 @@ Applies to consumer repositories writing Python at the language level: typing, t
 - Packaging, dependency resolution, virtual environments, or lockfile changes
 - `asyncio` design, blocking-call problems, threading, or multiprocessing decisions
 - Import structure, circular imports, or namespace package issues
+</routing>
 
 ## Detection
+
+<context>
 
 - `pyproject.toml`, `setup.py`, `setup.cfg`, `requirements*.txt`
 - Lockfiles such as `uv.lock`, `poetry.lock`, `Pipfile.lock`, `pdm.lock`
@@ -35,16 +40,22 @@ Non-exhaustive examples. Any tool here may be renamed, deprecated, or replaced. 
 - Prefer the `src/` layout when present; it prevents accidentally importing the working directory instead of the installed package
 - Never install into the system interpreter; use the environment the repo defines
 - Keep the package's public surface explicit; a leading underscore marks internal, and `__all__` documents intent
+</context>
 
 ## Commands
+
+<procedure>
 
 Use repo-documented commands first. Typical examples:
 
 - Sync the environment with the tool matching the committed lockfile
 - Test: `pytest`
 - Typecheck and lint: the repo's configured type checker and linter
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - Mutable default arguments are evaluated once at definition. Use `None` and construct inside the function
 - Type hints are not enforced at runtime. Data crossing a trust boundary must be validated, not merely annotated
@@ -62,10 +73,14 @@ Use repo-documented commands first. Typical examples:
 - Never interpolate untrusted input into a shell command; pass an argument list and avoid `shell=True`
 - Bound external calls with explicit timeouts
 - Profile before optimizing; the cost is usually I/O, serialization, or an accidental O(n²), not the interpreter
+</required>
 
 ## References
+
+<references>
 
 - https://docs.python.org/3/
 - https://typing.python.org/en/latest/
 - https://packaging.python.org/en/latest/
 - https://docs.python.org/3/library/asyncio.html
+</references>

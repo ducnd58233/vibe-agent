@@ -7,15 +7,9 @@ disable-model-invocation: true
 
 # Concurrency Realtime Systems
 
-## What
-
-Provide an expert workflow for concurrency-heavy and realtime systems: WebSockets, SSE, WebRTC signaling/media control planes, video/live streaming, event fan-out, queues, workers, and high-traffic APIs.
-
-## Why
-
-Realtime failures often come from invisible design gaps: unbounded buffers, missing cancellation, slow consumers, detached tasks, unclear delivery guarantees, and weak observability. This skill forces those decisions into the design before implementation.
-
 ## How
+
+<procedure>
 
 1. **Load stack context**
    - Inspect manifests and existing patterns.
@@ -42,33 +36,43 @@ Realtime failures often come from invisible design gaps: unbounded buffers, miss
    - Start with the smallest vertical slice: connect, authenticate, subscribe, send/receive, close, cleanup.
    - Add tests for cancellation, reconnect, duplicate delivery, slow consumers, and bounded-queue behavior.
    - Only then add load tests or capacity scripts matching repo tooling.
-
-## When
-
-Use for realtime or high-traffic architecture, implementation, debugging, and review. Do not use for ordinary CRUD endpoints unless concurrency, streaming, or overload behavior is part of the task.
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 - Pair with [`backend-engineering`](../backend-engineering/SKILL.md) for service/repository boundaries.
 - Pair with [`performance-optimization`](../performance-optimization/SKILL.md) for profiling and optimization.
 - Pair with [`security-and-hardening`](../security-and-hardening/SKILL.md) for auth, abuse controls, and untrusted message handling.
 - Pair with [`source-driven-development`](../source-driven-development/SKILL.md) when framework APIs are version-sensitive.
 
+Use for realtime or high-traffic architecture, implementation, debugging, and review. Do not use for ordinary CRUD endpoints unless concurrency, streaming, or overload behavior is part of the task.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: Read, Grep, Glob, Edit, and Shell for repo-documented tests/build/load smoke checks.
 - Paths: source, tests, manifests, docs, and local benchmark scripts only; no secrets.
 - Suggested rules: allow documented test/build commands; ask before long-running load tests or commands that hit external services.
+</required>
 
 ## Verification
+
+<verification>
 
 - [ ] Protocol, schema, ordering, replay, idempotency, and delivery semantics are explicit.
 - [ ] Every task/worker/connection has an owner, cancellation path, cleanup path, and bounded resources.
 - [ ] Slow-consumer and overload behavior is deliberate and observable.
 - [ ] Metrics/spans cover latency, drops, queue depth, connections, runtime health, and error causes.
 - [ ] Tests or smoke checks cover connect, close, cancellation, reconnect, backpressure, and at least one failure mode.
+</verification>
 
 ## References
+
+<references>
 
 - https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API
 - https://developer.mozilla.org/docs/Web/API/WebRTC_API
@@ -77,3 +81,4 @@ Use for realtime or high-traffic architecture, implementation, debugging, and re
 - https://tokio.rs/tokio/tutorial/shared-state
 - https://tokio.rs/tokio/tutorial/channels
 - https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html
+</references>

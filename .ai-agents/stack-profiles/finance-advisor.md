@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to finance-oriented advisory-style synthesis where risk framing and compliance-safe communication are required.
 
 ## When to load
@@ -9,8 +11,11 @@ Applies to finance-oriented advisory-style synthesis where risk framing and comp
 - Requests asking for financial recommendations
 - Portfolio/allocation discussions
 - Any user request that may be interpreted as investment advice
+</routing>
 
 ## Detection
+
+<context>
 
 - Task requests buy/sell/actionable advice
 - Output may influence investment decisions
@@ -24,22 +29,32 @@ Applies to finance-oriented advisory-style synthesis where risk framing and comp
 
 - Read `README.md` and source policy first
 - Include explicit disclaimer and risk framing in final output
+</context>
 
 ## Commands
+
+<procedure>
 
 - `/research`
 - `/analyze`
 - `/investigate`
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - Always include educational-only disclaimer
 - Refuse specific buy/sell/leverage directives
 - Require caveats for horizon, risk tolerance, and uncertainty
+</required>
 
 ## References
+
+<references>
 
 - https://www.sec.gov/edgar
 - https://www.sec.gov/about/forms/formadv.pdf
 - https://www.finra.org
 - https://fred.stlouisfed.org
+</references>

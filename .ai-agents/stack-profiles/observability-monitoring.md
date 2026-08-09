@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories that instrument applications or infrastructure for metrics, logs, traces, dashboards, alerts, SLOs, incident response, telemetry pipelines, and monitoring tools.
 
 ## When to load
@@ -10,8 +12,11 @@ Applies to consumer repositories that instrument applications or infrastructure 
 - Building internal tools for monitoring, observability, incident triage, or service health
 - Defining SLOs, SLIs, alert thresholds, runbooks, or telemetry retention/cost controls
 - Debugging gaps in logs, traces, metrics, correlation IDs, or dashboard fidelity
+</routing>
 
 ## Detection
+
+<context>
 
 - `otel`, `opentelemetry`, `prometheus`, `grafana`, `jaeger`, `tempo`, `loki`, `alertmanager`, `datadog`, `newrelic`, `sentry`
 - `dashboards/`, `alerts/`, `prometheus.yml`, `grafana/`, `otel-collector*.yaml`
@@ -32,16 +37,22 @@ Applies to consumer repositories that instrument applications or infrastructure 
 - Keep metric cardinality bounded; avoid labels with user IDs, request IDs, unbounded paths, or raw payload data
 - Correlate logs/traces/metrics with trace IDs, request IDs, deployment versions, and environment tags
 - Keep alert runbooks close to alert definitions
+</context>
 
 ## Commands
+
+<procedure>
 
 - `promtool check rules <rules>`
 - `promtool check config <prometheus.yml>`
 - `otelcol --config <config> --dry-run`
 - `terraform plan` for dashboard/monitor IaC
 - Repo-documented test/build commands for instrumentation changes
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - Do not log secrets, tokens, PII, credentials, full payloads, or sensitive model inputs/outputs
 - Do not add noisy alerts without actionability, owner, severity, and runbook
@@ -54,11 +65,15 @@ Applies to consumer repositories that instrument applications or infrastructure 
 - Track golden signals: latency, traffic, errors, saturation; add domain SLIs where needed
 - Alert on symptoms before causes; route warnings to tickets/chat, pages to on-call
 - Sample traces deliberately and preserve exemplars for high-value errors/latency
+</required>
 
 ## References
+
+<references>
 
 - https://opentelemetry.io/docs/
 - https://opentelemetry.io/docs/what-is-opentelemetry/
 - https://opentelemetry.io/docs/concepts/observability-primer/
 - https://kubernetes.io/docs/concepts/cluster-administration/observability/
 - https://prometheus.io/docs/introduction/overview/
+</references>

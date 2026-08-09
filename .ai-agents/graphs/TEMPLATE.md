@@ -8,21 +8,18 @@ Before writing one, read "When a graph is the wrong tool" in [`ROUTER.md`](ROUTE
 
 ## What
 
+<context>
+
 - **File path:** `.ai-agents/graphs/<graph-id>.yaml`
 - **Graph id:** `metadata.id` MUST equal the filename stem. Hyphenated, like every other asset here.
 - **Drives:** which command and skill this graph is the control flow for.
 
 ---
-
-## Why
-
-- **Problem:** what workflow was previously described in prose and interpreted differently each run?
-- **Success criteria:** the transitions a reviewer can point at and check.
-- **Non-goals:** what stays outside the graph and remains direct invocation.
-
----
+</context>
 
 ## How
+
+<procedure>
 
 ### Node types
 
@@ -117,21 +114,23 @@ Write `prompt` as the sentence the human actually reads. State plainly what is b
 `spec.maxTransitions` is the transition budget. Exceeding it sets run status to `budget_exceeded` rather than looping forever. Set it from the realistic worst case, not from optimism.
 
 ---
-
-## When
-
-- **Applies to:** which command invokes this workflow.
-- **Does not apply to:** the single-step cases that stay direct invocation.
-
----
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 Graphs are chosen by the command that owns them, not by intent matching. Document which command loads this graph and add the row to [`ROUTER.md`](ROUTER.md).
 
 ---
 
+- **Applies to:** which command invokes this workflow.
+- **Does not apply to:** the single-step cases that stay direct invocation.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 | Topic | Notes |
 |-------|--------|
@@ -150,3 +149,4 @@ When you add, rename, or remove a graph:
 1. Update **[`ROUTER.md`](ROUTER.md)** in this folder **in the same change**: add a row (workflow/use case, graph path, what it drives); delete stale rows on removal.
 2. Validate against [`schemas/workflow-graph.schema.json`](../../schemas/workflow-graph.schema.json) and run the repository router check.
 3. Note which command file references the graph, and make that command stop restating transitions in prose. Two copies of the control flow will disagree.
+</required>

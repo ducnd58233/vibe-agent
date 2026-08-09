@@ -8,21 +8,29 @@ description: >-
 
 ## Stack profile for current workspace
 
+<context>
+
 Apply these principles within the conventions of the detected stack; do not impose foreign idioms.
 
 ## Overview
 
 Code is read and changed far more than it is written. These principles exist to keep change cheap and safe: small surfaces, single reasons to change, no duplicated truth, and patterns applied only where they remove real friction. This skill is a default coding baseline alongside [`karpathy-guardrails`](../karpathy-guardrails/SKILL.md) (simplicity, surgical diffs). When a principle and "simplest thing that works" appear to conflict, resolve it explicitly rather than silently picking gold-plating.
+</context>
 
 ## When to Use
+
+<routing>
 
 - Implementing non-trivial logic, a new module, or a class/interface boundary.
 - Refactoring tangled or duplicated code, or splitting a "god" type/function.
 - Reviewing code for coupling, duplication, leaky abstractions, over-engineering, or noisy comments.
 
 **When NOT to use:** trivial one-line changes, typo/format fixes, or moves with identical behavior. Do not invoke patterns as a checklist on tiny code.
+</routing>
 
 ## Core principles (MUST follow when implementing)
+
+<rules>
 
 ### SOLID
 
@@ -62,8 +70,11 @@ Reach for a pattern when it removes a concrete, present pain (branching on type,
 | React to state changes or events | Observer, Pub/Sub, State |
 
 **Anti-pattern guardrails:** no speculative generality, no pattern for a single call site, no framework-within-the-framework. Prefer the language/stack idiomatic mechanism (Go interfaces, Rust traits, Python protocols, DI containers) over hand-rolled machinery.
+</rules>
 
 ## Anti-patterns and fixes
+
+<antipatterns>
 
 | Smell | Fix |
 |-------|-----|
@@ -73,8 +84,11 @@ Reach for a pattern when it removes a concrete, present pain (branching on type,
 | High-level module imports concrete infra | Introduce a port; inject the impl (DIP) |
 | Deep inheritance for reuse | Compose small units instead |
 | Pattern added "to be flexible" with one impl | Remove it; inline the simple code (YAGNI/KISS) |
+</antipatterns>
 
 ## Comments and writing style (MUST)
+
+<required>
 
 Code and comments are read by humans. Write them like a human engineer would.
 
@@ -85,8 +99,11 @@ Code and comments are read by humans. Write them like a human engineer would.
 - **No dead weight.** Do not leave commented-out code, TODO dumps without an owner/context, or auto-generated boilerplate comments.
 
 This style also applies to commit messages and to the agent's own replies (see [`AGENTS.md`](../../../AGENTS.md) plain-writing rule and [`git-workflow-and-versioning`](../git-workflow-and-versioning/SKILL.md) for commit format).
+</required>
 
 ## Verification
+
+<verification>
 
 After non-trivial implementation or refactor:
 
@@ -97,40 +114,36 @@ After non-trivial implementation or refactor:
 - [ ] Any design pattern used names the need it resolves; no single-use ceremony.
 - [ ] Design stays the simplest that meets current requirements (KISS/YAGNI honored).
 - [ ] Comments explain why and only where needed; no AI-tell filler words, emojis, icons, or em-dash characters in code or comments.
+</verification>
 
 ## Related skills
+
+<references>
 
 - [`karpathy-guardrails`](../karpathy-guardrails/SKILL.md): simplicity bias, surgical diffs, clarify-first; bounds pattern enthusiasm.
 - [`backend-engineering`](../backend-engineering/SKILL.md): layering, transactions, repository scope as applied SoC/DIP.
 - [`api-and-interface-design`](../api-and-interface-design/SKILL.md): contract design at module/service edges.
 - [`code-simplification`](../code-simplification/SKILL.md): reduce complexity once behavior is covered by tests.
 - [`source-driven-development`](../source-driven-development/SKILL.md): scaffold and use framework APIs from official docs/CLIs.
-
-## What
-
-Provides a concrete, enforceable set of design principles, a pattern-selection guide, and a comment/writing-style rule for implementation and refactoring work.
-
-## Why
-
-Keeps code extensible and maintainable by reducing coupling and duplication, preventing over-engineering, and keeping code and comments readable in plain language, so future change stays cheap and safe.
-
-## How
-
-Apply the principles during implementation, select patterns only against a named need, write comments and names in plain human language, and run the verification checklist before declaring work done.
-
-## When
-
-Use for non-trivial implementation, module/boundary design, and reviews focused on coupling, duplication, or comment noise; skip for trivial edits.
+</references>
 
 ## Routing & discovery
+
+<routing>
 
 - **Use when:** implementing or refactoring non-trivial logic, designing boundaries, or reviewing for coupling/duplication/over-engineering/comment noise.
 - **Do not use when:** trivial one-line changes, formatting, or behavior-preserving moves.
 
+Use for non-trivial implementation, module/boundary design, and reviews focused on coupling, duplication, or comment noise; skip for trivial edits.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 | Topic | Notes |
 |-------|--------|
 | **Tools** | Read, Grep, Glob, Edit; Shell only for repo-documented lint/tests. |
 | **Paths** | Follow [`.ai-agents/PERMISSIONS.md`](../../PERMISSIONS.md); no secret material. |
 | **Cursor** | No `settings.json` matrix; relies on workspace trust and [`.cursor/rules`](../../../.cursor/rules). |
+</required>

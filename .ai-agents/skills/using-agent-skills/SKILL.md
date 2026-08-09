@@ -9,6 +9,8 @@ disable-model-invocation: true
 
 ## Canonical source
 
+<references>
+
 Do **not** rely on hardcoded skill/agent/command lists in this file. The current asset inventory lives in router tables:
 
 1. Start with [`../../ROUTER.md`](../../ROUTER.md) to choose the asset family.
@@ -22,8 +24,11 @@ Do **not** rely on hardcoded skill/agent/command lists in this file. The current
 3. Load only the matching assets and references needed for the task.
 
 Product/domain expectations live in root [`../../../AGENTS.md`](../../../AGENTS.md). Skills stay stack-agnostic; stack-specific details live in matching stack profiles.
+</references>
 
 ## Precedence (check before routing)
+
+<procedure>
 
 The workspace root wins; this toolkit is the fallback. Resolve most specific first:
 
@@ -33,8 +38,11 @@ The workspace root wins; this toolkit is the fallback. Resolve most specific fir
 4. This toolkit's `.ai-agents/` assets.
 
 **Detect before assuming:** look for levels 2–3 at the workspace root before applying a toolkit default. On conflict, follow the local rule and state the divergence; a local rule may tighten a safety, permission, or verification boundary, but if it would weaken one, surface the conflict instead of applying it. Full rule: "Local-first precedence" in root [`../../../AGENTS.md`](../../../AGENTS.md).
+</procedure>
 
 ## Mental model
+
+<rules>
 
 - **Skills** define reusable workflow: how to do work.
 - **Agents/personas** define isolated perspective: who reviews or investigates.
@@ -44,8 +52,11 @@ The workspace root wins; this toolkit is the fallback. Resolve most specific fir
 - **Hooks** define lifecycle automation.
 
 The **user or command** orchestrates. Personas do not call personas; see [`../../references/orchestration-patterns.md`](../../references/orchestration-patterns.md).
+</rules>
 
 ## Workflow
+
+<procedure>
 
 1. **Route**
    - Read the master router, then the matching folder router.
@@ -65,8 +76,11 @@ The **user or command** orchestrates. Personas do not call personas; see [`../..
 5. **Maintain routers**
    - After creating, renaming, or deleting assets, update the corresponding router in the same change.
    - Run `powershell -File scripts/check-ai-agents-routers.ps1` or `bash scripts/check-ai-agents-routers.sh`.
+</procedure>
 
 ## Common routing shortcuts
+
+<rules>
 
 Use routers for the authoritative list, but these family-level shortcuts are stable:
 
@@ -76,8 +90,11 @@ Use routers for the authoritative list, but these family-level shortcuts are sta
 - Need UI/design work: route to frontend/product-design skills plus design/front-end/mobile profiles.
 - Need data, DevOps, QA, security, or performance: route to the matching specialized skill/profile rows.
 - Need toolkit maintenance: route to `/doctor`, `/harden`, and `agent-systems-auditor`.
+</rules>
 
 ## Verification
+
+<verification>
 
 - [ ] Workspace-root rules and templates checked before applying toolkit defaults; any divergence stated.
 - [ ] Master router consulted.
@@ -85,29 +102,22 @@ Use routers for the authoritative list, but these family-level shortcuts are sta
 - [ ] Matching stack profiles loaded when implementation details are stack-specific.
 - [ ] No stale hardcoded asset list was used instead of routers.
 - [ ] Orchestration stayed user/command-driven, not persona-to-persona.
-
-## What
-
-Meta-skill for selecting and composing the current router-listed assets.
-
-## Why
-
-Prevents stale duplicated routing tables inside skills and keeps asset discovery centralized in `ROUTER.md` files.
-
-## How
-
-Use the router-first workflow and verification checklist above.
-
-## When
-
-Use at session start or whenever workflow/asset selection is unclear.
+</verification>
 
 ## Routing & discovery
+
+<routing>
 
 - Use when choosing between skills, commands, agents, references, stack profiles, or hooks.
 - Do not use when a downstream skill or command has already been explicitly selected and validated.
 
+Use at session start or whenever workflow/asset selection is unclear.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: read-only documentation/routing guidance.
 - Authority: no extra permissions beyond reading local markdown assets.
+</required>

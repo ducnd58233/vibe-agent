@@ -6,6 +6,8 @@ Lookup table for **repo-pinned stack** markdown files in this folder. Generic sk
 
 ## Composing profiles
 
+<references>
+
 Many tasks span several layers:
 
 1. Open this table.
@@ -52,3 +54,4 @@ Compose both tiers when both apply: NestJS work loads `backend-nestjs` + `lang-t
 | [`finance-analyzer.md`](finance-analyzer.md) | Finance research and metrics analysis | Public-company, valuation, fundamentals tasks | Mentions 10-K/10-Q/8-K, EDGAR, FRED, market metrics |
 | [`finance-advisor.md`](finance-advisor.md) | Advisory-safe finance responses | User requests action-oriented investment guidance | Same as analyzer plus suitability/disclaimer constraints |
 | [`datascience.md`](datascience.md) | Data science / ML workflows | Dataset analysis, model training/evaluation, notebooks | Data/ML libs in manifests, notebooks present, `data/`/`models/` hints |
+</references>

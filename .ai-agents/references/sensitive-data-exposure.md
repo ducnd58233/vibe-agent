@@ -16,6 +16,8 @@ per the tool-agnostic rule in root [`AGENTS.md`](../../AGENTS.md).
 
 ## The audience test
 
+<rules>
+
 Before any value leaves your control, name who can read it at the destination:
 
 | Destination | Who can actually read it |
@@ -32,8 +34,11 @@ Before any value leaves your control, name who can read it at the destination:
 
 "Only our developers see it" is not a control. Developers leave, logs get exported, and an attacker
 who reaches any of these reaches all of them.
+</rules>
 
 ## Channel 1: the client bundle
+
+<context>
 
 Anything the build inlines is public forever. Rotating it means a redeploy, and the old bundle is
 already cached.
@@ -52,8 +57,11 @@ already cached.
 
 **Test:** build for production, then search the output directory for the value. If it appears, it
 is public.
+</context>
 
 ## Channel 2: client-side storage
+
+<rules>
 
 - Web: browser local and session storage are readable by any script on the origin. An XSS becomes
   a token theft with no further work. Prefer an httpOnly, secure, sameSite cookie, or hold the
@@ -116,8 +124,11 @@ is public.
 - Trace attributes, span names, metric labels, and error-reporting context are all logs with a
   different name. The same rules apply.
 - Set retention deliberately. Data you no longer hold cannot leak.
+</rules>
 
 ## Channel 7: build artifacts, CI, and agent evidence
+
+<context>
 
 - Secrets passed as build arguments persist in image layers and build history, even when the final
   stage does not reference them.
@@ -128,8 +139,11 @@ is public.
   rotation is the only real fix.
 - Agent evidence under `tmp/` may contain PR comments, test output, and captured responses. Redact
   before writing, per [`goal-verification-records.md`](goal-verification-records.md).
+</context>
 
 ## Verification
+
+<verification>
 
 Channel-by-channel, this is what an agent should actually run or check:
 
@@ -148,8 +162,11 @@ The deterministic part of this list is enforced by
 [`hooks/sensitive-data-guard.py`](../hooks/sensitive-data-guard.py) on `Edit`/`Write`. The guard is
 a floor; it cannot tell whether an object carries personal data, whether a response field is
 authorized for its audience, or whether a leak is assembled across two files.
+</verification>
 
 ## Standards
+
+<rules>
 
 Mapped against **OWASP Top 10:2025**, **OWASP ASVS 5.0.0** (released 30 May 2025), and **CWE**.
 Versions are pinned here rather than inline, because category numbering changes between editions
@@ -174,11 +191,15 @@ Two notes on currency, verified against the OWASP project pages:
 - Mobile-specific verification maps to OWASP MASVS, which is platform-scoped. Keep those mappings
   in the mobile [`stack-profiles/`](../stack-profiles/ROUTER.md) rather than here, so this file
   stays stack-neutral.
+</rules>
 
 ## Related
+
+<references>
 
 - [`secure-by-default`](../skills/secure-by-default/SKILL.md) - the always-on write-time rules
 - [`security-checklist.md`](security-checklist.md) - OWASP-category view
 - [`security-and-hardening`](../skills/security-and-hardening/SKILL.md) - authn/authz, injection, dependencies
 - [`tool-safety-and-permissions.md`](tool-safety-and-permissions.md) - agent tool and path boundaries
 - [`goal-verification-records.md`](goal-verification-records.md) - redaction of `tmp/` evidence
+</references>

@@ -9,43 +9,40 @@ disable-model-invocation: true
 
 ## Stack profile for current workspace
 
+<context>
+
 Use package and language-tool commands from the current workspace scripts when illustrating verify steps.
 
 ## Overview
 
 Git is the safety net for reversible, reviewable change — especially with AI-generated edits. Treat commits as save points, branches as short-lived sandboxes, and history as documentation.
+</context>
 
 ## When to Use
 
+<routing>
+
 Always. Every code change flows through Git.
-
-## What
-
-Defines safe, incremental Git practices for collaborative and AI-assisted workflows.
-
-## Why
-
-Protects change quality through atomic history, easier review, and reversible steps.
-
-## How
-
-Use the principles and workflow sections in this file as the operational guidance.
-
-## When
-
-Use for all code changes, merges, rebases, and parallel workstreams.
 
 ## Routing & discovery
 
 - Use when workflow concerns center on branching, commits, conflicts, or history quality.
 - Do not use as a replacement for feature-spec or implementation skills.
 
+Use for all code changes, merges, rebases, and parallel workstreams.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: Git and shell operations within repository policy boundaries.
 - Authority: follow branch protections and avoid destructive commands unless explicitly requested.
+</required>
 
 ## Core Principles
+
+<rules>
 
 ### Trunk-Based Development (recommended)
 
@@ -98,8 +95,11 @@ Target small PRs (~100–300 lines per logical change when possible). Split larg
 - Branch from the team default (`main`).
 - Naming: `feature/…`, `fix/…`, `chore/…`, `refactor/…`.
 - Delete merged branches.
+</rules>
 
 ## Agent delivery pipeline (`/build` and `/ship`)
+
+<procedure>
 
 When using toolkit commands [`build.md`](../../commands/build.md) and [`ship.md`](../../commands/ship.md):
 
@@ -124,8 +124,11 @@ Rules:
 main ──┬── feature/foo-task-1 ── PR ── feedback fixes (same branch) ── /ship GO ── (human: merge) ──► main
        └── feature/foo-task-2 ── PR ── ...
 ```
+</procedure>
 
 ## Worktrees (parallel work)
+
+<context>
 
 ```bash
 git worktree add ../my-feature-worktree feature/task-creation
@@ -178,9 +181,13 @@ git bisect start
 git log --oneline -20
 git blame path/to/file
 ```
+</context>
 
 ## Verification
+
+<verification>
 
 - [ ] Commit is one logical unit; message typed and explains intent
 - [ ] Tests/lint/typecheck per project norms pass
 - [ ] No secrets in the diff; `.gitignore` respected
+</verification>

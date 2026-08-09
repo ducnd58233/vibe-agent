@@ -9,9 +9,14 @@ disable-model-invocation: true
 
 ## Overview
 
+<context>
+
 Security-first development practices for web applications. Treat every external input as hostile, every secret as sacred, and every authorization check as mandatory. Security isn't a phase — it's a constraint on every line of code that touches user data, authentication, or external systems.
+</context>
 
 ## When to Use
+
+<routing>
 
 - Building anything that accepts user input
 - Implementing authentication or authorization
@@ -19,8 +24,11 @@ Security-first development practices for web applications. Treat every external 
 - Integrating with external APIs or services
 - Adding file uploads, webhooks, or callbacks
 - Handling payment or PII data
+</routing>
 
 ## The Three-Tier Boundary System
+
+<rules>
 
 ### Always Do (No Exceptions)
 
@@ -53,8 +61,11 @@ Security-first development practices for web applications. Treat every external 
 - **Never use `eval()` or `innerHTML`** with user-provided data
 - **Never store sessions in client-accessible storage** (localStorage for auth tokens)
 - **Never expose stack traces** or internal error details to users
+</rules>
 
 ## OWASP Top 10 Prevention
+
+<context>
 
 ### 1. Injection (SQL, NoSQL, OS Command)
 
@@ -284,8 +295,11 @@ app.use('/api/auth/', rateLimit({
 # Check for accidentally staged secrets
 git diff --cached | grep -i "password\|secret\|api_key\|token"
 ```
+</context>
 
 ## Security Review Checklist
+
+<verification>
 
 ```markdown
 ### Authentication
@@ -315,11 +329,18 @@ git diff --cached | grep -i "password\|secret\|api_key\|token"
 - [ ] Dependencies audited for vulnerabilities
 - [ ] Error messages don't expose internals
 ```
+</verification>
+
 ## See Also
 
+<references>
+
 For detailed security checklists and pre-commit verification steps, see `references/security-checklist.md`.
+</references>
 
 ## Common Rationalizations
+
+<antipatterns>
 
 | Rationalization | Reality |
 |---|---|
@@ -338,8 +359,11 @@ For detailed security checklists and pre-commit verification steps, see `referen
 - No rate limiting on authentication endpoints
 - Stack traces or internal errors exposed to users
 - Dependencies with known critical vulnerabilities
+</antipatterns>
 
 ## Verification
+
+<verification>
 
 After implementing security-relevant code:
 
@@ -350,7 +374,11 @@ After implementing security-relevant code:
 - [ ] Security headers present in response (check with browser DevTools)
 - [ ] Error responses don't expose internal details
 - [ ] Rate limiting active on auth endpoints
+</verification>
 
 ## Related references
 
+<references>
+
 - [`security-checklist.md`](../../references/security-checklist.md)
+</references>

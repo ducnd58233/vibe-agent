@@ -10,6 +10,8 @@ Follow [`shipping-and-launch`](../skills/shipping-and-launch/SKILL.md) and [`ref
 
 ## Phase A - Parallel fan-out
 
+<procedure>
+
 Spawn the baseline three subagents in **one turn** when using Claude Code's Agent tool (`subagent_type` matches YAML `name`):
 
 1. **`code-reviewer`** - Five-axis review; template in [`agents/code-reviewer.md`](../agents/code-reviewer.md); grounded in [`code-review-and-quality`](../skills/code-review-and-quality/SKILL.md).
@@ -55,24 +57,14 @@ Emit **Ship Decision: GO | NO-GO** with blockers, recommended fixes, acknowledge
 - [`build.md`](build.md) must never merge to `main`. If `/build` was run on `main`, treat that as a workflow violation: move work to a task branch before ship.
 
 **Skip fan-out** only if the change is trivial: <=2 files, ~<=50 lines, and no auth/payments/data/config - otherwise default to full `/ship`.
-
-## What
-
-Run pre-ship parallel specialist review and produce a GO/NO-GO decision.
-
-## Why
-
-Improves release safety through independent quality, security, testing, data, QA, and operational perspectives.
-
-## How
-
-Use the existing Phase A/B/C orchestration and merge flow.
-
-## When
-
-Invoke before risky merges/releases or when blast radius is non-trivial.
+</procedure>
 
 ## Routing & discovery
 
+<routing>
+
 - Use when ship-readiness is the core question.
 - Do not use for trivial changes that do not warrant fan-out review.
+
+Invoke before risky merges/releases or when blast radius is non-trivial.
+</routing>

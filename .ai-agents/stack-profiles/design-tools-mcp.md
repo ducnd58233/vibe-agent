@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories that use design tools as source context for implementation, including Figma Dev Mode MCP, Canva Dev MCP, exported assets, design tokens, component mappings, and design-to-code review workflows.
 
 ## When to load
@@ -10,8 +12,11 @@ Applies to consumer repositories that use design tools as source context for imp
 - Connecting an AI assistant to Figma/Canva via MCP or a design-tool API
 - Reviewing design-token usage, component parity, spacing/typography/color fidelity, or asset exports
 - Writing design-to-code handoff docs, component mapping, or visual QA checklists
+</routing>
 
 ## Detection
+
+<context>
 
 - Mentions of Figma, FigJam, Canva, Dev Mode, MCP, design tokens, Tokens Studio, Storybook, Chromatic, visual regression, screenshots
 - Paths such as `design/`, `tokens/`, `packages/tokens/`, `storybook/`, `assets/`, `icons/`, `figma/`, `.storybook/`
@@ -32,14 +37,20 @@ Applies to consumer repositories that use design tools as source context for imp
 - Prefer semantic tokens and component variants over raw colors, arbitrary spacing, and one-off styles
 - Keep exported design assets under explicit asset paths and avoid committing huge or duplicate exports
 - Document when design-tool output is advisory and code/design system constraints intentionally diverge
+</context>
 
 ## Commands
+
+<procedure>
 
 - Use repo-documented commands first
 - Typical examples: `npm run storybook`, `npm run test`, `npm run build`, `npm run tokens`, `npx chromatic`, `npx playwright test`
 - Do not run MCP tools that write/download assets without confirming target paths and file volume
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - Do not treat design-tool layer names as production component architecture
 - Do not create new primitives when a design-system component already exists
@@ -53,8 +64,11 @@ Applies to consumer repositories that use design tools as source context for imp
 - Verify asset licenses, export sizes, image formats, and accessibility text
 - Prefer tokens for color/typography/spacing; enforce via lint/hook checks where practical
 - For visual QA, compare design intent, not pixel-perfect internals that conflict with responsive/accessibility needs
+</required>
 
 ## References
+
+<references>
 
 - https://developers.figma.com/docs/figma-mcp-server
 - https://www.figma.com/dev-mode/
@@ -62,3 +76,4 @@ Applies to consumer repositories that use design tools as source context for imp
 - https://modelcontextprotocol.io/docs/learn/architecture
 - https://www.w3.org/community/design-tokens/
 - https://www.w3.org/TR/wcag/
+</references>

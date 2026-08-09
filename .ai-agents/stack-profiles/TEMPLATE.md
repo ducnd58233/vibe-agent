@@ -6,6 +6,8 @@ When link-based discovery is used, run [`scripts/link-ai-agents.ps1`](../../scri
 
 ## Tool naming and currency (MUST)
 
+<required>
+
 Stack profiles are the **only** place that names concrete tools, packages, and libraries; shared skills, references, and commands stay tool-agnostic and describe the capability or need instead (for example "the repo migration tool", not a specific product). When a profile does name tools:
 
 - Frame every tool list as **non-exhaustive examples**, not a closed or authoritative set. Use wording like "for example" or "such as".
@@ -13,8 +15,11 @@ Stack profiles are the **only** place that names concrete tools, packages, and l
 - Never block work because a tool in a list is gone. Fall back to the capability description, the repo's real toolchain, and current docs.
 
 ---
+</required>
 
 ## What
+
+<context>
 
 - **File name:** `stack-profiles/<slug>.md` (e.g. `backend-fastapi.md`, `frontend-nextjs.md`, `devops-docker.md`)
 - **Purpose:** Codify frameworks, dependency pins, repo layout assumptions, run commands, and security/perf quirks for **one logical layer or concern**.
@@ -30,8 +35,11 @@ Stack profiles are the **only** place that names concrete tools, packages, and l
 - **Non-goals:** Full product/domain charter—that stays in root [`AGENTS.md`](../../AGENTS.md).
 
 ---
+</context>
 
 ## Required sections in each `*.md` profile
+
+<procedure>
 
 Structure the markdown file with **these headings** (in order):
 
@@ -50,16 +58,11 @@ Optional:
 - **`## References`** — Official doc URLs for pinned versions.
 
 ---
-
-## When
-
-**Load when:** Tasks cross into implementation details tied to pinned frameworks named in ROUTER profiles.
-
-**Do not use as:** Sole substitute for skills—skills define **workflow**; profiles define the **current workspace pinned stack**.
-
----
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 Draft the **YAML-free** markdown so [`ROUTER.md`](ROUTER.md) can summarize it in table form.
 
@@ -69,8 +72,15 @@ Suggested ROUTER columns (see template row when you add yours):
 
 ---
 
+**Load when:** Tasks cross into implementation details tied to pinned frameworks named in ROUTER profiles.
+**Do not use as:** Sole substitute for skills—skills define **workflow**; profiles define the **current workspace pinned stack**.
+</routing>
+
 ## After creating (MUST)
+
+<required>
 
 1. Update **[`ROUTER.md`](ROUTER.md)** in **this folder** in the **same change**: add **one row** per new profile (Profile file path, Layer / concern, When to load, Detection / notes); remove rows when deleting a profile.
 2. Optionally add a sentence in root [`README.md`](README.md) only if onboarding needs a spotlight—keep the **authoritative index** in `ROUTER.md`.
 3. Mention new profiles from root [`AGENTS.md`](../../AGENTS.md) if they change **human** onboarding expectations.
+</required>
