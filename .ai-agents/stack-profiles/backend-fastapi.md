@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories implementing Python HTTP APIs with FastAPI and common ecosystem libraries.
 
 Compose with [`lang-python.md`](lang-python.md) for language-level concerns: typing, asyncio and blocking-call boundaries, packaging and environments.
@@ -11,8 +13,11 @@ Compose with [`lang-python.md`](lang-python.md) for language-level concerns: typ
 - New or changed FastAPI endpoints
 - Dependency injection, validation, persistence, and async I/O boundaries
 - API service layering and error mapping decisions
+</routing>
 
 ## Detection
+
+<context>
 
 - `pyproject.toml` or `requirements*.txt` includes `fastapi`
 - Optional: `uv.lock`, `alembic.ini`, `app/` or `src/` API modules
@@ -29,8 +34,11 @@ Compose with [`lang-python.md`](lang-python.md) for language-level concerns: typ
 - Read `README.md`, dependency manifests, and env examples first
 - Keep route handlers thin; move business logic to services/use-cases
 - Keep persistence details behind repository interfaces
+</context>
 
 ## Commands
+
+<procedure>
 
 - `uv run pytest`
 - `uv run ruff check .`
@@ -45,17 +53,24 @@ Initialize and add deps via `uv`; do not hand-write `pyproject.toml`/`uv.lock` o
 - Migrations (Alembic): `alembic init`, `alembic revision --autogenerate -m "<x>"`, `alembic upgrade head`, `alembic downgrade -1`; confirm against current docs.
 
 Provide a root **`Makefile`** wiring these targets: `docker-up`/`docker-down` (compose deps), `run`, `build`, `test`, `lint` (`ruff` + `mypy`), and `migrate-new name=<x>` / `migrate-up` / `migrate-down`.
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - Validate inbound/outbound DTOs at API boundary
 - Keep domain/application code framework-agnostic
 - Avoid ORM model leakage into transport contracts
+</required>
 
 ## References
+
+<references>
 
 - https://fastapi.tiangolo.com
 - https://docs.pydantic.dev
 - https://docs.sqlalchemy.org/en/20/
 - https://docs.astral.sh/uv/
 - https://github.com/zhanymkanov/fastapi-best-practices
+</references>

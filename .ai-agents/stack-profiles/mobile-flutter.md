@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories building cross-platform mobile applications with Flutter and Dart, including widgets, navigation, state management, platform channels, accessibility, testing, and release performance.
 
 Compose with [`lang-dart.md`](lang-dart.md) for language-level concerns: null safety, futures and streams, isolates, pub packaging.
@@ -11,8 +13,11 @@ Compose with [`lang-dart.md`](lang-dart.md) for language-level concerns: null sa
 - Flutter widget, screen, state, navigation, or platform integration work
 - Dart package, `pubspec.yaml`, build runner, generated code, or app release changes
 - Mobile performance, animation, accessibility, offline/cache, or platform-channel decisions
+</routing>
 
 ## Detection
+
+<context>
 
 - `pubspec.yaml` includes `flutter`
 - `lib/main.dart`, `android/`, `ios/`, `test/`, `integration_test/`
@@ -32,16 +37,22 @@ Compose with [`lang-dart.md`](lang-dart.md) for language-level concerns: null sa
 - Keep widgets focused; move async orchestration into controllers/notifiers/blocs/services
 - Keep platform channels and native code behind adapter interfaces
 - Keep generated files generated; edit source annotations/models instead
+</context>
 
 ## Commands
+
+<procedure>
 
 - `flutter analyze`
 - `flutter test`
 - `flutter test integration_test`
 - `flutter build apk`
 - `flutter build ios`
+</procedure>
 
 ## Render verification (MUST)
+
+<required>
 
 `flutter test integration_test` exits 0 whether the app painted a list or a white rectangle. Its exit code is not a render check, and neither is the existence of a screenshot file: a blank PNG is a non-empty file. See [`mobile-ui-verification.md`](../references/mobile-ui-verification.md) for the full contract.
 
@@ -73,11 +84,15 @@ A white screen during a test run can also be the harness rather than the app. Ch
 - Profile jank with Flutter DevTools; optimize rebuild scopes before broad rewrites
 - Use const widgets, stable keys, lazy lists, image caching, and isolate offload where evidence supports it
 - Validate permissions, secure storage, TLS assumptions, and platform-specific lifecycle behavior
+</required>
 
 ## References
+
+<references>
 
 - https://docs.flutter.dev/
 - https://docs.flutter.dev/data-and-backend/state-mgmt/intro
 - https://docs.flutter.dev/perf
 - https://docs.flutter.dev/testing
 - https://docs.flutter.dev/accessibility-and-internationalization/accessibility
+</references>

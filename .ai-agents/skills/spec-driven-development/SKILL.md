@@ -9,9 +9,14 @@ disable-model-invocation: true
 
 ## Overview
 
+<context>
+
 Write a structured specification before implementation. The spec is the shared truth for **what**, **why**, and **done means**.
+</context>
 
 ## When to Use
+
+<routing>
 
 - New feature or significant change.
 - Requirements ambiguous or multi-module.
@@ -19,33 +24,25 @@ Write a structured specification before implementation. The spec is the shared t
 
 **When NOT to use:** One-line fixes; changes with obvious, local scope.
 
-## What
-
-Defines a spec-first workflow that turns ambiguous requests into validated implementation contracts.
-
-## Why
-
-Aligns stakeholders on scope, constraints, and acceptance criteria before coding.
-
-## How
-
-Use the gated workflow and phase details in this file to move from specification to implementation.
-
-## When
-
-Use for non-trivial work requiring shared requirements and sequencing clarity.
-
 ## Routing & discovery
 
 - Use when requirements are unclear, cross-cutting, or architecture-affecting.
 - Do not use for tiny local fixes with obvious behavior and scope.
 
+Use for non-trivial work requiring shared requirements and sequencing clarity.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: read/write documentation and planning artifacts, plus project context discovery.
 - Authority: require human validation at gated checkpoints before implementation progression.
+</required>
 
 ## Gated Workflow
+
+<procedure>
 
 ```text
 SPECIFY → PLAN → TASKS → IMPLEMENT
@@ -82,14 +79,6 @@ Include **Success criteria** as testable checks (latency, validation rules, UX s
 ```markdown
 # Spec: [Name]
 
-## Objective
-## Tech stack (pinned where relevant)
-## Commands (from repo)
-## Project structure (current workspace)
-## Code style
-## Testing strategy
-## Boundaries (Always / Ask / Never)
-## Success criteria
 ## Open questions
 ```
 
@@ -104,15 +93,22 @@ Discrete tasks with acceptance criteria, verification command, and expected file
 ### Phase 4: Implement
 
 Execute using [`planning-and-task-breakdown`](../planning-and-task-breakdown/SKILL.md), [`test-driven-development`](../test-driven-development/SKILL.md), and [`context-engineering`](../context-engineering/SKILL.md) as appropriate.
+</procedure>
 
 ## Living Spec
 
+<context>
+
 Update the spec when scope or decisions change; link specs from PRs.
+</context>
 
 ## Verification
+
+<verification>
 
 Before implementation:
 
 - [ ] Spec covers objective, stack, commands, layout, testing, boundaries, success criteria
 - [ ] Human reviewed when required by team process
 - [ ] Spec written to `docs/<slug>/SPEC.md` at the workspace root (sibling of `.vibe-agent/`)
+</verification>

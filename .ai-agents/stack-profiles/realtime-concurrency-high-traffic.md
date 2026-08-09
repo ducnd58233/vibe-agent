@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories implementing concurrent services, WebSockets, SSE, WebRTC signaling, media/video/live-streaming control planes, pub/sub fan-out, queues, or high-traffic APIs where latency, backpressure, capacity, and failure isolation are first-class concerns.
 
 ## When to load
@@ -10,8 +12,11 @@ Applies to consumer repositories implementing concurrent services, WebSockets, S
 - Implementing fan-out, presence, chat, notifications, media signaling, or stream control planes
 - Handling high connection counts, burst traffic, slow consumers, queue growth, or overload
 - Choosing concurrency primitives, worker pools, partitioning, rate limits, and backpressure policy
+</routing>
 
 ## Detection
+
+<context>
 
 - Keywords or dependencies: `websocket`, `ws`, `sse`, `webrtc`, `rtmp`, `hls`, `dash`, `mse`, `ffmpeg`, `gstreamer`, `redis`, `nats`, `kafka`, `rabbitmq`, `pubsub`
 - Source paths such as `realtime/`, `streaming/`, `sockets/`, `workers/`, `queues/`, `events/`
@@ -31,14 +36,20 @@ Applies to consumer repositories implementing concurrent services, WebSockets, S
 - Isolate connection/session registries behind a small interface; do not scatter global socket maps
 - Separate hot-path ingest, validation, authorization, fan-out, persistence, and analytics
 - Add shutdown/drain paths for workers, sockets, subscriptions, and media pipelines
+</context>
 
 ## Commands
+
+<procedure>
 
 - Use repo-documented lint, test, and build commands first
 - Add or run a focused load/smoke command only when the repo already defines one
 - Typical examples: `cargo test --all`, `go test ./...`, `npm run test`, `npm run build`, `k6 run <script>`
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - Do not mix media data-plane processing with request/response business logic unless the repo intentionally embeds both
 - Do not accept unbounded per-user queues, broadcast channels, request bodies, or retry loops
@@ -52,8 +63,11 @@ Applies to consumer repositories implementing concurrent services, WebSockets, S
 - Track p50/p95/p99 latency, connection count, CPU, memory, GC/runtime pauses, queue lag, broker partitions, and dropped messages
 - For video/live streaming, separate signaling, ingest, transcoding/packaging, CDN playback, and analytics concerns
 - For WebRTC, account for STUN/TURN, NAT traversal, renegotiation, stats, and fallback behavior
+</required>
 
 ## References
+
+<references>
 
 - https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API
 - https://developer.mozilla.org/docs/Web/API/WebRTC_API
@@ -61,3 +75,4 @@ Applies to consumer repositories implementing concurrent services, WebSockets, S
 - https://tokio.rs/tokio/tutorial/channels
 - https://tokio.rs/tokio/tutorial/shared-state
 - https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html
+</references>

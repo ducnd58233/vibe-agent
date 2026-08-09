@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to research/analysis tasks involving public-company fundamentals, market context, and financial comparisons.
 
 ## When to load
@@ -9,8 +11,11 @@ Applies to research/analysis tasks involving public-company fundamentals, market
 - Financial statement analysis
 - Ratio and trend analysis
 - Macro + company evidence synthesis
+</routing>
 
 ## Detection
+
+<context>
 
 - Task mentions 10-K/10-Q/8-K, valuation, fundamentals, or market data
 - Data sources include SEC/FRED/regulatory filings
@@ -24,22 +29,32 @@ Applies to research/analysis tasks involving public-company fundamentals, market
 
 - Read `README.md` and any data-source notes first
 - Keep outputs traceable with explicit source links and as-of dates
+</context>
 
 ## Commands
+
+<procedure>
 
 - `/research` for evidence gathering
 - `/analyze` for recommendation synthesis
 - `/investigate` for merged research + analysis + audit
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - No uncited numeric claims
 - Use primary filings for core metrics where possible
 - Label stale or uncertain values clearly
+</required>
 
 ## References
+
+<references>
 
 - https://www.sec.gov/edgar
 - https://www.sec.gov/data-research/sec-markets-data/financial-statement-data-sets
 - https://fred.stlouisfed.org
 - https://www.cfainstitute.org/ethics-standards/code-of-ethics-standards-of-conduct
+</references>

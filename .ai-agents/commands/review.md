@@ -18,23 +18,12 @@ Categorize findings as **Critical**, **Important**, or **Suggestion**. Include `
 
 Optional: spawn the **`code-reviewer`** subagent ([`agents/code-reviewer.md`](../agents/code-reviewer.md)) for a dedicated review session.
 
-## What
-
-Run a five-axis code review on scoped changes and return severity-ranked findings.
-
-## Why
-
-Standardizes review coverage and reduces merge risk.
-
-## How
-
-Use the existing review flow above as the command procedure.
-
-## When
-
-Invoke before merge, ship, or when quality concerns are raised.
-
 ## Routing & discovery
+
+<routing>
 
 - Use when review intent is explicit.
 - Do not use as a replacement for implementation commands.
+
+Invoke before merge, ship, or when quality concerns are raised.
+</routing>

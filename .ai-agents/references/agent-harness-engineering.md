@@ -4,6 +4,8 @@ Use this reference when designing or auditing the system around AI coding agents
 
 ## Definition
 
+<rules>
+
 An agent harness is the runtime and workflow substrate around an LLM or coding agent. It shapes what the agent can see, what it can do, how it gets feedback, and how humans verify or intervene.
 
 Do not treat "harness" as only one thing. In this toolkit it includes:
@@ -13,8 +15,11 @@ Do not treat "harness" as only one thing. In this toolkit it includes:
 - **Actuators:** edit tools, shell commands, MCP tools, GitHub connectors, deployment tools.
 - **Boundaries:** permissions, deny rules, secrets policy, approval gates, read/write scopes.
 - **Records:** specs, plans, task state, verification evidence, failure notes, intervention logs.
+</rules>
 
 ## Responsibility checklist
+
+<verification>
 
 Use this checklist for `/doctor`, `/harden`, `agent-systems-auditor`, or consumer-repo harness setup.
 
@@ -31,8 +36,11 @@ Use this checklist for `/doctor`, `/harden`, `agent-systems-auditor`, or consume
 | Permissions | Dangerous actions require ask/approval; secrets paths are denied | Agents can read secrets or mutate production |
 | Entropy auditing | Scheduled or pre-ship audits catch stale routers, dead links, debt, and drift | Harness quality decays as assets grow |
 | Intervention recording | Human overrides and blocked decisions are recorded in specs, plans, or follow-up issues | Same ambiguity recurs without learning |
+</verification>
 
 ## Design patterns
+
+<rules>
 
 ### Guides plus sensors
 
@@ -76,8 +84,11 @@ Use these as short prompts when reviewing a harness:
 - Where can the agent mutate files, shell, network, issues, or production state?
 - Can a fresh session reproduce the intended routing and verification path?
 - What failure categories are recurring, and should they become guides or sensors?
+</rules>
 
 ## Related references
+
+<references>
 
 - [`agent-authoring-patterns.md`](agent-authoring-patterns.md)
 - [`agent-evaluation-patterns.md`](agent-evaluation-patterns.md)
@@ -91,3 +102,4 @@ Use these as short prompts when reviewing a harness:
 - Thoughtworks describes harness engineering as the work around AI coding agents, including guides, sensors, tools, prompts, and workflow integration.
 - The 2026 arXiv paper "AI Harness Engineering: A Runtime Substrate for Foundation-Model Software Agents" frames the harness as the model-harness-environment system and lists responsibilities including task specification, context selection, tool access, observability, verification, permissions, and intervention recording.
 - Traditional test harness concepts still apply: drivers, stubs, test data, execution engines, and reports are examples of computational sensors around software under test.
+</references>

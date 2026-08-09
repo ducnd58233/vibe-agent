@@ -11,6 +11,8 @@ description: >-
 
 ## Overview
 
+<context>
+
 This skill operationalizes five guardrails:
 
 1. Think before coding.
@@ -25,20 +27,29 @@ fabricated files/paths/results.
 
 These guardrails are **harness-agnostic**: apply them identically across Claude, Codex,
 Cursor, opencode, and any other tool, and to both primary agents and subagents.
+</context>
 
 ## Inputs
+
+<inputs>
 
 - User request and constraints
 - Relevant code context
 - Existing tests/build commands and quality gates
+</inputs>
 
 ## Outputs
+
+<outputs>
 
 - Minimal, correct implementation aligned to request
 - Explicit assumptions/tradeoffs when ambiguity exists
 - Verifiable completion evidence (tests/checks/runtime proof)
+</outputs>
 
 ## When to use
+
+<routing>
 
 Use when:
 
@@ -50,8 +61,11 @@ Do not use when:
 
 - Task is a trivial one-line cosmetic fix with no ambiguity.
 - User explicitly requests brainstorming-only discussion without execution.
+</routing>
 
 ## Guardrails
+
+<rules>
 
 ### 1) Think before coding (ask first)
 
@@ -83,43 +97,37 @@ Do not use when:
 - Never describe a file, directory, path, command result, or source you have not actually opened, listed, or run — quote the observed tool output as the basis.
 - If a provided path or resource is inaccessible (not found, empty, out of sandbox), report `ACCESS-FAILED: <path>` and stop, rather than inferring or guessing structure.
 - Applies to every harness and to both primary agents and subagents; never let an unreachable input become an invented answer.
+</rules>
 
 ## Execution flow
+
+<procedure>
 
 1. Restate goal and declare assumptions.
 2. Identify minimal change set.
 3. Implement with strict scope boundaries.
 4. Run verification for requested behavior.
 5. Report findings and residual risk succinctly.
+</procedure>
 
 ## Verification
+
+<verification>
 
 - [ ] Assumptions/tradeoffs were surfaced when needed.
 - [ ] No unnecessary abstractions or speculative logic added.
 - [ ] Diff is scoped to task intent.
 - [ ] Completion is backed by concrete verification evidence.
 - [ ] Every file/path/result described was actually observed; inaccessible inputs were reported as `ACCESS-FAILED`, not inferred.
-
-## What
-
-A reusable behavioral guardrail skill for high-quality, low-regression AI coding.
-
-## Why
-
-LLM failure modes often stem from silent assumptions, unnecessary complexity,
-broad edits, and weak completion criteria.
-
-## How
-
-Apply explicit assumption management, simplicity bias, surgical diff discipline,
-and verification-first completion rules throughout execution.
-
-## When
-
-Invoke for implementation, bug fixing, and refactoring work where disciplined
-execution and evidence-based completion are required.
+</verification>
 
 ## Routing & discovery
 
+<routing>
+
 - Use when reliability and disciplined change management are priorities.
 - Do not use as heavyweight ceremony for clearly trivial edits.
+
+Invoke for implementation, bug fixing, and refactoring work where disciplined
+execution and evidence-based completion are required.
+</routing>

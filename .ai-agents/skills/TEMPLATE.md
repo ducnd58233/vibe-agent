@@ -8,6 +8,8 @@ Official skill shape reference: [Claude Code skills](https://code.claude.com/doc
 
 ## What
 
+<context>
+
 - **Skill name (folder):** `<skill-name>/`
 - **Deliverable path:** `skills/<skill-name>/SKILL.md`
 - **Purpose / scope:** What capability does this skill provide?
@@ -15,16 +17,11 @@ Official skill shape reference: [Claude Code skills](https://code.claude.com/doc
 - **Outputs:** What does a successful run produce?
 
 ---
-
-## Why
-
-- **Problem:** What gap does this skill close?
-- **Success criteria:** How do we know it worked?
-- **Non-goals:** What this skill explicitly does not do.
-
----
+</context>
 
 ## How
+
+<procedure>
 
 - **Steps:** Ordered instructions for the agent executing the skill.
 - **Wiring:** Dependencies on repo paths, scripts, or external tools.
@@ -38,15 +35,11 @@ Map content into **`SKILL.md`** like this:
 | How | Markdown body under `# Instructions` (and optional `## Examples`). |
 
 ---
-
-## When
-
-- **Invocation:** Slash name, auto-invoke only if justified — state triggers explicitly.
-- **Lifecycle:** One-shot workflow vs recurring pattern.
-
----
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 Draft lines you can paste into YAML **`description`** and PR summaries:
 
@@ -57,7 +50,13 @@ Keep `description` third-person, concrete, and include trigger terms so Claude C
 
 ---
 
+- **Invocation:** Slash name, auto-invoke only if justified — state triggers explicitly.
+- **Lifecycle:** One-shot workflow vs recurring pattern.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 Document tool and path needs so maintainers can align [`.claude/settings.json`](../../.claude/settings.json) [`permissions`](https://code.claude.com/docs/en/permissions).
 
@@ -92,3 +91,4 @@ had to be edited together.
 
 The same rule applies to any block that already lives somewhere canonical: the stack-profile pointer,
 the grounding rule, the git gates. Link to the one home instead of copying it.
+</required>

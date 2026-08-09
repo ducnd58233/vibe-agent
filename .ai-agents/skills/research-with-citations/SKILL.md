@@ -9,15 +9,9 @@ disable-model-invocation: true
 
 # Research With Citations
 
-## What
-
-Build a source-backed research digest for a scoped question using explicit citations for non-trivial claims.
-
-## Why
-
-Uncited or memory-based claims are brittle and can drift. This workflow enforces retrieval, validation, and transparent uncertainty.
-
 ## How
+
+<procedure>
 
 1. PLAN
    - Restate the question and split into sub-questions.
@@ -46,24 +40,28 @@ Evidence priority:
 4. Reputable reporting (Reuters, Bloomberg, FT)
 5. Engineering blogs with named authors
 6. Tutorials / secondary summaries (mark weaker confidence)
-
-## When
-
-Use for:
-- Factual investigations
-- Market/regulatory/standards questions
-- “Compare X vs Y” requests requiring current citations
-
-Avoid when:
-- The task is purely stylistic editing with no factual assertions.
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 - Pair with [`evidence-based-analysis`](../evidence-based-analysis/SKILL.md) to convert findings into decisions.
 - Use [`context-engineering`](../context-engineering/SKILL.md) to keep only relevant evidence in context.
 - Use [`source-driven-development`](../source-driven-development/SKILL.md) for framework API decisions.
 
+Use for:
+- Factual investigations
+- Market/regulatory/standards questions
+- “Compare X vs Y” requests requiring current citations
+Avoid when:
+- The task is purely stylistic editing with no factual assertions.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: `Read`, `Grep`, `Glob`, `WebSearch`, `WebFetch`
 - Authority: read-only research workflow; no file modification or shell side effects.
+</required>

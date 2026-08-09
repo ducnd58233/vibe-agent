@@ -10,6 +10,8 @@ into a consumer repo. Skip it otherwise.
 
 ## Project layout
 
+<context>
+
 | Location | Role |
 |----------|------|
 | [`.ai-agents/README.md`](README.md) | Index of shared skills, agents, commands, stack profiles, references, and hooks. |
@@ -28,8 +30,11 @@ into a consumer repo. Skip it otherwise.
 | [`runtime/`](../runtime) | Go control plane. Required by the delivery pipeline. |
 | [`.claude/`](../.claude), [`.cursor/`](../.cursor), [`.opencode/`](../.opencode), [`.codex/`](../.codex), [`.agents/`](../.agents) | Harness config plus generated links, produced by `scripts/link-ai-agents`. |
 | [`opencode.json`](../opencode.json), [`CLAUDE.md`](../CLAUDE.md), [`CURSOR.md`](../CURSOR.md) | Per-harness entry points. |
+</context>
 
 ## Authoring rules (MUST)
+
+<required>
 
 - **Follow the folder's `TEMPLATE.md`** where present when creating a skill, subagent, command, hook,
   reference, or stack profile.
@@ -49,8 +54,11 @@ into a consumer repo. Skip it otherwise.
 - **Permissions:** after changing tool or path requirements, align
   [`.claude/settings.json`](../.claude/settings.json) and [`PERMISSIONS.md`](PERMISSIONS.md). Deny
   overrides allow.
+</required>
 
 ## XML section tags
+
+<context>
 
 Always-loaded files wrap their sections in XML tags. This is **prompt content, not a file format**.
 Anthropic's prompt guidance says XML tags "help Claude parse complex prompts unambiguously,
@@ -91,6 +99,7 @@ are worse than none: they teach the model a partition that does not hold.
 | `<antipatterns>` | Named failure modes and rationalizations | What am I likely to get wrong? |
 | `<routing>` | When to use this, and when not to | Is this the right asset? |
 | `<escalation>` | Conditions to stop and ask a human | When do I stop? |
+| `<references>` | Links out: further reading, related assets, source URLs | Where do I read more? |
 
 **`<required>` versus `<rules>` is the distinction that earns the whole scheme.** A weak model
 flattens a document into one list of suggestions. Splitting the blocking rules from the advisory ones
@@ -103,22 +112,32 @@ correct to violate given a good reason, it is `<rules>`. If violating it is alwa
 - Tags go **after** YAML frontmatter, never before. Frontmatter must stay the first bytes of the file
   or the skill and rule loaders will not parse it.
 - Open and close on their own lines, so the Markdown around them still renders.
-- **Do not nest.** A flat partition is the point; nesting rebuilds the ambiguity tags removed.
-- **Do not tag a single paragraph.** A tag earns its place when a model needs to act on that block
-  alone. Six tags in a forty-line file is noise.
+- **Every section belongs to a block.** An untagged region between two tagged ones asks the model to
+  guess what kind of instruction it is reading, which is the ambiguity the tags exist to remove.
+  Every asset under `.ai-agents/` is tagged, including short ones.
+- **Nest only for genuine containment, one level deep.** Anthropic's prompting guidance says to
+  "nest tags when content has a natural hierarchy", and its example is a container holding items of
+  the same kind. A long `<procedure>` whose phases each carry their own `<verification>` is that
+  shape. Two categories side by side are not: `<required>` inside `<rules>` invents a question with
+  no answer, namely whether the requirement stops applying outside that block.
+- **Pick the tag by what the block is, not by what it is called.** A heading reading "Quick
+  Reference" that holds code examples is `<rules>`, not `<references>`.
 - Use the smallest set that partitions the file. Most assets need three or four, not eleven.
-- A tag pair costs roughly six tokens. On a charter file that is free; across the whole corpus it
-  adds up, so tag what is genuinely multi-part and leave short files alone.
+- A tag pair costs roughly six tokens. Measured here, tags cost about as much as the restated
+  boilerplate they replaced, so treat the partition as the return, not a smaller file.
 
-`scripts/check-xml-tags.sh` fails on an unbalanced tag, an unknown tag, or a tag placed above
-frontmatter.
+`scripts/check-xml-tags.sh` fails on a mispaired tag, an unknown tag, a tag placed above
+frontmatter, a tag nested inside itself, or nesting past one level.
+</context>
 
 ## Checks to run
+
+<verification>
 
 | After changing | Run |
 |---|---|
 | Any asset under `.ai-agents/` | `bash scripts/check-ai-agents-routers.sh` or `powershell -File scripts/check-ai-agents-routers.ps1` (dependency-free) |
-| An always-loaded file or any tagged asset | `bash scripts/check-xml-tags.sh` - balance, nesting, unknown tags, and tags above frontmatter |
+| An always-loaded file or any tagged asset | `bash scripts/check-xml-tags.sh` - pairing, nesting depth, unknown tags, and tags above frontmatter |
 | Anything, before trusting a harness read | `bash scripts/check-generated-views.sh` - a canonical edit does not reach the harness until the link script re-runs |
 | `.ai-agents/graphs/*.yaml` or `schemas/*.json` | `python3 scripts/check-graphs.py` and `python3 scripts/check-schemas.py` |
 | [`runtime/`](../runtime) | `cd runtime && make check` |
@@ -126,8 +145,11 @@ frontmatter.
 
 The python checks need `python3 -m pip install -r scripts/requirements.txt`. Full table:
 [`README.md`](README.md).
+</verification>
 
 ## After clone
+
+<procedure>
 
 Run `scripts/link-ai-agents.ps1` (Windows) or `scripts/link-ai-agents.sh` (macOS, Linux) so
 `.claude`, `.cursor`, `.opencode`, `.agents`, and `.codex/agents` point at `.ai-agents`. The script
@@ -136,8 +158,11 @@ also installs the git `prepare-commit-msg` attribution hook and refreshes the ru
 **Re-run it after every asset edit.** On Windows the script writes copies rather than symlinks, so
 until it runs again the harness serves the previous text while every other check reports green.
 `scripts/check-generated-views.sh` exists because that happened.
+</procedure>
 
 ## Reuse in a consumer repository
+
+<rules>
 
 - Keep the consumer repo as its own repository and the source of product code.
 - Mount this toolkit as a submodule at a chosen path, for example `.vibe-agent`.
@@ -148,8 +173,12 @@ until it runs again the harness serves the previous text while every other check
   root and `-AssetsRoot` / `--assets` set to `<toolkit-root>/.ai-agents`.
 - Treat tool permissions as repository-local policy: adapt `opencode.json`, `.claude/settings.json`,
   and local rules to that repo's layout and risk profile.
+</rules>
 
 ## Asset inventory
 
+<context>
+
 There is no list here on purpose. The router files are authoritative, and a second list in prose is
 a list that goes stale without anything failing. Start at [`ROUTER.md`](ROUTER.md).
+</context>

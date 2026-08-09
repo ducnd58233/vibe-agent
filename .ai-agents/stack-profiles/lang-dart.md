@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories writing Dart at the language level: sound null safety, the async and isolate model, type system, and pub packaging. Independent of any framework; compose with [`mobile-flutter.md`](mobile-flutter.md) for widget, navigation, and platform-channel work.
 
 ## When to load
@@ -11,8 +13,11 @@ Applies to consumer repositories writing Dart at the language level: sound null 
 - `Future`, `Stream`, isolate, or concurrency design
 - `pubspec.yaml`, dependency constraint, or package-publishing changes
 - Code generation and build_runner pipelines
+</routing>
 
 ## Detection
+
+<context>
 
 - `pubspec.yaml`, `pubspec.lock`, `analysis_options.yaml`
 - `lib/`, `bin/`, `test/` directories; `*.dart` sources
@@ -35,8 +40,11 @@ Non-exhaustive examples. Any tool here may be renamed, deprecated, or replaced. 
 - Public API lives under `lib/`; anything under `lib/src/` is internal and should be re-exported deliberately
 - Executables belong in `bin/`; tests mirror the source tree under `test/`
 - Generated files are build output — regenerate them, do not hand-edit
+</context>
 
 ## Commands
+
+<procedure>
 
 Use repo-documented commands first. Typical examples:
 
@@ -45,8 +53,11 @@ Use repo-documented commands first. Typical examples:
 - `dart format --output=none --set-exit-if-changed .`
 - `dart test`
 - Regenerate code with the repo's build_runner invocation when generated sources are stale
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - Null safety is sound only if you do not defeat it. The `!` operator asserts non-null and throws when wrong; prefer narrowing, `?.`, `??`, or restructuring the type
 - Prefer `late` only when initialization genuinely happens before first read; a `late` field read too early throws at runtime rather than failing to compile
@@ -63,10 +74,14 @@ Use repo-documented commands first. Typical examples:
 - Bound network calls with timeouts and handle cancellation
 - Prefer `const` constructors and immutable value types where the API allows it
 - Profile before optimizing; async scheduling and serialization usually dominate over raw computation
+</required>
 
 ## References
+
+<references>
 
 - https://dart.dev/language
 - https://dart.dev/null-safety
 - https://dart.dev/language/concurrency
 - https://dart.dev/tools/pub/pubspec
+</references>

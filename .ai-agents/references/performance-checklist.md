@@ -6,6 +6,8 @@ Quick reference for web and API performance. Use alongside the [`performance-opt
 
 ## Core Web Vitals Targets
 
+<rules>
+
 | Metric | Good | Needs Work | Poor |
 |--------|------|------------|------|
 | LCP (Largest Contentful Paint) | ≤ 2.5s | ≤ 4.0s | > 4.0s |
@@ -19,8 +21,11 @@ When TTFB is slow (> 800ms), check each component in DevTools Network waterfall:
 - [ ] **DNS resolution** slow → consider DNS prefetch / preconnect for known origins
 - [ ] **TCP/TLS handshake** slow → HTTP/2 or HTTP/3, keep-alive, edge deployment
 - [ ] **Server processing** slow → profile handlers, persistence layer, caching
+</rules>
 
 ## Frontend Checklist
+
+<verification>
 
 ### Images
 
@@ -82,8 +87,11 @@ When TTFB is slow (> 800ms), check each component in DevTools Network waterfall:
 
 - [ ] CDN for static assets; API region aligned with persistence when possible
 - [ ] Health check endpoint for load balancers
+</verification>
 
 ## Measurement Commands
+
+<context>
 
 ```bash
 npx lighthouse https://localhost:3000 --output json --output-path ./report.json
@@ -91,8 +99,11 @@ npx lighthouse https://localhost:3000 --output json --output-path ./report.json
 ```
 
 Use RUM where available; DevTools Performance for long tasks on interactions.
+</context>
 
 ## Common Anti-Patterns
+
+<antipatterns>
 
 | Anti-Pattern | Impact | Fix |
 |--------------|--------|-----|
@@ -105,3 +116,4 @@ Use RUM where available; DevTools Performance for long tasks on interactions.
 ---
 
 Concrete framework and driver reminders for the **current workspace**: authored in profile `*.md` files listed under [`ROUTER.md`](../stack-profiles/ROUTER.md).
+</antipatterns>

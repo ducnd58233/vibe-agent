@@ -4,6 +4,8 @@ Use this reference for SQL and NoSQL query correctness, performance, and error d
 
 ## Universal workflow
 
+<procedure>
+
 1. **Identify the query shape**
    - Inputs, filters, sort, projection, joins/lookup, pagination, aggregation, write path, and expected row/document count.
 2. **Collect evidence**
@@ -14,8 +16,11 @@ Use this reference for SQL and NoSQL query correctness, performance, and error d
    - Change query shape, add/adjust index, fix data model, batch, paginate, cache, denormalize, or move to async/reporting path.
 5. **Verify and guard**
    - Compare before/after plans and timings; add tests, migration checks, or monitoring.
+</procedure>
 
 ## SQL red flags
+
+<antipatterns>
 
 - Unparameterized SQL or string-built filters
 - N+1 queries hidden behind ORM relations
@@ -35,8 +40,11 @@ Use this reference for SQL and NoSQL query correctness, performance, and error d
 - Cassandra/DynamoDB hot partitions or online cross-partition scans
 - Search wildcard/regex queries over large indexes
 - Dual writes without reconciliation or rebuild plan
+</antipatterns>
 
 ## Evidence checklist
+
+<verification>
 
 - [ ] Query and bound parameters are known.
 - [ ] Schema/index/model definitions are known.
@@ -44,11 +52,15 @@ Use this reference for SQL and NoSQL query correctness, performance, and error d
 - [ ] Workload frequency and data volume are estimated.
 - [ ] Correctness and security risks are separated from performance risks.
 - [ ] Recommended fix includes migration/rollback/test implications.
+</verification>
 
 ## References
+
+<references>
 
 - https://www.postgresql.org/docs/current/using-explain.html
 - https://www.postgresql.org/docs/current/indexes-examine.html
 - https://www.mongodb.com/docs/manual/core/query-optimization/
 - https://redis.io/docs/latest/operate/oss_and_stack/management/optimization/latency/
 - https://cassandra.apache.org/doc/latest/cassandra/developing/data-modeling/intro.html
+</references>

@@ -6,6 +6,8 @@ Wire paths from the repo root into [`.cursor/hooks.json`](../../.cursor/hooks.js
 
 ## Cross-tool compatibility
 
+<context>
+
 - **Cursor:** native runtime via [`.cursor/hooks.json`](../../.cursor/hooks.json).
 - **Claude Code:** native runtime via `hooks` in [`.claude/settings.json`](../../.claude/settings.json).
 - **opencode / codex:** no repository-native hook runtime is currently configured in this repo. Keep scripts in `.ai-agents/hooks/` as shared assets, and document/manual-run workflows when needed.
@@ -38,15 +40,22 @@ The wiring above follows the current Cursor hooks documentation. It has **not** 
 
 - Whether the existing `matcher` values in [`.cursor/hooks.json`](../../.cursor/hooks.json) (`"WebFetch"`, `"Edit|Write"`) actually match. Cursor documents tool-type matchers such as `"Shell"`, `"Read"`, `"Write"`, `"Grep"`, `"Delete"`, `"Task"`, and `"MCP:<name>"`; `"Edit"` and `"WebFetch"` are Claude tool names and may match nothing. These entries predate this change and were left alone rather than guessed at.
 - Whether `afterFileEdit` surfaces a script's stdout. It is documented as observational with no output fields, so the two UI guards may run without their warnings reaching anyone.
+</context>
 
 ## Git-level hooks (all tools + manual commits)
+
+<references>
 
 Some policy is enforced below every harness, at the git layer. [`strip-ai-attribution.sh`](strip-ai-attribution.sh) (with the PowerShell equivalent [`strip-ai-attribution.ps1`](strip-ai-attribution.ps1)) implements the **No Agent Attribution** rule (see [`AGENTS.md`](../../AGENTS.md) and [`git-workflow-and-versioning`](../skills/git-workflow-and-versioning/SKILL.md)) for tools that have no `attribution` setting (Cursor, Codex, opencode) and for hand-typed commits. These are plain shell scripts, not Python, so they run wherever git runs.
 
 [`scripts/link-ai-agents.ps1`](../../scripts/link-ai-agents.ps1) / [`scripts/link-ai-agents.sh`](../../scripts/link-ai-agents.sh) install a git `prepare-commit-msg` hook at `<workspace>/.git/hooks/prepare-commit-msg`, a thin shim that calls `strip-ai-attribution.sh` via `sh` (git runs hooks through `sh` on every platform, including Windows git-bash, which bundles `awk`). Re-run a link script after clone to (re)install it. The hook is intentionally non-blocking: it edits the message in place and never fails the commit.
+</references>
 
 ## Manual invocation examples
+
+<procedure>
 
 - `python3 .ai-agents/hooks/session-start.py`
 - `echo '{"tool_input":{"url":"https://example.com"}}' | python3 .ai-agents/hooks/sdd-cache-pre.py`
 - `echo '{}' | python3 .ai-agents/hooks/simplify-ignore.py`
+</procedure>

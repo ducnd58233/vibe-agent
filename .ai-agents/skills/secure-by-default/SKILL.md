@@ -147,31 +147,20 @@ converse also holds. Never rely on the sensor alone.
 - [ ] Guard exceptions, if any, are marked inline with a stated reason
 </verification>
 
-## What
-
-An always-on write-time constraint that keeps sensitive values out of every channel an end user,
-outside developer, or attacker can read.
-
 ## Why
 
 The toolkit's security material is deep but user-invoked, so it arrives at review time, after the
 code exists. Disclosure is not a defect that review reliably catches, because the code works. This
 skill moves the constraint to the moment of writing.
 
-## How
-
-Classify the value, name the sink, redact at the boundary, split the error shape, and keep server
-secrets out of client builds. Consult the channel reference for surface-specific detail.
-## When
-
-Invoke by default for any work touching auth, user data, logging, error handling, configuration, or
-a client surface. Skip only for changes with no sink and no data, such as pure formatting.
-
 ## Routing & discovery
 
 - Use when implementing, refactoring, testing, or reviewing anything that reads or emits user data.
 - Do not use as a replacement for [`security-and-hardening`](../security-and-hardening/SKILL.md)
   when the task is authn/authz design, injection, or dependency risk.
+
+Invoke by default for any work touching auth, user data, logging, error handling, configuration, or
+a client surface. Skip only for changes with no sink and no data, such as pure formatting.
 
 ## Permissions & authority
 

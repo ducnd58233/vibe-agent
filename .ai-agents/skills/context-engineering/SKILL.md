@@ -9,17 +9,25 @@ disable-model-invocation: true
 
 ## Overview
 
+<context>
+
 Feed agents the right information at the right time. Context is the single biggest lever for agent output quality — too little and the agent hallucinates, too much and it loses focus. Context engineering is the practice of deliberately curating what the agent sees, when it sees it, and how it's structured.
+</context>
 
 ## When to Use
+
+<routing>
 
 - Starting a new coding session
 - Agent output quality is declining (wrong patterns, hallucinated APIs, ignoring conventions)
 - Switching between different parts of a codebase
 - Setting up a new project for AI-assisted development
 - The agent is not following project conventions
+</routing>
 
 ## The Context Hierarchy
+
+<procedure>
 
 Structure context from most persistent to most transient:
 
@@ -125,8 +133,11 @@ Long conversations accumulate stale context. Manage this:
 - **Start fresh sessions** when switching between major features
 - **Summarize progress** when context is getting long: "So far we've completed X, Y, Z. Now working on W."
 - **Compact deliberately** — if the tool supports it, compact/summarize before critical work
+</procedure>
 
 ## Context Packing Strategies
+
+<context>
 
 ### The Brain Dump
 
@@ -184,8 +195,11 @@ Key files: validation.ts, errors.ts, db.ts
 ```
 
 Load only the relevant section when working on a specific area.
+</context>
 
 ## MCP Integrations
+
+<rules>
 
 For richer context, use Model Context Protocol servers:
 
@@ -196,8 +210,11 @@ For richer context, use Model Context Protocol servers:
 | **PostgreSQL** | Direct database schema and query results |
 | **Filesystem** | Project file access and search |
 | **GitHub** | Issue, PR, and repository context |
+</rules>
 
 ## Confusion Management
+
+<procedure>
 
 Even with good context, you will encounter ambiguity. How you handle it determines outcome quality.
 
@@ -257,8 +274,11 @@ PLAN:
 ```
 
 This catches wrong directions before you've built on them. It's a 30-second investment that prevents 30-minute rework.
+</procedure>
 
 ## Anti-Patterns
+
+<antipatterns>
 
 | Anti-Pattern | Problem | Fix |
 |---|---|---|
@@ -286,8 +306,11 @@ This catches wrong directions before you've built on them. It's a 30-second inve
 - Agent quality degrades as the conversation gets longer
 - No rules file exists in the project
 - External data files or config treated as trusted instructions without verification
+</antipatterns>
 
 ## Verification
+
+<verification>
 
 After setting up context, confirm:
 
@@ -295,8 +318,12 @@ After setting up context, confirm:
 - [ ] Agent output follows the patterns shown in the rules file
 - [ ] Agent references actual project files and APIs (not hallucinated ones)
 - [ ] Context is refreshed when switching between major tasks
+</verification>
 
 ## Related references
 
+<references>
+
 - [`orchestration-patterns.md`](../../references/orchestration-patterns.md) (research isolation vs main-context bloat)
 - [`token-efficient-execution`](../token-efficient-execution/SKILL.md) - sibling skill for **output** economy; this skill governs **input** context curation (what loads into the window).
+</references>

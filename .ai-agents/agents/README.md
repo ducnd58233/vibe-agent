@@ -4,6 +4,8 @@ Markdown files in this folder define **single-role** specialists consumed as Cla
 
 ## Three-layer model
 
+<context>
+
 | Layer | Role | Location |
 |-------|------|----------|
 | **Skill** | Workflow (how) | [`skills/`](../skills/) |
@@ -11,8 +13,11 @@ Markdown files in this folder define **single-role** specialists consumed as Cla
 | **Command** | Entry point (when) | [`commands/`](../commands/) |
 
 Personas **do not** call other personas. Composition is via user or slash commands - see [`references/orchestration-patterns.md`](../references/orchestration-patterns.md).
+</context>
 
 ## Personas
+
+<routing>
 
 | Persona | File | Best for |
 |---------|------|----------|
@@ -30,7 +35,11 @@ Personas **do not** call other personas. Composition is via user or slash comman
 | Database query audit | [`database-query-auditor.md`](database-query-auditor.md) | SQL/NoSQL query correctness, performance, indexes |
 | QA testing | [`qa-tester.md`](qa-tester.md) | Manual QA, automation strategy, release signoff |
 | Product design review | [`product-design-reviewer.md`](product-design-reviewer.md) | Design systems, visual QA, Figma/Canva handoff |
+</routing>
 
 ## Authoring
 
+<procedure>
+
 Use [`TEMPLATE.md`](TEMPLATE.md). After adding or renaming a file, update [`ROUTER.md`](ROUTER.md).
+</procedure>

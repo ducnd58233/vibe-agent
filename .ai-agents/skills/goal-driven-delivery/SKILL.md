@@ -12,13 +12,18 @@ disable-model-invocation: true
 
 ## Overview
 
+<context>
+
 Turn a user objective into verified, shippable work by running a **phased pipeline** with explicit checkpoints. Re-read artifacts on disk (`docs/<slug>/SPEC.md`, `TASKS.md`) at each phase instead of relying on chat memory.
 
 This skill is the body behind [`/goal`](../../commands/goal.md). It **composes** existing commands; it does not spawn persona chains (see [`orchestration-patterns.md`](../../references/orchestration-patterns.md) anti-pattern B).
 
 **The runtime is required, not optional (MUST).** `/goal` runs on the graph, the runtime, the loop, and memory together; there is no markdown-only mode. Preflight with `vibe-agent doctor` and stop if it fails. The canonical rules, command surface, hook behavior, and memory contract live in one place, [`goal.md`](../../commands/goal.md) section "Runtime is required" - this skill deliberately does not restate them, because two copies of a rule drift.
+</context>
 
 ## Not the same as native `/goal`
+
+<rules>
 
 | | **This toolkit `/goal`** | **Claude Code `/goal`** | **Codex CLI `/goal`** |
 |---|--------------------------|-------------------------|------------------------|
@@ -27,8 +32,11 @@ This skill is the body behind [`/goal`](../../commands/goal.md). It **composes**
 | Docs | [Claude goal](https://code.claude.com/docs/en/goal) | same | Codex 0.128+ `goals` feature |
 
 You may use both: native `/goal` for turn loops inside a harness; toolkit `/goal` for the full spec-to-ship contract.
+</rules>
 
 ## When to Use
+
+<routing>
 
 - Open-ended user objective spanning multiple steps.
 - Requirements may be ambiguous; clarification is required before code.
@@ -36,29 +44,18 @@ You may use both: native `/goal` for turn loops inside a harness; toolkit `/goal
 
 **When NOT to use:** Single obvious fix; user already supplied an approved spec and only wants `/build` on the next task.
 
-## What
-
-Defines the phased delivery loop, asset map, verification rules, and stop conditions for `/goal`.
-
-## Why
-
-Prevents agents from assuming they already understand the problem, skipping validation, merging too early, or bundling unrelated tasks in one PR.
-
-## How
-
-Follow the phases below in order. Skip a phase only when its entry condition is already met (document why).
-
-## When
-
-Invoke via [`/goal`](../../commands/goal.md) when the user wants autonomous-style delivery with toolkit guardrails.
-
 ## Routing & discovery
 
 - Primary command: [`goal.md`](../../commands/goal.md).
 - Related: [`spec.md`](../../commands/spec.md), [`plan.md`](../../commands/plan.md), [`build.md`](../../commands/build.md), [`ship.md`](../../commands/ship.md).
 - Patterns: [`orchestration-patterns.md`](../../references/orchestration-patterns.md) pattern 4 and goal extension.
 
+Invoke via [`/goal`](../../commands/goal.md) when the user wants autonomous-style delivery with toolkit guardrails.
+</routing>
+
 ## Completion condition
+
+<verification>
 
 Work is **done** only when **all** hold:
 
@@ -73,8 +70,11 @@ Work is **done** only when **all** hold:
 Until then, stay in the **iterate** phase (fix, re-test, re-wait for reviews, re-ship).
 
 ---
+</verification>
 
 ## Phase map
+
+<procedure>
 
 ```text
 INTAKE → [RESEARCH] → SPEC → PLAN → BUILD (per task) → TEST → REVIEW → SHIP
@@ -216,8 +216,11 @@ ELSE:
 **Never assume** correctness without re-running verification. **Never** skip clarify when new ambiguous scope appears mid-loop.
 
 ---
+</procedure>
 
 ## Safety and bounds
+
+<rules>
 
 - Prefer human checkpoints after spec, plan, and before merge.
 - If the same blocker survives **three** ship/review cycles, stop and explain root cause; ask whether to change approach.
@@ -225,8 +228,11 @@ ELSE:
 - Git commits: no AI attribution; [`strip-ai-attribution`](../../hooks/strip-ai-attribution.sh) hook when link script installed.
 
 ---
+</rules>
 
 ## Verification checklist
+
+<verification>
 
 - [ ] Ambiguity resolved or explicitly assumed before implementation
 - [ ] `docs/<slug>/SPEC.md` and `TASKS.md` exist and were re-read during execution
@@ -237,3 +243,4 @@ ELSE:
 - [ ] `/ship` GO recorded before merge discussion
 - [ ] Human satisfaction confirmed or open questions listed
 - [ ] `tmp/` is gitignored at workspace root
+</verification>

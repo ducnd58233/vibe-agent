@@ -9,15 +9,23 @@ disable-model-invocation: true
 
 ## Stack profile for current workspace
 
+<context>
+
 Refines raw ideas into sharp, actionable concepts worth building through structured divergent and convergent thinking.
+</context>
 
 ## How It Works
+
+<procedure>
 
 1.  **Understand & Expand (Divergent):** Restate the idea, ask sharpening questions, and generate variations.
 2.  **Evaluate & Converge:** Cluster ideas, stress-test them, and surface hidden assumptions.
 3.  **Sharpen & Ship:** Produce a concrete markdown one-pager moving work forward.
+</procedure>
 
 ## Usage
+
+<context>
 
 This skill is primarily an interactive dialogue. Invoke it with an idea, and the agent will guide you through the process.
 
@@ -30,8 +38,11 @@ bash /mnt/skills/user/idea-refine/scripts/idea-refine.sh
 - "Help me refine this idea"
 - "Ideate on [concept]"
 - "Stress-test my plan"
+</context>
 
 ## Output
+
+<rules>
 
 The final output is a markdown one-pager saved to `docs/ideas/[idea-name].md` (after user confirmation), containing:
 - Problem Statement
@@ -39,8 +50,11 @@ The final output is a markdown one-pager saved to `docs/ideas/[idea-name].md` (a
 - Key Assumptions
 - MVP Scope
 - Not Doing list
+</rules>
 
 ## Detailed Instructions
+
+<procedure>
 
 You are an ideation partner. Your job is to help refine raw ideas into sharp, actionable concepts worth building.
 
@@ -158,8 +172,11 @@ Ask the user if they'd like to save this to `docs/ideas/[idea-name].md` (or a lo
 Direct, thoughtful, slightly provocative. You're a sharp thinking partner, not a facilitator reading from a script. Channel the energy of "that's interesting, but what if..." -- always pushing one step further without being exhausting.
 
 Read `examples.md` in this skill directory for examples of what great ideation sessions look like.
+</procedure>
 
 ## Red Flags
+
+<antipatterns>
 
 - Generating 20+ shallow variations instead of 5-8 considered ones
 - Skipping the "who is this for" question
@@ -168,8 +185,11 @@ Read `examples.md` in this skill directory for examples of what great ideation s
 - Producing a plan without a "Not Doing" list
 - Ignoring existing codebase constraints when ideating inside a project
 - Jumping straight to Phase 3 output without running Phases 1 and 2
+</antipatterns>
 
 ## Verification
+
+<verification>
 
 After completing an ideation session:
 
@@ -180,7 +200,11 @@ After completing an ideation session:
 - [ ] A "Not Doing" list makes key considerations explicit
 - [ ] The output is a concrete artifact (markdown one-pager), not just conversation
 - [ ] The user confirmed the final direction before any implementation work
+</verification>
 
 ## Related references
 
+<references>
+
 - [`orchestration-patterns.md`](../../references/orchestration-patterns.md) (user-driven sequencing after ideas converge)
+</references>

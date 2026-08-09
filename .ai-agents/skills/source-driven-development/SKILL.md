@@ -9,9 +9,14 @@ disable-model-invocation: true
 
 ## Overview
 
+<context>
+
 Framework-specific decisions should trace to **authoritative, version-appropriate documentation**, not memory. State detected versions from lockfiles / manifests, then implement and **cite** sources.
+</context>
 
 ## When to Use
+
+<routing>
 
 - Building or changing patterns that depend on framework/library APIs.
 - User asks for “correct” or documented behavior.
@@ -19,33 +24,25 @@ Framework-specific decisions should trace to **authoritative, version-appropriat
 
 **When NOT to use:** Pure refactors with no API surface change; typos; moves with identical behavior.
 
-## What
-
-Implements framework-dependent changes using authoritative documentation and version-aware decisions.
-
-## Why
-
-Reduces API drift errors and undocumented assumptions.
-
-## How
-
-Follow the detect/fetch/implement/cite process and citation rules in this file.
-
-## When
-
-Use when framework/library API behavior influences implementation.
-
 ## Routing & discovery
 
 - Use when correctness depends on external docs/versioned APIs.
 - Do not use for purely local refactors with no API decisions.
 
+Use when framework/library API behavior influences implementation.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: repository read/search plus web retrieval for authoritative sources.
 - Authority: every non-obvious API choice should be source-backed.
+</required>
 
 ## Process
+
+<context>
 
 ```text
 DETECT → FETCH → IMPLEMENT → CITE
@@ -98,8 +95,11 @@ For non-obvious framework choices, add comments or reply text with **full URLs**
 ```
 
 If something cannot be verified in official docs, label it **UNVERIFIED**.
+</context>
 
 ## Scaffolding and dependencies (CLI-first), MUST
+
+<procedure>
 
 When **initializing a project/tool** or **adding a package/library**, do **not** fabricate the file/folder layout, config, or lockfile from memory. Project generators evolve; hand-written scaffolds drift from the current template and miss required wiring.
 
@@ -138,8 +138,11 @@ migrate-down               # roll back the last migration
 ```
 
 Wire each target to the **documented** CLI for the migration/runtime tool the repo actually uses. Confirm the current commands from that tool's docs; the specific migration tool belongs in the stack-profile, not hardcoded here.
+</procedure>
 
 ## Verification
+
+<verification>
 
 - [ ] Versions identified from repo manifests
 - [ ] Official docs consulted for non-trivial API usage
@@ -148,3 +151,4 @@ Wire each target to the **documented** CLI for the migration/runtime tool the re
 - [ ] Unverified items labeled clearly
 - [ ] Project/package scaffolding done via the official CLI (no hand-fabricated init files/folders)
 - [ ] Operational commands captured in a `Makefile` (docker, run, build, test, lint, migrate new/up/down), or `package.json` scripts for Node projects
+</verification>

@@ -8,22 +8,18 @@ Reference: [Claude Code subagents](https://code.claude.com/docs/en/sub-agents).
 
 ## What
 
+<context>
+
 - **File name:** `agents/<name>.md`
-- **Role:** One sentence — what this subagent is for.
 - **Inputs:** What the parent agent passes (task description, paths).
 - **Outputs:** Expected return (summary, artifacts, exit criteria).
 
 ---
-
-## Why
-
-- **Problem:** Why isolate this work in a subagent instead of the main loop?
-- **Success criteria:** What does “done” look like?
-- **Non-goals:** What it must not attempt.
-
----
+</context>
 
 ## How
+
+<procedure>
 
 - **Behavior:** System prompt body — steps, tone, depth.
 - **Frontmatter:** Required YAML keys per product docs (`name`, `description`, `tools`, etc.).
@@ -39,15 +35,11 @@ Map content into **`agents/<name>.md`**:
 | Authority | YAML **`tools:`** — each allowed tool key set to `true`; all others unavailable. |
 
 ---
-
-## When
-
-- **Delegate when:** Parent should spawn this subagent (symptoms, task types).
-- **Do not delegate when:** Cases that belong in the main agent or a different subagent.
-
----
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 Draft for **`description`**:
 
@@ -56,7 +48,13 @@ Draft for **`description`**:
 
 ---
 
+- **Delegate when:** Parent should spawn this subagent (symptoms, task types).
+- **Do not delegate when:** Cases that belong in the main agent or a different subagent.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 | Layer | Action |
 |-------|--------|
@@ -89,3 +87,4 @@ had to be edited together.
 
 The same rule applies to any block that already lives somewhere canonical: the stack-profile pointer,
 the grounding rule, the git gates. Link to the one home instead of copying it.
+</required>

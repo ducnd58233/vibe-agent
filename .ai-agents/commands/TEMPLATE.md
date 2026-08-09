@@ -10,44 +10,43 @@ If your environment uses linked discovery paths, run [`scripts/link-ai-agents.ps
 
 ## What
 
+<context>
+
 - **File name:** `commands/<name>.md`
 - **Command intent:** What the user gets when they invoke `/`-style routing for this file (per product behavior).
 - **Inputs:** User-supplied args or implicit context.
 - **Outputs:** Expected assistant behavior or artifacts.
 
 ---
-
-## Why
-
-- **Problem:** Why a dedicated command instead of a skill folder?
-- **Success criteria:** …
-- **Non-goals:** …
-
----
+</context>
 
 ## How
+
+<procedure>
 
 - **Prompt body:** Full markdown content — instructions the command injects or follows.
 - **Optional frontmatter:** If your toolchain supports metadata for commands, align with team convention.
 - **Doc output location (MUST, if the command writes a markdown deliverable):** Write it under `docs/<slug>/` at the workspace root (the directory containing `.vibe-agent/`, or the repo root when this toolkit is standalone), using a short kebab-case `<slug>` for the work. Do not write into `.vibe-agent/`. See the "Generated docs output location" rule in [`AGENTS.md`](../../AGENTS.md).
 
 ---
-
-## When
-
-- **Invoke when:** User goals or keywords.
-- **Avoid when:** Better handled by a skill or subagent.
-
----
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 - **Use when:** …
 - **Do not use when:** …
 
 ---
 
+- **Invoke when:** User goals or keywords.
+- **Avoid when:** Better handled by a skill or subagent.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 Commands inherit the **same tool permissions** as the session that runs them. Document:
 
@@ -80,3 +79,4 @@ had to be edited together.
 
 The same rule applies to any block that already lives somewhere canonical: the stack-profile pointer,
 the grounding rule, the git gates. Link to the one home instead of copying it.
+</required>

@@ -6,6 +6,8 @@ Quick reference for tests across common web + API stacks. Use alongside the [`te
 
 ## Table of Contents
 
+<routing>
+
 - [Test Structure (Arrange-Act-Assert)](#test-structure-arrange-act-assert)
 - [Test Naming Conventions](#test-naming-conventions)
 - [Common Assertions](#common-assertions)
@@ -16,8 +18,11 @@ Quick reference for tests across common web + API stacks. Use alongside the [`te
 - [Core logic only (MUST)](#core-logic-only-must)
 - [Measuring whether a test is worth keeping](#measuring-whether-a-test-is-worth-keeping)
 - [Test Anti-Patterns](#test-anti-patterns)
+</routing>
 
 ## Test Structure (Arrange-Act-Assert)
+
+<context>
 
 ```typescript
 it('describes expected behavior', () => {
@@ -105,8 +110,11 @@ test('user can create a task', async ({ page }) => {
 ```
 
 Use web-first assertions; avoid hardcoded sleeps.
+</context>
 
 ## Core logic only (MUST)
+
+<required>
 
 Tests must target **business behavior and core logic**. **Do not generate** meaningless discovery or infrastructure tests.
 
@@ -128,8 +136,11 @@ Use CI, global setup, or fixtures for infrastructure. Each test case should fail
 **The bans are semantic, not syntactic.** A test may read a file, the clock, or the environment when that reading *is* the claim: "saving writes a manifest" and "this input creates no file" are behavior; "`config.json` exists" is discovery. The test is the question "does this fail when product behavior changes", not "which API did it call".
 
 See [`test-driven-development`](../skills/test-driven-development/SKILL.md) for the full tables.
+</required>
 
 ## Measuring whether a test is worth keeping
+
+<rules>
 
 Coverage answers "was this line executed", which a useless test satisfies. Two better questions, in increasing cost:
 
@@ -170,8 +181,11 @@ What one pass actually found here, in code written the same day and fully passin
 **2. Has this test ever failed?** Coplien's framing: *"Tests that continually pass are producing no information — or at least very little information, and the value of the information they produce may not be worth the expense of maintaining and running the tests"* ([essay](https://wikileaks.org/ciav7p1/cms/files/Why-Most-Unit-Testing-is-Waste.pdf)). Treat it as a prompt to check the test can still fail, not as licence to delete a regression guard — see the [counter-argument](https://henrikwarne.com/2014/09/04/a-response-to-why-most-unit-testing-is-waste/).
 
 The cheap signals — no assertion, an assertion only on the environment, an assertion only that a mock was called — are caught automatically by [`core-logic-test-guard.py`](../hooks/core-logic-test-guard.py) on every write to a test file.
+</rules>
 
 ## Test Anti-Patterns
+
+<antipatterns>
 
 | Anti-Pattern | Problem | Better Approach |
 |--------------|---------|-----------------|
@@ -187,3 +201,4 @@ The cheap signals — no assertion, an assertion only on the environment, an ass
 ---
 
 Repository-specific runners and examples: see linked profiles from [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md).
+</antipatterns>

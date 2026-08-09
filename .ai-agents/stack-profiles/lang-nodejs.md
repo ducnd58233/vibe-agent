@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories running JavaScript or TypeScript on Node.js at the runtime level: the event loop, streams and backpressure, module systems, process and worker model, package management, and native addons. Language rules live in [`lang-typescript.md`](lang-typescript.md); HTTP framework rules live in the matching backend profile.
 
 ## When to load
@@ -12,8 +14,11 @@ Applies to consumer repositories running JavaScript or TypeScript on Node.js at 
 - ESM and CommonJS interop, module resolution, or `exports` map changes
 - Package management, workspaces, lockfiles, or dependency install behavior
 - Child processes, worker threads, clustering, or graceful shutdown
+</routing>
 
 ## Detection
+
+<context>
 
 - `package.json` with `engines.node`, `"type"`, `bin`, or `exports`
 - Lockfiles such as `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`
@@ -36,16 +41,22 @@ Non-exhaustive examples. Any tool here may be renamed, deprecated, or replaced. 
 - Prefer the repo's existing script names over invoking tools directly; scripts encode required flags
 - Never change the package manager or regenerate a lockfile as a side effect of another task
 - Keep runtime configuration in environment variables read at startup, not scattered through modules
+</context>
 
 ## Commands
+
+<procedure>
 
 Use repo-documented commands first. Typical examples:
 
 - Install with the package manager matching the committed lockfile
 - Run and test through the repo's `scripts` entries
 - Profile with the built-in flags before adding a profiling dependency
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - The event loop is single-threaded per process. Synchronous CPU-bound work, large synchronous JSON handling, and sync filesystem calls block every pending request — move them to worker threads or a separate process
 - Honor stream backpressure: piping without respecting it turns a slow consumer into unbounded memory growth
@@ -62,10 +73,14 @@ Use repo-documented commands first. Typical examples:
 - Validate and bound request body size, upload size, and concurrency before doing work
 - Set explicit timeouts on every outbound call; a hung dependency otherwise exhausts the pool
 - Measure with a profiler before optimizing; event-loop delay and heap growth are the two signals worth watching first
+</required>
 
 ## References
+
+<references>
 
 - https://nodejs.org/docs/latest/api/
 - https://nodejs.org/en/learn/asynchronous-work/event-loop-timers-and-nexttick
 - https://nodejs.org/en/learn/modules/publishing-node-api-modules
 - https://docs.npmjs.com/cli/configuring-npm/package-json
+</references>

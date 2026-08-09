@@ -13,23 +13,12 @@ Follow [`code-simplification`](../skills/code-simplification/SKILL.md).
 
 Revert a step if tests fail.
 
-## What
-
-Simplify existing code while preserving behavior.
-
-## Why
-
-Improves readability and maintainability with low risk.
-
-## How
-
-Use the scoped incremental simplification loop above with frequent tests.
-
-## When
-
-Invoke after behavior is understood and tests exist to protect refactors.
-
 ## Routing & discovery
+
+<routing>
 
 - Use when clarity/complexity reduction is the main objective.
 - Do not use when introducing new behavior without specification.
+
+Invoke after behavior is understood and tests exist to protect refactors.
+</routing>

@@ -12,6 +12,8 @@ When the final report includes diagrams, flows, timelines, or evidence maps, fol
 
 ## Phase 0 - Scope & repository-access preflight (MUST run first)
 
+<procedure>
+
 1. **Pick the right instrument.** These three lanes are **web/citation** personas. If the question is primarily about a **local code repository** (its tree, code, or behavior), do **not** fan them out over the filesystem - prefer the built-in read-only `Explore` agent or direct `Read`/`Grep`/`Glob` (orchestration-patterns section 5). Reserve this command for **evidence/citation** questions (web, docs, mixed) where the lanes each add a *different kind* of finding.
 2. **Resolve and pass an absolute working directory.** Compute the repo root as an absolute path and pass it explicitly to every lane. Never let a lane guess its own CWD.
 3. **Require a ground-truth anchor.** Each lane must begin by listing the real top-level tree (`Glob`/`Read`) and echo it back. A lane that reports `ACCESS-FAILED: <path>` returns zero findings and is treated as non-authoritative.
@@ -35,25 +37,15 @@ Return:
 2. Analyst section
 3. Auditor section
 4. Consolidated verdict with confidence and follow-up actions
-
-## What
-
-Execute parallel investigation lanes and merge into one evidence-backed verdict.
-
-## Why
-
-Combines complementary perspectives while keeping orchestration explicit.
-
-## How
-
-Use the existing Phase A/B/C fan-out and merge workflow.
-
-## When
-
-Invoke for multi-faceted questions needing research, analysis, and source audit.
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 - Use when one persona is insufficient for confidence on an **evidence/citation** question.
 - Do not use for small, single-lane tasks.
 - Do not use for repository/code investigation grounded in a single local tree - route to `Explore` or direct tools instead (see Phase 0).
+
+Invoke for multi-faceted questions needing research, analysis, and source audit.
+</routing>

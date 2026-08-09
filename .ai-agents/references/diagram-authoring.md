@@ -4,15 +4,16 @@ Reusable guidance for diagrams in generated markdown docs, specs, plans, researc
 
 ## What
 
+<context>
+
 Use text-based diagrams when they make a workflow, relationship, architecture boundary, state transition, or timeline easier to understand than prose alone.
 
 Mermaid is the default diagram format for markdown deliverables because it keeps diagrams editable, versionable, and close to the docs that explain them. Official docs: https://mermaid.js.org/intro/ and syntax pages under https://mermaid.js.org/syntax/.
-
-## Why
-
-Generated diagrams often fail in three ways: stale syntax, unreadable rendered output, or a diagram that adds noise instead of clarity. This reference makes diagram work source-backed, render-checked, and readable for humans.
+</context>
 
 ## How
+
+<procedure>
 
 1. Decide whether a diagram helps.
    - Add a diagram for flows, state maps, sequence interactions, architecture boundaries, ER-style relationships, timelines, or release plans.
@@ -45,8 +46,11 @@ Generated diagrams often fail in three ways: stale syntax, unreadable rendered o
    - Prefer a small diagram plus a short caption over one large diagram.
    - Split diagrams when more than one concern is shown.
    - Do not duplicate the same information in multiple diagrams unless each view serves a different reader need.
+</procedure>
 
 ## Required verification note
+
+<verification>
 
 When a command or agent writes a markdown deliverable containing Mermaid, include a short verification note:
 
@@ -59,13 +63,20 @@ If render could not be checked:
 ```markdown
 Diagram verification: Mermaid docs checked (<URLs>). UNVERIFIED: render not checked - <reason>.
 ```
+</verification>
 
 ## When to use
 
+<routing>
+
 Use this reference from commands, skills, and agents that create or update docs, specs, plans, reports, ADRs, or research digests with diagrams.
+</routing>
 
 ## Permissions and authority
+
+<rules>
 
 - Reading official Mermaid docs may need web access.
 - Render checks may use an installed preview, local CLI, or browser tool when available.
 - Do not install Mermaid tooling only for verification unless the user approves dependency changes.
+</rules>

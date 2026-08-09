@@ -1,5 +1,7 @@
 # Hooks router
 
+<routing>
+
 Lookup table for hook scripts in this folder. **After you add, rename, or remove a hook script, update this table in the same change.**
 
 | Event / concern / use case | Script | Permission notes |
@@ -28,3 +30,4 @@ Lookup table for hook scripts in this folder. **After you add, rename, or remove
 - `stop` returns `decision: "block"` while a run sits mid-graph with nothing recorded, at most once per turn, and never for a run awaiting a human.
 
 Look there, not here, when a shell command is refused or a turn will not end with no script to blame. See [`runtime/README.md`](../../runtime/README.md) under "What is deterministic, and what is not".
+</routing>

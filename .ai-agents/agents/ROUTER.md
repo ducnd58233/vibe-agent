@@ -1,5 +1,7 @@
 # Subagents router
 
+<routing>
+
 Lookup table for Claude subagent files in this folder. **After you add, rename, or remove a `*.md` subagent, update this table in the same change.**
 
 Subagents are primarily for **Claude Code** (typically via `.claude/agents` linked to this folder). Cursor users may `@`-reference the same files as prompts.
@@ -22,3 +24,4 @@ Subagents are primarily for **Claude Code** (typically via `.claude/agents` link
 | Product design and design-system review | [`product-design-reviewer.md`](product-design-reviewer.md) | Read, Grep, Glob, Bash |
 
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md). Overview: [`README.md`](README.md).
+</routing>

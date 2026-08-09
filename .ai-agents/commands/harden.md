@@ -6,6 +6,8 @@ Run a focused hardening pass on AI assets, tool permissions, and orchestration b
 
 ## Scope
 
+<context>
+
 Review:
 
 - [`.ai-agents/PERMISSIONS.md`](../PERMISSIONS.md)
@@ -16,8 +18,11 @@ Review:
 - [`hooks/`](../hooks/)
 - [`references/tool-safety-and-permissions.md`](../references/tool-safety-and-permissions.md)
 - [`references/orchestration-patterns.md`](../references/orchestration-patterns.md)
+</context>
 
 ## Checks
+
+<verification>
 
 1. Broad allow rules and missing deny/ask controls.
 2. Hook script existence, side effects, and tests/smoke checks.
@@ -25,8 +30,11 @@ Review:
 4. Commands that imply risky operations without approval language.
 5. Secret path exposure and logging risks.
 6. Persona orchestration anti-patterns.
+</verification>
 
 ## Required output
+
+<outputs>
 
 ```markdown
 ## AI Asset Hardening Report
@@ -39,24 +47,14 @@ Review:
 ### Positive controls
 ### Verification run
 ```
-
-## What
-
-Review and improve safety boundaries for AI assets and tool use.
-
-## Why
-
-Reusable agent systems amplify permission mistakes; hardening keeps workflows portable and safe.
-
-## How
-
-Use the checks and severity report above.
-
-## When
-
-Invoke after adding commands, agents, hooks, permissions, or external-tool workflows.
+</outputs>
 
 ## Routing & discovery
 
+<routing>
+
 - Use for AI-asset/tool-safety review.
 - Do not use for ordinary app security review; use [`security-and-hardening`](../skills/security-and-hardening/SKILL.md).
+
+Invoke after adding commands, agents, hooks, permissions, or external-tool workflows.
+</routing>

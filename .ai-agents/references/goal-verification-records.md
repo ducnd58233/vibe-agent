@@ -4,6 +4,8 @@ Local evidence from [`/goal`](../commands/goal.md) runs: test output, E2E artifa
 
 ## Location
 
+<context>
+
 Write under the **workspace root** (directory that contains `.vibe-agent/` when mounted as submodule, else the git repo root):
 
 ```text
@@ -20,8 +22,11 @@ tmp/
 ```
 
 `<slug>` matches `docs/<slug>/` for the same goal.
+</context>
 
 ## RECORD.md template
+
+<rules>
 
 ```markdown
 # Goal verification record: <slug>
@@ -61,12 +66,18 @@ tmp/
 
 - …
 ```
+</rules>
 
 ## When `/goal` must write here
 
+<context>
+
 After every **verification** step (unit test, E2E, PR check poll, external review snapshot), append or update `tmp/<slug>/RECORD.md` and save raw logs under the matching subfolder. Do not claim pass/fail without a saved artifact or command output file.
+</context>
 
 ## External PR review wait (after PR is open)
+
+<procedure>
 
 `/goal` does **not** merge until configured reviewers and CI have finished, when the human expects them.
 
@@ -87,8 +98,11 @@ Read repo config when present: `.coderabbit.yaml`, `.github/CODEOWNERS`, branch 
 ### Without `gh`
 
 Ask the human to confirm CI and external reviews are complete, or paste review URLs; save pasted content under `pr-reviews/`.
+</procedure>
 
 ## E2E and runtime verification (when in scope)
+
+<verification>
 
 **MUST** run end-to-end or full-runtime verification when the change touches:
 
@@ -103,8 +117,11 @@ Ask the human to confirm CI and external reviews are complete, or paste review U
 Read [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) and the spec testing section before choosing commands. Record commands, versions, and logs under `tmp/<slug>/`.
 
 **Do not skip E2E** because unit tests passed. **Do not claim** E2E pass without saved output or report paths in `tmp/<slug>/`.
+</verification>
 
 ## Gitignore
+
+<context>
 
 Add to workspace root `.gitignore`:
 
@@ -114,8 +131,12 @@ Add to workspace root `.gitignore`:
 ```
 
 Consumer repos using vibe-agent should add this line if missing.
+</context>
 
 ## Permissions
 
+<required>
+
 - `gh` and docker/k8s commands need session approval per [`.ai-agents/PERMISSIONS.md`](../PERMISSIONS.md).
 - Never commit secrets from PR comments or test logs into `tmp/` if they contain credentials; redact before save.
+</required>

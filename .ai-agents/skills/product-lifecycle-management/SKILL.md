@@ -7,15 +7,9 @@ disable-model-invocation: true
 
 # Product Lifecycle Management
 
-## What
-
-Guide a product or feature from idea to spec, build, launch, observe, iterate, deprecate, or retire.
-
-## Why
-
-Shipping code is not the same as delivering product value. Lifecycle discipline ties implementation to user outcomes, operational safety, feedback, and explicit end states.
-
 ## How
+
+<procedure>
 
 1. **Load stack context**
    - Read root `AGENTS.md`, relevant specs/ADRs/plans, and [`product-lifecycle-delivery.md`](../../stack-profiles/product-lifecycle-delivery.md).
@@ -34,12 +28,11 @@ Shipping code is not the same as delivering product value. Lifecycle discipline 
    - Review metrics and qualitative feedback.
    - Decide iterate, scale, maintain, migrate, deprecate, or remove.
    - Remove stale flags and update docs/runbooks.
-
-## When
-
-Use for lifecycle planning, rollout strategy, success metrics, product operations, and feature retirement. Do not use as a substitute for domain-specific product strategy in consuming repos.
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 - This skill **coordinates** the lifecycle and owns metrics, guardrails, flag governance, and deprecation; it does not replace the focused skills it delegates to.
 - Delegate early idea shaping and option framing to [`idea-refine`](../idea-refine/SKILL.md).
@@ -47,22 +40,34 @@ Use for lifecycle planning, rollout strategy, success metrics, product operation
 - Pair with [`spec-driven-development`](../spec-driven-development/SKILL.md) for written specs and [`planning-and-task-breakdown`](../planning-and-task-breakdown/SKILL.md) for execution plans.
 - Pair with [`observability-monitoring`](../observability-monitoring/SKILL.md) for feedback and post-launch signals.
 
+Use for lifecycle planning, rollout strategy, success metrics, product operations, and feature retirement. Do not use as a substitute for domain-specific product strategy in consuming repos.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: Read, Grep, Glob, Edit; Shell only for documented validation.
 - Paths: docs, specs, ADRs, analytics/observability configs, release notes.
 - Do not add telemetry collecting new user data without privacy/security review.
+</required>
 
 ## Verification
+
+<verification>
 
 - [ ] Lifecycle stage, owner, users, and decision criteria are explicit.
 - [ ] Success metrics and guardrails are measurable.
 - [ ] Rollout, rollback/disable, and post-launch review are defined.
 - [ ] Feature flags have owner, default, ramp criteria, and removal date.
 - [ ] Docs/specs/runbooks link to dashboards or feedback mechanisms.
+</verification>
 
 ## References
+
+<references>
 
 - https://dora.dev/guides/dora-metrics/
 - https://opentelemetry.io/docs/concepts/observability-primer/
 - https://docs.github.com/en/actions/learn-github-actions/understanding-github-actions
+</references>

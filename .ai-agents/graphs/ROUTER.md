@@ -14,4 +14,7 @@ A graph is the control flow for a multi-phase workflow: which node runs next, an
 
 ## When a graph is the wrong tool
 
+<context>
+
 Most work needs no graph. Reach for one only when the workflow has lasting state, branching, retries, approval gates, several phases, and a need to resume. A single-file review, one research lookup, a lint run, or a small fix are all direct invocation. Adding nodes to model them buys structure and pays in rigidity. See [`orchestration-patterns.md`](../references/orchestration-patterns.md) for the ungraphed patterns and [`loop-and-graph-engineering.md`](../references/loop-and-graph-engineering.md) for the tradeoff.
+</context>

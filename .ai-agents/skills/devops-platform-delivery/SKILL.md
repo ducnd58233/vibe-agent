@@ -7,15 +7,9 @@ disable-model-invocation: true
 
 # DevOps Platform Delivery
 
-## What
-
-Build reliable delivery systems: CI, CD, artifacts, environments, deploy gates, rollback, infrastructure-as-code, and platform workflows.
-
-## Why
-
-Deployment systems fail when build artifacts are mutable, credentials are over-broad, environments drift, pipelines hide risk, or deploys have no rollback. This workflow makes delivery repeatable, observable, and governed.
-
 ## How
+
+<procedure>
 
 1. **Load stack context**
    - Inspect CI files, manifests, deploy scripts, and runbooks.
@@ -36,35 +30,46 @@ Deployment systems fail when build artifacts are mutable, credentials are over-b
    - Check dependency audits, container scans, SBOM/signing only when repo policy supports them.
 6. **Measure delivery health**
    - Track deployment frequency, lead time, change failure rate, recovery time, flaky jobs, queue time, and deploy duration.
-
-## When
-
-Use for pipeline, IaC, container, deployment, environment, and platform engineering changes. Do not use for app-only code unless delivery automation is affected.
+</procedure>
 
 ## Routing & discovery
+
+<routing>
 
 - Pair with [`shipping-and-launch`](../shipping-and-launch/SKILL.md) for go/no-go rollout decisions.
 - Pair with [`security-and-hardening`](../security-and-hardening/SKILL.md) for credentials, supply chain, and environment access.
 - Pair with [`observability-monitoring`](../observability-monitoring/SKILL.md) when delivery dashboards or deploy telemetry are required.
 
+Use for pipeline, IaC, container, deployment, environment, and platform engineering changes. Do not use for app-only code unless delivery automation is affected.
+</routing>
+
 ## Permissions & authority
+
+<required>
 
 - Tools: Read, Grep, Glob, Edit; Shell for repo-documented validation.
 - Paths: CI, scripts, infra, manifests, docs; no secrets.
 - Ask before running deploy/apply commands, cloud mutations, long-running jobs, or production-impacting commands.
+</required>
 
 ## Verification
+
+<verification>
 
 - [ ] Pipeline has clear validation/build/deploy separation and artifact immutability.
 - [ ] Secrets are not committed or printed; credentials are least-privilege.
 - [ ] Deploys have gates, environment targeting, concurrency protection, and rollback path.
 - [ ] IaC changes have fmt/validate/plan or equivalent evidence.
 - [ ] Delivery metrics and deploy observability are available or explicitly deferred.
+</verification>
 
 ## References
+
+<references>
 
 - https://docs.github.com/en/actions/learn-github-actions/understanding-github-actions
 - https://developer.hashicorp.com/terraform/intro/core-workflow
 - https://docs.docker.com/compose
 - https://kubernetes.io/docs/
 - https://dora.dev/guides/dora-metrics/
+</references>

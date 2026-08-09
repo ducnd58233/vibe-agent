@@ -6,6 +6,8 @@ Companion to [`agent-harness-engineering.md`](agent-harness-engineering.md), whi
 
 ## Two loops, two owners
 
+<rules>
+
 The single most useful distinction in this area is which loop belongs to whom.
 
 | | Inner loop | Outer loop |
@@ -53,8 +55,11 @@ A single-file review, one research lookup, a lint run, and a small bug fix have 
 Structure is not free. Moving from loops to structured graphs buys explicit dependencies, parallelism, and predictability, and pays in rigidity: a DAG "imposes structure that may be restrictive for highly dynamic, unpredictable workflows," and scheduling gets harder as the graph grows ([arXiv 2604.11378](https://arxiv.org/pdf/2604.11378)).
 
 The production guidance is blunt about sequencing: start with the simplest architecture that works, instrument it fully, and add complexity only in response to an observed failure mode ([Zylos, 2026](https://zylos.ai/research/2026-04-14-graph-based-agent-workflow-orchestration-production/)).
+</rules>
 
 ## Graph anatomy
+
+<context>
 
 A node performs work. It might be a model call, a plain function, a test suite, a tool, or a human approval. An edge is a transition. State flows between them and is checkpointed so a run can resume ([LangGraph](https://docs.langchain.com/oss/python/langgraph/overview)).
 
@@ -83,8 +88,11 @@ A guard is a **question** (`unit_passed`); a check is an **evidence slot** (`uni
 ### Evidence provenance
 
 A check is `passed` only from a process exit code, a file assertion, a CI API response, or a recorded human approval. There is no provenance value for model assertion, so no code path lets model output mark its own work complete. This is enforced by [`schemas/run-state.schema.json`](../../schemas/run-state.schema.json), not by instruction.
+</context>
 
 ## Production failure modes
+
+<rules>
 
 From a 2026 survey of graph-orchestrated systems in production ([Zylos](https://zylos.ai/research/2026-04-14-graph-based-agent-workflow-orchestration-production/)):
 
@@ -96,8 +104,11 @@ From a 2026 survey of graph-orchestrated systems in production ([Zylos](https://
 | Improper interrupt placement | Approvals sit after the risky step instead of before it | `human_gate` nodes precede irreversible actions; the merge gate is the example |
 
 The last one is easy to get backwards. A gate that fires after a merge documents the merge; it does not govern it.
+</rules>
 
 ## Checklist
+
+<verification>
 
 Use when reviewing a workflow design.
 
@@ -111,8 +122,11 @@ Use when reviewing a workflow design.
 - [ ] Human gates precede irreversible actions
 - [ ] A transition budget exists and terminates the run
 - [ ] Every node is reachable and can reach a terminal
+</verification>
 
 ## Related references
+
+<references>
 
 - [`agent-harness-engineering.md`](agent-harness-engineering.md) - harness responsibilities, guides and sensors, verification
 - [`orchestration-patterns.md`](orchestration-patterns.md) - the patterns that need no graph, and the fan-out anti-patterns
@@ -128,3 +142,4 @@ Sources were read in 2026-07. Verify against current material before relying on 
 - Production surveys report graph orchestration with per-node checkpointing as the common production shape, and name undefined contracts, late observability, excess autonomy, and misplaced interrupts as the recurring failures.
 - Scheduler-theoretic work on converting agent loops to DAGs reports the parallelism and predictability gains alongside the rigidity and scheduling costs.
 - Memory work has converged on an episodic, semantic, procedural split, and notes that declarative injection through `AGENTS.md`-style files is already an effective procedural-memory form for coding agents ([Zylos, memory architectures](https://zylos.ai/research/2026-04-05-ai-agent-memory-architectures-persistent-knowledge/)).
+</references>

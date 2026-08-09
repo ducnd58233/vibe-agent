@@ -9,19 +9,27 @@ disable-model-invocation: true
 
 ## Overview
 
+<context>
+
 Multi-dimensional code review with quality gates. Every change gets reviewed before merge — no exceptions. Review covers five axes: correctness, readability, architecture, security, and performance.
 
 **The approval standard:** Approve a change when it definitely improves overall code health, even if it isn't perfect. Perfect code doesn't exist — the goal is continuous improvement. Don't block a change because it isn't exactly how you would have written it. If it improves the codebase and follows the project's conventions, approve it.
+</context>
 
 ## When to Use
+
+<routing>
 
 - Before merging any PR or change
 - After completing a feature implementation
 - When another agent or model produced code you need to evaluate
 - When refactoring existing code
 - After any bug fix (review both the fix and the regression test)
+</routing>
 
 ## The Five-Axis Review
+
+<rules>
 
 Every review evaluates code across these dimensions:
 
@@ -82,8 +90,11 @@ For detailed profiling and optimization, see [`performance-optimization`](../per
 - Any unnecessary re-renders in UI components?
 - Any missing pagination on list endpoints?
 - Any large objects created in hot paths?
+</rules>
 
 ## Change Sizing
+
+<context>
 
 Small, focused changes are easier to review, faster to merge, and safer to deploy. Target these sizes:
 
@@ -117,8 +128,11 @@ Every change needs a description that stands alone in version control history.
 **Body:** What is changing and why. Include context, decisions, and reasoning not visible in the code itself. Link to bug numbers, benchmark results, or design docs where relevant. Acknowledge approach shortcomings when they exist.
 
 **Anti-patterns:** "Fix bug," "Fix build," "Add patch," "Moving code from A to B," "Phase 1," "Add convenience functions."
+</context>
 
 ## Review Process
+
+<procedure>
 
 ### Step 1: Understand the Context
 
@@ -181,8 +195,11 @@ Check the author's verification story:
 - Are there screenshots for UI changes?
 - Is there a before/after comparison?
 ```
+</procedure>
 
 ## Multi-Model Review Pattern
+
+<context>
 
 Use different models for different review perspectives:
 
@@ -207,8 +224,11 @@ Review this code change for correctness, security, and adherence to
 our project conventions. The spec says [X]. The change should [Y].
 Flag any issues as Critical, Important, or Suggestion.
 ```
+</context>
 
 ## Dead Code Hygiene
+
+<procedure>
 
 After any refactoring or implementation change, check for orphaned code:
 
@@ -225,8 +245,11 @@ DEAD CODE IDENTIFIED:
 - LEGACY_API_URL constant in src/config.ts — no remaining references
 → Safe to remove these?
 ```
+</procedure>
 
 ## Review Speed
+
+<rules>
 
 Slow reviews block entire teams. The cost of context-switching to review is less than the waiting cost imposed on others.
 
@@ -234,8 +257,11 @@ Slow reviews block entire teams. The cost of context-switching to review is less
 - **Ideal cadence:** Respond shortly after a review request arrives, unless deep in focused coding. A typical change should complete multiple review rounds in a single day
 - **Prioritize fast individual responses** over quick final approval. Quick feedback reduces frustration even if multiple rounds are needed
 - **Large changes:** Ask the author to split them rather than reviewing one massive changeset
+</rules>
 
 ## Handling Disagreements
+
+<procedure>
 
 When resolving review disputes, apply this hierarchy:
 
@@ -245,8 +271,11 @@ When resolving review disputes, apply this hierarchy:
 4. **Codebase consistency** is acceptable if it doesn't degrade overall health
 
 **Don't accept "I'll clean it up later."** Experience shows deferred cleanup rarely happens. Require cleanup before submission unless it's a genuine emergency. If surrounding issues can't be addressed in this change, require filing a bug with self-assignment.
+</procedure>
 
 ## Honesty in Review
+
+<rules>
 
 When reviewing code — whether written by you, another agent, or a human:
 
@@ -255,8 +284,11 @@ When reviewing code — whether written by you, another agent, or a human:
 - **Quantify problems when possible.** "This N+1 query will add ~50ms per item in the list" is better than "this could be slow."
 - **Push back on approaches with clear problems.** Sycophancy is a failure mode in reviews. If the implementation has issues, say so directly and propose alternatives.
 - **Accept override gracefully.** If the author has full context and disagrees, defer to their judgment. Comment on code, not people — reframe personal critiques to focus on the code itself.
+</rules>
 
 ## Dependency Discipline
+
+<procedure>
 
 Part of code review is dependency review:
 
@@ -268,8 +300,11 @@ Part of code review is dependency review:
 5. What's the license? (Must be compatible with the project.)
 
 **Rule:** Prefer standard library and existing utilities over new dependencies. Every dependency is a liability.
+</procedure>
 
 ## The Review Checklist
+
+<verification>
 
 ```markdown
 ## Review: [PR/Change title]
@@ -314,12 +349,19 @@ Part of code review is dependency review:
 - [ ] **Approve** — Ready to merge
 - [ ] **Request changes** — Issues must be addressed
 ```
+</verification>
+
 ## See Also
+
+<references>
 
 - For detailed security review guidance, see [`security-and-hardening`](../security-and-hardening/SKILL.md)
 - For performance profiling guidance, see [`performance-optimization`](../performance-optimization/SKILL.md)
+</references>
 
 ## Common Rationalizations
+
+<antipatterns>
 
 | Rationalization | Reality |
 |---|---|
@@ -340,8 +382,11 @@ Part of code review is dependency review:
 - Infrastructure or discovery tests posing as behavioral tests (file exists, env set, container up)
 - Review comments without severity labels — makes it unclear what's required vs optional
 - Accepting "I'll fix it later" — it never happens
+</antipatterns>
 
 ## Verification
+
+<verification>
 
 After review is complete:
 
@@ -350,7 +395,11 @@ After review is complete:
 - [ ] Tests pass
 - [ ] Build succeeds
 - [ ] The verification story is documented (what changed, how it was verified)
+</verification>
 
 ## Related references
 
+<references>
+
 - [`security-checklist.md`](../../references/security-checklist.md), [`performance-checklist.md`](../../references/performance-checklist.md), [`testing-patterns.md`](../../references/testing-patterns.md)
+</references>

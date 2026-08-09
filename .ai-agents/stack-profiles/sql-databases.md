@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories using relational databases and SQL query engines, including PostgreSQL, MySQL/MariaDB, SQLite, SQL Server, CockroachDB, and cloud SQL variants.
 
 ## When to load
@@ -10,8 +12,11 @@ Applies to consumer repositories using relational databases and SQL query engine
 - Debugging SQL errors, deadlocks, lock waits, slow queries, missing indexes, or N+1 patterns
 - Reviewing repository/ORM/query-builder code, raw SQL, database migrations, or connection-pool settings
 - Optimizing query plans, pagination, joins, aggregation, materialized views, and reporting queries
+</routing>
 
 ## Detection
+
+<context>
 
 - Manifests or code mention `postgres`, `postgresql`, `mysql`, `mariadb`, `sqlite`, `sqlserver`, `cockroach`
 - ORM/query tools such as Prisma, Drizzle, TypeORM, Sequelize, SQLAlchemy, Alembic, Django ORM, ActiveRecord, Diesel, SQLx, jOOQ, Hibernate, Knex
@@ -32,14 +37,20 @@ Applies to consumer repositories using relational databases and SQL query engine
 - Keep transaction orchestration in service/use-case layers; repositories accept existing transaction handles when needed
 - Keep external DTOs separate from persistence rows/entities
 - Add or update indexes with the query pattern, selectivity, write cost, and migration risk in mind
+</context>
 
 ## Commands
+
+<procedure>
 
 - Use repo-documented migration/test commands first
 - Typical examples: `npm run test`, `pytest`, `cargo test`, `go test ./...`, `prisma migrate diff`, `alembic upgrade head --sql`, `sqlx prepare`, `diesel migration run`
 - Never run production migrations or destructive SQL without explicit approval and backup/rollback plan
+</procedure>
 
 ## Migration command surface (Makefile / scripts)
+
+<rules>
 
 Do not hand-fabricate migration scaffolding; use the chosen tool's CLI and read its docs ([`source-driven-development`](../skills/source-driven-development/SKILL.md)). Expose a consistent **new / up / down** trio so humans and agents share one entry point.
 
@@ -54,8 +65,11 @@ The tools below are **examples, not a closed list**. First detect what the repo 
 | dbmate / goose | `dbmate new <x>` / `goose create <x> sql` | `... up` | `... down` |
 
 Wire these as `migrate-new name=<x>` / `migrate-up` / `migrate-down` in the project **`Makefile`** (or `package.json` scripts for Node projects), alongside `docker-up` for a local database. Confirm exact flags from the tool's current docs.
+</rules>
 
 ## Boundaries
+
+<required>
 
 - Do not concatenate untrusted input into SQL
 - Do not add indexes blindly without workload evidence or expected query shape
@@ -69,11 +83,15 @@ Wire these as `migrate-new name=<x>` / `migrate-up` / `migrate-down` in the proj
 - Track locks, long transactions, connection pool saturation, replication lag, dead tuples/bloat, and slow query percentiles
 - Prefer constraints for invariants the database can enforce
 - Use parameterized queries and least-privilege database roles
+</required>
 
 ## References
+
+<references>
 
 - https://www.postgresql.org/docs/current/using-explain.html
 - https://www.postgresql.org/docs/current/indexes-examine.html
 - https://dev.mysql.com/doc/refman/en/using-explain.html
 - https://www.sqlite.org/eqp.html
 - https://owasp.org/www-community/attacks/SQL_Injection
+</references>

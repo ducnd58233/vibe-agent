@@ -16,23 +16,12 @@ Any task touching auth, user data, logging, error handling, or a client surface 
 
 Write outputs to `docs/<slug>/PLAN.md` and `docs/<slug>/TASKS.md` at the workspace root (the directory that contains `.vibe-agent/`; the repo root when this toolkit is used standalone), reusing the same `<slug>` as the spec for this work. See the "Generated docs output location" rule in [`AGENTS.md`](../../AGENTS.md). Present for human review before implementation.
 
-## What
-
-Convert a spec into ordered implementation tasks with verification criteria.
-
-## Why
-
-Improves execution predictability and reduces missed dependencies.
-
-## How
-
-Use the existing dependency/task/checkpoint flow above.
-
-## When
-
-Invoke after spec approval and before implementation.
-
 ## Routing & discovery
+
+<routing>
 
 - Use when execution steps are needed from written requirements.
 - Do not use when only high-level brainstorming is requested.
+
+Invoke after spec approval and before implementation.
+</routing>

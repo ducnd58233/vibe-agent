@@ -2,6 +2,8 @@
 
 ## Scope
 
+<routing>
+
 Applies to consumer repositories writing Rust at the language level: ownership and borrowing, lifetimes, trait design, error handling, `unsafe`, macros, cargo workspaces, and async runtime boundaries. Independent of any web framework; compose with a service profile such as [`backend-rust-axum.md`](backend-rust-axum.md) when the task is HTTP work.
 
 ## When to load
@@ -11,8 +13,11 @@ Applies to consumer repositories writing Rust at the language level: ownership a
 - Error-type and API design for a crate's public surface
 - Reviewing or introducing `unsafe`
 - Cargo workspace, feature-flag, or dependency changes
+</routing>
 
 ## Detection
+
+<context>
 
 - `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `clippy.toml`, `rustfmt.toml`
 - `src/main.rs`, `src/lib.rs`, `crates/`, `[workspace]` in the root manifest
@@ -37,8 +42,11 @@ For deeper idiom questions than this profile covers, an external rule catalog is
 - Library crates expose intent through `src/lib.rs`; keep the public surface deliberate and documented
 - Feature flags must be additive — enabling a feature may not break a build that did not enable it
 - Integration tests live in `tests/`; unit tests colocate in the module under `#[cfg(test)]`
+</context>
 
 ## Commands
+
+<procedure>
 
 Use repo-documented commands first. Typical examples:
 
@@ -46,8 +54,11 @@ Use repo-documented commands first. Typical examples:
 - `cargo clippy --all-targets -- -D warnings`
 - `cargo fmt --check`
 - `cargo doc --no-deps`
+</procedure>
 
 ## Boundaries
+
+<required>
 
 - Fight the borrow checker by changing the data model, not by reaching for `Rc<RefCell<_>>`, cloning everything, or leaking
 - `unsafe` requires a `// SAFETY:` comment stating the invariants the caller must uphold and why they hold here. Unsafe blocks without that justification are incomplete
@@ -62,10 +73,14 @@ Use repo-documented commands first. Typical examples:
 - Prefer borrowed types (`&str`, `&[T]`) in function signatures to avoid forcing allocation on callers
 - Benchmark before optimizing; debug and release profiles differ by orders of magnitude
 - Integer overflow panics in debug and wraps in release by default — do not rely on either; use explicit checked, saturating, or wrapping operations at trust boundaries
+</required>
 
 ## References
+
+<references>
 
 - https://doc.rust-lang.org/book/
 - https://doc.rust-lang.org/nomicon/
 - https://rust-lang.github.io/api-guidelines/
 - https://doc.rust-lang.org/cargo/
+</references>

@@ -10,22 +10,27 @@
 # <dialog>, and <picture> in examples, and a checker that flags those is a checker
 # somebody turns off.
 #
-# Checks: fence awareness, balance, membership in the documented set, position
-# relative to YAML frontmatter, and nesting. Tag set and rationale:
+# Nesting is allowed for genuine containment, which is what Anthropic's prompting
+# guidance recommends ("Nest tags when content has a natural hierarchy"). Two limits
+# stay enforced because they are always defects rather than judgment calls: a tag
+# inside itself, and a depth past two, which is a tree rather than a partition.
+#
+# Checks: fence awareness, pairing, membership in the documented set, position
+# relative to YAML frontmatter, self-nesting, and depth. Tag set and rationale:
 # .ai-agents/AUTHORING.md, "XML section tags".
 set -eu
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Charter tags, then asset tags. Kept in sync with the tables in AUTHORING.md.
-KNOWN="scope precedence always_on delivery_gates claude_specific other_harnesses persona prerequisites context required rules procedure inputs outputs verification antipatterns routing escalation"
+KNOWN="scope precedence always_on delivery_gates claude_specific other_harnesses persona prerequisites context required rules procedure inputs outputs verification antipatterns routing escalation references"
 
 scan() {
   awk -v known="$KNOWN" -v rel="$1" '
     BEGIN {
       n = split(known, list, " ")
       for (i = 1; i <= n; i++) valid[list[i]] = 1
-      open = ""; openline = 0; fence = 0; bad = 0
+      depth = 0; fence = 0; bad = 0
     }
     # Fenced code: ``` or ~~~ toggles. Everything inside is an example.
     /^[ \t]*(```|~~~)/ { fence = !fence; next }
@@ -42,12 +47,19 @@ scan() {
         printf "%s:1: a tag is the first line; YAML frontmatter must come first\n", rel
         bad = 1
       }
-      if (open != "") {
-        printf "%s:%d: <%s> opens while <%s> (line %d) is still open; tags do not nest\n", \
-          rel, NR, tag, open, openline
+      for (d = 1; d <= depth; d++) {
+        if (stack[d] == tag) {
+          printf "%s:%d: <%s> opens inside itself (line %d); that is not a hierarchy\n", \
+            rel, NR, tag, line[d]
+          bad = 1
+        }
+      }
+      if (depth >= 2) {
+        printf "%s:%d: <%s> nests three deep; a partition is flat, containment is one level\n", \
+          rel, NR, tag
         bad = 1
       }
-      open = tag; openline = NR
+      depth++; stack[depth] = tag; line[depth] = NR
       next
     }
 
@@ -58,21 +70,25 @@ scan() {
         bad = 1
         next
       }
-      if (open == "") {
+      if (depth == 0) {
         printf "%s:%d: </%s> closes but nothing is open\n", rel, NR, tag
         bad = 1
-      } else if (open != tag) {
-        printf "%s:%d: </%s> closes but <%s> (line %d) is open\n", rel, NR, tag, open, openline
+        next
+      }
+      if (stack[depth] != tag) {
+        printf "%s:%d: </%s> closes but <%s> (line %d) is the innermost open tag\n", \
+          rel, NR, tag, stack[depth], line[depth]
         bad = 1
       }
-      open = ""
+      depth--
       next
     }
 
     END {
-      if (open != "") {
-        printf "%s:%d: <%s> is never closed\n", rel, openline, open
+      while (depth > 0) {
+        printf "%s:%d: <%s> is never closed\n", rel, line[depth], stack[depth]
         bad = 1
+        depth--
       }
       exit bad
     }

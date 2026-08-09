@@ -6,13 +6,18 @@ Quick reference for WCAG 2.1 AA compliance. Use alongside the [`frontend-ui-engi
 
 ## Table of Contents
 
+<routing>
+
 - [Essential Checks](#essential-checks)
 - [Common HTML Patterns](#common-html-patterns)
 - [Testing Tools](#testing-tools)
 - [Quick Reference: ARIA Live Regions](#quick-reference-aria-live-regions)
 - [Common Anti-Patterns](#common-anti-patterns)
+</routing>
 
 ## Essential Checks
+
+<verification>
 
 ### Keyboard Navigation
 
@@ -58,8 +63,11 @@ Quick reference for WCAG 2.1 AA compliance. Use alongside the [`frontend-ui-engi
 - [ ] Links distinguish from surrounding text (not by color alone)
 - [ ] Touch targets ≥ 44×44px on mobile
 - [ ] Meaningful empty states (not blank screens)
+</verification>
 
 ## Common HTML Patterns
+
+<context>
 
 ### Buttons vs. Links
 
@@ -109,8 +117,11 @@ npx pa11y https://localhost:3000
 In Chrome DevTools: Lighthouse → Accessibility; Elements → Accessibility tree.
 
 Screen readers: macOS VoiceOver (Cmd+F5); Windows NVDA or JAWS.
+</context>
 
 ## Quick Reference: ARIA Live Regions
+
+<rules>
 
 | Value | Behavior | Use For |
 |-------|----------|---------|
@@ -118,8 +129,11 @@ Screen readers: macOS VoiceOver (Cmd+F5); Windows NVDA or JAWS.
 | `aria-live="assertive"` | Announced immediately | Errors, time-sensitive alerts |
 | `role="status"` | Same as `polite` | Status messages |
 | `role="alert"` | Same as `assertive` | Error messages |
+</rules>
 
 ## Common Anti-Patterns
+
+<antipatterns>
 
 | Anti-Pattern | Problem | Fix |
 |--------------|---------|-----|
@@ -134,3 +148,4 @@ Screen readers: macOS VoiceOver (Cmd+F5); Windows NVDA or JAWS.
 ---
 
 Repository-specific component library notes: document in the appropriate profile and link it from [`ROUTER.md`](../stack-profiles/ROUTER.md).
+</antipatterns>

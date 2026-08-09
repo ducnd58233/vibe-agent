@@ -9,9 +9,14 @@ disable-model-invocation: true
 
 ## Overview
 
+<context>
+
 Measure before optimizing. Performance work without measurement is guessing — and guessing leads to premature optimization that adds complexity without improving what matters. Profile first, identify the actual bottleneck, fix it, measure again. Optimize only what measurements prove matters.
+</context>
 
 ## When to Use
+
+<routing>
 
 - Performance requirements exist in the spec (load time budgets, response time SLAs)
 - Users or monitoring report slow behavior
@@ -20,16 +25,22 @@ Measure before optimizing. Performance work without measurement is guessing — 
 - Building features that handle large datasets or high traffic
 
 **When NOT to use:** Don't optimize before you have evidence of a problem. Premature optimization adds complexity that costs more than the performance it gains.
+</routing>
 
 ## Core Web Vitals Targets
+
+<rules>
 
 | Metric | Good | Needs Improvement | Poor |
 |--------|------|-------------------|------|
 | **LCP** (Largest Contentful Paint) | ≤ 2.5s | ≤ 4.0s | > 4.0s |
 | **INP** (Interaction to Next Paint) | ≤ 200ms | ≤ 500ms | > 500ms |
 | **CLS** (Cumulative Layout Shift) | ≤ 0.1 | ≤ 0.25 | > 0.25 |
+</rules>
 
 ## The Optimization Workflow
+
+<procedure>
 
 ```
 1. MEASURE  → Establish baseline with real data
@@ -290,8 +301,11 @@ app.use('/static', express.static('public', {
 // Cache-Control for API responses
 res.set('Cache-Control', 'public, max-age=300'); // 5 minutes
 ```
+</procedure>
 
 ## Performance Budget
+
+<context>
 
 Set budgets and enforce them:
 
@@ -313,12 +327,18 @@ npx bundlesize --config bundlesize.config.json
 # Lighthouse CI
 npx lhci autorun
 ```
+</context>
 
 ## See Also
 
+<references>
+
 For detailed performance checklists, optimization commands, and anti-pattern reference, see `references/performance-checklist.md`.
+</references>
 
 ## Common Rationalizations
+
+<antipatterns>
 
 | Rationalization | Reality |
 |---|---|
@@ -337,8 +357,11 @@ For detailed performance checklists, optimization commands, and anti-pattern ref
 - Bundle size growing without review
 - No performance monitoring in production
 - `React.memo` and `useMemo` everywhere (overusing is as bad as underusing)
+</antipatterns>
 
 ## Verification
+
+<verification>
 
 After any performance-related change:
 
@@ -349,7 +372,11 @@ After any performance-related change:
 - [ ] No N+1 queries in new data fetching code
 - [ ] Performance budget passes in CI (if configured)
 - [ ] Existing tests still pass (optimization didn't break behavior)
+</verification>
 
 ## Related references
 
+<references>
+
 - [`performance-checklist.md`](../../references/performance-checklist.md)
+</references>

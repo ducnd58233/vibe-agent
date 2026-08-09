@@ -1,5 +1,7 @@
 # Skills router
 
+<routing>
+
 Lookup table for skills under this folder. **After you create, rename, or delete a skill folder, update this table in the same change.**
 
 | Intent / use case | Skill folder | When to invoke |
@@ -47,3 +49,4 @@ Lookup table for skills under this folder. **After you create, rename, or delete
 Pinned stack for the **current workspace**: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) — compose matching profile files per task.
 
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md).
+</routing>
