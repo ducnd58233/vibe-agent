@@ -59,7 +59,7 @@ Use repo-documented commands first. Typical examples:
 
 - Mutable default arguments are evaluated once at definition. Use `None` and construct inside the function
 - Type hints are not enforced at runtime. Data crossing a trust boundary must be validated, not merely annotated
-- In `asyncio`, any blocking call — synchronous I/O, CPU-bound work, a non-async database driver — stalls the entire event loop. Move it to a thread or process executor
+- In `asyncio`, any blocking call - synchronous I/O, CPU-bound work, a non-async database driver - stalls the entire event loop. Move it to a thread or process executor
 - Do not mix async and sync database or HTTP clients in the same request path without an explicit executor boundary
 - The GIL means threads help I/O-bound work and not CPU-bound work; reach for processes when the work is CPU-bound
 - Catch specific exceptions. A bare `except:` swallows `KeyboardInterrupt` and `SystemExit`

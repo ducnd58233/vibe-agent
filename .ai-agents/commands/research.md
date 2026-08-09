@@ -2,11 +2,14 @@
 description: Run citation-first research on a scoped topic and return a digest with sources and unresolved questions
 ---
 
+<references>
+
 Follow [`research-with-citations`](../skills/research-with-citations/SKILL.md).
 
 Primary persona: [`research-investigator`](../agents/research-investigator.md).
 
 When the output includes docs with diagrams or flows, follow [`diagram-authoring`](../references/diagram-authoring.md).
+</references>
 
 ## Inputs
 

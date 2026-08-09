@@ -62,13 +62,13 @@ ASSUMPTIONS:
 
 Cover at minimum:
 
-1. **Objective** — users, problem, success.
-2. **Tech stack** — align with repo manifests, [`stack-profiles/`](../../stack-profiles/), and [`AGENTS.md`](../../../AGENTS.md); name frameworks only after reading files in-tree.
-3. **Commands** — real commands from the current workspace (for example `npm run dev`, `uv run pytest`), not placeholders.
-4. **Project structure** — where UI, API, tests, and docs live in **this** monorepo layout.
-5. **Code style** — pointer to existing conventions + one short example.
-6. **Testing strategy** — unit/component, API integration, and E2E per layer using runners configured for the current workspace.
-7. **Boundaries** — Always / Ask first / Never (schema changes, new deps, CI, secrets).
+1. **Objective** - users, problem, success.
+2. **Tech stack** - align with repo manifests, [`stack-profiles/`](../../stack-profiles/), and [`AGENTS.md`](../../../AGENTS.md); name frameworks only after reading files in-tree.
+3. **Commands** - real commands from the current workspace (for example `npm run dev`, `uv run pytest`), not placeholders.
+4. **Project structure** - where UI, API, tests, and docs live in **this** monorepo layout.
+5. **Code style** - pointer to existing conventions + one short example.
+6. **Testing strategy** - unit/component, API integration, and E2E per layer using runners configured for the current workspace.
+7. **Boundaries** - Always / Ask first / Never (schema changes, new deps, CI, secrets).
 
 Include **Success criteria** as testable checks (latency, validation rules, UX states).
 

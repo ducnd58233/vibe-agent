@@ -11,7 +11,7 @@ disable-model-invocation: true
 
 <context>
 
-Measure before optimizing. Performance work without measurement is guessing — and guessing leads to premature optimization that adds complexity without improving what matters. Profile first, identify the actual bottleneck, fix it, measure again. Optimize only what measurements prove matters.
+Measure before optimizing. Performance work without measurement is guessing - and guessing leads to premature optimization that adds complexity without improving what matters. Profile first, identify the actual bottleneck, fix it, measure again. Optimize only what measurements prove matters.
 </context>
 
 ## When to Use
@@ -52,7 +52,7 @@ Measure before optimizing. Performance work without measurement is guessing — 
 
 ### Step 1: Measure
 
-Two complementary approaches — use both:
+Two complementary approaches - use both:
 
 - **Synthetic (Lighthouse, DevTools Performance tab):** Controlled conditions, reproducible. Best for CI regression detection and isolating specific issues.
 - **RUM (web-vitals library, CrUX):** Real user data in real conditions. Required to validate that a fix actually improved user experience.
@@ -136,7 +136,7 @@ Common bottlenecks by category:
 #### N+1 Queries (Backend)
 
 ```typescript
-// BAD: N+1 — one query per task for the owner
+// BAD: N+1 - one query per task for the owner
 const tasks = await db.tasks.findMany();
 for (const task of tasks) {
   task.owner = await db.users.findUnique({ where: { id: task.ownerId } });
@@ -168,7 +168,7 @@ const tasks = await db.tasks.findMany({
 <!-- BAD: No dimensions, no format optimization -->
 <img src="/hero.jpg" />
 
-<!-- GOOD: Hero / LCP image — art direction + resolution switching, high priority -->
+<!-- GOOD: Hero / LCP image - art direction + resolution switching, high priority -->
 <!--
   Two techniques combined:
   - Art direction (media): different crop/composition per breakpoint
@@ -216,7 +216,7 @@ const tasks = await db.tasks.findMany({
   />
 </picture>
 
-<!-- GOOD: Below-the-fold image — lazy loaded + async decoding -->
+<!-- GOOD: Below-the-fold image - lazy loaded + async decoding -->
 <img
   src="/content.webp"
   width="800"
@@ -258,7 +258,7 @@ function TaskStats({ tasks }: Props) {
 ```typescript
 // Modern bundlers (Vite, webpack 5+) handle named imports with tree-shaking automatically,
 // provided the dependency ships ESM and is marked `sideEffects: false` in package.json.
-// Profile before changing import styles — the real gains come from splitting and lazy loading.
+// Profile before changing import styles - the real gains come from splitting and lazy loading.
 
 // GOOD: Dynamic import for heavy, rarely-used features
 const ChartLibrary = lazy(() => import('./ChartLibrary'));

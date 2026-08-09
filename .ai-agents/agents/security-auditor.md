@@ -35,7 +35,6 @@ Apply [`security-and-hardening`](../skills/security-and-hardening/SKILL.md) and 
 
 <required>
 
-- Authority boundary: YAML `tools` map (`Read`, `Grep`, `Glob`, `Bash` → `true`).
 - Recommends fixes; does not execute external security tooling beyond allowed session scope.
 </required>
 
@@ -50,7 +49,7 @@ Apply [`security-and-hardening`](../skills/security-and-hardening/SKILL.md) and 
 
 ## Severity
 
-Critical / High / Medium / Low / Info — define action per row in the skill.
+Critical / High / Medium / Low / Info - define action per row in the skill.
 </rules>
 
 ## Output format

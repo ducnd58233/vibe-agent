@@ -39,7 +39,7 @@ Non-exhaustive examples. Any tool here may be renamed, deprecated, or replaced. 
 - Read `pubspec.yaml` first: the SDK constraint, dependency bounds, and whether Flutter is a dependency at all
 - Public API lives under `lib/`; anything under `lib/src/` is internal and should be re-exported deliberately
 - Executables belong in `bin/`; tests mirror the source tree under `test/`
-- Generated files are build output — regenerate them, do not hand-edit
+- Generated files are build output - regenerate them, do not hand-edit
 </context>
 
 ## Commands
@@ -61,7 +61,7 @@ Use repo-documented commands first. Typical examples:
 
 - Null safety is sound only if you do not defeat it. The `!` operator asserts non-null and throws when wrong; prefer narrowing, `?.`, `??`, or restructuring the type
 - Prefer `late` only when initialization genuinely happens before first read; a `late` field read too early throws at runtime rather than failing to compile
-- Dart is single-threaded per isolate. CPU-bound work blocks that isolate's event loop — move it to a separate isolate
+- Dart is single-threaded per isolate. CPU-bound work blocks that isolate's event loop - move it to a separate isolate
 - Isolates do not share mutable memory; data crosses by message. Design for that boundary instead of trying to share state
 - Distinguish a single-value `Future` from a multi-value `Stream`, and always cancel stream subscriptions you own to avoid leaks
 - Unawaited futures swallow errors silently. Await them, or mark the intent explicitly

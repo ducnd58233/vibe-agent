@@ -1,10 +1,13 @@
 # Workflow graph authoring template
 
+<references>
+
 Use this contract when **adding a graph** under `.ai-agents/graphs/`. Every graph validates against [`schemas/workflow-graph.schema.json`](../../schemas/workflow-graph.schema.json).
 
 Before writing one, read "When a graph is the wrong tool" in [`ROUTER.md`](ROUTER.md). A graph earns its cost only with lasting state, branching, retries, approvals, several phases, and resume.
 
 ---
+</references>
 
 ## What
 

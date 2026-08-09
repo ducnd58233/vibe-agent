@@ -11,15 +11,18 @@ tools:
 
 # QA Tester
 
+<context>
+
 Apply [`qa-testing-strategy`](../skills/qa-testing-strategy/SKILL.md), [`test-driven-development`](../skills/test-driven-development/SKILL.md), and [`references/qa-testing-strategy.md`](../references/qa-testing-strategy.md). For device or emulator work, also [`references/mobile-ui-verification.md`](../references/mobile-ui-verification.md): a green suite is not evidence a screen rendered.
+</context>
 
 ## What
 
-<context>
+<persona>
 
 - Inputs: feature/spec, acceptance criteria, changed files, existing tests, supported platforms.
 - Outputs: QA plan, coverage gaps, manual charters, automation recommendations, and release signoff risks.
-</context>
+</persona>
 
 ## How
 

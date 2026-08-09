@@ -1,10 +1,13 @@
 ---
-description: End-to-end delivery loop — clarify, research, spec, plan, build, validate, ship until done
+description: End-to-end delivery loop - clarify, research, spec, plan, build, validate, ship until done
 ---
+
+<context>
 
 Follow [`goal-driven-delivery`](../skills/goal-driven-delivery/SKILL.md) and [`references/orchestration-patterns.md`](../references/orchestration-patterns.md).
 
 `/goal` orchestrates the toolkit delivery pipeline for one user objective. It **composes** other commands and skills in the **main session** with checkpoints. It is **not** Claude Code's harness `/goal` loop or Codex's persisted goal state (see skill section "Not the same as native `/goal`").
+</context>
 
 ## Inputs
 
@@ -121,7 +124,7 @@ Stop only when:
 Merge to `main` only after **GO** and **explicit human approval** ([`build.md`](build.md), [`ship.md`](ship.md)).
 </verification>
 
-## Phase 0 — Intake (MUST run first)
+## Phase 0 - Intake (MUST run first)
 
 <procedure>
 
@@ -132,7 +135,7 @@ Merge to `main` only after **GO** and **explicit human approval** ([`build.md`](
 
 Skip to Phase 4 only if a **human-approved** `TASKS.md` already exists and the user asked to continue implementation.
 
-## Phase 1 — Research (optional)
+## Phase 1 - Research (optional)
 
 When facts are missing and not in the repo:
 
@@ -144,13 +147,13 @@ When facts are missing and not in the repo:
 
 Save digests under `docs/<slug>/` when helpful. Label `UNVERIFIED` claims.
 
-## Phase 2 — Spec
+## Phase 2 - Spec
 
 Run [`/spec`](spec.md) ([`spec-driven-development`](../skills/spec-driven-development/SKILL.md)) → `docs/<slug>/SPEC.md`.
 
 Checkpoint: human approves spec before plan/build when the team process requires it.
 
-## Phase 3 — Plan
+## Phase 3 - Plan
 
 Run [`/plan`](plan.md) ([`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md)) → `docs/<slug>/PLAN.md`, `docs/<slug>/TASKS.md`.
 
@@ -158,7 +161,7 @@ Each task records a delivery branch. One planned task = one branch = one PR; sam
 
 Checkpoint: human approves plan when required.
 
-## Phase 4–8 — Per-task delivery loop
+## Phase 4–8 - Per-task delivery loop
 
 For each **incomplete** task in `TASKS.md`:
 

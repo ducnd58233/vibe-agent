@@ -1,6 +1,9 @@
 # QA testing strategy
 
+<context>
+
 Use this reference for manual QA, automated test planning, exploratory testing, regression strategy, and release confidence.
+</context>
 
 ## Test strategy layers
 
@@ -28,9 +31,9 @@ Use this reference for manual QA, automated test planning, exploratory testing, 
 
 1. Pick the lowest test level that proves behavior.
 2. Prefer user-observable assertions over implementation details.
-3. **Core logic only:** do not add automated tests for file/folder/env discovery, testcontainer health, or setup-only checks — see [`test-driven-development`](../skills/test-driven-development/SKILL.md).
+3. **Core logic only:** do not add automated tests for file/folder/env discovery, testcontainer health, or setup-only checks - see [`test-driven-development`](../skills/test-driven-development/SKILL.md).
 4. Use stable selectors/roles/labels and web-first assertions for browser automation.
-5. **A test command's exit code is not a render check.** A mobile or browser suite exits 0 when its assertions pass, and a suite that asserts nothing about rendered content passes on a blank screen. Asserting that a screenshot file exists proves nothing either: a blank PNG is a non-empty file. Assert on state the platform reports — crash records, the view or accessibility tree, and expected content. For devices and emulators, see [`mobile-ui-verification.md`](mobile-ui-verification.md).
+5. **A test command's exit code is not a render check.** A mobile or browser suite exits 0 when its assertions pass, and a suite that asserts nothing about rendered content passes on a blank screen. Asserting that a screenshot file exists proves nothing either: a blank PNG is a non-empty file. Assert on state the platform reports - crash records, the view or accessibility tree, and expected content. For devices and emulators, see [`mobile-ui-verification.md`](mobile-ui-verification.md).
 6. Avoid hard sleeps; wait on observable state.
 7. Keep tests isolated, deterministic, and parallel-safe.
 8. Track flaky tests separately; do not normalize reruns as success.

@@ -15,7 +15,7 @@ Use package and language-tool commands from the current workspace scripts when i
 
 ## Overview
 
-Git is the safety net for reversible, reviewable change — especially with AI-generated edits. Treat commits as save points, branches as short-lived sandboxes, and history as documentation.
+Git is the safety net for reversible, reviewable change - especially with AI-generated edits. Treat commits as save points, branches as short-lived sandboxes, and history as documentation.
 </context>
 
 ## When to Use
@@ -54,7 +54,7 @@ Each successful increment gets its own commit. Avoid one giant unreviewable blob
 
 ### Atomic Commits
 
-Each commit does one logical thing: one feat, one fix, or one refactor — not mixed formatting + behavior.
+Each commit does one logical thing: one feat, one fix, or one refactor - not mixed formatting + behavior.
 
 ### Descriptive Messages (MUST)
 

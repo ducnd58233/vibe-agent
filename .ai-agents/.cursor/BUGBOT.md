@@ -1,6 +1,9 @@
 # Bugbot rules for `.ai-agents/` changes
 
+<context>
+
 Apply these in addition to the root `.cursor/BUGBOT.md` when reviewing files under `.ai-agents/`.
+</context>
 
 ## Authoring contract
 

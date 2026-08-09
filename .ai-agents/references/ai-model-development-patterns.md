@@ -1,6 +1,9 @@
 # AI model development patterns
 
+<context>
+
 Use this reference when building, adapting, evaluating, documenting, or monitoring AI/ML models across CV, NLP, speech, recommender, tabular, multimodal, generative AI, and agentic AI tasks.
+</context>
 
 ## Expert operating principles
 

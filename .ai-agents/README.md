@@ -1,7 +1,10 @@
 # Centralized AI assets (`.ai-agents`)
 
-This directory is the **single source of truth** for skills, subagents, commands, and hook scripts shared across AI coding tools. Link-based tool entrypoints (`.claude/`, `.cursor/`, `.opencode/`, `.agents/`) should **point here**—not copy—so changes stay in one place. Codex also reads skills via `.agents/skills` and project subagents via generated `.codex/agents/*.toml` after you run the link script.
+<context>
+
+This directory is the **single source of truth** for skills, subagents, commands, and hook scripts shared across AI coding tools. Link-based tool entrypoints (`.claude/`, `.cursor/`, `.opencode/`, `.agents/`) should **point here** - not copy - so changes stay in one place. Codex also reads skills via `.agents/skills` and project subagents via generated `.codex/agents/*.toml` after you run the link script.
 It is intentionally **domain-agnostic** and should not contain product-domain logic.
+</context>
 
 ## Layout
 
@@ -19,9 +22,9 @@ It is intentionally **domain-agnostic** and should not contain product-domain lo
 
 | File | Purpose |
 |------|---------|
-| [`ROUTER.md`](ROUTER.md) | **Master router** — pick which subfolder applies. |
-| [`skills/ROUTER.md`](skills/ROUTER.md) (and `agents/`, `commands/`, `graphs/`, `hooks/`) | **Per-folder routers** — intent → asset; update tables when files change. |
-| [`skills/TEMPLATE.md`](skills/TEMPLATE.md) (and same in other folders) | **Authoring contract** — required sections for new assets. |
+| [`ROUTER.md`](ROUTER.md) | **Master router** - pick which subfolder applies. |
+| [`skills/ROUTER.md`](skills/ROUTER.md) (and `agents/`, `commands/`, `graphs/`, `hooks/`) | **Per-folder routers** - intent → asset; update tables when files change. |
+| [`skills/TEMPLATE.md`](skills/TEMPLATE.md) (and same in other folders) | **Authoring contract** - required sections for new assets. |
 | [`PERMISSIONS.md`](PERMISSIONS.md) | Claude **permissions / authority** vs [`.claude/settings.json`](../.claude/settings.json). |
 </context>
 
@@ -86,7 +89,7 @@ Claude Code and Cursor can discover **skills** and **commands** through `.claude
 - `.opencode/commands` → `.ai-agents/commands`
 - `.agents/skills` → `.ai-agents/skills` (Codex skill discovery)
 - `.agents/commands` → `.ai-agents/commands` (forward-compatible Codex command discovery; no effect until Codex supports `.agents/commands/`)
-- `.codex/agents/*.toml` — generated from `.ai-agents/agents/*.md` (Codex custom subagents; re-run link after agent edits)
+- `.codex/agents/*.toml` - generated from `.ai-agents/agents/*.md` (Codex custom subagents; re-run link after agent edits)
 
 Validate the generated Codex-facing paths with:
 
@@ -106,7 +109,7 @@ This check confirms `.agents/skills`, `.agents/commands`, and `.codex/agents/*.t
 
 Symlink targets on Unix and junction targets on Windows are resolved to **absolute** paths so links stay valid regardless of current working directory.
 
-**Git Bash on Windows:** do not put Windows paths with backslashes inside **double-quoted** strings passed to `bash -lc "..."` — Bash treats `\\` sequences there and paths like `D:\\projects` can turn into `D:projects`. Prefer: run the script as argv (`bash .vibe-agent/scripts/link-ai-agents.sh --workspace ...`), use **forward slashes** (`D:/projects/...`), use `--workspace=D:/...` form, or set `LINK_WORKSPACE` / `LINK_ASSETS` and run the script with no path flags.
+**Git Bash on Windows:** do not put Windows paths with backslashes inside **double-quoted** strings passed to `bash -lc "..."` - Bash treats `\\` sequences there and paths like `D:\\projects` can turn into `D:projects`. Prefer: run the script as argv (`bash .vibe-agent/scripts/link-ai-agents.sh --workspace ...`), use **forward slashes** (`D:/projects/...`), use `--workspace=D:/...` form, or set `LINK_WORKSPACE` / `LINK_ASSETS` and run the script with no path flags.
 
 ### Windows (PowerShell)
 
@@ -122,7 +125,7 @@ From a **consumer** repository root, with this toolkit as submodule `.vibe-agent
 powershell -ExecutionPolicy Bypass -File .vibe-agent/scripts/link-ai-agents.ps1 -WorkspaceRoot $PWD -AssetsRoot (Join-Path $PWD '.vibe-agent\.ai-agents')
 ```
 
-Uses directory junctions on Windows—no admin usually needed.
+Uses directory junctions on Windows - no admin usually needed.
 
 ### macOS / Linux
 
@@ -154,7 +157,7 @@ bash .vibe-agent/scripts/link-ai-agents.sh
 
 ### Git and symlinks
 
-**Canonical content** lives under `.ai-agents/`. In this toolkit repository, the mirrored link paths under `.claude/`, `.cursor/`, and `.opencode/` are **generated only** (see [`.gitignore`](../.gitignore)) and are not committed—run the link script after each clone. Consumer repos typically gitignore the same link paths at their root and run the consumer invocation above.
+**Canonical content** lives under `.ai-agents/`. In this toolkit repository, the mirrored link paths under `.claude/`, `.cursor/`, and `.opencode/` are **generated only** (see [`.gitignore`](../.gitignore)) and are not committed - run the link script after each clone. Consumer repos typically gitignore the same link paths at their root and run the consumer invocation above.
 
 **Maintenance note:** If a path is a **junction** into `.ai-agents`, remove it with `rmdir .\\claude\\skills` (Windows) or `rm .claude/skills` (Unix symlink) before using `git rm` on that path, so Git does not follow the junction and delete files under `.ai-agents/`. The link script removes junctions safely before recreating them.
 
@@ -166,7 +169,7 @@ If you want another repository to reuse this setup without copying asset files:
 2. Use `<toolkit-root>/.ai-agents` as the canonical shared assets path.
 3. From the **consumer** workspace root, run [`scripts/link-ai-agents.ps1`](../scripts/link-ai-agents.ps1) or [`scripts/link-ai-agents.sh`](../scripts/link-ai-agents.sh) with `-WorkspaceRoot` / `--workspace` set to the consumer root and `-AssetsRoot` / `--assets` set to `<toolkit-root>/.ai-agents` (see examples above). You do not need a separate pasted copy of the junction logic.
 4. Keep a consumer-repo-specific `AGENTS.md` for product/domain constraints while shared workflows remain under `<toolkit-root>/.ai-agents`.
-5. Add or adapt tool config at the consumer root as needed (for example `.claude/settings.json`, `.cursor/hooks.json`, `.cursor/rules/`, `opencode.json`, `.codex/config.toml`)—the link script only wires `skills` / `agents` / `commands` discovery paths.
+5. Add or adapt tool config at the consumer root as needed (for example `.claude/settings.json`, `.cursor/hooks.json`, `.cursor/rules/`, `opencode.json`, `.codex/config.toml`) - the link script only wires `skills` / `agents` / `commands` discovery paths.
 6. Review the consumer repo `opencode.json` permission paths (`src/**`, `tests/**`, etc.) and adapt them to that repo layout.
 </procedure>
 

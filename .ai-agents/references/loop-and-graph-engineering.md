@@ -1,8 +1,11 @@
 # Loop and graph engineering
 
+<context>
+
 Use this reference when deciding who owns which loop in an agent system, and whether a workflow deserves an executable graph or should stay a direct invocation.
 
 Companion to [`agent-harness-engineering.md`](agent-harness-engineering.md), which covers the harness responsibilities, and [`orchestration-patterns.md`](orchestration-patterns.md), which covers the ungraphed patterns.
+</context>
 
 ## Two loops, two owners
 

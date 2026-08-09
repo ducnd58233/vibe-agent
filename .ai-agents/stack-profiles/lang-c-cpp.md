@@ -28,7 +28,7 @@ Applies to consumer repositories writing C or C++ at the language and toolchain 
 
 Non-exhaustive examples. Any tool here may be renamed, deprecated, or replaced. Detect what the repo actually uses from its manifests and CI, and verify current commands and flags against official docs ([`source-driven-development`](../skills/source-driven-development/SKILL.md)) before running anything.
 
-- Compilers: for example GCC, Clang, MSVC — flags and warning sets differ per compiler and version
+- Compilers: for example GCC, Clang, MSVC - flags and warning sets differ per compiler and version
 - Build and configure: for example CMake, Meson, Bazel, plain Make
 - Dependencies: for example Conan, vcpkg, system packages, vendored submodules
 - Sanitizers: for example AddressSanitizer, UndefinedBehaviorSanitizer, ThreadSanitizer, MemorySanitizer
@@ -72,7 +72,7 @@ Use repo-documented commands first. Typical examples:
 - Never use unbounded string or buffer operations on untrusted input; prefer sized APIs the repo already uses
 - Validate integer conversions and container indices at trust boundaries
 - Measure before optimizing; compiler optimization level and build type change results substantially
-- Run the test suite under sanitizers in CI where the project supports it — sanitizer findings are defects even when tests pass
+- Run the test suite under sanitizers in CI where the project supports it - sanitizer findings are defects even when tests pass
 </required>
 
 ## References

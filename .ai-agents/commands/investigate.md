@@ -2,6 +2,8 @@
 description: Parallel investigation with investigator, analyst, and source auditor, then merged verdict
 ---
 
+<references>
+
 Follow [`references/orchestration-patterns.md`](../references/orchestration-patterns.md) parallel fan-out rules and compose:
 
 1. [`research-investigator`](../agents/research-investigator.md)
@@ -9,6 +11,7 @@ Follow [`references/orchestration-patterns.md`](../references/orchestration-patt
 3. [`source-auditor`](../agents/source-auditor.md)
 
 When the final report includes diagrams, flows, timelines, or evidence maps, follow [`diagram-authoring`](../references/diagram-authoring.md).
+</references>
 
 ## Phase 0 - Scope & repository-access preflight (MUST run first)
 

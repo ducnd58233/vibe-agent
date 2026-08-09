@@ -2,13 +2,19 @@
 description: Implement next task on a dedicated branch; test, build, verify, commit; never merge to main
 ---
 
+<prerequisites>
+
 **Runtime required (MUST).** Run `vibe-agent doctor` first; if it fails, stop and report the install commands. Rules, command surface, and why: [`goal.md`](goal.md) section "Runtime is required". Do not restate them here.
+</prerequisites>
+
+<references>
 
 Combine [`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md) (task order, acceptance) with [`test-driven-development`](../skills/test-driven-development/SKILL.md) and [`git-workflow-and-versioning`](../skills/git-workflow-and-versioning/SKILL.md).
 
 When a task creates or updates docs with diagrams or flows, follow [`diagram-authoring`](../references/diagram-authoring.md).
 
 This repo does **not** ship a separate `incremental-implementation` skill; use explicit vertical slices and TDD.
+</references>
 
 ## Git rules (MUST follow before and during every task)
 
@@ -42,8 +48,8 @@ For **one** task only (then stop or ask before starting the next task on a new b
 1. Read acceptance criteria from `docs/<slug>/TASKS.md` (or the path the human gave).
 2. Create or confirm the dedicated task branch (rules above).
 3. Load context ([`context-engineering`](../skills/context-engineering/SKILL.md) as needed).
-4. RED — failing test for new behavior.
-5. GREEN — minimal implementation.
+4. RED - failing test for new behavior.
+5. GREEN - minimal implementation.
 6. Run full tests and typecheck/build per project (`npm`/`pnpm`/`uv` as documented).
 7. **Disclosure pass (MUST, before commit):** apply [`secure-by-default`](../skills/secure-by-default/SKILL.md) to the diff. For every sink the task added or changed (log call, response body, client storage, analytics event, error path, env var), name what goes into it. A clean [`sensitive-data-guard`](../hooks/sensitive-data-guard.py) run is a floor, not evidence. Channel detail: [`sensitive-data-exposure.md`](../references/sensitive-data-exposure.md).
 8. Commit with a human-friendly conventional message, `type(scope): subject`, that matches the branch. Use plain words, no AI-tell filler, no emojis/icons, no em-dash. **MUST NOT** add AI/agent co-author trailers (`Co-Authored-By: ...`) or "Generated with ..." lines; attribute commits solely to the human's git identity.

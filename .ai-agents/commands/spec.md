@@ -1,6 +1,8 @@
 ---
-description: Spec-first — structured specification before implementation
+description: Spec-first - structured specification before implementation
 ---
+
+<required>
 
 Follow [`spec-driven-development`](../skills/spec-driven-development/SKILL.md).
 
@@ -13,6 +15,7 @@ Produce a spec covering: objective, tech stack, **commands** (real workspace scr
 **Data classification (MUST):** name the sensitive data classes the feature touches (credentials, personal data, internal structure) and, for each, where it is allowed to appear and where it is not. A feature whose spec never says which fields are secret produces code that guesses. See [`secure-by-default`](../skills/secure-by-default/SKILL.md) and [`sensitive-data-exposure.md`](../references/sensitive-data-exposure.md).
 
 Write the spec to `docs/<slug>/SPEC.md` at the workspace root (the directory that contains `.vibe-agent/`; the repo root when this toolkit is used standalone). `<slug>` is a short kebab-case name for the work; confirm it with the user when it is not obvious. See the "Generated docs output location" rule in [`AGENTS.md`](../../AGENTS.md). Confirm the spec before coding.
+</required>
 
 ## Routing & discovery
 

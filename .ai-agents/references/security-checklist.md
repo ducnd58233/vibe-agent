@@ -1,8 +1,11 @@
 # Security Checklist
 
+<references>
+
 Quick reference for application security. Use alongside the [`security-and-hardening`](../skills/security-and-hardening/SKILL.md) skill.
 
-**Workspace-specific defaults** for the current project: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) — read applicable profile files (e.g. backend, frontend).
+**Workspace-specific defaults** for the current project: [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) - read applicable profile files (e.g. backend, frontend).
+</references>
 
 ## Table of Contents
 

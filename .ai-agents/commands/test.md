@@ -1,14 +1,19 @@
 ---
-description: TDD workflow — RED/GREEN; Prove-It pattern for bugs
+description: TDD workflow - RED/GREEN; Prove-It pattern for bugs
 ---
 
+<prerequisites>
+
 **Runtime required (MUST).** Results are recorded with `vibe-agent verify --slug <slug>`, which runs what [`vibe-checks.yaml`](../../vibe-checks.yaml) declares. There is no `--passed`; a test suite cannot be marked green by saying so. Rules: [`goal.md`](goal.md) section "Runtime is required".
+</prerequisites>
+
+<required>
 
 Follow [`test-driven-development`](../skills/test-driven-development/SKILL.md) and [`references/testing-patterns.md`](../references/testing-patterns.md).
 
-**Features:** failing tests → implement → refactor — keep suite green.
+**Features:** failing tests → implement → refactor - keep suite green.
 
-**Bugs:** Prove-It — reproduction test fails → fix → passes → regression suite.
+**Bugs:** Prove-It - reproduction test fails → fix → passes → regression suite.
 
 **Scope (MUST):** tests cover **core logic and business behavior** only. Do **not** generate discovery or infrastructure tests (file/folder/env existence, testcontainer or service "is up", config trivia, import-only smoke), trivial code (getters, setters, no-logic constructors), pass-through wrappers, or tautological assertions where a mock returns what the test supplied. Put infrastructure checks in CI or test setup, not in behavioral test cases.
 
@@ -21,6 +26,7 @@ Follow [`test-driven-development`](../skills/test-driven-development/SKILL.md) a
 For browser/runtime issues, add [`browser-testing-with-devtools`](../skills/browser-testing-with-devtools/SKILL.md) when DevTools verification is needed.
 
 Optional subagent: **`test-engineer`** ([`agents/test-engineer.md`](../agents/test-engineer.md)).
+</required>
 
 ## Routing & discovery
 

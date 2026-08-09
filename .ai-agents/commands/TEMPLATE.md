@@ -1,12 +1,15 @@
 # Slash command authoring template
 
+<references>
+
 Use this contract when **creating a slash command** (single-file markdown prompt). Implement as `.ai-agents/commands/<name>.md`. **Claude Code** picks it up via `.claude/commands` → this folder; **Cursor** picks it up via `.cursor/commands` → this folder ([`CURSOR.md`](../../CURSOR.md)).
 
-Reference: [Claude Code directory — commands](https://code.claude.com/docs/en/claude-directory); Cursor `/` picker uses [`.cursor/commands`](https://docs.cursor.com).
+Reference: [Claude Code directory - commands](https://code.claude.com/docs/en/claude-directory); Cursor `/` picker uses [`.cursor/commands`](https://docs.cursor.com).
 
 If your environment uses linked discovery paths, run [`scripts/link-ai-agents.ps1`](../../scripts/link-ai-agents.ps1) or [`scripts/link-ai-agents.sh`](../../scripts/link-ai-agents.sh) after clone so junctions/symlinks exist.
 
 ---
+</references>
 
 ## What
 
@@ -24,7 +27,7 @@ If your environment uses linked discovery paths, run [`scripts/link-ai-agents.ps
 
 <procedure>
 
-- **Prompt body:** Full markdown content — instructions the command injects or follows.
+- **Prompt body:** Full markdown content - instructions the command injects or follows.
 - **Optional frontmatter:** If your toolchain supports metadata for commands, align with team convention.
 - **Doc output location (MUST, if the command writes a markdown deliverable):** Write it under `docs/<slug>/` at the workspace root (the directory containing `.vibe-agent/`, or the repo root when this toolkit is standalone), using a short kebab-case `<slug>` for the work. Do not write into `.vibe-agent/`. See the "Generated docs output location" rule in [`AGENTS.md`](../../AGENTS.md).
 
@@ -52,9 +55,9 @@ Commands inherit the **same tool permissions** as the session that runs them. Do
 
 | Topic | Notes |
 |-------|--------|
-| **Tools likely used** | Read, Edit, Bash patterns — so reviewers can add [`.claude/settings.json`](../../.claude/settings.json) rules. |
-| **Risky operations** | Network, deploy, `rm` — prefer `ask` or `deny` per [permissions](https://code.claude.com/docs/en/permissions). |
-| **Cursor** | Same `*.md` file — no duplicate folder; commonly discovered via `.cursor/commands` symlink/junction ([`CURSOR.md`](../../CURSOR.md)). |
+| **Tools likely used** | Read, Edit, Bash patterns - so reviewers can add [`.claude/settings.json`](../../.claude/settings.json) rules. |
+| **Risky operations** | Network, deploy, `rm` - prefer `ask` or `deny` per [permissions](https://code.claude.com/docs/en/permissions). |
+| **Cursor** | Same `*.md` file - no duplicate folder; commonly discovered via `.cursor/commands` symlink/junction ([`CURSOR.md`](../../CURSOR.md)). |
 
 Update [`.ai-agents/PERMISSIONS.md`](../PERMISSIONS.md) when commands imply new default allows.
 

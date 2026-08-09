@@ -1,6 +1,9 @@
 # Agent personas (Claude subagents)
 
+<context>
+
 Markdown files in this folder define **single-role** specialists consumed as Claude Code subagents (commonly via `.claude/agents` linked to this folder). Cursor does not load these automatically; use the same instructions by `@`-referencing a file in chat.
+</context>
 
 ## Three-layer model
 

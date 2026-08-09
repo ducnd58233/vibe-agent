@@ -1,8 +1,11 @@
 # Accessibility Checklist
 
+<references>
+
 Quick reference for WCAG 2.1 AA compliance. Use alongside the [`frontend-ui-engineering`](../skills/frontend-ui-engineering/SKILL.md) skill.
 
 **Workspace-specific UI stack** for the current project: see frontend-related rows in [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md).
+</references>
 
 ## Table of Contents
 
@@ -26,7 +29,7 @@ Quick reference for WCAG 2.1 AA compliance. Use alongside the [`frontend-ui-engi
 - [ ] Focus is visible (outline/ring on focused elements)
 - [ ] Custom widgets have keyboard support (Enter to activate, Escape to close)
 - [ ] No keyboard traps (user can always Tab away from a component)
-- [ ] Skip-to-content link at top of page — visible (at least) on keyboard focus
+- [ ] Skip-to-content link at top of page - visible (at least) on keyboard focus
 - [ ] Modals trap focus while open, return focus on close
 
 ### Screen Readers

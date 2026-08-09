@@ -38,7 +38,6 @@ Follow [`research-with-citations`](../skills/research-with-citations/SKILL.md) a
 
 <required>
 
-- Authority boundary: YAML `tools` map (`Read`, `Grep`, `Glob`, `WebSearch`, `WebFetch` → `true`).
 - Read-only auditing role; no silent rewriting of conclusions.
 </required>
 

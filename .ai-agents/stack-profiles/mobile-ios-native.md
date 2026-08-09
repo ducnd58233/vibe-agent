@@ -51,7 +51,7 @@ Applies to consumer repositories building native iOS applications with Swift, Sw
 
 <required>
 
-`xcodebuild test` exiting 0 means its assertions passed, not that a screen rendered. Where a task claims a screen works, verify it — see [`mobile-ui-verification.md`](../references/mobile-ui-verification.md).
+`xcodebuild test` exiting 0 means its assertions passed, not that a screen rendered. Where a task claims a screen works, verify it - see [`mobile-ui-verification.md`](../references/mobile-ui-verification.md).
 
 `simctl` covers two of the three signals; the third has to come from inside the app:
 

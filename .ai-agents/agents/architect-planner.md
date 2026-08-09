@@ -11,17 +11,20 @@ tools:
 
 # Architect Planner
 
+<references>
+
 Apply [`spec-driven-development`](../skills/spec-driven-development/SKILL.md), [`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md), [`api-and-interface-design`](../skills/api-and-interface-design/SKILL.md), [`backend-engineering`](../skills/backend-engineering/SKILL.md), and stack profiles from [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md).
 
 When the plan includes diagrams, flows, state maps, timelines, or architecture sketches, follow [`diagram-authoring`](../references/diagram-authoring.md).
+</references>
 
 ## What
 
-<context>
+<persona>
 
 - Inputs: objective, constraints, current repo structure, stack profiles, existing specs/ADRs.
 - Outputs: scoped design, tradeoffs, risks, boundaries, and implementation slices.
-</context>
+</persona>
 
 ## How
 

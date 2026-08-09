@@ -1,30 +1,33 @@
 # Subagent authoring template
 
+<context>
+
 Use this contract when **creating a new Claude Code subagent**. Implement as `agents/<name>.md` (single markdown file per subagent).
 
 Reference: [Claude Code subagents](https://code.claude.com/docs/en/sub-agents).
 
 ---
+</context>
 
 ## What
 
-<context>
+<persona>
 
 - **File name:** `agents/<name>.md`
 - **Inputs:** What the parent agent passes (task description, paths).
 - **Outputs:** Expected return (summary, artifacts, exit criteria).
 
 ---
-</context>
+</persona>
 
 ## How
 
 <procedure>
 
-- **Behavior:** System prompt body — steps, tone, depth.
+- **Behavior:** System prompt body - steps, tone, depth.
 - **Frontmatter:** Required YAML keys per product docs (`name`, `description`, `tools`, etc.).
 - **Tools (`tools:`):** Explicit map of tool names to `true` (OpenCode-compatible; matches [OpenCode `config.json` `tools` shape](https://opencode.ai/config.json)). This is the **authority boundary** for the subagent. Claude Code also accepts comma-separated or list-style `tools` in isolation; this repo standardizes on the boolean map for shared assets consumed by OpenCode.
-- **Grounding rule (MUST):** every agent body must carry a no-fabrication rule — never describe a file, directory, or path not opened or listed via `Read`/`Grep`/`Glob`; report `ACCESS-FAILED: <path>` for inaccessible inputs instead of inferring structure. Subagents load individually (they do not read this template at runtime), so the rule must appear inline in each `agents/<name>.md`.
+- **Grounding rule (MUST):** every agent body must carry a no-fabrication rule - never describe a file, directory, or path not opened or listed via `Read`/`Grep`/`Glob`; report `ACCESS-FAILED: <path>` for inaccessible inputs instead of inferring structure. Subagents load individually (they do not read this template at runtime), so the rule must appear inline in each `agents/<name>.md`.
 
 Map content into **`agents/<name>.md`**:
 
@@ -32,7 +35,7 @@ Map content into **`agents/<name>.md`**:
 |---------|----------------|
 | What / Why / Routing | YAML **`description`** for discovery. |
 | How | Markdown body (prompt). |
-| Authority | YAML **`tools:`** — each allowed tool key set to `true`; all others unavailable. |
+| Authority | YAML **`tools:`** - each allowed tool key set to `true`; all others unavailable. |
 
 ---
 </procedure>
@@ -58,10 +61,10 @@ Draft for **`description`**:
 
 | Layer | Action |
 |-------|--------|
-| **Subagent `tools:`** | Narrowest map that still succeeds (`ToolName: true`) — prefer explicit tools over “everything”. |
+| **Subagent `tools:`** | Narrowest map that still succeeds (`ToolName: true`) - prefer explicit tools over “everything”. |
 | **Project `permissions`** | If the subagent only uses `Read` / `Grep`, parent session must still allow those globally unless Claude scopes differently; document any required [`.claude/settings.json`](../../.claude/settings.json) `allow` entries. |
 | **Hooks** | If this subagent is always paired with a hook, note hook script paths and Bash rules. |
-| **Cursor** | Subagents are Claude Code–specific; Cursor has no parallel — document “N/A” or link to [`.cursor/rules`](../../.cursor/rules) for similar guardrails. |
+| **Cursor** | Subagents are Claude Code–specific; Cursor has no parallel - document “N/A” or link to [`.cursor/rules`](../../.cursor/rules) for similar guardrails. |
 
 Sync material changes with [`.ai-agents/PERMISSIONS.md`](../PERMISSIONS.md).
 

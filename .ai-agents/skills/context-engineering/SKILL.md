@@ -11,7 +11,7 @@ disable-model-invocation: true
 
 <context>
 
-Feed agents the right information at the right time. Context is the single biggest lever for agent output quality — too little and the agent hallucinates, too much and it loses focus. Context engineering is the practice of deliberately curating what the agent sees, when it sees it, and how it's structured.
+Feed agents the right information at the right time. Context is the single biggest lever for agent output quality - too little and the agent hallucinates, too much and it loses focus. Context engineering is the practice of deliberately curating what the agent sees, when it sees it, and how it's structured.
 </context>
 
 ## When to Use
@@ -132,7 +132,7 @@ Long conversations accumulate stale context. Manage this:
 
 - **Start fresh sessions** when switching between major features
 - **Summarize progress** when context is getting long: "So far we've completed X, Y, Z. Now working on W."
-- **Compact deliberately** — if the tool supports it, compact/summarize before critical work
+- **Compact deliberately** - if the tool supports it, compact/summarize before critical work
 </procedure>
 
 ## Context Packing Strategies
@@ -233,9 +233,9 @@ The spec calls for REST endpoints, but the existing codebase uses GraphQL
 for user queries (src/graphql/user.ts).
 
 Options:
-A) Follow the spec — add REST endpoint, potentially deprecate GraphQL later
-B) Follow existing patterns — use GraphQL, update the spec
-C) Ask — this seems like an intentional decision I shouldn't override
+A) Follow the spec - add REST endpoint, potentially deprecate GraphQL later
+B) Follow existing patterns - use GraphQL, update the spec
+C) Ask - this seems like an intentional decision I shouldn't override
 
 → Which approach should I take?
 ```
@@ -246,7 +246,7 @@ If the spec doesn't cover a case you need to implement:
 
 1. Check existing code for precedent
 2. If no precedent exists, **stop and ask**
-3. Don't invent requirements — that's the human's job
+3. Don't invent requirements - that's the human's job
 
 ```
 MISSING REQUIREMENT:
@@ -267,7 +267,7 @@ For multi-step tasks, emit a lightweight plan before executing:
 
 ```
 PLAN:
-1. Add validated request model for task creation — title required, description optional
+1. Add validated request model for task creation - title required, description optional
 2. Wire validation into POST /api/tasks handler
 3. Add test for validation error response
 → Executing unless you redirect.
@@ -286,14 +286,14 @@ This catches wrong directions before you've built on them. It's a 30-second inve
 | Context flooding | Agent loses focus when loaded with >5,000 lines of non-task-specific context. More files does not mean better output. | Include only what is relevant to the current task. Aim for <2,000 lines of focused context per task. |
 | Stale context | Agent references outdated patterns or deleted code | Start fresh sessions when context drifts |
 | Missing examples | Agent invents a new style instead of following yours | Include one example of the pattern to follow |
-| Implicit knowledge | Agent doesn't know project-specific rules | Write it down in rules files — if it's not written, it doesn't exist |
+| Implicit knowledge | Agent doesn't know project-specific rules | Write it down in rules files - if it's not written, it doesn't exist |
 | Silent confusion | Agent guesses when it should ask | Surface ambiguity explicitly using the confusion management patterns above |
 
 ## Common Rationalizations
 
 | Rationalization | Reality |
 |---|---|
-| "The agent should figure out the conventions" | It can't read your mind. Write a rules file — 10 minutes that saves hours. |
+| "The agent should figure out the conventions" | It can't read your mind. Write a rules file - 10 minutes that saves hours. |
 | "I'll just correct it when it goes wrong" | Prevention is cheaper than correction. Upfront context prevents drift. |
 | "More context is always better" | Research shows performance degrades with too many instructions. Be selective. |
 | "The context window is huge, I'll use it all" | Context window size ≠ attention budget. Focused context outperforms large context. |

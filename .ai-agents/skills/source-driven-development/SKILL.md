@@ -79,7 +79,7 @@ Fetch the **specific page** for the feature (e.g. your framework’s route/API h
 - Match signatures and recommended patterns from current docs.
 - If docs deprecate a pattern, avoid it unless the repo standardizes otherwise via ADR.
 
-**Conflict with existing code:** surface it — do not silently diverge.
+**Conflict with existing code:** surface it - do not silently diverge.
 
 ```text
 CONFLICT: Docs recommend X; codebase uses Y (file Z).
@@ -91,7 +91,7 @@ Options: A) adopt X, B) stay consistent with Y until refactor.
 For non-obvious framework choices, add comments or reply text with **full URLs** (deep links with anchors when helpful).
 
 ```text
-// Example — Image LCP tuning — https://<your-framework-docs>/...
+// Example - Image LCP tuning - https://<your-framework-docs>/...
 ```
 
 If something cannot be verified in official docs, label it **UNVERIFIED**.

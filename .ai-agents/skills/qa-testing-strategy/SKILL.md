@@ -13,7 +13,7 @@ disable-model-invocation: true
 
 TDD proves code behavior at implementation time; QA strategy proves user-facing quality, risk coverage, release readiness, and manual-to-automation conversion. Expert testers combine scripted checks, exploratory charters, automation, evidence capture, and risk-based prioritization.
 
-**Automated tests in code** follow [`test-driven-development`](../test-driven-development/SKILL.md): core/business logic only — no file/env/container discovery tests. Environment and infra checks belong in manual charters, CI, or fixture setup, not unit/integration test bodies.
+**Automated tests in code** follow [`test-driven-development`](../test-driven-development/SKILL.md): core/business logic only - no file/env/container discovery tests. Environment and infra checks belong in manual charters, CI, or fixture setup, not unit/integration test bodies.
 </context>
 
 ## How
@@ -34,7 +34,7 @@ TDD proves code behavior at implementation time; QA strategy proves user-facing 
    - Automation: test level, selectors/fixtures, assertions, data setup/teardown, flake controls, CI command.
 5. **Execute with evidence**
    - Capture steps, environment, screenshots/logs/network traces, versions, data IDs, and expected vs actual behavior.
-   - **UI changes:** treat an automated accessibility audit as a pass/fail gate, not an observation. Pass requires zero WCAG failures from `npx @axe-core/cli`, Lighthouse, or the configured equivalent — each remaining failure must be explained and accepted, and screenshots must cover the supported breakpoints. Mark checks `UNVERIFIED` with a reason when no browser is available rather than asserting visual correctness.
+   - **UI changes:** treat an automated accessibility audit as a pass/fail gate, not an observation. Pass requires zero WCAG failures from `npx @axe-core/cli`, Lighthouse, or the configured equivalent - each remaining failure must be explained and accepted, and screenshots must cover the supported breakpoints. Mark checks `UNVERIFIED` with a reason when no browser is available rather than asserting visual correctness.
 6. **Close the loop**
    - Prioritize defects by user impact.
    - Convert recurring manual cases into automation.
