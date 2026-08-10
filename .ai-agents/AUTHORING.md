@@ -179,6 +179,39 @@ until it runs again the harness serves the previous text while every other check
   and local rules to that repo's layout and risk profile.
 </rules>
 
+## Machine-wide install
+
+<procedure>
+
+`sh scripts/install-global.sh` installs the assets into the user-level directories, so every project
+on the machine sees them without a wrapper workspace and without a submodule. Use it when the
+toolkit should follow you rather than a repository, and keep using the link script for repositories
+that want the permissions, hooks, and runtime gates too.
+
+Everything installs under a `vibe-` prefix, and the prefix carries weight. Claude Code resolves a
+skill-name collision toward the personal level, so an unprefixed global install would make this
+toolkit override a repository's own skills instead of being the fallback that [`AGENTS.md`](../AGENTS.md)
+says it is. Prefixing means the collision never happens.
+
+| Asset | Installed as | Why |
+|---|---|---|
+| Skills | `~/.claude/skills/vibe-<name>`, `~/.codex/skills/vibe-<name>` | The command name is the directory name, so a rename is enough |
+| Commands | `~/.claude/commands/vibe-<name>.md`, opencode equivalent | The command name is the file name |
+| Subagents | generated copies with `name: vibe-<name>` | A subagent is identified by its frontmatter `name:`, so renaming the file namespaces nothing |
+| Codex, opencode rules | a marked block appended to the global `AGENTS.md` | Codex concatenates global with project rules, so a pointer there cannot shadow a repository |
+
+**Cursor cannot be scripted.** Its global rules are a settings field, not a file, so the script
+prints the text to paste into Customize -> Rules.
+
+**Permissions and hooks are never installed.** This repo denies 21 patterns and hooks six events;
+applying that to every unrelated repository on the machine is the user's call, made by running the
+link script in a specific project.
+
+Subagent files are rewritten, so they are copies and can go stale. `--check` compares what is
+installed against what a fresh install would produce, `--uninstall` removes exactly what the
+manifest records and leaves everything else, and `--dry-run` writes nothing.
+</procedure>
+
 ## Asset inventory
 
 <context>
