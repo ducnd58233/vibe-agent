@@ -90,12 +90,24 @@ function Add-Manifest([string]$Path) {
 function Test-IsLink([string]$Path) {
     $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
     if (-not $item) { return $false }
-    return $item.LinkType -in @('SymbolicLink', 'Junction')
+    # A hard link shares the file's data, so it cannot drift either.
+    return $item.LinkType -in @('SymbolicLink', 'Junction', 'HardLink')
 }
 
-# Attempt a link, then verify. Without Developer Mode or elevation the call
-# fails, and a script that assumed success would leave nothing installed while
-# reporting that it had.
+# Try each link kind in turn and verify the result, because every one of them
+# fails under conditions this script cannot detect in advance:
+#
+#   SymbolicLink  the best option, but Windows PowerShell 5.1 asks the kernel
+#                 without SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE, so it
+#                 demands elevation even when Developer Mode is on. PowerShell 7
+#                 passes the flag and succeeds.
+#   Junction      directories only, needs no elevation, and crosses volumes,
+#                 which matters when the toolkit is on D: and the home on C:.
+#                 This is what link-ai-agents.ps1 already relies on.
+#   HardLink      files only, no elevation, but cannot cross a volume.
+#
+# A copy is the floor. It works everywhere and goes stale, so the caller is told
+# how many entries ended up that way rather than being left to assume.
 function Install-Entry([string]$Source, [string]$Destination) {
     if ($DryRun) { Write-Output "would install $Destination"; return }
 
@@ -107,18 +119,24 @@ function Install-Entry([string]$Source, [string]$Destination) {
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
     }
 
+    $isDirectory = (Get-Item -LiteralPath $Source).PSIsContainer
+    $kinds = if ($isDirectory) { @('SymbolicLink', 'Junction') } else { @('SymbolicLink', 'HardLink') }
+
     $ok = $false
-    try {
-        New-Item -ItemType SymbolicLink -Path $Destination -Target $Source -ErrorAction Stop | Out-Null
-        $ok = Test-IsLink $Destination
-    } catch {
-        $ok = $false
+    foreach ($kind in $kinds) {
+        try {
+            New-Item -ItemType $kind -Path $Destination -Target $Source -ErrorAction Stop | Out-Null
+            $ok = ($kind -eq 'HardLink') -or (Test-IsLink $Destination)
+        } catch {
+            $ok = $false
+        }
+        if ($ok) { break }
+        if (Test-Path -LiteralPath $Destination) { Remove-Item -LiteralPath $Destination -Recurse -Force }
     }
 
     if ($ok) {
         $script:Linked++
     } else {
-        if (Test-Path -LiteralPath $Destination) { Remove-Item -LiteralPath $Destination -Recurse -Force }
         Copy-Item -LiteralPath $Source -Destination $Destination -Recurse -Force
         $script:Copied++
     }
@@ -333,11 +351,16 @@ Write-Output "  subagents   generated with name: $Prefix<name>"
 Write-Output "  rules       marked block in each global instructions file, plus a Cursor .mdc"
 Write-Output "  manifest    $Manifest"
 
-if ($script:Copied -gt 0 -and $script:Linked -eq 0) {
+if ($script:Copied -gt 0) {
     Write-Output ''
-    Write-Output 'Nothing could be symlinked, so every asset is a copy that goes stale.'
-    Write-Output 'Turn on Developer Mode (Settings > System > For developers) or run this'
-    Write-Output 'from an elevated shell, then re-run. Use -Check to detect drift meanwhile.'
+    Write-Output "$script:Copied entries are copies rather than links, so they go stale when the"
+    Write-Output 'toolkit changes. Re-run after editing an asset, and use -Check for drift.'
+    if ($script:Linked -eq 0) {
+        Write-Output ''
+        Write-Output 'Nothing could be linked at all. Windows PowerShell 5.1 asks for elevation'
+        Write-Output 'even with Developer Mode on; PowerShell 7 (pwsh) does not. Install pwsh or'
+        Write-Output 'run this elevated to get live links.'
+    }
 }
 
 Write-Output ''
