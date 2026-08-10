@@ -217,9 +217,24 @@ an empty `~/.codex/skills` exists on some machines.
 | Asset | Installed as | Why that shape |
 |---|---|---|
 | Skills | linked dirs in the two paths above | The command name is the directory name, so a rename is enough and edits stay live |
+| Control plane | `~/.vibe-agent/.ai-agents` | The runtime needs the workflow graphs and hook wiring, and neither is repository-specific |
 | Commands | `vibe-<name>.md` in each tool's own commands directory, and `~/.codex/prompts/` | The command name is the file name; no shared convention exists here |
 | Subagents | generated copies with `name: vibe-<name>` | A subagent is identified by its frontmatter `name:` and the filename need not match, so renaming namespaces nothing |
 | Rules | a marked block in each global instructions file, plus `~/.cursor/rules/vibe-toolkit.mdc` | Codex concatenates global with project rules; Cursor has no global `AGENTS.md`, so it gets an `alwaysApply` rule instead |
+
+**A repository does not need to vendor the toolkit to use the runtime.** `vibe-agent doctor` and the
+delivery commands look for `.ai-agents` in this order, most specific first:
+
+1. `--toolkit`, which beats everything
+2. the workspace root
+3. one directory down, the submodule layout
+4. `$VIBE_AGENT_TOOLKIT`
+5. `~/.vibe-agent`, written by the global install
+
+Local before global matches the precedence rule in [`AGENTS.md`](../AGENTS.md): a repository that
+ships its own assets means them. Without steps 4 and 5, a consumer repo had to vendor the whole
+toolkit to obtain two files, and `doctor` failed on a missing `.ai-agents/graphs` in a workspace that
+was otherwise set up correctly.
 
 **Permissions and hooks are never installed.** This repo denies 21 patterns and hooks six events;
 applying that to every unrelated repository on the machine is the user's call, made by running the

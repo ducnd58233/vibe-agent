@@ -329,6 +329,14 @@ foreach ($file in (Get-ChildItem -File -Filter *.md -LiteralPath (Join-Path $Ass
     Install-Agent $file.FullName (Join-Path $OpencodeHome "agents/$Prefix$name.md") "$Prefix$name"
 }
 
+# The control plane. `vibe-agent doctor` and the delivery commands need the
+# workflow graphs and hook wiring, and both live under .ai-agents. Without this
+# a repository that has not vendored the toolkit fails doctor on a missing
+# .ai-agents/graphs even though nothing about it is repository-specific. The
+# runtime probes ~/.vibe-agent last, so a repository that ships its own assets
+# is never shadowed. Kept in step with GlobalToolkitDir in runtime/cmd/common.go.
+Install-Entry $Assets (Join-Path $HomeDir '.vibe-agent/.ai-agents')
+
 Write-ManagedBlock (Join-Path $CodexHome 'AGENTS.md')
 Write-ManagedBlock (Join-Path $OpencodeHome 'AGENTS.md')
 Write-ManagedBlock (Join-Path $ClaudeHome 'CLAUDE.md')

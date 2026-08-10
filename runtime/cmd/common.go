@@ -44,14 +44,34 @@ func (r *rootFlags) resolve() (workspaceRoot, toolkitRoot string, err error) {
 	return workspaceRoot, toolkitRoot, nil
 }
 
+// ToolkitEnv names the environment variable that overrides toolkit discovery.
+const ToolkitEnv = "VIBE_AGENT_TOOLKIT"
+
+// GlobalToolkitDir is the per-user toolkit location scripts/install-global
+// populates. Placing a link to .ai-agents here is what lets a repository use
+// the toolkit without vendoring it.
+const GlobalToolkitDir = ".vibe-agent"
+
 // discoverToolkit finds the directory holding .ai-agents when --toolkit was not
 // given.
 //
-// Standalone, that is the workspace itself. Mounted as a submodule it is a
-// subdirectory, .vibe-agent by the convention in AGENTS.md. Probing for it
-// keeps host hook configs identical in both layouts: a hook that only passes
-// --workspace still finds the graphs, instead of silently losing them and
-// degrading to a less useful message.
+// Order, most specific first:
+//
+//  1. the workspace itself, when the toolkit is used standalone
+//  2. a subdirectory one level down, .vibe-agent by the convention in
+//     AGENTS.md, which is the submodule layout
+//  3. $VIBE_AGENT_TOOLKIT
+//  4. ~/.vibe-agent, written by scripts/install-global
+//
+// Local before global is deliberate and matches the precedence rule in
+// AGENTS.md: a repository that ships its own assets means them, and a
+// machine-wide install is the fallback. Someone who needs to override a
+// vendored toolkit has --toolkit, which beats all of this.
+//
+// The global steps exist because the toolkit supplies only graphs and hook
+// wiring, and neither is repository-specific. Without them a repository that
+// wants the control plane has to vendor the whole toolkit to get two files, and
+// `doctor` fails on a workspace that is otherwise correctly set up.
 //
 // One level deep only. A toolkit buried deeper is unusual enough to deserve an
 // explicit --toolkit.
@@ -60,15 +80,26 @@ func discoverToolkit(workspaceRoot string) string {
 		return workspaceRoot
 	}
 
-	entries, err := os.ReadDir(workspaceRoot)
-	if err != nil {
-		return workspaceRoot
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() || entry.Name() == ".git" || entry.Name() == "node_modules" {
-			continue
+	if entries, err := os.ReadDir(workspaceRoot); err == nil {
+		for _, entry := range entries {
+			if !entry.IsDir() || entry.Name() == ".git" || entry.Name() == "node_modules" {
+				continue
+			}
+			candidate := filepath.Join(workspaceRoot, entry.Name())
+			if holdsAssets(candidate) {
+				return candidate
+			}
 		}
-		candidate := filepath.Join(workspaceRoot, entry.Name())
+	}
+
+	if env := os.Getenv(ToolkitEnv); env != "" {
+		if abs, err := filepath.Abs(env); err == nil && holdsAssets(abs) {
+			return abs
+		}
+	}
+
+	if home, err := os.UserHomeDir(); err == nil {
+		candidate := filepath.Join(home, GlobalToolkitDir)
 		if holdsAssets(candidate) {
 			return candidate
 		}

@@ -96,6 +96,9 @@ native_path() {
 NATIVE_TOOLKIT="$(native_path "$TOOLKIT")"
 NATIVE_ASSETS="$(native_path "$ASSETS")"
 
+# Kept in step with GlobalToolkitDir in runtime/cmd/common.go, which probes it.
+GLOBAL_TOOLKIT_DIR=".vibe-agent"
+
 CLAUDE_HOME="$HOME_DIR/.claude"
 CURSOR_HOME="$HOME_DIR/.cursor"
 CODEX_HOME="${CODEX_HOME:-$HOME_DIR/.codex}"
@@ -329,6 +332,14 @@ for file in "$ASSETS"/agents/*.md; do
   write_agent "$file" "$CURSOR_HOME/agents/$PREFIX$name.md" "$PREFIX$name"
   write_agent "$file" "$OPENCODE_HOME/agents/$PREFIX$name.md" "$PREFIX$name"
 done
+
+# The control plane. `vibe-agent doctor` and the delivery commands need the
+# workflow graphs and hook wiring, and both live under .ai-agents. Without this
+# a repository that has not vendored the toolkit fails doctor on a missing
+# .ai-agents/graphs even though nothing about it is repository-specific. The
+# runtime probes ~/.vibe-agent last, after the workspace and any submodule, so
+# a repository that does ship its own assets is never shadowed.
+link_or_copy "$ASSETS" "$HOME_DIR/$GLOBAL_TOOLKIT_DIR/.ai-agents"
 
 # Instructions. Codex concatenates the global file with the project's rather
 # than choosing between them, so a pointer here is additive by construction.
