@@ -183,33 +183,52 @@ until it runs again the harness serves the previous text while every other check
 
 <procedure>
 
-`sh scripts/install-global.sh` installs the assets into the user-level directories, so every project
-on the machine sees them without a wrapper workspace and without a submodule. Use it when the
-toolkit should follow you rather than a repository, and keep using the link script for repositories
-that want the permissions, hooks, and runtime gates too.
+Installs the assets into the user-level directories, so every project on the machine sees them
+without a wrapper workspace and without a submodule. Use it when the toolkit should follow you
+rather than a repository, and keep using the link script for repositories that also want the
+permissions, hooks, and runtime gates.
+
+| Platform | Run |
+|---|---|
+| Linux, macOS, WSL, Git Bash | `sh scripts/install-global.sh` |
+| Windows | `powershell -ExecutionPolicy Bypass -File scripts/install-global.ps1` |
+
+Both write the same layout and share one manifest, so either can uninstall what the other installed.
+The PowerShell port is not duplication for symmetry: Git Bash on Windows accepts `ln -s` and
+silently copies, so only PowerShell can produce live symlinks, and only with Developer Mode on.
+Each script attempts a link, verifies it, falls back to a copy, and reports which it did.
 
 Everything installs under a `vibe-` prefix, and the prefix carries weight. Claude Code resolves a
 skill-name collision toward the personal level, so an unprefixed global install would make this
-toolkit override a repository's own skills instead of being the fallback that [`AGENTS.md`](../AGENTS.md)
-says it is. Prefixing means the collision never happens.
+toolkit override a repository's own skills instead of being the fallback that
+[`AGENTS.md`](../AGENTS.md) says it is. Prefixing means the collision never happens.
 
-| Asset | Installed as | Why |
+**Skills need only two directories to reach all four tools**, because the Agent Skills convention is
+shared:
+
+| Path | Read by |
+|---|---|
+| `~/.claude/skills/` | Claude Code, opencode |
+| `~/.agents/skills/` | Codex, Cursor, opencode |
+
+Codex reads `$HOME/.agents/skills` and not `~/.codex/skills`, which is easy to get backwards because
+an empty `~/.codex/skills` exists on some machines.
+
+| Asset | Installed as | Why that shape |
 |---|---|---|
-| Skills | `~/.claude/skills/vibe-<name>`, `~/.codex/skills/vibe-<name>` | The command name is the directory name, so a rename is enough |
-| Commands | `~/.claude/commands/vibe-<name>.md`, opencode equivalent | The command name is the file name |
-| Subagents | generated copies with `name: vibe-<name>` | A subagent is identified by its frontmatter `name:`, so renaming the file namespaces nothing |
-| Codex, opencode rules | a marked block appended to the global `AGENTS.md` | Codex concatenates global with project rules, so a pointer there cannot shadow a repository |
-
-**Cursor cannot be scripted.** Its global rules are a settings field, not a file, so the script
-prints the text to paste into Customize -> Rules.
+| Skills | linked dirs in the two paths above | The command name is the directory name, so a rename is enough and edits stay live |
+| Commands | `vibe-<name>.md` in each tool's own commands directory, and `~/.codex/prompts/` | The command name is the file name; no shared convention exists here |
+| Subagents | generated copies with `name: vibe-<name>` | A subagent is identified by its frontmatter `name:` and the filename need not match, so renaming namespaces nothing |
+| Rules | a marked block in each global instructions file, plus `~/.cursor/rules/vibe-toolkit.mdc` | Codex concatenates global with project rules; Cursor has no global `AGENTS.md`, so it gets an `alwaysApply` rule instead |
 
 **Permissions and hooks are never installed.** This repo denies 21 patterns and hooks six events;
 applying that to every unrelated repository on the machine is the user's call, made by running the
 link script in a specific project.
 
-Subagent files are rewritten, so they are copies and can go stale. `--check` compares what is
-installed against what a fresh install would produce, `--uninstall` removes exactly what the
-manifest records and leaves everything else, and `--dry-run` writes nothing.
+Subagent files are rewritten, and any asset that could not be symlinked is a copy, so both can go
+stale. `--check` compares what is installed against what a fresh install would produce, `--uninstall`
+removes exactly what the manifest records and strips only the marked block from a rules file, and
+`--dry-run` writes nothing.
 </procedure>
 
 ## Asset inventory
