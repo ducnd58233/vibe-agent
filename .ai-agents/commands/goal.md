@@ -2,6 +2,8 @@
 description: End-to-end delivery loop - clarify, research, spec, plan, build, validate, ship until done
 ---
 
+Drive one objective end to end - clarify, research, spec, plan, build, validate, ship - pausing at a checkpoint between stages.
+
 <context>
 
 Follow [`goal-driven-delivery`](../skills/goal-driven-delivery/SKILL.md) and [`references/orchestration-patterns.md`](../references/orchestration-patterns.md).

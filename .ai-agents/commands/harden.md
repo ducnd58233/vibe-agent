@@ -2,10 +2,7 @@
 description: "Harden AI assets: permissions, hooks, tool boundaries, secret safety, and orchestration risks"
 ---
 
-<context>
-
 Run a focused hardening pass on AI assets, tool permissions, and orchestration boundaries.
-</context>
 
 ## Scope
 

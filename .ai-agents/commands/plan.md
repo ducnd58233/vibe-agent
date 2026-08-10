@@ -2,6 +2,8 @@
 description: Break spec into ordered tasks with acceptance criteria
 ---
 
+Break an approved spec into ordered tasks, each carrying acceptance criteria, a verification command, and the files it likely touches.
+
 <procedure>
 
 Follow [`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md).

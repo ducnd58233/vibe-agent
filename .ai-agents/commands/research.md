@@ -2,6 +2,8 @@
 description: Run citation-first research on a scoped topic and return a digest with sources and unresolved questions
 ---
 
+Research a scoped topic citation-first and return a digest of what the sources support, where they conflict, and what stays unresolved.
+
 <references>
 
 Follow [`research-with-citations`](../skills/research-with-citations/SKILL.md).

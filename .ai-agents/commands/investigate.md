@@ -2,6 +2,8 @@
 description: Parallel investigation with investigator, analyst, and source auditor, then merged verdict
 ---
 
+Fan out three independent lanes - investigator, analyst, source auditor - across one scoped evidence question, then merge them into a single verdict.
+
 <references>
 
 Follow [`references/orchestration-patterns.md`](../references/orchestration-patterns.md) parallel fan-out rules and compose:

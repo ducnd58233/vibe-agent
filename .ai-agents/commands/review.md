@@ -2,6 +2,8 @@
 description: Five-axis code review - correctness, readability, architecture, security, performance
 ---
 
+Review the current change across five axes: correctness, readability, architecture, security, and performance.
+
 <prerequisites>
 
 **Runtime required (MUST).** Run `vibe-agent doctor` first. Rules: [`goal.md`](goal.md) section "Runtime is required".

@@ -2,6 +2,8 @@
 description: Build or audit UI registry-first, with anti-slop gates and render evidence
 ---
 
+Build or audit UI against the component registry first, with anti-slop gates and rendered evidence rather than claimed results.
+
 <references>
 
 Follow [`ui-design-fidelity`](../skills/ui-design-fidelity/SKILL.md) and [`references/ui-component-registry.md`](../references/ui-component-registry.md).

@@ -2,6 +2,8 @@
 description: Analyze evidence into a confidence-labeled recommendation with a cited comparison table
 ---
 
+Turn a collected evidence set into a decision: a cited comparison table, a recommendation with alternatives, and a confidence label on every conclusion.
+
 <references>
 
 Follow [`evidence-based-analysis`](../skills/evidence-based-analysis/SKILL.md).

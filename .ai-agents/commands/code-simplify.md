@@ -2,6 +2,8 @@
 description: Simplify code without behavior change - clarity and maintainability
 ---
 
+Reduce complexity in the recent diff or the paths you name, one behavior-preserving step at a time, with tests after each step.
+
 <required>
 
 Follow [`code-simplification`](../skills/code-simplification/SKILL.md).

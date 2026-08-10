@@ -2,6 +2,8 @@
 description: Implement next task on a dedicated branch; test, build, verify, commit; never merge to main
 ---
 
+Implement the next planned task on its own branch, then test, build, verify, and commit it. Never merges to main.
+
 <prerequisites>
 
 **Runtime required (MUST).** Run `vibe-agent doctor` first; if it fails, stop and report the install commands. Rules, command surface, and why: [`goal.md`](goal.md) section "Runtime is required". Do not restate them here.

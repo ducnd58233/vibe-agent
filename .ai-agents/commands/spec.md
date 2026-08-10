@@ -2,6 +2,8 @@
 description: Spec-first - structured specification before implementation
 ---
 
+Write the structured specification before any implementation starts: objective, stack, commands, structure, testing, boundaries, open questions.
+
 <required>
 
 Follow [`spec-driven-development`](../skills/spec-driven-development/SKILL.md).

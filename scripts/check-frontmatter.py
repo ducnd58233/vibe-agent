@@ -11,12 +11,22 @@ for months. The unquoted second colon makes it invalid YAML, so the command was
 advertised by whatever prose happened to sit at the top of the file. Nothing in the
 repo noticed, because every other check reads the file as Markdown.
 
+Valid frontmatter is necessary and not sufficient. Cursor's `.cursor/commands`
+loader does not read frontmatter at all - commands there are plain Markdown - so it
+takes the first body line unconditionally, however well-formed the block above it
+is. Every command whose body opened on `<references>` was advertised in Cursor's `/`
+picker as the literal string `<references>`, while checks 1-3 below reported OK.
+Check 4 exists because that gap is the whole point: the fallback line is part of the
+asset's public surface, not an implementation detail.
+
 Checks:
 
   1. The frontmatter block parses as YAML and is a mapping.
   2. It carries a description, since that is what the routers and the harness show.
   3. The description is not empty and not a stray XML section tag, which is the
      shape the fallback produces once the body is tagged.
+  4. The first non-empty body line is not a bare section tag, so a loader that
+     ignores frontmatter still shows a human a sentence.
 
 Needs PyYAML (scripts/requirements.txt).
 
@@ -37,6 +47,15 @@ SECTION_TAG = re.compile(r"^<[a-z_]+>$")
 # These carry no frontmatter by design: routers, indexes, and authoring templates
 # are read by people and by agents as prose, not loaded as addressable assets.
 OPTIONAL = ("ROUTER.md", "README.md", "TEMPLATE.md", "MEMORY.md")
+
+
+def first_body_line(body: str) -> str:
+    """The line a frontmatter-blind loader shows as the asset's description."""
+    for line in body.splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return ""
 
 
 def main(root: pathlib.Path) -> int:
@@ -85,6 +104,12 @@ def main(root: pathlib.Path) -> int:
         elif SECTION_TAG.match(flat):
             problems.append(f"{rel}: description is the section tag {flat}; "
                             "the frontmatter is not being read")
+
+        opener = first_body_line(text[match.end():])
+        if opener and SECTION_TAG.match(opener):
+            problems.append(f"{rel}: the body opens on {opener}; a loader that "
+                            "ignores frontmatter advertises that line verbatim. "
+                            "Put one prose sentence above the first tag")
 
     for line in problems:
         print(line)

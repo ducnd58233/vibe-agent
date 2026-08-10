@@ -2,6 +2,8 @@
 description: Pre-ship parallel review - specialist fan-out, then GO/NO-GO
 ---
 
+Run the pre-ship specialist fan-out over one change, then merge the lanes into a GO / NO-GO with the blocking findings named.
+
 <prerequisites>
 
 **Runtime required (MUST).** GO is recorded as the `ship` check, which [`vibe-checks.yaml`](../../vibe-checks.yaml) declares `verifier: human` because no exit code means GO. Merge stays refused by `pre-tool-use` until `merge_approved` is recorded. Rules: [`goal.md`](goal.md) section "Runtime is required".

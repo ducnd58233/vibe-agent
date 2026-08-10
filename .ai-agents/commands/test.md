@@ -2,6 +2,8 @@
 description: TDD workflow - RED/GREEN; Prove-It pattern for bugs
 ---
 
+Drive the RED/GREEN TDD loop; for a bug, start from a Prove-It test that fails for the reported reason before any fix.
+
 <prerequisites>
 
 **Runtime required (MUST).** Results are recorded with `vibe-agent verify --slug <slug>`, which runs what [`vibe-checks.yaml`](../../vibe-checks.yaml) declares. There is no `--passed`; a test suite cannot be marked green by saying so. Rules: [`goal.md`](goal.md) section "Runtime is required".
