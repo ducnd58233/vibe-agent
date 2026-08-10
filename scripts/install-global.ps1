@@ -351,6 +351,41 @@ if ($DryRun) {
 
 Move-Item -LiteralPath $ManifestTmp -Destination $Manifest -Force
 
+# Install the binary too, mirroring link-ai-agents.ps1. Linking .ai-agents into
+# ~/.vibe-agent is what lets the runtime find its graphs, and that is worth
+# nothing if the runtime is not on PATH: `vibe-agent doctor` would not be a
+# command at all. Never fatal, because the markdown assets work without it.
+function Install-Runtime {
+    if ($env:VIBE_SKIP_RUNTIME) {
+        Write-Output ''
+        Write-Output 'Runtime install skipped (VIBE_SKIP_RUNTIME set).'
+        return
+    }
+    if ($env:CI) {
+        Write-Output ''
+        Write-Output 'Runtime install skipped (CI). Run scripts/install-runtime.ps1 to install it.'
+        return
+    }
+    $installer = Join-Path $PSScriptRoot 'install-runtime.ps1'
+    if (-not (Test-Path -LiteralPath $installer)) {
+        Write-Warning 'No install-runtime.ps1 next to this script; skipped the runtime.'
+        return
+    }
+
+    Write-Output ''
+    if (Get-Command vibe-agent -ErrorAction SilentlyContinue) {
+        Write-Output "Refreshing the runtime binary (installed: $(vibe-agent version 2>$null))..."
+    } else {
+        Write-Output 'Installing the runtime binary...'
+    }
+    try {
+        & $installer
+    } catch {
+        Write-Warning 'Runtime install did not complete. The assets above are installed and usable;'
+        Write-Warning "the delivery commands that need the control plane are not. Retry with: $installer"
+    }
+}
+
 Write-Output ''
 Write-Output "Installed $script:Installed entries: $script:Linked symlinked, $script:Copied copied."
 Write-Output "  skills      $ClaudeHome\skills, $AgentsHome\skills   (all four tools)"
@@ -374,3 +409,5 @@ if ($script:Copied -gt 0) {
 Write-Output ''
 Write-Output 'Permissions and hooks were not installed. To apply this repo''s policy to a'
 Write-Output 'project, run link-ai-agents.ps1 in that project instead.'
+
+Install-Runtime

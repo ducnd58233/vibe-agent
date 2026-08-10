@@ -114,6 +114,13 @@ correct to violate given a good reason, it is `<rules>`. If violating it is alwa
 
 - Tags go **after** YAML frontmatter, never before. Frontmatter must stay the first bytes of the file
   or the skill and rule loaders will not parse it.
+- **One prose sentence goes above the first tag**, and no tag may be the first body line. This is the
+  single exception to total tag coverage below, and it is not a section: it is the description, for
+  the loaders that never read frontmatter. Cursor's `.cursor/commands` takes plain Markdown and
+  advertises the first body line as-is, so thirteen commands here showed up in Cursor's `/` picker as
+  the literal string `<references>` or `<context>` while their frontmatter was valid the whole time.
+  `commands/doctor.md` was the one that read correctly, because it happened to open on a sentence.
+  `scripts/check-frontmatter.py` check 4 now fails a tag-first body.
 - Open and close on their own lines, so the Markdown around them still renders.
 - **Every section belongs to a block.** An untagged region between two tagged ones asks the model to
   guess what kind of instruction it is reading, which is the ambiguity the tags exist to remove.
@@ -141,7 +148,7 @@ frontmatter, a tag nested inside itself, or nesting past one level.
 |---|---|
 | Any asset under `.ai-agents/` | `bash scripts/check-ai-agents-routers.sh` or `powershell -File scripts/check-ai-agents-routers.ps1` (dependency-free) |
 | An always-loaded file or any tagged asset | `bash scripts/check-xml-tags.sh` - pairing, nesting depth, unknown tags, and tags above frontmatter |
-| Any asset's YAML frontmatter | `python3 scripts/check-frontmatter.py` - invalid frontmatter does not error, it silently demotes the first body line to the description |
+| Any asset's YAML frontmatter, or its first body line | `python3 scripts/check-frontmatter.py` - invalid frontmatter does not error, it silently demotes the first body line to the description, and Cursor's command loader demotes it even when the frontmatter is valid |
 | Anything, before trusting a harness read | `bash scripts/check-generated-views.sh` - a canonical edit does not reach the harness until the link script re-runs |
 | `.ai-agents/graphs/*.yaml` or `schemas/*.json` | `python3 scripts/check-graphs.py` and `python3 scripts/check-schemas.py` |
 | [`runtime/`](../runtime) | `cd runtime && make check` |
@@ -192,6 +199,11 @@ permissions, hooks, and runtime gates.
 |---|---|
 | Linux, macOS, WSL, Git Bash | `sh scripts/install-global.sh` |
 | Windows | `powershell -ExecutionPolicy Bypass -File scripts/install-global.ps1` |
+
+Both also install the runtime binary, downloading a published release and falling back to building
+from source, so a fresh machine needs one command. Set `VIBE_SKIP_RUNTIME` to install only the
+markdown. A failed download never fails the install: the assets work without the binary, and the
+delivery commands that need the control plane say so.
 
 Both write the same layout and share one manifest, so either can uninstall what the other installed.
 The PowerShell port is not duplication for symmetry: Git Bash on Windows accepts `ln -s` and

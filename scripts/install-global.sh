@@ -357,6 +357,50 @@ fi
 
 mv "$MANIFEST.tmp" "$MANIFEST"
 
+# Install the binary too, mirroring link-ai-agents.sh. Linking .ai-agents into
+# ~/.vibe-agent is what lets the runtime find its graphs, and that is worth
+# nothing if the runtime is not on PATH: `vibe-agent doctor` would simply not be
+# a command. Downloads a published release, falling back to a build from source.
+#
+# Skipped by VIBE_SKIP_RUNTIME, and in CI where a network download would make an
+# unrelated outage look like a broken installer.
+#
+# Never fatal. The runtime is optional by design: without it every hook is a
+# quiet no-op and the markdown assets work exactly as before, so a failed
+# download must not undo an otherwise complete install.
+install_runtime() {
+  installer="$SCRIPT_DIR/install-runtime.sh"
+  if [ -n "${VIBE_SKIP_RUNTIME:-}" ]; then
+    echo ""
+    echo "Runtime install skipped (VIBE_SKIP_RUNTIME set)."
+    return 0
+  fi
+  if [ -n "${CI:-}" ]; then
+    echo ""
+    echo "Runtime install skipped (CI). Run sh scripts/install-runtime.sh to install it."
+    return 0
+  fi
+  if [ ! -f "$installer" ]; then
+    echo ""
+    echo "No install-runtime.sh next to this script; skipped the runtime." >&2
+    return 0
+  fi
+
+  echo ""
+  if command -v vibe-agent >/dev/null 2>&1; then
+    echo "Refreshing the runtime binary (installed: $(vibe-agent version 2>/dev/null || echo unknown))..."
+  else
+    echo "Installing the runtime binary..."
+  fi
+  if bash "$installer"; then
+    return 0
+  fi
+  echo "Runtime install did not complete. The assets above are installed and usable;" >&2
+  echo "the delivery commands that need the control plane are not. Retry with:" >&2
+  echo "  bash $installer" >&2
+  return 0
+}
+
 echo ""
 echo "Installed $installed entries: $linked symlinked, $copied copied."
 echo "  skills      $CLAUDE_HOME/skills, $AGENTS_HOME/skills   (all four tools)"
@@ -379,3 +423,5 @@ fi
 echo ""
 echo "Permissions and hooks were not installed. To apply this repo's policy to a"
 echo "project, run link-ai-agents.sh in that project instead."
+
+install_runtime
