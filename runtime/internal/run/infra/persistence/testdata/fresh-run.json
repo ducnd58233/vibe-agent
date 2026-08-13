@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "runId": "run_2026-07-29T10-00-00Z_loop-graph-runtime",
+  "graphId": "goal-delivery",
+  "slug": "loop-graph-runtime",
+  "goal": "add a control plane",
+  "currentNode": "",
+  "status": "running",
+  "iteration": 0,
+  "maxTransitions": 50,
+  "branch": null,
+  "pr": null,
+  "createdAt": "2026-07-29T10:00:00Z",
+  "updatedAt": "2026-07-29T10:00:00Z"
+}
