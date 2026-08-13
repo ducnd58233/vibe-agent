@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"io"
 	"mime"
 	"net/http"
@@ -13,8 +14,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
 )
 
 // MaxSourceBytes is the largest source this will read.
@@ -58,7 +57,7 @@ type Options struct {
 // state directory, for the same reason: this is derived from a source and
 // belongs to the checkout that asked for it, not to the machine.
 func CacheDir(workspaceRoot string) string {
-	return filepath.Join(workspaceRoot, memory.StateDirName, "fetch")
+	return filepath.Join(workspace.StateDir(workspaceRoot), "fetch")
 }
 
 // MaxAssetBytes is the largest non-text source this will retrieve.
