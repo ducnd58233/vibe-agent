@@ -70,13 +70,13 @@ var identifier = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]{2,}`)
 const maxReferences = 500
 
 // Build indexes a workspace, reading only the files whose contents changed.
-func Build(workspaceRoot string) (Result, error) {
-	paths, err := discover(workspaceRoot)
+func Build(ctx context.Context, workspaceRoot string) (Result, error) {
+	paths, err := discover(ctx, workspaceRoot)
 	if err != nil {
 		return Result{}, err
 	}
 
-	index, err := openCache(workspaceRoot, cacheVersion)
+	index, err := openCache(ctx, workspaceRoot, cacheVersion)
 	if err != nil {
 		return Result{}, err
 	}
@@ -94,7 +94,7 @@ func Build(workspaceRoot string) (Result, error) {
 		live[path] = true
 		hash := digest(content)
 
-		if cached, hit := index.lookup(path, hash); hit {
+		if cached, hit := index.lookup(ctx, path, hash); hit {
 			entries[path] = cached
 			result.Cached++
 			continue
@@ -103,14 +103,14 @@ func Build(workspaceRoot string) (Result, error) {
 			Symbols:    Extract(path, content),
 			References: referencedNames(content),
 		}
-		if err := index.store(path, hash, found); err != nil {
+		if err := index.store(ctx, path, hash, found); err != nil {
 			return Result{}, fmt.Errorf("cache %s: %w", path, err)
 		}
 		entries[path] = found
 		result.Read++
 	}
 
-	if err := index.prune(live); err != nil {
+	if err := index.prune(ctx, live); err != nil {
 		return Result{}, fmt.Errorf("prune index: %w", err)
 	}
 
@@ -231,8 +231,8 @@ func digest(content []byte) string {
 // Without a repository there is nothing to consult, and the walk falls back to
 // skipDirs. That list is a guess, and it is only ever reached when the better
 // answer does not exist.
-func discover(workspaceRoot string) ([]string, error) {
-	if paths, err := gitFiles(workspaceRoot); err == nil {
+func discover(ctx context.Context, workspaceRoot string) ([]string, error) {
+	if paths, err := gitFiles(ctx, workspaceRoot); err == nil {
 		return paths, nil
 	}
 	return walkFiles(workspaceRoot)
@@ -244,8 +244,8 @@ func discover(workspaceRoot string) ([]string, error) {
 // that are not ignored: everything the repository keeps, including work in
 // progress that was never staged. It fails when there is no repository and no
 // git, which is what sends the caller to the walk.
-func gitFiles(workspaceRoot string) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+func gitFiles(ctx context.Context, workspaceRoot string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "git", "-C", workspaceRoot,

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -42,7 +43,7 @@ func mapCommand(args []string) error {
 		}
 	}
 
-	result, err := repomap.Build(workspaceRoot)
+	result, err := repomap.Build(context.Background(), workspaceRoot)
 	if err != nil {
 		return err
 	}

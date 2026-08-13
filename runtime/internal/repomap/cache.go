@@ -1,6 +1,7 @@
 package repomap
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -35,7 +36,7 @@ func CachePath(workspaceRoot string) string {
 // workspace that has never built one and leave nothing behind. The same rule
 // internal/memory follows for the same reason: a read that seeds a database in
 // an unrelated directory is a read with a side effect.
-func Stat(workspaceRoot string) (files int, exists bool, err error) {
+func Stat(ctx context.Context, workspaceRoot string) (files int, exists bool, err error) {
 	path := CachePath(workspaceRoot)
 	if _, err := os.Stat(path); err != nil {
 		return 0, false, nil
@@ -45,7 +46,7 @@ func Stat(workspaceRoot string) (files int, exists bool, err error) {
 		return 0, true, fmt.Errorf("open %s: %w", path, err)
 	}
 	defer db.Close()
-	if err := db.QueryRow(`SELECT count(*) FROM files`).Scan(&files); err != nil {
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM files`).Scan(&files); err != nil {
 		return 0, true, fmt.Errorf("read %s: %w", path, err)
 	}
 	return files, true, nil
@@ -71,7 +72,7 @@ CREATE TABLE IF NOT EXISTS meta (
 
 // openCache opens the index, discarding it whole when this build reads code
 // differently than the build that wrote it.
-func openCache(workspaceRoot string, version int) (*cache, error) {
+func openCache(ctx context.Context, workspaceRoot string, version int) (*cache, error) {
 	path := CachePath(workspaceRoot)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, fmt.Errorf("create state directory: %w", err)
@@ -80,23 +81,23 @@ func openCache(workspaceRoot string, version int) (*cache, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", path, err)
 	}
-	if _, err := db.Exec(cacheSchema); err != nil {
+	if _, err := db.ExecContext(ctx, cacheSchema); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("create schema: %w", err)
 	}
 
 	c := &cache{db: db}
-	stored, err := c.version()
+	stored, err := c.version(ctx)
 	if err != nil {
 		db.Close()
 		return nil, err
 	}
 	if stored != version {
-		if _, err := db.Exec(`DELETE FROM files`); err != nil {
+		if _, err := db.ExecContext(ctx, `DELETE FROM files`); err != nil {
 			db.Close()
 			return nil, fmt.Errorf("discard stale index: %w", err)
 		}
-		if _, err := db.Exec(
+		if _, err := db.ExecContext(ctx,
 			`INSERT INTO meta (key, value) VALUES ('version', ?)
 			 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
 			fmt.Sprint(version)); err != nil {
@@ -107,9 +108,9 @@ func openCache(workspaceRoot string, version int) (*cache, error) {
 	return c, nil
 }
 
-func (c *cache) version() (int, error) {
+func (c *cache) version(ctx context.Context) (int, error) {
 	var raw string
-	err := c.db.QueryRow(`SELECT value FROM meta WHERE key = 'version'`).Scan(&raw)
+	err := c.db.QueryRowContext(ctx, `SELECT value FROM meta WHERE key = 'version'`).Scan(&raw)
 	if err == sql.ErrNoRows {
 		return 0, nil
 	}
@@ -131,9 +132,9 @@ type entry struct {
 
 // lookup returns a file's index when the cached row was built from exactly this
 // content.
-func (c *cache) lookup(path, hash string) (entry, bool) {
+func (c *cache) lookup(ctx context.Context, path, hash string) (entry, bool) {
 	var storedHash, symbols, refs string
-	err := c.db.QueryRow(
+	err := c.db.QueryRowContext(ctx,
 		`SELECT hash, symbols, references_ FROM files WHERE path = ?`, path,
 	).Scan(&storedHash, &symbols, &refs)
 	if err != nil || storedHash != hash {
@@ -149,7 +150,7 @@ func (c *cache) lookup(path, hash string) (entry, bool) {
 	return found, true
 }
 
-func (c *cache) store(path, hash string, found entry) error {
+func (c *cache) store(ctx context.Context, path, hash string, found entry) error {
 	symbols, err := json.Marshal(found.Symbols)
 	if err != nil {
 		return err
@@ -158,7 +159,7 @@ func (c *cache) store(path, hash string, found entry) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.db.Exec(
+	_, err = c.db.ExecContext(ctx,
 		`INSERT INTO files (path, hash, symbols, references_) VALUES (?, ?, ?, ?)
 		 ON CONFLICT(path) DO UPDATE SET
 		     hash = excluded.hash,
@@ -172,8 +173,8 @@ func (c *cache) store(path, hash string, found entry) error {
 //
 // Without it the map keeps sending a reader to a path that was deleted, which is
 // the one failure that makes an index worse than no index at all.
-func (c *cache) prune(live map[string]bool) error {
-	rows, err := c.db.Query(`SELECT path FROM files`)
+func (c *cache) prune(ctx context.Context, live map[string]bool) error {
+	rows, err := c.db.QueryContext(ctx, `SELECT path FROM files`)
 	if err != nil {
 		return err
 	}
@@ -193,7 +194,7 @@ func (c *cache) prune(live map[string]bool) error {
 		return err
 	}
 	for _, path := range gone {
-		if _, err := c.db.Exec(`DELETE FROM files WHERE path = ?`, path); err != nil {
+		if _, err := c.db.ExecContext(ctx, `DELETE FROM files WHERE path = ?`, path); err != nil {
 			return err
 		}
 	}
