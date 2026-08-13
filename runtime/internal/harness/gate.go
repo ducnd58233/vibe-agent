@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
 )
@@ -32,8 +33,81 @@ const (
 	mergeApprovedCheck = "merge_approved"
 )
 
-// protectedRefs are the branches a push to which reaches everyone else.
-var protectedRefs = map[string]bool{"main": true, "master": true}
+// conventionalRefs are the names that mean "everyone's branch" almost everywhere.
+//
+// A floor, not the definition. A repository that integrates on develop usually
+// still has a main that means something, so these stay protected whatever the
+// repository says its default is.
+var conventionalRefs = map[string]bool{"main": true, "master": true}
+
+// isProtected reports whether pushing to a branch reaches everyone else.
+//
+// The repository is asked rather than assumed. A fixed pair of names left every
+// project that integrates on develop, trunk, or production silently unguarded:
+// the push went through, nothing was said, and the guard looked like it was
+// working because it never fired.
+func isProtected(workspaceRoot, branch string) bool {
+	if branch == "" {
+		return false
+	}
+	if conventionalRefs[branch] {
+		return true
+	}
+	return branch == repositoryDefaultBranch(workspaceRoot)
+}
+
+// defaultBranchCache keeps one answer per workspace.
+//
+// This runs in PreToolUse, so it is on the path of every shell command in a
+// session. Reading two small files once per workspace is the difference between
+// a guard nobody notices and a guard that taxes every call.
+var defaultBranchCache sync.Map
+
+// defaultBranch returns the branch this repository integrates on, or "".
+//
+// Read from the git directory rather than shelled out to, for the same reason
+// currentBranch is: the gate must not spawn a process on every tool call, and
+// the files it needs are two lines of text. refs/remotes/origin/HEAD is what
+// `git remote set-head` writes and what clones get for free.
+func repositoryDefaultBranch(workspaceRoot string) string {
+	if cached, ok := defaultBranchCache.Load(workspaceRoot); ok {
+		return cached.(string)
+	}
+	branch := readDefaultBranch(workspaceRoot)
+	defaultBranchCache.Store(workspaceRoot, branch)
+	return branch
+}
+
+func readDefaultBranch(workspaceRoot string) string {
+	dir := gitDir(workspaceRoot)
+	if dir == "" {
+		return ""
+	}
+
+	// The symbolic ref, as a file or as a line in packed-refs.
+	if raw, err := os.ReadFile(filepath.Join(dir, "refs", "remotes", "origin", "HEAD")); err == nil {
+		if branch := afterPrefix(string(raw), "ref: refs/remotes/origin/"); branch != "" {
+			return branch
+		}
+	}
+	if raw, err := os.ReadFile(filepath.Join(dir, "packed-refs")); err == nil {
+		for _, line := range strings.Split(string(raw), "\n") {
+			if branch := afterPrefix(line, "ref: refs/remotes/origin/"); branch != "" {
+				return branch
+			}
+		}
+	}
+	return ""
+}
+
+// afterPrefix returns the trimmed remainder of a line after a prefix, or "".
+func afterPrefix(line, prefix string) string {
+	trimmed := strings.TrimSpace(line)
+	if !strings.HasPrefix(trimmed, prefix) {
+		return ""
+	}
+	return strings.TrimSpace(strings.TrimPrefix(trimmed, prefix))
+}
 
 // gate decides whether a tool call may run, and answers in whichever form the
 // host understands.
@@ -342,10 +416,10 @@ func gitPushTarget(fields []string, workspaceRoot string) (string, bool) {
 	// from the repository rather than the command line.
 	if len(positional) <= 1 {
 		branch := currentBranch(workspaceRoot)
-		return branch, protectedRefs[branch]
+		return branch, isProtected(workspaceRoot, branch)
 	}
 	for _, spec := range positional[1:] {
-		if dst := refspecDestination(spec); protectedRefs[dst] {
+		if dst := refspecDestination(spec); isProtected(workspaceRoot, dst) {
 			return dst, true
 		}
 	}
@@ -431,32 +505,39 @@ func refspecDestination(spec string) string {
 // A detached HEAD yields a commit sha, which is not a protected ref, so it
 // falls through to allowed.
 func currentBranch(workspaceRoot string) string {
-	gitPath := filepath.Join(workspaceRoot, ".git")
-	info, err := os.Stat(gitPath)
-	if err != nil {
+	dir := gitDir(workspaceRoot)
+	if dir == "" {
 		return ""
 	}
-
-	dir := gitPath
-	if !info.IsDir() {
-		// A worktree or submodule keeps .git as a file pointing elsewhere.
-		raw, err := os.ReadFile(gitPath)
-		if err != nil {
-			return ""
-		}
-		line := strings.TrimSpace(string(raw))
-		if !strings.HasPrefix(line, "gitdir:") {
-			return ""
-		}
-		dir = strings.TrimSpace(strings.TrimPrefix(line, "gitdir:"))
-		if !filepath.IsAbs(dir) {
-			dir = filepath.Join(workspaceRoot, dir)
-		}
-	}
-
 	raw, err := os.ReadFile(filepath.Join(dir, "HEAD"))
 	if err != nil {
 		return ""
 	}
 	return strings.TrimPrefix(strings.TrimSpace(string(raw)), "ref: refs/heads/")
+}
+
+// gitDir resolves a workspace's git directory, or "" if it has none.
+func gitDir(workspaceRoot string) string {
+	gitPath := filepath.Join(workspaceRoot, ".git")
+	info, err := os.Stat(gitPath)
+	if err != nil {
+		return ""
+	}
+	if info.IsDir() {
+		return gitPath
+	}
+	// A worktree or submodule keeps .git as a file pointing elsewhere.
+	raw, err := os.ReadFile(gitPath)
+	if err != nil {
+		return ""
+	}
+	line := strings.TrimSpace(string(raw))
+	if !strings.HasPrefix(line, "gitdir:") {
+		return ""
+	}
+	dir := strings.TrimSpace(strings.TrimPrefix(line, "gitdir:"))
+	if !filepath.IsAbs(dir) {
+		dir = filepath.Join(workspaceRoot, dir)
+	}
+	return dir
 }

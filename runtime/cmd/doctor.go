@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -123,7 +124,7 @@ func checkCheckPlan(report *diagnostics, workspaceRoot, toolkitRoot string) {
 // memory package refuses for the same reason. An absent index is not a defect:
 // `map` builds it on first use.
 func checkRepoMap(report *diagnostics, workspaceRoot string) {
-	files, exists, err := repomap.Stat(workspaceRoot)
+	files, exists, err := repomap.Stat(context.Background(), workspaceRoot)
 	switch {
 	case err != nil:
 		report.check("repository index opens", false, err.Error())

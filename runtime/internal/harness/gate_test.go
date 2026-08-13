@@ -34,6 +34,65 @@ func onBranch(t *testing.T, root, branch string) {
 	}
 }
 
+// defaultBranch records what the repository treats as its integration branch,
+// the way git does: a symbolic ref for the remote's HEAD.
+func withDefaultBranch(t *testing.T, root, branch string) {
+	t.Helper()
+	dir := filepath.Join(root, ".git", "refs", "remotes", "origin")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "HEAD"),
+		[]byte("ref: refs/remotes/origin/"+branch+"\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile origin/HEAD: %v", err)
+	}
+}
+
+// A project whose integration branch is not called main was silently
+// unprotected: the guard held a fixed pair of names, and a push to develop or
+// trunk reached everyone with nothing in the way. The repository knows its own
+// default branch, so the guard asks instead of assuming.
+func TestTheRepositorysOwnDefaultBranchIsProtected(t *testing.T) {
+	for _, branch := range []string{"develop", "trunk", "production"} {
+		t.Run(branch, func(t *testing.T) {
+			root := workspaceWithRun(t)
+			withDefaultBranch(t, root, branch)
+			onBranch(t, root, branch)
+
+			if blocked, _ := attempt(t, root, "git push origin "+branch); blocked == nil {
+				t.Errorf("a push to %s, this repository's default branch, was allowed", branch)
+			}
+			if blocked, _ := attempt(t, root, "git push"); blocked == nil {
+				t.Errorf("a bare push from %s was allowed", branch)
+			}
+		})
+	}
+}
+
+// The conventional names stay protected whatever the default is. A repository
+// that works on develop usually still has a main that means something, and a
+// guard that stopped covering it would be a regression dressed as a fix.
+func TestMainStaysProtectedWhenTheDefaultIsSomethingElse(t *testing.T) {
+	root := workspaceWithRun(t)
+	withDefaultBranch(t, root, "develop")
+	onBranch(t, root, "main")
+
+	if blocked, _ := attempt(t, root, "git push origin main"); blocked == nil {
+		t.Error("a push to main was allowed because the default branch is develop")
+	}
+}
+
+// A feature branch is still ordinary work.
+func TestAFeatureBranchIsNotProtected(t *testing.T) {
+	root := workspaceWithRun(t)
+	withDefaultBranch(t, root, "develop")
+	onBranch(t, root, "feature/webhooks")
+
+	if blocked, _ := attempt(t, root, "git push origin feature/webhooks"); blocked != nil {
+		t.Errorf("a push to a feature branch was blocked: %v", blocked)
+	}
+}
+
 // attempt runs the gate against one shell command and reports the block, if any.
 func attempt(t *testing.T, root, command string) (*BlockError, string) {
 	t.Helper()

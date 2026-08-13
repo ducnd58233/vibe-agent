@@ -32,7 +32,7 @@ func gitInit(t *testing.T, root string) {
 
 func build(t *testing.T, root string) Result {
 	t.Helper()
-	result, err := Build(root)
+	result, err := Build(t.Context(), root)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -134,11 +134,11 @@ func TestABumpedCacheVersionDiscardsEveryRow(t *testing.T) {
 	write(t, root, "api/orders.go", "package api\n\nfunc CreateOrder() {}\n")
 	build(t, root)
 
-	cache, err := openCache(root, cacheVersion+1)
+	cache, err := openCache(t.Context(), root, cacheVersion+1)
 	if err != nil {
 		t.Fatalf("openCache: %v", err)
 	}
-	_, hit := cache.lookup("api/orders.go", "any-hash")
+	_, hit := cache.lookup(t.Context(), "api/orders.go", "any-hash")
 	cache.Close()
 	if hit {
 		t.Error("a row survived a cache version bump")
@@ -221,7 +221,7 @@ func TestTheCacheLivesInTheWorkspaceStateDirectory(t *testing.T) {
 func TestStatDoesNotCreateAnIndex(t *testing.T) {
 	root := t.TempDir()
 
-	files, exists, err := Stat(root)
+	files, exists, err := Stat(t.Context(), root)
 	if err != nil {
 		t.Fatalf("Stat: %v", err)
 	}
@@ -235,7 +235,7 @@ func TestStatDoesNotCreateAnIndex(t *testing.T) {
 	write(t, root, "api/orders.go", "package api\n\nfunc CreateOrder() {}\n")
 	build(t, root)
 
-	files, exists, err = Stat(root)
+	files, exists, err = Stat(t.Context(), root)
 	if err != nil {
 		t.Fatalf("Stat after build: %v", err)
 	}
