@@ -87,7 +87,7 @@ func Build(ctx context.Context, workspaceRoot string) (Result, error) {
 	live := make(map[string]bool, len(paths))
 
 	for _, path := range paths {
-		content, err := os.ReadFile(filepath.Join(workspaceRoot, path))
+		content, err := os.ReadFile(filepath.Clean(filepath.Join(workspaceRoot, path)))
 		if err != nil {
 			continue // a file that vanished mid-scan is not an error worth failing on
 		}

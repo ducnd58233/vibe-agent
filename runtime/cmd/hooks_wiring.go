@@ -54,7 +54,7 @@ func registeredEvents(toolkitRoot string) (map[string][]string, error) {
 	var read int
 	for _, relative := range hookConfigs {
 		path := filepath.Join(toolkitRoot, relative)
-		raw, err := os.ReadFile(path)
+		raw, err := os.ReadFile(filepath.Clean(path))
 		if err != nil {
 			continue // a consumer repo need not wire every host
 		}

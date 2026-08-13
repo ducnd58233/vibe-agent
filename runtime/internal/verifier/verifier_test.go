@@ -80,7 +80,7 @@ func TestCommandCapturesOutputToTheEvidenceTree(t *testing.T) {
 		t.Fatalf("Verify: %v", err)
 	}
 	expected := filepath.Join(root, "tmp", "demo", "unit", "unit.log")
-	contents, err := os.ReadFile(expected)
+	contents, err := os.ReadFile(filepath.Clean(expected))
 	if err != nil {
 		t.Fatalf("log not written where goal-verification-records.md says: %v", err)
 	}

@@ -238,7 +238,7 @@ func (s simulator) Screenshot(ctx context.Context) ([]byte, error) {
 	if _, err := capture(ctx, s.dir, "xcrun", "simctl", "io", s.target(), "screenshot", path); err != nil {
 		return nil, err
 	}
-	return os.ReadFile(path)
+	return os.ReadFile(filepath.Clean(path))
 }
 
 // writeScreenshot keeps the frame beside the log, so a failure can be looked at

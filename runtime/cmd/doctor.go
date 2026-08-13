@@ -184,7 +184,7 @@ func checkRunState(report *diagnostics, workspaceRoot string) {
 // checkGitignore catches the mistake that would commit run evidence or a memory
 // database, both of which are workspace-local state rather than assets.
 func checkGitignore(report *diagnostics, workspaceRoot string) {
-	raw, err := os.ReadFile(filepath.Join(workspaceRoot, ".gitignore"))
+	raw, err := os.ReadFile(filepath.Clean(filepath.Join(workspaceRoot, ".gitignore")))
 	if err != nil {
 		return // no .gitignore is a consumer choice, not a runtime problem
 	}

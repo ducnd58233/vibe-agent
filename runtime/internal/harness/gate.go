@@ -87,12 +87,12 @@ func readDefaultBranch(workspaceRoot string) string {
 	}
 
 	// The symbolic ref, as a file or as a line in packed-refs.
-	if raw, err := os.ReadFile(filepath.Join(dir, "refs", "remotes", "origin", "HEAD")); err == nil {
+	if raw, err := os.ReadFile(filepath.Clean(filepath.Join(dir, "refs", "remotes", "origin", "HEAD"))); err == nil {
 		if branch := afterPrefix(string(raw), "ref: refs/remotes/origin/"); branch != "" {
 			return branch
 		}
 	}
-	if raw, err := os.ReadFile(filepath.Join(dir, "packed-refs")); err == nil {
+	if raw, err := os.ReadFile(filepath.Clean(filepath.Join(dir, "packed-refs"))); err == nil {
 		for _, line := range strings.Split(string(raw), "\n") {
 			if branch := afterPrefix(line, "ref: refs/remotes/origin/"); branch != "" {
 				return branch
@@ -511,7 +511,7 @@ func currentBranch(workspaceRoot string) string {
 	if dir == "" {
 		return ""
 	}
-	raw, err := os.ReadFile(filepath.Join(dir, "HEAD"))
+	raw, err := os.ReadFile(filepath.Clean(filepath.Join(dir, "HEAD")))
 	if err != nil {
 		return ""
 	}
@@ -529,7 +529,7 @@ func gitDir(workspaceRoot string) string {
 		return gitPath
 	}
 	// A worktree or submodule keeps .git as a file pointing elsewhere.
-	raw, err := os.ReadFile(gitPath)
+	raw, err := os.ReadFile(filepath.Clean(gitPath))
 	if err != nil {
 		return ""
 	}

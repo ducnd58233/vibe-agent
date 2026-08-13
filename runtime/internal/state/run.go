@@ -271,7 +271,7 @@ func ManifestPath(workspaceRoot, slug string) string {
 
 // Load reads and validates a manifest.
 func Load(path string) (*Run, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, fmt.Errorf("read run state: %w", err)
 	}

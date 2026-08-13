@@ -29,7 +29,7 @@ func TestFreshRunMatchesGolden(t *testing.T) {
 	if err := Save(path, run); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	produced, err := os.ReadFile(path)
+	produced, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}

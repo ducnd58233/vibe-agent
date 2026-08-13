@@ -163,7 +163,7 @@ func DefaultPath(workspaceRoot string) string {
 // every check resolves to nothing, which is the exact failure this package
 // exists to prevent.
 func Load(path string) (*Plan, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("no check plan at %s; declare how each check is produced there before verifying", path)

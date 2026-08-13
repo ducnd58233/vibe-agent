@@ -68,7 +68,7 @@ func AppendEvent(path string, event Event) (Event, error) {
 		return Event{}, fmt.Errorf("encode event: %w", err)
 	}
 
-	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	file, err := os.OpenFile(filepath.Clean(path), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return Event{}, fmt.Errorf("open event log: %w", err)
 	}
@@ -86,7 +86,7 @@ func AppendEvent(path string, event Event) (Event, error) {
 // ReadEvents returns every event in the log. A missing log is not an error: a
 // run that has recorded nothing yet has no events.
 func ReadEvents(path string) ([]Event, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(filepath.Clean(path))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, nil
@@ -118,7 +118,7 @@ func ReadEvents(path string) ([]Event, error) {
 }
 
 func countLines(path string) (int, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(filepath.Clean(path))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return 0, nil

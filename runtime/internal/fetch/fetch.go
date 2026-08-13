@@ -294,7 +294,7 @@ func read(ctx context.Context, source string, options Options) (raw []byte, cont
 		return nil, "", fmt.Errorf("%s is %d bytes, over the %d-byte limit",
 			source, info.Size(), MaxAssetBytes)
 	}
-	raw, err = os.ReadFile(source)
+	raw, err = os.ReadFile(filepath.Clean(source))
 	if err != nil {
 		return nil, "", fmt.Errorf("read %s: %w", source, err)
 	}
@@ -408,7 +408,7 @@ func cachePath(workspaceRoot, source string) string {
 // overwrites it, and a read that deletes on a slow network leaves the caller
 // with neither the fresh copy nor the old one.
 func readCache(path string) (Document, bool) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return Document{}, false
 	}
