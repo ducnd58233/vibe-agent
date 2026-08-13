@@ -1,8 +1,9 @@
-package graph
+package infra
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/graph/domain"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,7 +13,7 @@ import (
 
 // Load reads and validates a graph file. The filename stem must equal
 // metadata.id, so a graph cannot be referenced under two names.
-func Load(path string) (*Graph, error) {
+func Load(path string) (*domain.Graph, error) {
 	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, fmt.Errorf("read graph: %w", err)
@@ -34,19 +35,16 @@ func Load(path string) (*Graph, error) {
 //
 // Unknown fields are an error rather than ignored: a typo in a node key would
 // otherwise silently drop the setting it was meant to configure.
-func Parse(raw []byte) (*Graph, error) {
+func Parse(raw []byte) (*domain.Graph, error) {
 	decoder := yaml.NewDecoder(bytes.NewReader(raw))
 	decoder.KnownFields(true)
 
-	var graph Graph
+	var graph domain.Graph
 	if err := decoder.Decode(&graph); err != nil {
 		return nil, fmt.Errorf("parse: %w", err)
 	}
 
-	graph.guardsByName = make(map[string]Guard, len(graph.Spec.Guards))
-	for _, guard := range graph.Spec.Guards {
-		graph.guardsByName[guard.Name] = guard
-	}
+	graph.Index()
 
 	if err := graph.Validate(); err != nil {
 		return nil, err
@@ -60,7 +58,7 @@ func DefaultDir(toolkitRoot string) string {
 }
 
 // LoadByID finds a graph by id in a directory.
-func LoadByID(dir, id string) (*Graph, error) {
+func LoadByID(dir, id string) (*domain.Graph, error) {
 	for _, ext := range []string{".yaml", ".yml"} {
 		path := filepath.Join(dir, id+ext)
 		if _, err := os.Stat(path); err == nil {
@@ -71,14 +69,14 @@ func LoadByID(dir, id string) (*Graph, error) {
 }
 
 // LoadDir loads every graph in a directory, reporting all failures together.
-func LoadDir(dir string) (map[string]*Graph, error) {
+func LoadDir(dir string) (map[string]*domain.Graph, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("read graphs directory: %w", err)
 	}
 
-	graphs := map[string]*Graph{}
-	var problems ProblemsError
+	graphs := map[string]*domain.Graph{}
+	var problems domain.ProblemsError
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
