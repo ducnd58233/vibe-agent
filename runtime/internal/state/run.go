@@ -259,9 +259,22 @@ func (r *Run) Validate() error {
 	return nil
 }
 
+// RunsDirName is the workspace directory holding every run's state and evidence.
+//
+// The name was written out at six call sites across five packages, each rebuilding
+// the same path by hand. Renaming the directory would have moved one of them and
+// left the rest reading somewhere nothing is written, which fails as an empty
+// result rather than an error.
+const RunsDirName = "tmp"
+
+// RunsDir is where every run's directory sits.
+func RunsDir(workspaceRoot string) string {
+	return filepath.Join(workspaceRoot, RunsDirName)
+}
+
 // RunDir is where a slug's state and evidence live, relative to the workspace root.
 func RunDir(workspaceRoot, slug string) string {
-	return filepath.Join(workspaceRoot, "tmp", slug)
+	return filepath.Join(RunsDir(workspaceRoot), slug)
 }
 
 // ManifestPath is the run-state file for a slug.
