@@ -338,6 +338,80 @@ of `<` and one desync swallowed the document. Tables then arrived as `timeout30s
 two facts glued into something that reads like one. A spec-compliant parser is not
 a convenience here; it is the difference between working and appearing to work.
 
+### Images, PDFs, video, and anything else that is not text
+
+An illustration, a screenshot, a spec PDF, a demo video: ordinary things to want
+from a page. Refusing them was the first answer here and it was too blunt, since
+it left the runtime unable to help at all.
+
+They are retrieved and handed back as a **path**, never as bytes. That is the
+same rule as everywhere else in this package: the payload stays out of the
+context window and the handle goes in. An image inlined as bytes is tens of
+thousands of tokens of something no model reads that way, and the host already
+has a file reader that handles images and PDFs properly.
+
+```
+$ vibe-agent fetch https://www.python.org/static/img/python-logo.png
+https://www.python.org/static/img/python-logo.png is image/png, 15770 bytes,
+saved to .agent-state/fetch/assets/20e72af68b277b1e.png. It is not text, so its
+bytes are deliberately not printed: open the path with your own file reader...
+```
+
+`Status` is `asset`, and `LocalPath` carries the path on its own for a caller
+that wants the field rather than the sentence. A local file is named rather than
+copied: it is already somewhere openable, and duplicating it would give the
+reader two paths for one file.
+
+Nothing here carries a list of formats or extensions. `http.DetectContentType`
+implements the sniffing algorithm browsers use, `mime.TypeByExtension` and
+`mime.ExtensionsByType` come from the system's own database, and the text-or-not
+decision reads the media type's own category. A hardcoded table is wrong the
+moment a new format appears, and one always appears.
+
+Media elements get the same treatment inside a page: `video`, `audio`, `source`,
+`embed`, and `track` are rewritten as links before conversion, because the
+markdown converter has no rule for them and would otherwise drop the URL a
+reader came for. Relative URLs resolve against the page they came from, so an
+image or a linked file can be fetched afterwards without reconstructing the
+origin by hand.
+
+### When a fetch does not get the page
+
+Three ways a request comes back with something that is not the document, and none
+of them announce themselves in the status line:
+
+| What happened | How it is caught | What is returned |
+|---|---|---|
+| Bot check answered `200` | Title signature **and** a body signature together | Refused. Reading "Verifying you are human" as the answer is the failure that cannot be recovered from |
+| `403`/`429` | Status | Refused, naming a likely bot check or rate limit |
+| Client-rendered page | No text at all, or text far below the markup around it | Returned with `status: empty` or `thin` and "do not answer from this document" |
+
+`Document.Status` is a field, not prose, because the caller that most needs it is
+a program deciding whether to answer. `--json` carries it.
+
+Two signatures are required for a bot check, never one. "Just a moment" is a
+legitimate page title and "verifying" is a word documentation uses; pairing a
+title marker with a body marker such as `/cdn-cgi/challenge-platform` is what
+stops the detector eating a guide about the very thing it detects.
+
+**There is no bypass here and there will not be one.** Working around a bot check
+is a different activity from reading documentation. What the runtime does instead
+is name a route that works: on a failure it probes the origin for `/llms.txt` and
+`/llms-full.txt`, a community convention that Anthropic, Cursor, and Vercel
+publish, served as text and usually outside the wall. A probe that 404s offers
+nothing rather than a guess, and a `200` that returns HTML is treated as a
+catch-all rather than a route, since a single-page app answers every path with
+its shell.
+
+The other honest answer, when there is no text route: **no AI crawler runs
+JavaScript, this one included.** Handing the URL back to the model's own fetch
+tool does not help, because that tool has the same limitation. Only a
+browser-driving tool does, and that is what the message says.
+
+Documents expire from the cache after `CacheLife`, a day. Documentation changes,
+and a cache with no expiry answers a question about today's API from whenever the
+page was first read, with nothing in the output to say so.
+
 Two settings differ from the library defaults. Escaping is off, because nothing
 renders this output — a model reads it, and `a &lt; b` spends three tokens to say
 `<`. The table plugin is on, because it is not on by default. Link targets are
