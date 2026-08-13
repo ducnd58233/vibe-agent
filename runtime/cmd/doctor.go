@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"os"
 	"path/filepath"
 	"sort"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
 )
 
@@ -169,7 +169,7 @@ func checkGitignore(report *diagnostics, workspaceRoot string) {
 	content := string(raw)
 	report.check("tmp/ is gitignored", strings.Contains(content, "/tmp/"),
 		"add /tmp/ so run evidence is not committed")
-	report.check(memory.StateDirName+"/ is gitignored",
-		strings.Contains(content, "/"+memory.StateDirName+"/"),
-		"add /"+memory.StateDirName+"/ so the memory database is not committed")
+	report.check(workspace.StateDirName+"/ is gitignored",
+		strings.Contains(content, "/"+workspace.StateDirName+"/"),
+		"add /"+workspace.StateDirName+"/ so derived state is not committed")
 }

@@ -7,6 +7,7 @@ import (
 	"encoding/base32"
 	"errors"
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,13 +18,13 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// StateDirName is the workspace-local directory holding the memory database.
+// dbFileName is this store's file inside the workspace state directory.
 // It is gitignored: memory is per-workspace state, not a versioned asset.
-const StateDirName = ".agent-state"
+const dbFileName = "memory.db"
 
 // DBPath is the memory database for a workspace.
 func DBPath(workspaceRoot string) string {
-	return filepath.Join(workspaceRoot, StateDirName, "memory.db")
+	return filepath.Join(workspace.StateDir(workspaceRoot), dbFileName)
 }
 
 const schema = `

@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -265,16 +266,14 @@ func (r *Run) Validate() error {
 // the same path by hand. Renaming the directory would have moved one of them and
 // left the rest reading somewhere nothing is written, which fails as an empty
 // result rather than an error.
-const RunsDirName = "tmp"
+const RunsDirName = workspace.RunsDirName
 
 // RunsDir is where every run's directory sits.
-func RunsDir(workspaceRoot string) string {
-	return filepath.Join(workspaceRoot, RunsDirName)
-}
+func RunsDir(workspaceRoot string) string { return workspace.RunsDir(workspaceRoot) }
 
 // RunDir is where a slug's state and evidence live, relative to the workspace root.
 func RunDir(workspaceRoot, slug string) string {
-	return filepath.Join(RunsDir(workspaceRoot), slug)
+	return workspace.RunDir(workspaceRoot, slug)
 }
 
 // ManifestPath is the run-state file for a slug.

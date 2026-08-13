@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -408,7 +409,7 @@ func TestExpiredMemoriesAreNotRetrieved(t *testing.T) {
 
 func TestStateDirIsWorkspaceLocal(t *testing.T) {
 	path := DBPath("/repo")
-	if filepath.Base(filepath.Dir(path)) != StateDirName {
-		t.Errorf("DBPath = %q, want it under %s", path, StateDirName)
+	if filepath.Base(filepath.Dir(path)) != workspace.StateDirName {
+		t.Errorf("DBPath = %q, want it under %s", path, workspace.StateDirName)
 	}
 }
