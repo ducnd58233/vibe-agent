@@ -28,6 +28,7 @@ runtime/
     hook.go               lifecycle hooks for Claude and Cursor
     memory.go             list, confirm, forget. The human side of the store
     map.go                repository structure, cached by content hash
+    fetch.go              a URL or file as text, cached by source
     doctor.go             workspace health checks
   internal/
     graph/                workflow graph model, loader, static validation
@@ -43,6 +44,7 @@ runtime/
       device.go           adb and simctl, the only shell this verifier needs
     memory/               SQLite store, FTS search, write policy, promotion
     repomap/              declarations per file, cached by content hash
+    fetch/                URL and file extraction, cached by source hash
     mcp/                  stdio server, seven tools
     harness/              hook adapters for Claude and Cursor
       gate.go             the refusals: protected pushes, merges, state writes
@@ -276,6 +278,43 @@ worse:
 Test files appear by name with their cases omitted. That a package has tests is
 orientation; thirty function names each restating one assertion is most of a
 budget spent on the part of a repository nobody navigates by.
+
+## Reading a page without reading the page
+
+`vibe-agent fetch <url|path>` retrieves a source and prints the text, without the
+markup, scripts, and navigation that are most of a page. Measured on
+`code.claude.com/docs/en/hooks`: **94% smaller** than the raw response, and the
+second ask costs no request at all.
+
+```sh
+vibe-agent fetch https://example.com/docs   # clipped to the default budget
+vibe-agent fetch ./notes.md --budget 8000
+vibe-agent fetch <url> --json               # the whole document
+vibe-agent fetch <url> --refresh            # ignore the cache
+```
+
+Documents are cached under `.agent-state/fetch/`, addressed by a hash of the
+source. Output is clipped to a budget and says how many lines were left: an agent
+told 400 lines remain can ask for them, and one told nothing assumes it read the
+page. Silent truncation is what makes agents assert things about content they
+never saw.
+
+Nothing here summarizes. Extraction deletes markup and boilerplate and keeps the
+author's words, so what an agent reads is what the page said.
+
+PDF, DOCX, and the rest are refused by name rather than attempted. Their bytes
+emitted as text cost a great many tokens of mojibake that the agent cannot detect,
+and converting them properly needs an extractor this module has no dependency for.
+
+One implementation note, because it cost a total failure to find. Script and style
+bodies are character data and have to be skipped by searching for their closing
+tag, never by tokenizing what is inside: JavaScript is full of `<`, and a
+tokenizer that reads `if (a < b) {` as a tag can step over the real `</script>`
+and swallow the rest of the document. The first real page this met returned a
+correct title and an empty body, with every unit test green.
+
+Sources, measurements, and the parts deliberately not built:
+[`.ai-agents/references/token-efficiency.md`](../.ai-agents/references/token-efficiency.md).
 
 ## Contract with the schemas
 

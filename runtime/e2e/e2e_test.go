@@ -538,10 +538,23 @@ func TestDoctorPassesOnAWiredConsumerRepo(t *testing.T) {
 	root := consumerRepo(t)
 	run := cli{t, buildBinary(t), root, toolkitRoot(t)}
 	out := run.mustRun("doctor")
-	for _, want := range []string{"workflow graphs load and validate", "memory database opens", "doctor: OK"} {
+	for _, want := range []string{"workflow graphs load and validate", "doctor: OK"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("doctor output missing %q:\n%s", want, out)
 		}
+	}
+	// Either wording is a pass; a fresh consumer repo has stored nothing yet.
+	// What must not happen is silence, because then nobody can tell whether the
+	// store was checked.
+	if !strings.Contains(out, "memory database") {
+		t.Errorf("doctor says nothing about the memory store:\n%s", out)
+	}
+
+	// And it must not have made one. A diagnostic that seeds a database in the
+	// directory it was run from breaks the rule the memory package states for
+	// itself: reads never create state.
+	if entries, err := os.ReadDir(filepath.Join(root, ".agent-state")); err == nil && len(entries) > 0 {
+		t.Errorf("doctor created workspace state: %v", entries)
 	}
 }
 
@@ -557,8 +570,18 @@ func TestEachWorkspaceGetsItsOwnMemoryDatabase(t *testing.T) {
 
 	first := consumerRepo(t)
 	second := consumerRepo(t)
-	cli{t, binary, first, toolkit}.mustRun("doctor")
-	cli{t, binary, second, toolkit}.mustRun("doctor")
+
+	// Drive the real write path rather than a diagnostic. doctor used to create
+	// the database as a side effect of checking it, which made this test pass
+	// without anything ever having been stored, and made running doctor in an
+	// unrelated directory leave state behind.
+	for _, root := range []string{first, second} {
+		run := cli{t, binary, root, toolkit}
+		run.mustRun("run", "start", "--slug", "isolation", "--goal", "prove workspaces do not share memory")
+		run.hook(`{"tool_name":"Bash","tool_input":{"command":"go build ./..."},`+
+			`"error":"Exit code 2\nundefined: Foo","is_interrupt":false}`,
+			"hook", "post-tool-use-failure", "--client", "claude")
+	}
 
 	for _, root := range []string{first, second} {
 		if _, err := os.Stat(filepath.Join(root, ".agent-state", "memory.db")); err != nil {
