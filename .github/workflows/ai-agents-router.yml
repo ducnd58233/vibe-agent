@@ -1,8 +1,19 @@
 name: AI agents assets check
 
 on:
+  # main only. A push to any other branch with a pull request open fires both
+  # events, and the two runs check the same commit with the same steps: one is
+  # pure cost, and on a red build it is two failures to read for one problem.
+  # Branch work is covered by pull_request; main is covered here because a merge
+  # or a direct push has no pull request of its own.
+  #
+  # The path list is anchored rather than written twice. Two copies is two things
+  # to update, and the copy that goes stale is the one that stops running a
+  # check. The anchor lives on a key the workflow schema already defines, since a
+  # top-level key of its own would not validate.
   push:
-    paths:
+    branches: [main]
+    paths: &paths
       - '.ai-agents/**'
       - '.vibe-agent/.ai-agents/**'
       - 'schemas/**'
@@ -12,15 +23,13 @@ on:
       - '.gitignore'
       - '.github/workflows/ai-agents-router.yml'
   pull_request:
-    paths:
-      - '.ai-agents/**'
-      - '.vibe-agent/.ai-agents/**'
-      - 'schemas/**'
-      - 'scripts/**'
-      - 'runtime/**'
-      - 'vibe-checks.yaml'
-      - '.gitignore'
-      - '.github/workflows/ai-agents-router.yml'
+    paths: *paths
+
+# A new push supersedes the run in flight. The older one can only report on code
+# nobody will merge.
+concurrency:
+  group: assets-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
