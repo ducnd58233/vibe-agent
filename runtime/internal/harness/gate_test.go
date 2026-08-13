@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // approved records the evidence approve_merge reads, the way a checkpoint would.
@@ -368,9 +368,9 @@ func TestAMarkedLineIsExempt(t *testing.T) {
 }
 
 func TestCredentialRefusalDoesNotDependOnAnActiveRun(t *testing.T) {
-	// stateWriteVerdict deliberately stands down with no active run. This one
+	// stateWriteVerdict deliberately stands down with no active state. This one
 	// must not: a key entering source is the same event either way, and the
-	// common case is a repository using the toolkit without starting a run.
+	// common case is a repository using the toolkit without starting a state.
 	root := t.TempDir()
 	if runs := activeRuns(root); len(runs) != 0 {
 		t.Fatalf("expected a workspace with no run, got %d", len(runs))

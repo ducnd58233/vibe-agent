@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // Screen proves an app actually rendered.
@@ -277,7 +277,7 @@ func contentPhrase(spec ScreenSpec) string {
 //
 // Matched rather than "the buffer is non-empty", because the crash buffer opens
 // with a "beginning of crash" banner even when nothing has crashed, and treating
-// that as a failure would fail every run.
+// that as a failure would fail every state.
 var crashMarkers = []struct {
 	needle string
 	says   string

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/harness"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // This file answers one question doctor could not: is the binary that will
@@ -224,7 +224,7 @@ func checkHookWiring(report *diagnostics, workspaceRoot string) {
 	binary, supported, err := pathBinaryEvents(context.Background())
 	switch {
 	case errors.Is(err, errNotInstalled):
-		fmt.Println("  note  no vibe-agent on PATH, so the hooks these configs register do not run. " +
+		fmt.Println("  note  no vibe-agent on PATH, so the hooks these configs register do not state. " +
 			"That is a supported state: every asset works without it. " +
 			"Install with `cd runtime && make install` to turn them on.")
 		return

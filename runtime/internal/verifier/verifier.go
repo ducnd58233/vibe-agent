@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // relativeTo renders a path for a reader, relative to the workspace where that

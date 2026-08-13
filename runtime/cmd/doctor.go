@@ -10,7 +10,7 @@ import (
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // doctorCommand checks that the control plane is wired correctly in this

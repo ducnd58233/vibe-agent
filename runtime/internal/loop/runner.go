@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // MaxBlockerAttempts is the stop rule from the delivery command: three cycles
@@ -192,7 +192,7 @@ func (r *Runner) SkipReason(run *state.Run, nodeID string) (string, bool) {
 // resolve picks the edge to follow. Conditional edges are tried in order, then
 // the fallback. A node with neither a matching guard nor a fallback is a graph
 // bug, which the validator rejects, so reaching that here means the graph
-// changed under a running run.
+// changed under a running state.
 func (r *Runner) resolve(run *state.Run, outcome Outcome) (graph.Edge, string, error) {
 	for _, edge := range r.Graph.OutgoingEdges(run.CurrentNode) {
 		if edge.When == "" {

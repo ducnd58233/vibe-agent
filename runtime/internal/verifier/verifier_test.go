@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 func shell(script string) (string, []string) {
