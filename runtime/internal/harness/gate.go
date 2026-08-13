@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // BlockError stops the action a hook was called about instead of commenting on
@@ -178,7 +178,7 @@ const allowMarker = "vibe-agent: allow-credential-literal" // sensitive-data-gua
 // credentialVerdict refuses to let a live credential be written into the
 // workspace.
 //
-// Unlike stateWriteVerdict this does not require an active run. Run state is
+// Unlike stateWriteVerdict this does not require an active state. Run state is
 // meaningful only inside a run; a private key landing in source is the same
 // event whether or not anyone started one, and gating it on run state would
 // leave the common case, a repository using the toolkit without a run, wide
@@ -237,7 +237,7 @@ func shellVerdict(req Request, command string) *BlockError {
 	if len(runs) == 0 {
 		// Nothing is claiming to manage this workspace, so there is no state to
 		// enforce. Blocking here would break every repo that uses the toolkit
-		// without starting a run.
+		// without starting a state.
 		return nil
 	}
 	for _, run := range runs {
@@ -269,7 +269,7 @@ var shellWriters = map[string]bool{
 // real.
 //
 // With no active run there is nothing to protect, and refusing would break
-// every workspace that uses this toolkit without starting a run.
+// every workspace that uses this toolkit without starting a state.
 func stateWriteVerdict(req Request, body payload) *BlockError {
 	if len(activeRuns(req.WorkspaceRoot)) == 0 {
 		return nil

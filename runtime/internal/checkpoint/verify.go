@@ -8,7 +8,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/verifier"
 )
 
@@ -58,13 +58,13 @@ type Plan struct {
 	Timeout  time.Duration
 	Request  verifier.Request
 
-	// SkipReason, when set, is why nothing will run. A skipped check is recorded
+	// SkipReason, when set, is why nothing will state. A skipped check is recorded
 	// as skipped, never as passed, so a reader of the manifest can still tell
 	// what was actually exercised.
 	SkipReason string
 }
 
-// Skipped reports whether resolving decided nothing should run.
+// Skipped reports whether resolving decided nothing should state.
 func (p *Plan) Skipped() bool { return p.SkipReason != "" }
 
 // Resolve works out how the current node's check would be produced, without

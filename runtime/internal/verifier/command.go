@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // DefaultCommandTimeout bounds a verifier command that did not set its own.

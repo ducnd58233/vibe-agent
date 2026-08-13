@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // GitExpectation is what a git verifier should assert. Zero values mean

@@ -8,7 +8,7 @@ import (
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 func runCommand(args []string) error {
@@ -27,7 +27,7 @@ func runCommand(args []string) error {
 	}
 }
 
-// runFlag records a scope decision on a run.
+// runFlag records a scope decision on a state.
 //
 // Flags were readable from the day the runner existed and no code path wrote
 // one, so every flag-sourced guard was permanently false and any graph branch

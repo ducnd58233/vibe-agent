@@ -11,7 +11,7 @@ import (
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // runHook is invoke's sibling for the cases where the error is the point.
@@ -246,7 +246,7 @@ func TestPreToolUseAllowsOrdinaryEdits(t *testing.T) {
 }
 
 // Without a run there is no state to protect, and blocking would break every
-// workspace that uses the toolkit without starting a run.
+// workspace that uses the toolkit without starting a state.
 func TestPreToolUseAllowsManifestEditsWithNoRun(t *testing.T) {
 	root := t.TempDir()
 	err := runHook(t, Request{

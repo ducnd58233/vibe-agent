@@ -25,7 +25,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // origin is who produced the evidence in a request.
@@ -108,7 +108,7 @@ type transitionEvent struct {
 	Key  string `json:"key,omitempty"`
 }
 
-// Apply records the outcome and advances the run.
+// Apply records the outcome and advances the state.
 func Apply(req Request) (*Result, error) {
 	manifest := state.ManifestPath(req.WorkspaceRoot, req.Slug)
 	run, err := state.Load(manifest)

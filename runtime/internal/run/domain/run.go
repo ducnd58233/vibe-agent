@@ -7,15 +7,10 @@
 // The rule this package exists to enforce: a check is passed only when real
 // evidence produced it. There is no provenance value for model assertion, so
 // no caller can mark its own work complete.
-package state
+package domain
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
-	"os"
-	"path/filepath"
 	"regexp"
 	"time"
 )
@@ -256,90 +251,6 @@ func (r *Run) Validate() error {
 		if blocker.Attempts < 1 {
 			return fmt.Errorf("blocker %d needs at least one attempt, got %d", i, blocker.Attempts)
 		}
-	}
-	return nil
-}
-
-// RunsDirName is the workspace directory holding every run's state and evidence.
-//
-// The name was written out at six call sites across five packages, each rebuilding
-// the same path by hand. Renaming the directory would have moved one of them and
-// left the rest reading somewhere nothing is written, which fails as an empty
-// result rather than an error.
-const RunsDirName = workspace.RunsDirName
-
-// RunsDir is where every run's directory sits.
-func RunsDir(workspaceRoot string) string { return workspace.RunsDir(workspaceRoot) }
-
-// RunDir is where a slug's state and evidence live, relative to the workspace root.
-func RunDir(workspaceRoot, slug string) string {
-	return workspace.RunDir(workspaceRoot, slug)
-}
-
-// ManifestPath is the run-state file for a slug.
-func ManifestPath(workspaceRoot, slug string) string {
-	return filepath.Join(RunDir(workspaceRoot, slug), "manifest.json")
-}
-
-// Load reads and validates a manifest.
-func Load(path string) (*Run, error) {
-	raw, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		return nil, fmt.Errorf("read run state: %w", err)
-	}
-	var run Run
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&run); err != nil {
-		return nil, fmt.Errorf("parse run state %s: %w", path, err)
-	}
-	if err := run.Validate(); err != nil {
-		return nil, fmt.Errorf("run state %s is invalid: %w", path, err)
-	}
-	return &run, nil
-}
-
-// Save writes the manifest atomically: a temp file in the same directory, then
-// a rename. A crash mid-write leaves the previous manifest intact rather than a
-// truncated one.
-func Save(path string, run *Run) error {
-	if err := run.Validate(); err != nil {
-		return fmt.Errorf("refusing to save invalid run state: %w", err)
-	}
-
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o750); err != nil {
-		return fmt.Errorf("create run directory: %w", err)
-	}
-
-	encoded, err := json.MarshalIndent(run, "", "  ")
-	if err != nil {
-		return fmt.Errorf("encode run state: %w", err)
-	}
-	encoded = append(encoded, '\n')
-
-	temp, err := os.CreateTemp(dir, ".manifest-*.tmp")
-	if err != nil {
-		return fmt.Errorf("create temp manifest: %w", err)
-	}
-	tempName := temp.Name()
-	// A no-op once the rename succeeds, and unactionable if it does not: the
-	// temp file is already orphaned by then.
-	defer func() { _ = os.Remove(tempName) }()
-
-	if _, err := temp.Write(encoded); err != nil {
-		_ = temp.Close()
-		return fmt.Errorf("write temp manifest: %w", err)
-	}
-	if err := temp.Sync(); err != nil {
-		_ = temp.Close()
-		return fmt.Errorf("sync temp manifest: %w", err)
-	}
-	if err := temp.Close(); err != nil {
-		return fmt.Errorf("close temp manifest: %w", err)
-	}
-	if err := os.Rename(tempName, path); err != nil {
-		return fmt.Errorf("replace manifest: %w", err)
 	}
 	return nil
 }

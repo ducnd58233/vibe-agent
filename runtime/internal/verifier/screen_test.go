@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // fakeDevice stands in for a phone. Every field is what that call returns, so a

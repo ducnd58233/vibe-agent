@@ -31,7 +31,7 @@ import (
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // Client is the host whose hook is firing. Payload shapes differ between them.
@@ -416,7 +416,7 @@ func blockReason(runs []*state.Run) string {
 	return strings.Join(lines, "\n")
 }
 
-// advanceable reports whether another turn could plausibly move this run.
+// advanceable reports whether another turn could plausibly move this state.
 //
 // A run waiting on a person cannot be advanced by the model, and one past the
 // blocker cap has already been told to stop trying. Blocking either would spin

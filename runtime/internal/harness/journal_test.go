@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // The payloads here were captured from Claude Code 2.1.229, not written from the
