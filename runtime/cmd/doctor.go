@@ -135,10 +135,22 @@ func checkRepoMap(report *diagnostics, workspaceRoot string) {
 	}
 }
 
+// checkMemory reports on the store without creating one.
+//
+// memory.Open creates, so this used to leave a .agent-state/ behind in whatever
+// directory doctor was run from, including directories with nothing to do with
+// the toolkit. The memory package states the rule it was breaking: reads never
+// create state, which is why recall opens the database only if it exists.
+// checkRepoMap beside it follows the same rule.
 func checkMemory(report *diagnostics, workspaceRoot string) {
-	store, err := memory.Open(workspaceRoot)
+	store, err := openExistingMemory(workspaceRoot)
 	if err != nil {
 		report.check("memory database opens", false, err.Error())
+		return
+	}
+	if store == nil {
+		fmt.Println("  note  no memory database yet; one is created the first time " +
+			"something is stored")
 		return
 	}
 	report.check("memory database opens", true, "")
