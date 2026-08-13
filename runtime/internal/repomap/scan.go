@@ -238,6 +238,24 @@ func discover(ctx context.Context, workspaceRoot string) ([]string, error) {
 	return walkFiles(workspaceRoot)
 }
 
+// indexable reports whether a walked file belongs in the map, and its
+// slash-separated path relative to the workspace.
+//
+// A bool rather than an error, because every reason to say no here is a reason
+// to skip the file quietly: too large to be source, unreadable, or somewhere
+// filepath cannot express relative to the root.
+func indexable(workspaceRoot, path string, d fs.DirEntry) (string, bool) {
+	info, err := d.Info()
+	if err != nil || info.Size() > maxFileBytes {
+		return "", false
+	}
+	relative, err := filepath.Rel(workspaceRoot, path)
+	if err != nil {
+		return "", false
+	}
+	return filepath.ToSlash(relative), true
+}
+
 // gitFiles asks the repository what it keeps.
 //
 // `--cached --others --exclude-standard` is tracked files plus untracked ones
@@ -276,9 +294,16 @@ func gitFiles(ctx context.Context, workspaceRoot string) ([]string, error) {
 // walkFiles is the fallback for a directory that is not a repository.
 func walkFiles(workspaceRoot string) ([]string, error) {
 	var paths []string
-	err := filepath.WalkDir(workspaceRoot, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil // an unreadable directory is skipped, not fatal
+	// The walk's own error is named "walkErr" and swallowed on purpose: a
+	// directory this process cannot read is one to skip, not one to fail the
+	// whole map over, and returning nil from the callback is how WalkDir is told
+	// to carry on.
+	err := filepath.WalkDir(workspaceRoot, func(path string, d fs.DirEntry, walkErr error) error {
+		// fs.SkipDir, not nil: an entry this process cannot read is a subtree
+		// to step over, which is what WalkDir's contract calls that, and it
+		// says so rather than reporting success on a failure just seen.
+		if walkErr != nil || d == nil {
+			return fs.SkipDir
 		}
 		if d.IsDir() {
 			if path != workspaceRoot && skipDirs[d.Name()] {
@@ -286,15 +311,9 @@ func walkFiles(workspaceRoot string) ([]string, error) {
 			}
 			return nil
 		}
-		info, err := d.Info()
-		if err != nil || info.Size() > maxFileBytes {
-			return nil
+		if relative, keep := indexable(workspaceRoot, path, d); keep {
+			paths = append(paths, relative)
 		}
-		relative, err := filepath.Rel(workspaceRoot, path)
-		if err != nil {
-			return nil
-		}
-		paths = append(paths, filepath.ToSlash(relative))
 		return nil
 	})
 	if err != nil {

@@ -259,9 +259,5 @@ func writeScreenshot(req Request, png []byte) (string, error) {
 	if err := os.WriteFile(path, png, 0o600); err != nil {
 		return "", err
 	}
-	relative, err := filepath.Rel(req.WorkspaceRoot, path)
-	if err != nil {
-		return path, nil
-	}
-	return relative, nil
+	return relativeTo(req.WorkspaceRoot, path), nil
 }

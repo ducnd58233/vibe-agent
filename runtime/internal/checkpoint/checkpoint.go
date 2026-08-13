@@ -87,6 +87,18 @@ type Result struct {
 	Duplicate bool
 }
 
+// transitionMatches reports whether a recorded transition carries a key.
+//
+// An event this package cannot read matches nothing, and why it is unreadable
+// changes none of that, so this answers with a bool and never an error.
+func transitionMatches(payload []byte, key string) bool {
+	var previous transitionEvent
+	if json.Unmarshal(payload, &previous) != nil {
+		return false
+	}
+	return previous.Key != "" && previous.Key == key
+}
+
 // transitionEvent is the payload written for every advance. Key is what makes
 // a replay recognisable.
 type transitionEvent struct {
@@ -229,11 +241,7 @@ func replays(logPath, key string) (bool, error) {
 		if events[i].Type != "transition" {
 			continue
 		}
-		var previous transitionEvent
-		if err := json.Unmarshal(events[i].Payload, &previous); err != nil {
-			return false, nil
-		}
-		return previous.Key != "" && previous.Key == key, nil
+		return transitionMatches(events[i].Payload, key), nil
 	}
 	return false, nil
 }

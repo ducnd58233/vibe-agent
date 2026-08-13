@@ -8,12 +8,26 @@ package verifier
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
 )
+
+// relativeTo renders a path for a reader, relative to the workspace where that
+// is possible and absolute where it is not.
+//
+// No error: a path outside the workspace root simply has no relative form, and
+// reporting the absolute one answers the question that was asked.
+func relativeTo(workspaceRoot, path string) string {
+	relative, err := filepath.Rel(workspaceRoot, path)
+	if err != nil {
+		return path
+	}
+	return relative
+}
 
 // Request is what to verify and where to put the evidence.
 type Request struct {
