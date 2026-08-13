@@ -27,6 +27,8 @@
 
 # Compiled runtime binaries and release archives.
 /runtime/dist/
+# Linters installed on demand by `make tools`, pinned per module, never committed.
+/runtime/bin/
 /runtime/vibe-agent
 /runtime/vibe-agent.exe
 /docs/

@@ -293,7 +293,7 @@ func initRepo(t *testing.T) string {
 	root := t.TempDir()
 	run := func(args ...string) {
 		t.Helper()
-		cmd := exec.Command("git", args...)
+		cmd := exec.CommandContext(t.Context(), "git", args...)
 		cmd.Dir = root
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %s: %v: %s", strings.Join(args, " "), err, out)
