@@ -17,6 +17,7 @@ package fetch
 
 import (
 	"bytes"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch/domain"
 	"net/url"
 	"strings"
 
@@ -29,34 +30,20 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-// Document is extracted content and where it came from.
-type Document struct {
-	Source string `json:"source"`
-	Title  string `json:"title,omitempty"`
-	Text   string `json:"text"`
-	// OriginalBytes is what arrived before extraction, so the saving can be
-	// reported rather than claimed.
-	OriginalBytes int `json:"originalBytes"`
-	// Status is what a caller must check before trusting Text. See guard.go.
-	Status Status `json:"status"`
-	// LocalPath is where a non-text source was put, for the caller's own file
-	// reader to open. Empty for anything that became text.
-	//
-	// The same rule as everywhere else here: the payload does not go into
-	// context, the handle does. An image inlined as bytes is tens of thousands
-	// of tokens of something no model reads that way, and the host already has a
-	// reader that handles images and PDFs properly.
-	LocalPath   string `json:"localPath,omitempty"`
-	ContentType string `json:"contentType,omitempty"`
-	// Empty marks a page that parsed cleanly and carried no prose.
-	//
-	// This is the failure a caller cannot otherwise see. A client-rendered page
-	// has a title, a script, and an empty root div: extraction succeeds, returns
-	// nothing, and a saving of 99% looks like the best result of the day. Saying
-	// so is what lets the caller send the reader somewhere that runs JavaScript
-	// instead of answering from a blank document.
-	Empty bool `json:"empty,omitempty"`
-}
+// Document, Status and the status values live in the domain package now. These
+// aliases keep the package's callers and tests compiling while the rest of the
+// module moves behind them, so there is one definition rather than two.
+type (
+	Document = domain.Document
+	Status   = domain.Status
+)
+
+const (
+	StatusOK    = domain.StatusOK
+	StatusEmpty = domain.StatusEmpty
+	StatusThin  = domain.StatusThin
+	StatusAsset = domain.StatusAsset
+)
 
 // minArticleChars is how much readable text an article has to hold before its
 // boilerplate-stripped form is preferred over the whole page.
