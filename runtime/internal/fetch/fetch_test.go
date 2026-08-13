@@ -1,6 +1,7 @@
 package fetch
 
 import (
+	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch/app/usecases"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -155,7 +156,7 @@ func TestTheCacheLivesInTheWorkspaceStateDirectory(t *testing.T) {
 // memory to extract three paragraphs is the failure this avoids.
 func TestGetRefusesAnOversizeResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(strings.Repeat("x", MaxSourceBytes+1)))
+		_, _ = w.Write([]byte(strings.Repeat("x", usecases.MaxDocumentBytes+1)))
 	}))
 	defer server.Close()
 

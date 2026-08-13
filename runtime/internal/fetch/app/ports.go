@@ -21,11 +21,15 @@ type Source interface {
 	Read(ctx context.Context, source string) (raw []byte, contentType string, err error)
 }
 
-// Extractor turns a page into the text a reader wants, keeping the author's own
-// words. It never summarizes: a paraphrase would be model output wearing a
+// Extractor turns a source into the text a reader wants, keeping the author's
+// own words. It never summarizes: a paraphrase would be model output wearing a
 // source's authority.
+//
+// The content type is passed because markdown is not HTML: running a plain text
+// file through an HTML parser is a different operation with a different result,
+// and only the caller knows which arrived.
 type Extractor interface {
-	Extract(raw []byte, pageURL string) domain.Document
+	Extract(raw []byte, pageURL, contentType string) domain.Document
 }
 
 // Guard reports that a response is not the page that was asked for.
