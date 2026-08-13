@@ -13,7 +13,7 @@ import (
 // Load reads and validates a graph file. The filename stem must equal
 // metadata.id, so a graph cannot be referenced under two names.
 func Load(path string) (*Graph, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, fmt.Errorf("read graph: %w", err)
 	}

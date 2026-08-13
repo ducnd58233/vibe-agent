@@ -246,7 +246,7 @@ func TestConsumerRepoRunsAGoalToCompletion(t *testing.T) {
 	}
 
 	events := filepath.Join(root, "tmp", "webhook-idempotency", "events.ndjson")
-	raw, err := os.ReadFile(events)
+	raw, err := os.ReadFile(filepath.Clean(events))
 	if err != nil {
 		t.Fatalf("event log missing: %v", err)
 	}
@@ -643,7 +643,7 @@ func copyTree(t *testing.T, src, dst string) {
 		if info.IsDir() {
 			return os.MkdirAll(target, 0o750)
 		}
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(filepath.Clean(path))
 		if err != nil {
 			return err
 		}

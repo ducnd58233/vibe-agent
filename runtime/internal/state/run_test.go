@@ -127,7 +127,7 @@ func TestLoadRejectsAForgedCheckSource(t *testing.T) {
 		t.Fatalf("Save: %v", err)
 	}
 
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestSaveWritesSchemaConformantShape(t *testing.T) {
 	if err := Save(path, run); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}

@@ -3,6 +3,7 @@ package state
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -39,7 +40,7 @@ func TestAppendEventOnlyAppends(t *testing.T) {
 	if _, err := AppendEvent(path, Event{Type: "first", At: fixedTime()}); err != nil {
 		t.Fatalf("AppendEvent: %v", err)
 	}
-	firstPass, err := os.ReadFile(path)
+	firstPass, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
@@ -47,7 +48,7 @@ func TestAppendEventOnlyAppends(t *testing.T) {
 	if _, err := AppendEvent(path, Event{Type: "second", At: fixedTime()}); err != nil {
 		t.Fatalf("AppendEvent: %v", err)
 	}
-	secondPass, err := os.ReadFile(path)
+	secondPass, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
@@ -68,7 +69,7 @@ func TestAppendEventWritesOneJSONObjectPerLine(t *testing.T) {
 		t.Fatalf("AppendEvent: %v", err)
 	}
 
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
