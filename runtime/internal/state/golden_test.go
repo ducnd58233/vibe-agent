@@ -38,8 +38,21 @@ func TestFreshRunMatchesGolden(t *testing.T) {
 		if err := os.MkdirAll(filepath.Dir(goldenPath), 0o750); err != nil {
 			t.Fatalf("MkdirAll: %v", err)
 		}
-		if err := os.WriteFile(filepath.Clean(goldenPath), produced, 0o600); err != nil {
+		dir, err := os.OpenRoot(filepath.Dir(goldenPath))
+		if err != nil {
+			t.Fatalf("open testdata: %v", err)
+		}
+		defer func() { _ = dir.Close() }()
+		file, err := dir.Create(filepath.Base(goldenPath))
+		if err != nil {
+			t.Fatalf("create golden: %v", err)
+		}
+		if _, err := file.Write(produced); err != nil {
+			_ = file.Close()
 			t.Fatalf("write golden: %v", err)
+		}
+		if err := file.Close(); err != nil {
+			t.Fatalf("close golden: %v", err)
 		}
 		t.Logf("updated %s", goldenPath)
 		return

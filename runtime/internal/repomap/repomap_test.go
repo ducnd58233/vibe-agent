@@ -24,7 +24,8 @@ func write(t *testing.T, root, relative, body string) string {
 // repository keeps rather than guessing from directory names.
 func gitInit(t *testing.T, root string) {
 	t.Helper()
-	cmd := exec.Command("git", "init", "--quiet", root)
+	cmd := exec.CommandContext(t.Context(), "git", "init", "--quiet")
+	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Skipf("git unavailable, so gitignore behaviour cannot be tested: %v\n%s", err, out)
 	}
