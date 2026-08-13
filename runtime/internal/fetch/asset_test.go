@@ -101,23 +101,3 @@ func TestALocalBinaryFileIsReportedWithoutBeingCopied(t *testing.T) {
 		t.Errorf("local path = %s, want the file itself at %s", doc.LocalPath, original)
 	}
 }
-
-// Media elements carry the URL a reader came for, and the markdown converter has
-// no rule for them, so without help a video is silently absent from the page.
-func TestMediaSourcesSurviveExtraction(t *testing.T) {
-	body := []byte(`<html><body><main>
-<p>A paragraph long enough that readability keeps this as an article rather than
-falling back, which is a different code path and would not prove the same thing
-about how media elements are handled during conversion to markdown.</p>
-<video src="/media/demo.mp4" controls></video>
-<audio><source src="/media/talk.mp3" type="audio/mpeg"></audio>
-</main></body></html>`)
-
-	text := ExtractHTMLFrom(body, "https://example.com/docs/page").Text
-
-	for _, want := range []string{"https://example.com/media/demo.mp4", "https://example.com/media/talk.mp3"} {
-		if !strings.Contains(text, want) {
-			t.Errorf("media source %s is missing, so it cannot be fetched:\n%s", want, text)
-		}
-	}
-}

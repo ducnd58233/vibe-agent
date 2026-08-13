@@ -1,19 +1,15 @@
-// Package fetch turns a web page or a local document into the text an agent
-// actually needs, and remembers it so the next session does not pay for it
-// again.
+// Package extract turns a page into the text a reader wants.
 //
-// The saving is the point and it is measured, not assumed. HTML is mostly not
-// content: scripts, stylesheets, navigation, and footers are the bulk of a
-// typical page, and none of it answers the question that caused the fetch.
+// Three libraries do the work and none of the HTML is parsed here. HTML is not a
+// regular language: attribute values hold `>`, script bodies hold `<`, comments
+// and CDATA nest, and browsers apply an error-correction algorithm to all of it.
+// An earlier version tokenized by hand, passed every test in this package, and
+// returned an empty body for the first real page it met.
 //
-// Two rules, both inherited from the packages around this one:
-//
-//   - Nothing here summarizes. Extraction deletes markup and boilerplate and
-//     keeps the author's words verbatim, so what an agent reads is what the
-//     page said. A summary would be model output presented as a source.
-//   - The cache is content-addressed and lives in the workspace, beside the
-//     memory database, under the same gitignored directory.
-package fetch
+// It implements the Extractor port declared in the fetch app package. Nothing
+// here summarizes: extraction deletes markup and keeps the author's words, so
+// what an agent reads is what the page said.
+package extract
 
 import (
 	"bytes"
@@ -30,21 +26,6 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-// Document, Status and the status values live in the domain package now. These
-// aliases keep the package's callers and tests compiling while the rest of the
-// module moves behind them, so there is one definition rather than two.
-type (
-	Document = domain.Document
-	Status   = domain.Status
-)
-
-const (
-	StatusOK    = domain.StatusOK
-	StatusEmpty = domain.StatusEmpty
-	StatusThin  = domain.StatusThin
-	StatusAsset = domain.StatusAsset
-)
-
 // minArticleChars is how much readable text an article has to hold before its
 // boilerplate-stripped form is preferred over the whole page.
 //
@@ -56,7 +37,7 @@ const (
 const minArticleChars = 200
 
 // ExtractHTML pulls the readable text out of a page.
-func ExtractHTML(raw []byte) Document {
+func ExtractHTML(raw []byte) domain.Document {
 	return ExtractHTMLFrom(raw, "")
 }
 
@@ -76,13 +57,13 @@ func ExtractHTML(raw []byte) Document {
 //   - readability strips the navigation, header, footer, and aside that repeat
 //     on every page of a site.
 //   - html-to-markdown renders what is left, with tables and code blocks intact.
-func ExtractHTMLFrom(raw []byte, pageURL string) Document {
+func ExtractHTMLFrom(raw []byte, pageURL string) domain.Document {
 	doc, err := html.Parse(bytes.NewReader(raw))
 	if err != nil {
 		// The parser recovers from malformed input rather than failing, so this
 		// is a read error on a byte slice: effectively unreachable, and not a
 		// reason to lose the page.
-		return Document{OriginalBytes: len(raw), Empty: true}
+		return domain.Document{OriginalBytes: len(raw), Empty: true}
 	}
 
 	title := textOf(findElement(doc, atom.Title))
@@ -95,11 +76,11 @@ func ExtractHTMLFrom(raw []byte, pageURL string) Document {
 	}
 	text = strings.TrimSpace(text)
 
-	return Document{
+	return domain.Document{
 		Title:         strings.TrimSpace(collapse(title)),
 		Text:          text,
 		OriginalBytes: len(raw),
-		Status:        classify(text, len(raw)),
+		Status:        domain.Classify(text, len(raw)),
 		Empty:         text == "",
 	}
 }
@@ -300,6 +281,53 @@ func tidy(s string) string {
 		}
 		trimmed := strings.TrimRight(line, " \t")
 		if strings.TrimSpace(trimmed) == "" {
+			if !blank && len(kept) > 0 {
+				kept = append(kept, "")
+			}
+			blank = true
+			continue
+		}
+		blank = false
+		kept = append(kept, trimmed)
+	}
+	return strings.TrimSpace(strings.Join(kept, "\n"))
+}
+
+// HTML implements the Extractor port.
+type HTML struct{}
+
+// Extract turns a source into the text a reader wants, resolving relative links
+// against the page they came from.
+//
+// Markdown and plain text are normalised rather than parsed: running them
+// through an HTML parser would treat a heading as markup and an angle bracket
+// as a tag.
+func (HTML) Extract(raw []byte, pageURL, contentType string) domain.Document {
+	if domain.MediaType(contentType) == "text/html" ||
+		domain.MediaType(contentType) == "application/xhtml+xml" {
+		return ExtractHTMLFrom(raw, pageURL)
+	}
+	text := tidyPlain(string(raw))
+	return domain.Document{
+		Text:          text,
+		OriginalBytes: len(raw),
+		Status:        domain.Classify(text, len(raw)),
+		Empty:         text == "",
+	}
+}
+
+// tidyPlain normalises text that needed no extraction.
+//
+// Trailing whitespace and runs of blank lines are tokens that carry nothing, and
+// a file written on Windows would otherwise spend one per line on a carriage
+// return.
+func tidyPlain(s string) string {
+	lines := strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
+	kept := make([]string, 0, len(lines))
+	blank := false
+	for _, line := range lines {
+		trimmed := strings.TrimRight(line, " \t")
+		if trimmed == "" {
 			if !blank && len(kept) > 0 {
 				kept = append(kept, "")
 			}

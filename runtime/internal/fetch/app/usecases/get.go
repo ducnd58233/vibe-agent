@@ -71,7 +71,7 @@ func (f Fetcher) Get(ctx context.Context, source string, options Options) (domai
 			source, len(raw), MaxDocumentBytes)
 	}
 
-	doc := f.Extractor.Extract(raw, source)
+	doc := f.Extractor.Extract(raw, source, contentType)
 	doc.Source = source
 
 	// A bot wall answers 200 with a page that reads like prose, so nothing above

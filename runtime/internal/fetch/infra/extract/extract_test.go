@@ -1,8 +1,10 @@
-package fetch
+package extract
 
 import (
 	"strings"
 	"testing"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch/domain"
 )
 
 func TestExtractHTMLKeepsProseAndDropsMachinery(t *testing.T) {
@@ -237,5 +239,70 @@ func TestExtractHTMLShrinksARealisticPage(t *testing.T) {
 	if ratio > 0.05 {
 		t.Errorf("extract kept %.1f%% of the page; the research this is built on reports 80-90%% reductions",
 			ratio*100)
+	}
+}
+
+// Media elements carry the URL a reader came for, and the markdown converter has
+// no rule for them, so without help a video is silently absent from the page.
+func TestMediaSourcesSurviveExtraction(t *testing.T) {
+	body := []byte(`<html><body><main>
+<p>A paragraph long enough that readability keeps this as an article rather than
+falling back, which is a different code path and would not prove the same thing
+about how media elements are handled during conversion to markdown.</p>
+<video src="/media/demo.mp4" controls></video>
+<audio><source src="/media/talk.mp3" type="audio/mpeg"></audio>
+</main></body></html>`)
+
+	text := ExtractHTMLFrom(body, "https://example.com/docs/page").Text
+
+	for _, want := range []string{"https://example.com/media/demo.mp4", "https://example.com/media/talk.mp3"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("media source %s is missing, so it cannot be fetched:\n%s", want, text)
+		}
+	}
+}
+
+// A shell with a nav and a footer is not empty, and it is not the page either.
+// Reporting it as content is how an agent answers from a menu.
+func TestAnUnderRenderedShellIsReported(t *testing.T) {
+	var page strings.Builder
+	page.WriteString(`<html><head><title>Dashboard</title></head><body>`)
+	page.WriteString(`<div id="root"><nav><a href="/a">Home</a><a href="/b">Docs</a></nav></div>`)
+	for range 40 {
+		page.WriteString(`<script src="/static/chunk.js"></script>`)
+		page.WriteString(`<script>window.__DATA__={"a":1,"b":2,"c":3,"d":4,"e":5};</script>`)
+	}
+	page.WriteString(`</body></html>`)
+
+	doc := ExtractHTML([]byte(page.String()))
+	if doc.Status != domain.StatusThin {
+		t.Errorf("status = %q, want %q for a page that is markup and scripts with no prose",
+			doc.Status, domain.StatusThin)
+	}
+}
+
+func TestARealPageIsStatusOK(t *testing.T) {
+	var page strings.Builder
+	page.WriteString(`<html><head><title>Guide</title></head><body><main><h1>Guide</h1>`)
+	for range 12 {
+		page.WriteString(`<p>A paragraph of real documentation prose that a reader came here for, ` +
+			`long enough to be worth the request that fetched it.</p>`)
+	}
+	page.WriteString(`</main></body></html>`)
+
+	doc := ExtractHTML([]byte(page.String()))
+	if doc.Status != domain.StatusOK {
+		t.Errorf("status = %q, want ok:\n%.200s", doc.Status, doc.Text)
+	}
+}
+
+func TestAnEmptyPageIsStatusEmpty(t *testing.T) {
+	doc := ExtractHTML([]byte(
+		`<html><head><title>App</title></head><body><div id="root"></div></body></html>`))
+	if doc.Status != domain.StatusEmpty {
+		t.Errorf("status = %q, want %q", doc.Status, domain.StatusEmpty)
+	}
+	if !doc.Empty {
+		t.Error("Empty and Status disagree")
 	}
 }

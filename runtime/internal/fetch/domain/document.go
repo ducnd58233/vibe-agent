@@ -7,7 +7,10 @@
 // them.
 package domain
 
-import "strings"
+import (
+	"mime"
+	"strings"
+)
 
 // Status is what a caller needs to know before trusting Text.
 //
@@ -72,4 +75,29 @@ func Classify(text string, originalBytes int) Status {
 		return StatusThin
 	}
 	return StatusOK
+}
+
+// MediaType is the type alone, without charset or boundary parameters.
+func MediaType(contentType string) string {
+	parsed, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
+	}
+	return parsed
+}
+
+// IsText reports whether a media type holds text an extractor can read.
+//
+// The categories come from the media type itself rather than a list of formats.
+// A list is wrong the moment something new appears, and something new always
+// appears: this asks what the type says it is. text/* is text by definition, and
+// json, xml and javascript are text carried under application/* for historical
+// reasons rather than technical ones.
+func IsText(contentType string) bool {
+	media := MediaType(contentType)
+	if strings.HasPrefix(media, "text/") {
+		return true
+	}
+	return strings.Contains(media, "json") || strings.Contains(media, "xml") ||
+		strings.Contains(media, "javascript") || strings.Contains(media, "ecmascript")
 }
