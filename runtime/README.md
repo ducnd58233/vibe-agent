@@ -27,7 +27,6 @@ runtime/
     mcp.go                mcp serve
     hook.go               lifecycle hooks for Claude and Cursor
     memory.go             list, confirm, forget. The human side of the store
-    map.go                repository structure, cached by content hash
     fetch.go              a URL or file as text, cached by source
     doctor.go             workspace health checks
   internal/
@@ -43,7 +42,6 @@ runtime/
       screen.go           an app rendered: no crash, expected content, not blank
       device.go           adb and simctl, the only shell this verifier needs
     memory/               SQLite store, FTS search, write policy, promotion
-    repomap/              declarations per file, cached by content hash
     fetch/                URL and file extraction, cached by source hash
     mcp/                  stdio server, seven tools
     harness/              hook adapters for Claude and Cursor
@@ -236,60 +234,6 @@ With a query, two orderings are fused with [reciprocal rank fusion](https://dl.a
 Ties are frequent and expected. Two results that swap places between the two rankings score identically, so the tiebreak is recency, then confidence: when two memories say almost the same thing, the usual reason is that one replaced the other.
 
 Keyword search with metadata filters remains the deliberate first choice. Embeddings come only after this is measured as insufficient.
-
-## Orienting without reading
-
-`vibe-agent map` prints what a workspace declares and where. On this repository:
-545 files, roughly 743,000 tokens to read them all, and a complete map of them
-for about 5,000. The default budget of 2,000 buys the 173 files the rest of the
-repository refers to most.
-
-```sh
-vibe-agent map                    # ranked, within the default budget
-vibe-agent map --budget 8000      # the whole repository, if it fits
-vibe-agent map --json             # the full index, ordered by path
-vibe-agent map --refresh          # discard the cache and re-read everything
-```
-
-Four decisions are worth stating, because each had a cheaper option that was
-worse:
-
-- **Nothing here is a summary.** Every entry is a declaration at a line a reader
-  can open. The moment a map paraphrases code it becomes model output claiming
-  the authority of an index, and `internal/memory` refuses that everywhere else
-  for the same reason.
-- **Git decides what is content.** `git ls-files --cached --others
-  --exclude-standard` is everything the repository keeps, including unstaged work,
-  and excludes everything `.gitignore` excludes. A list of directory names in this
-  package would be wrong in both directions: it drops a `dist/` that some projects
-  commit, and it indexes whatever generated directory it has not heard of. Outside
-  a repository there is nothing to consult, and only there does a built-in list of
-  popular ignores apply.
-- **The cache key is the content hash, not mtime.** A checkout moves mtime
-  without changing code, and a restored file changes code without moving it. The
-  cost is reading the file to hash it; the benefit is that the map cannot
-  describe code that is no longer there. `cacheVersion` covers the other
-  direction: when extraction changes, every row is stale while every hash still
-  matches, so bumping it discards the index whole.
-- **Regexes, and this is the weak part.** One pattern set per language, so Go,
-  Python, JS/TS, Rust, Java and Kotlin are read and everything else is listed by
-  path with nothing said about it. A frontend is also `.scss` and `.mjs`; a deploy
-  is `.yaml`. Silence in a map reads as absence from the code, which is why
-  `render.go` prints what it does not cover. The dynamic replacement is a
-  tree-sitter runtime with per-grammar tag queries, which now exists in pure Go
-  ([gotreesitter](https://github.com/odvcencio/gotreesitter), MIT, no cgo, with a
-  language-agnostic `ExtractDefinitionSpans`). Adding languages to the table here
-  is not the fix; it is the same mistake at greater length.
-- **Ranking is a reference count, not PageRank.** The
-  [Aider repo map](https://aider.chat/2023/10/22/repomap.html) runs PageRank over
-  a symbol graph; this counts how many other files mention each declaration. A
-  name more than one file declares is dropped rather than weighted, because every
-  script defines `main` and a mention of it attributes to nothing. Enough to
-  decide what survives a budget, and explainable without eigenvectors.
-
-Test files appear by name with their cases omitted. That a package has tests is
-orientation; thirty function names each restating one assertion is most of a
-budget spent on the part of a repository nobody navigates by.
 
 ## Reading a page without reading the page
 
