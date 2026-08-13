@@ -229,7 +229,76 @@ func main() {
 }
 """,
     ),
+    (
+        # A parser, linter, or codegen test states its input as source code, and
+        # that source starts lines with `func` in column one. Reading those as
+        # real declarations ends the block early and hides every assertion after
+        # the fixture, which is a false positive on exactly the tests that most
+        # need the guard.
+        "a go fixture holding source code does not end the test block",
+        "extract_test.go",
+        '''package repomap
+
+func TestExtractFindsDeclarations(t *testing.T) {
+	body := `package memory
+
+type Store struct{}
+
+func Open() (*Store, error) { return nil, nil }
+`
+	if got := names(Extract("sqlite.go", []byte(body))); len(got) != 2 {
+		t.Errorf("got %v, want two declarations", got)
+	}
+}
+''',
+    ),
+    (
+        "a python fixture holding source code does not end the test block",
+        "test_extract.py",
+        '''def test_extract_finds_declarations():
+    source = """
+class Order:
+    pass
+
+def create_app():
+    return None
+"""
+    assert extract(source) == ["Order", "create_app"]
+''',
+    ),
 ]
+
+# The same masking, seen from the other side. An assertion is only an assertion
+# where it will run; one quoted inside a fixture is data. Without this the guard
+# reads its own examples as proof and passes a test that asserts nothing.
+FLAG_CASES.extend(
+    [
+        (
+            "a go assertion quoted inside a fixture is not an assertion",
+            "render_test.go",
+            '''package repomap
+
+func TestRenderProducesOutput(t *testing.T) {
+	example := `func TestSomething(t *testing.T) {
+	t.Errorf("this is fixture text, not a check")
+}`
+	_ = Render(example)
+}
+''',
+        ),
+        (
+            "a python assertion quoted inside a fixture is not an assertion",
+            "test_render.py",
+            '''def test_render_produces_output():
+    example = """
+def test_something():
+    assert render() == "ok"
+"""
+    render(example)
+''',
+        ),
+    ]
+)
 
 
 def main() -> int:
