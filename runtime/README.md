@@ -30,7 +30,21 @@ runtime/
     fetch.go              a URL or file as text, cached by source
     doctor.go             workspace health checks
   internal/
-    graph/                workflow graph model, loader, static validation
+    shared/workspace/     the directory names every module agrees on
+    run/                  one delivery run: where it sits, what was recorded
+      domain/             Run, Check, Event, the provenance enum, and its rules
+      infra/persistence/  the manifest and the append-only event log
+    graph/                which node comes next, and on what evidence
+      domain/             nodes, edges, guards, static validation
+      infra/              reading a graph off disk
+    memory/               what an earlier run learned
+      domain/             Record, Kind, Status, and the write policy
+      app/ports.go        Store, the repository callers depend on
+      infra/persistence/  the SQLite table and its FTS search
+    fetch/                a URL or file as the text an agent needs
+      domain/             Document, Status, and how to classify one
+      app/                ports, and the order the steps happen in
+      infra/              the request, the extractor, the cache
     checkplan/            vibe-checks.yaml: what command produces which check
     loop/                 the runner: transitions, budget, blocker stop rule
     checkpoint/           the one write path: apply evidence, once
@@ -41,15 +55,11 @@ runtime/
       git.go              repository state, observed never changed
       screen.go           an app rendered: no crash, expected content, not blank
       device.go           adb and simctl, the only shell this verifier needs
-    memory/               SQLite store, FTS search, write policy, promotion
-    fetch/                URL and file extraction, cached by source hash
     mcp/                  stdio server, seven tools
     harness/              hook adapters for Claude and Cursor
       gate.go             the refusals: protected pushes, merges, state writes
       recall.go           retrieval that does not wait to be asked
       journal.go          what a tool did, written down after it did it
-    state/                run state and the append-only event log
-      testdata/           golden manifest, validated by scripts/check-schemas.py
   e2e/                    drives the built binary against a fixture consumer repo
 ```
 
@@ -57,7 +67,7 @@ Three conventions worth knowing:
 
 - **One file per command under `cmd/`.** `main.go` stays a dispatch table; command logic never accumulates there. `common.go` holds the `--workspace` and `--toolkit` pair every command shares, so adding a command does not mean copying flag plumbing.
 - **The binary name comes from `-o`, not the directory.** `go build ./cmd` without `-o` would produce `cmd`; every build path here passes `-o vibe-agent`.
-- **Test fixtures live in the `testdata/` of the package that uses them**, which is the Go convention. `internal/state/testdata/` belongs to the state package; nothing else reads it except the schema check, by path.
+- **Test fixtures live in the `testdata/` of the package that uses them**, which is the Go convention. `internal/run/infra/persistence/testdata/` belongs to the package that writes manifests; nothing else reads it except the schema check, by path.
 
 ## Build and test
 
@@ -87,7 +97,7 @@ Three failures this closes, all of which happened:
 Regenerate the golden manifest after an intentional shape change:
 
 ```sh
-UPDATE_GOLDEN=1 go test ./internal/state -run TestFreshRunMatchesGolden
+UPDATE_GOLDEN=1 go test ./internal/run/infra/persistence -run TestFreshRunMatchesGolden
 ```
 
 ## Try it
