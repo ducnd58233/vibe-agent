@@ -37,6 +37,17 @@ type Document struct {
 	// OriginalBytes is what arrived before extraction, so the saving can be
 	// reported rather than claimed.
 	OriginalBytes int `json:"originalBytes"`
+	// Status is what a caller must check before trusting Text. See guard.go.
+	Status Status `json:"status"`
+	// LocalPath is where a non-text source was put, for the caller's own file
+	// reader to open. Empty for anything that became text.
+	//
+	// The same rule as everywhere else here: the payload does not go into
+	// context, the handle does. An image inlined as bytes is tens of thousands
+	// of tokens of something no model reads that way, and the host already has a
+	// reader that handles images and PDFs properly.
+	LocalPath   string `json:"localPath,omitempty"`
+	ContentType string `json:"contentType,omitempty"`
 	// Empty marks a page that parsed cleanly and carried no prose.
 	//
 	// This is the failure a caller cannot otherwise see. A client-rendered page
@@ -101,6 +112,7 @@ func ExtractHTMLFrom(raw []byte, pageURL string) Document {
 		Title:         strings.TrimSpace(collapse(title)),
 		Text:          text,
 		OriginalBytes: len(raw),
+		Status:        classify(text, len(raw)),
 		Empty:         text == "",
 	}
 }
@@ -144,7 +156,54 @@ func documentMarkdown(doc *html.Node) string {
 // while making the text less like the page. The table plugin is not on by
 // default and a settings table without it arrives as "timeout30s", which reads
 // as one value and is two.
+// mediaSources are elements whose src is the thing a reader wanted and which the
+// markdown converter has no rule for, so it renders them as nothing.
+var mediaSources = map[atom.Atom]bool{
+	atom.Video: true, atom.Audio: true, atom.Source: true,
+	atom.Embed: true, atom.Track: true,
+}
+
+// promoteMedia rewrites media elements as links so their URLs survive.
+//
+// A page whose point is a demo video converts to prose with the video silently
+// absent, which is the same failure as a dropped table: the reader cannot tell
+// anything is missing. A link is the smallest thing that keeps the URL, and the
+// URL is what makes the file fetchable afterwards.
+func promoteMedia(root *html.Node) {
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			walk(child)
+			if child.Type != html.ElementNode || !mediaSources[child.DataAtom] {
+				continue
+			}
+			src := attr(child, "src")
+			if src == "" {
+				continue
+			}
+			child.Type = html.ElementNode
+			child.DataAtom = atom.A
+			child.Data = "a"
+			child.Attr = []html.Attribute{{Key: "href", Val: src}}
+			if child.FirstChild == nil {
+				child.AppendChild(&html.Node{Type: html.TextNode, Data: src})
+			}
+		}
+	}
+	walk(root)
+}
+
+func attr(node *html.Node, name string) string {
+	for _, a := range node.Attr {
+		if strings.EqualFold(a.Key, name) {
+			return a.Val
+		}
+	}
+	return ""
+}
+
 func convert(node *html.Node) string {
+	promoteMedia(node)
 	out, err := markdown().ConvertNode(node)
 	if err != nil {
 		return ""

@@ -99,21 +99,29 @@ func TestGetExtractsALocalHTMLFile(t *testing.T) {
 	}
 }
 
-// Emitting the bytes of a PDF as if they were text is worse than refusing: it
-// burns a large number of tokens on mojibake and the agent cannot tell.
-func TestGetRefusesBinaryDocumentsByName(t *testing.T) {
+// Emitting the bytes of a PDF as if they were text burns a large number of
+// tokens on mojibake the agent cannot detect. Refusing it outright was the first
+// answer and it was too blunt: a spec PDF is an ordinary thing to want. The
+// document is retrieved and named, and its bytes stay out of the context window.
+func TestABinaryDocumentIsNamedAndNotPrinted(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "spec.pdf")
 	if err := os.WriteFile(path, []byte("%PDF-1.7\n%\xe2\xe3\xcf\xd3\nbinary"), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
-	_, _, err := Get(root, path, Options{})
-	if err == nil {
-		t.Fatal("a PDF was accepted")
+	doc, _, err := Get(root, path, Options{})
+	if err != nil {
+		t.Fatalf("a PDF was refused: %v", err)
 	}
-	if !strings.Contains(err.Error(), "pdf") {
-		t.Errorf("the refusal does not name the format: %v", err)
+	if doc.Status != StatusAsset {
+		t.Errorf("status = %q, want asset", doc.Status)
+	}
+	if !strings.Contains(doc.Text, "spec.pdf") {
+		t.Errorf("the description does not name the file:\n%s", doc.Text)
+	}
+	if strings.Contains(doc.Text, "%PDF-1.7") {
+		t.Errorf("binary content leaked into the text:\n%s", doc.Text)
 	}
 }
 

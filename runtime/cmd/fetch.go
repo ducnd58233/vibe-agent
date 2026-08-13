@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch"
 )
@@ -69,20 +71,31 @@ func fetchCommand(args []string) error {
 		return encoder.Encode(doc)
 	}
 
+	// An asset is a path, not a page. Printing the budget line and the saving
+	// percentage under it would be measuring the wrong thing: nothing was
+	// extracted and nothing was saved by not extracting it.
+	if doc.Status == fetch.StatusAsset {
+		fmt.Println(doc.Text)
+		return nil
+	}
+
 	if doc.Title != "" {
 		fmt.Printf("# %s\n\n", doc.Title)
 	}
-	if doc.Empty {
-		// Said on stderr and stated plainly, because the alternative is an agent
-		// answering from a blank page while the summary line congratulates it on
-		// a 99% saving. No AI crawler runs JavaScript, this one included, so the
-		// fix is a tool that drives a real browser rather than a retry here.
-		fmt.Fprintf(os.Stderr,
-			"vibe-agent: %s parsed cleanly and carried no readable text. "+
-				"That usually means the page builds its content with JavaScript, "+
-				"which this does not run. Use a browser-driving tool to read it, "+
-				"or find a server-rendered equivalent such as a docs or raw URL. "+
-				"Do not answer from this document.\n", source)
+	// Said on stderr and stated plainly, because the alternative is an agent
+	// answering from a blank page while the summary line congratulates it on a
+	// 99% saving. A bot check never reaches here: that is refused outright.
+	if doc.Status != fetch.StatusOK {
+		problem := "parsed cleanly and carried no readable text"
+		if doc.Status == fetch.StatusThin {
+			problem = "returned far more markup and script than text, which is the shape " +
+				"of a page shell rather than a page"
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		fmt.Fprintf(os.Stderr, "vibe-agent: %s %s. Do not answer from this document. %s.\n",
+			source, problem, fetch.Advise(ctx, source,
+				"It is almost certainly built with JavaScript, which no AI crawler runs"))
 	}
 	clipped, omitted := fetch.Clip(doc.Text, *budget)
 	fmt.Println(clipped)
