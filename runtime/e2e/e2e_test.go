@@ -7,6 +7,7 @@ package e2e_test
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -631,23 +632,55 @@ func TestToolkitIsFoundWhenMountedAsASubmodule(t *testing.T) {
 
 func copyTree(t *testing.T, src, dst string) {
 	t.Helper()
-	err := filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	if err := os.MkdirAll(dst, 0o750); err != nil {
+		t.Fatalf("mkdir %s: %v", dst, err)
+	}
+	// os.Root confines every write to dst. Walking a tree and joining names onto
+	// a destination is the shape a symlink escapes through: the check and the
+	// write are separate steps, and a link swapped in between lands the copy
+	// outside the directory it was supposed to fill.
+	root, err := os.OpenRoot(dst)
+	if err != nil {
+		t.Fatalf("open %s: %v", dst, err)
+	}
+	defer func() { _ = root.Close() }()
+
+	source, err := os.OpenRoot(src)
+	if err != nil {
+		t.Fatalf("open %s: %v", src, err)
+	}
+	defer func() { _ = source.Close() }()
+
+	err = filepath.Walk(src, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
 		}
-		rel, err := filepath.Rel(src, path)
-		if err != nil {
-			return err
+		rel, relErr := filepath.Rel(src, path)
+		if relErr != nil {
+			return relErr
 		}
-		target := filepath.Join(dst, rel)
+		if rel == "." {
+			return nil
+		}
 		if info.IsDir() {
-			return os.MkdirAll(target, 0o750)
+			return root.Mkdir(rel, 0o750)
 		}
-		data, err := os.ReadFile(filepath.Clean(path))
-		if err != nil {
-			return err
+		original, openErr := source.Open(rel)
+		if openErr != nil {
+			return openErr
 		}
-		return os.WriteFile(filepath.Clean(target), data, 0o600)
+		data, readErr := io.ReadAll(original)
+		_ = original.Close()
+		if readErr != nil {
+			return readErr
+		}
+		file, createErr := root.Create(rel)
+		if createErr != nil {
+			return createErr
+		}
+		defer func() { _ = file.Close() }()
+		_, writeErr := file.Write(data)
+		return writeErr
 	})
 	if err != nil {
 		t.Fatalf("copy %s: %v", src, err)
