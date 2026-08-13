@@ -1,15 +1,19 @@
 package repomap
 
 import (
+	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 )
 
 // File is one indexed file and how central it is.
@@ -32,26 +36,23 @@ type Result struct {
 	Cached int `json:"cached"`
 }
 
-// skipDirs are never indexed.
+// skipDirs is the guess used only where there is no repository to ask.
 //
-// Dependencies and build output are other people's code, and .git and the state
-// directories are this toolkit's own bookkeeping. Indexing any of them buries a
-// repository's code under volume that no reader wanted.
+// Popular conventions across ecosystems, nothing more. Where a `.gitignore`
+// exists it wins, because it is the maintained statement of what this particular
+// project treats as generated, and it will be right about the cases this list
+// has never heard of. `.git` is the one entry that holds regardless: it is
+// object storage, not content, and no `.gitignore` lists it.
 var skipDirs = map[string]bool{
-	".git":         true,
-	".agent-state": true,
-	"node_modules": true,
-	"vendor":       true,
-	"dist":         true,
-	"build":        true,
-	"target":       true,
-	"tmp":          true,
-	".venv":        true,
-	"venv":         true,
-	"__pycache__":  true,
-	".next":        true,
-	".idea":        true,
-	".vscode":      true,
+	".git": true, ".agent-state": true, ".hg": true, ".svn": true,
+	"node_modules": true, "bower_components": true, "jspm_packages": true,
+	"vendor": true, "Pods": true, ".bundle": true,
+	"dist": true, "build": true, "out": true, "target": true, "bin": true, "obj": true,
+	"tmp": true, "temp": true, ".cache": true, "coverage": true,
+	".venv": true, "venv": true, "env": true, "__pycache__": true, ".tox": true,
+	".mypy_cache": true, ".pytest_cache": true, ".ruff_cache": true,
+	".next": true, ".nuxt": true, ".svelte-kit": true, ".parcel-cache": true,
+	".gradle": true, ".terraform": true, ".idea": true, ".vscode": true, ".DS_Store": true,
 }
 
 // maxFileBytes skips a file too large to be source. A generated bundle or a
@@ -221,11 +222,59 @@ func digest(content []byte) string {
 
 // discover lists the workspace's own files, as slash-separated relative paths.
 //
-// A plain walk rather than `git ls-files`, because the map has to work in a
-// workspace that is not a repository, and because a file staged nowhere is still
-// code the agent will be asked about. The skip list does what .gitignore would
-// do for the directories that actually matter to volume.
+// Git decides where there is a repository, because the repository has already
+// answered this question. A hardcoded skip list is wrong in both directions: it
+// drops a `dist/` that some projects commit, and it indexes whatever generated
+// directory it has not heard of. `.gitignore` is the maintained, per-repository
+// statement of what is not content, versioned alongside the code it describes.
+//
+// Without a repository there is nothing to consult, and the walk falls back to
+// skipDirs. That list is a guess, and it is only ever reached when the better
+// answer does not exist.
 func discover(workspaceRoot string) ([]string, error) {
+	if paths, err := gitFiles(workspaceRoot); err == nil {
+		return paths, nil
+	}
+	return walkFiles(workspaceRoot)
+}
+
+// gitFiles asks the repository what it keeps.
+//
+// `--cached --others --exclude-standard` is tracked files plus untracked ones
+// that are not ignored: everything the repository keeps, including work in
+// progress that was never staged. It fails when there is no repository and no
+// git, which is what sends the caller to the walk.
+func gitFiles(workspaceRoot string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "-C", workspaceRoot,
+		"ls-files", "--cached", "--others", "--exclude-standard", "-z")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var paths []string
+	for _, entry := range bytes.Split(out, []byte{0}) {
+		name := string(entry)
+		if name == "" {
+			continue
+		}
+		// A submodule is listed as a single entry and belongs to another
+		// repository, which keeps its own map.
+		info, err := os.Stat(filepath.Join(workspaceRoot, filepath.FromSlash(name)))
+		if err != nil || info.IsDir() || info.Size() > maxFileBytes {
+			continue
+		}
+		paths = append(paths, name)
+	}
+	sort.Strings(paths)
+	return paths, nil
+}
+
+// walkFiles is the fallback for a directory that is not a repository.
+func walkFiles(workspaceRoot string) ([]string, error) {
 	var paths []string
 	err := filepath.WalkDir(workspaceRoot, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

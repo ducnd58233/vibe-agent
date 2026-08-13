@@ -5,9 +5,6 @@
 // The saving is the point and it is measured, not assumed. HTML is mostly not
 // content: scripts, stylesheets, navigation, and footers are the bulk of a
 // typical page, and none of it answers the question that caused the fetch.
-// Reported reductions for HTML to markdown run to 80-90%, and the test in this
-// package holds the extractor to that on a synthetic page built to look like a
-// real one.
 //
 // Two rules, both inherited from the packages around this one:
 //
@@ -20,9 +17,16 @@ package fetch
 
 import (
 	"bytes"
-	"html"
+	"net/url"
 	"strings"
-	"unicode"
+
+	readability "codeberg.org/readeck/go-readability/v2"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/commonmark"
+	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/table"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 // Document is extracted content and where it came from.
@@ -33,323 +37,223 @@ type Document struct {
 	// OriginalBytes is what arrived before extraction, so the saving can be
 	// reported rather than claimed.
 	OriginalBytes int `json:"originalBytes"`
+	// Empty marks a page that parsed cleanly and carried no prose.
+	//
+	// This is the failure a caller cannot otherwise see. A client-rendered page
+	// has a title, a script, and an empty root div: extraction succeeds, returns
+	// nothing, and a saving of 99% looks like the best result of the day. Saying
+	// so is what lets the caller send the reader somewhere that runs JavaScript
+	// instead of answering from a blank document.
+	Empty bool `json:"empty,omitempty"`
 }
 
-// dropped elements contribute nothing a reader wants, and are the bulk of a
-// page's bytes.
+// minArticleChars is how much readable text an article has to hold before its
+// boilerplate-stripped form is preferred over the whole page.
 //
-// nav, header, footer, and aside are the boilerplate that repeats on every page
-// of a site: an agent reading ten pages of one documentation set pays for the
-// same sidebar ten times. script and style are machinery. form and svg are
-// markup with no prose in them.
-var dropped = map[string]bool{
-	"script": true, "style": true, "noscript": true, "svg": true,
-	"nav": true, "footer": true, "aside": true, "form": true,
-	"header": true, "template": true, "iframe": true, "canvas": true,
-}
-
-// rawText elements hold character data, not markup, and have to be skipped by
-// searching for their closing tag rather than by tokenizing what is inside.
-//
-// This is the HTML spec's rule and it is not a nicety. JavaScript is full of
-// `<`: comparisons, generics, JSX. A tokenizer that treats `if (a < b) { ... }`
-// as the start of a tag resolves it at some later `>` and can step straight over
-// the real `</script>`. One desync in a page with a megabyte of script swallows
-// the entire document, which is what this did on the first real page it met:
-// title extracted, body empty.
-var rawText = map[string]bool{
-	"script": true, "style": true, "noscript": true, "textarea": true, "title": true,
-}
-
-// blocks end a line when they open or close, so prose does not run together.
-var blocks = map[string]bool{
-	"p": true, "div": true, "section": true, "article": true, "main": true,
-	"ul": true, "ol": true, "table": true, "tr": true, "br": true, "hr": true,
-	"blockquote": true, "pre": true, "figure": true, "dl": true, "dt": true,
-	"dd": true, "h1": true, "h2": true, "h3": true, "h4": true, "h5": true,
-	"h6": true, "li": true,
-}
-
-// headings map to the markdown level of the same depth. Markdown is kept
-// because it is the cheapest structure that survives: a heading costs one or two
-// characters and tells a reader where they are.
-var headings = map[string]string{
-	"h1": "# ", "h2": "## ", "h3": "### ",
-	"h4": "#### ", "h5": "##### ", "h6": "###### ",
-}
+// Readability is tuned for articles. An API reference or a table of options is
+// not article-shaped, and on those it can return a fragment or nothing at all.
+// Falling back to the whole document costs some navigation and never costs the
+// content, which is the right way round: a map of the page with some clutter
+// beats a clean excerpt that dropped the part the reader came for.
+const minArticleChars = 200
 
 // ExtractHTML pulls the readable text out of a page.
-//
-// A tokenizer, not a parser. Text extraction needs to know where tags start and
-// stop and nothing about the tree they form, so this walks the bytes and keeps a
-// depth counter for the elements being skipped. The same tradeoff the repomap
-// package makes with regexes over tree-sitter, and the same reason: a DOM parser
-// is a dependency, and this module's whole dependency set is a SQLite driver and
-// a YAML reader.
-//
-// Malformed markup degrades into slightly noisier text rather than an error. A
-// page that fails to close a tag is common, and refusing it would be refusing
-// most of the web.
 func ExtractHTML(raw []byte) Document {
-	var out strings.Builder
-	var title string
+	return ExtractHTMLFrom(raw, "")
+}
 
-	// skip counts how deep inside a dropped element the cursor is, so a <script>
-	// containing "</div>" cannot end the skip early.
-	skip := 0
-	skipName := ""
-	inTitle := false
-	// pre is the one element whose whitespace is content. A code sample is
-	// usually why a page was fetched at all, and squeezing it turns a program
-	// into one long line.
-	pre := 0
+// ExtractHTMLFrom extracts a page, resolving relative links against pageURL.
+//
+// Three libraries, none of them hand-rolled, and that is the point. HTML is not
+// a regular language: attribute values hold `>`, script bodies hold `<`,
+// comments and CDATA nest, and browsers apply an error-correction algorithm to
+// all of it. An earlier version of this file tokenized by hand and passed every
+// test in this package while returning an empty body for the first real page it
+// met, because JavaScript is full of `<` and one desync swallowed the document.
+// A spec-compliant parser is not a convenience here, it is the difference
+// between working and appearing to work.
+//
+//   - golang.org/x/net/html parses to a tree the way the WHATWG algorithm says,
+//     including the error recovery real pages depend on.
+//   - readability strips the navigation, header, footer, and aside that repeat
+//     on every page of a site.
+//   - html-to-markdown renders what is left, with tables and code blocks intact.
+func ExtractHTMLFrom(raw []byte, pageURL string) Document {
+	doc, err := html.Parse(bytes.NewReader(raw))
+	if err != nil {
+		// The parser recovers from malformed input rather than failing, so this
+		// is a read error on a byte slice: effectively unreachable, and not a
+		// reason to lose the page.
+		return Document{OriginalBytes: len(raw), Empty: true}
+	}
 
-	index, size := 0, len(raw)
-	for index < size {
-		next := bytes.IndexByte(raw[index:], '<')
-		if next < 0 {
-			if skip == 0 {
-				out.WriteString(characters(raw[index:], pre > 0))
-			}
-			break
-		}
-		if skip == 0 && next > 0 {
-			chunk := characters(raw[index:index+next], pre > 0)
-			if inTitle {
-				title += chunk
-			} else {
-				out.WriteString(chunk)
-			}
-		}
-		index += next
+	title := textOf(findElement(doc, atom.Title))
 
-		// A comment or doctype ends at its own terminator, not at the next '>'.
-		if bytes.HasPrefix(raw[index:], []byte("<!--")) {
-			if end := bytes.Index(raw[index:], []byte("-->")); end >= 0 {
-				index += end + 3
-				continue
-			}
-			break
-		}
-		end := bytes.IndexByte(raw[index:], '>')
-		if end < 0 {
-			break
-		}
-		tag := string(raw[index+1 : index+end])
-		index += end + 1
-
-		closing := strings.HasPrefix(tag, "/")
-		name := elementName(tag)
-		if name == "" {
-			continue
-		}
-
-		// Raw text first, and regardless of whether anything is being skipped:
-		// its content is character data, so the only way out is its closing tag.
-		if rawText[name] && !closing && !strings.HasSuffix(tag, "/") {
-			body, after := rawTextBody(raw, index, name)
-			index = after
-			if name == "title" && skip == 0 {
-				title += characters(body, false)
-			}
-			continue
-		}
-
-		switch {
-		case dropped[name]:
-			if closing {
-				if skip > 0 && name == skipName {
-					skip--
-					if skip == 0 {
-						skipName = ""
-					}
-				}
-			} else if !strings.HasSuffix(tag, "/") {
-				if skip == 0 {
-					skipName = name
-				}
-				if skipName == name {
-					skip++
-				}
-			}
-			continue
-		case skip > 0:
-			continue
-		}
-
-		if name == "pre" {
-			// Fenced, so the renderer and the reader both know the whitespace
-			// inside is deliberate, and so tidy can leave those lines alone.
-			if closing {
-				if pre > 0 {
-					pre--
-				}
-				out.WriteString("\n```\n")
-			} else {
-				pre++
-				out.WriteString("\n```\n")
-			}
-			continue
-		}
-		if prefix, ok := headings[name]; ok && !closing {
-			out.WriteString("\n" + prefix)
-			continue
-		}
-		if name == "li" && !closing {
-			out.WriteString("\n- ")
-			continue
-		}
-		if blocks[name] {
-			out.WriteString("\n")
+	text := articleMarkdown(raw, pageURL)
+	if len(strings.TrimSpace(text)) < minArticleChars {
+		if whole := documentMarkdown(doc); len(whole) > len(text) {
+			text = whole
 		}
 	}
+	text = strings.TrimSpace(text)
 
 	return Document{
 		Title:         strings.TrimSpace(collapse(title)),
-		Text:          tidy(out.String()),
+		Text:          text,
 		OriginalBytes: len(raw),
+		Empty:         text == "",
 	}
 }
 
-// rawTextBody returns a raw-text element's content and the offset just past its
-// closing tag.
-//
-// An unclosed one runs to the end of the document, which is what a browser does
-// with it too. Returning the remainder as body rather than resuming the scan is
-// the safe direction: the alternative reads a minified script as prose.
-func rawTextBody(raw []byte, from int, name string) (body []byte, after int) {
-	closer := []byte("</" + name)
-	end := indexFold(raw[from:], closer)
-	if end < 0 {
-		return raw[from:], len(raw)
-	}
-	body = raw[from : from+end]
-	rest := from + end
-	if gt := bytes.IndexByte(raw[rest:], '>'); gt >= 0 {
-		return body, rest + gt + 1
-	}
-	return body, len(raw)
-}
-
-// indexFold finds a needle without regard to case, which tag names need: a page
-// writing </SCRIPT> is unusual and legal.
-//
-// Scans rather than lowercasing a copy. The obvious version allocates the whole
-// remaining document per raw-text element, and a page with a hundred scripts
-// then costs a hundred copies of itself.
-func indexFold(haystack, needle []byte) int {
-	if len(needle) == 0 || len(haystack) < len(needle) {
-		return -1
-	}
-	first := lower(needle[0])
-	for i := 0; i+len(needle) <= len(haystack); i++ {
-		if lower(haystack[i]) != first {
-			continue
+// articleMarkdown renders the boilerplate-stripped article, or "" if there is
+// none to find.
+func articleMarkdown(raw []byte, pageURL string) string {
+	var base *url.URL
+	if pageURL != "" {
+		if parsed, err := url.Parse(pageURL); err == nil {
+			base = parsed
 		}
-		match := true
-		for j := 1; j < len(needle); j++ {
-			if lower(haystack[i+j]) != lower(needle[j]) {
-				match = false
-				break
+	}
+	article, err := readability.FromReader(bytes.NewReader(raw), base)
+	if err != nil || article.Node == nil {
+		return ""
+	}
+	return convert(article.Node)
+}
+
+// documentMarkdown renders the whole page, minus the elements that never carry
+// prose.
+//
+// The drop list is short on purpose. html-to-markdown already ignores script and
+// style; these are the ones that survive it and repeat on every page of a site,
+// so an agent reading ten pages pays for the same sidebar ten times.
+func documentMarkdown(doc *html.Node) string {
+	remove(doc, map[atom.Atom]bool{
+		atom.Nav: true, atom.Footer: true, atom.Aside: true,
+		atom.Script: true, atom.Style: true, atom.Noscript: true,
+		atom.Svg: true, atom.Form: true, atom.Iframe: true, atom.Template: true,
+	})
+	return convert(doc)
+}
+
+// convert renders a parsed tree as markdown.
+//
+// Two settings differ from the defaults, and both are about who reads the
+// output. Escaping exists so markdown round-trips through a renderer; nothing
+// renders this, a model reads it, and `a &lt; b` costs three tokens to say `<`
+// while making the text less like the page. The table plugin is not on by
+// default and a settings table without it arrives as "timeout30s", which reads
+// as one value and is two.
+func convert(node *html.Node) string {
+	out, err := markdown().ConvertNode(node)
+	if err != nil {
+		return ""
+	}
+	// Decode entities that survive the conversion. A markdown renderer wants
+	// `&lt;`, and nothing renders this: a model reads it, where `&lt;` costs
+	// three tokens to say `<` and reads less like the page did. Safe on code
+	// samples too, since an entity inside one stands for the character the
+	// sample contains.
+	return tidy(html.UnescapeString(string(out)))
+}
+
+// markdown builds the converter.
+//
+// The top-level helper takes a different option type and carries no table
+// support, so the converter is assembled here: base and commonmark are what the
+// helper would have given, table is the addition, and escaping is turned off.
+func markdown() *converter.Converter {
+	return converter.NewConverter(
+		converter.WithEscapeMode(converter.EscapeModeDisabled),
+		converter.WithPlugins(
+			base.NewBasePlugin(),
+			commonmark.NewCommonmarkPlugin(),
+			table.NewTablePlugin(),
+		),
+	)
+}
+
+// remove deletes every matching element from the tree.
+func remove(node *html.Node, drop map[atom.Atom]bool) {
+	var doomed []*html.Node
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			if child.Type == html.ElementNode && drop[child.DataAtom] {
+				doomed = append(doomed, child)
+				continue
 			}
-		}
-		if match {
-			return i
+			walk(child)
 		}
 	}
-	return -1
-}
-
-func lower(b byte) byte {
-	if b >= 'A' && b <= 'Z' {
-		return b + ('a' - 'A')
+	walk(node)
+	for _, n := range doomed {
+		if n.Parent != nil {
+			n.Parent.RemoveChild(n)
+		}
 	}
-	return b
 }
 
-// elementName returns the lowercased tag name, without the slash or attributes.
-func elementName(tag string) string {
-	tag = strings.TrimPrefix(tag, "/")
-	tag = strings.TrimLeft(tag, "!?")
-	cut := strings.IndexAny(tag, " \t\r\n/>")
-	if cut >= 0 {
-		tag = tag[:cut]
+// findElement returns the first element of a kind, depth first.
+func findElement(node *html.Node, want atom.Atom) *html.Node {
+	if node.Type == html.ElementNode && node.DataAtom == want {
+		return node
 	}
-	return strings.ToLower(strings.TrimSpace(tag))
-}
-
-// characters decodes entities in a run of character data, and squeezes its
-// whitespace unless it came from a pre block.
-//
-// Newlines inside a text node are source formatting, not line breaks: HTML says
-// where a line ends with tags, and only pre says otherwise. Squeezing here
-// rather than later is what keeps a paragraph that was wrapped in the source
-// from arriving as several lines. The single space is kept at both ends, since
-// dropping it would join the words either side of a tag.
-func characters(raw []byte, preformatted bool) string {
-	decoded := html.UnescapeString(string(raw))
-	if preformatted {
-		return decoded
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		if found := findElement(child, want); found != nil {
+			return found
+		}
 	}
-	return squeeze(decoded)
+	return nil
 }
 
-// squeeze reduces every whitespace run to one space, ends included.
-func squeeze(s string) string {
+// textOf returns an element's character data, concatenated.
+func textOf(node *html.Node) string {
+	if node == nil {
+		return ""
+	}
 	var out strings.Builder
-	space := false
-	for _, r := range s {
-		// unicode.IsSpace says no to the non-breaking space, which is what
-		// &nbsp; decodes to and what a page indenting with it would leave on
-		// every line.
-		if unicode.IsSpace(r) || r == ' ' {
-			space = true
-			continue
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.TextNode {
+			out.WriteString(n.Data)
 		}
-		if space {
-			out.WriteByte(' ')
-			space = false
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			walk(child)
 		}
-		out.WriteRune(r)
 	}
-	if space {
-		out.WriteByte(' ')
-	}
+	walk(node)
 	return out.String()
 }
 
 // collapse reduces every run of whitespace to one space.
-//
-// Source formatting is invisible to a reader and is not free: indentation on a
-// deeply nested page is a real share of its bytes.
 func collapse(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 
-// tidy collapses whitespace inside lines and blank runs between them.
+// tidy drops trailing whitespace and runs of blank lines.
 //
-// Fenced lines pass through untouched. That is what makes the pre handling above
-// mean anything: squeezing a code sample here would undo it one step later.
+// Fenced lines pass through untouched: the whitespace inside a code sample is
+// content, and a code sample is often why the page was fetched.
 func tidy(s string) string {
-	lines := strings.Split(s, "\n")
+	lines := strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
 	kept := make([]string, 0, len(lines))
 	blank := false
 	fenced := false
 	for _, line := range lines {
-		if strings.TrimSpace(line) == "```" {
+		if strings.HasPrefix(strings.TrimSpace(line), "```") {
 			fenced = !fenced
-			kept = append(kept, "```")
+			kept = append(kept, strings.TrimRight(line, " \t"))
 			blank = false
 			continue
 		}
 		if fenced {
-			kept = append(kept, strings.TrimRight(line, " \t\r"))
+			kept = append(kept, strings.TrimRight(line, " \t"))
 			blank = false
 			continue
 		}
-		trimmed := collapse(line)
-		if trimmed == "" {
-			// One blank line separates blocks; more is just page structure.
+		trimmed := strings.TrimRight(line, " \t")
+		if strings.TrimSpace(trimmed) == "" {
 			if !blank && len(kept) > 0 {
 				kept = append(kept, "")
 			}

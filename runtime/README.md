@@ -258,16 +258,28 @@ worse:
   can open. The moment a map paraphrases code it becomes model output claiming
   the authority of an index, and `internal/memory` refuses that everywhere else
   for the same reason.
+- **Git decides what is content.** `git ls-files --cached --others
+  --exclude-standard` is everything the repository keeps, including unstaged work,
+  and excludes everything `.gitignore` excludes. A list of directory names in this
+  package would be wrong in both directions: it drops a `dist/` that some projects
+  commit, and it indexes whatever generated directory it has not heard of. Outside
+  a repository there is nothing to consult, and only there does a built-in list of
+  popular ignores apply.
 - **The cache key is the content hash, not mtime.** A checkout moves mtime
   without changing code, and a restored file changes code without moving it. The
   cost is reading the file to hash it; the benefit is that the map cannot
   describe code that is no longer there. `cacheVersion` covers the other
   direction: when extraction changes, every row is stale while every hash still
   matches, so bumping it discards the index whole.
-- **Regexes, not a parser.** A parser per language means tree-sitter, which means
-  cgo or a vendored grammar per language, in a module whose entire dependency set
-  is a pure-Go SQLite driver and a YAML reader. The honest cost: these find
-  declarations, not call graphs.
+- **Regexes, and this is the weak part.** One pattern set per language, so Go,
+  Python, JS/TS, Rust, Java and Kotlin are read and everything else is listed by
+  path with nothing said about it. A frontend is also `.scss` and `.mjs`; a deploy
+  is `.yaml`. Silence in a map reads as absence from the code, which is why
+  `render.go` prints what it does not cover. The dynamic replacement is a
+  tree-sitter runtime with per-grammar tag queries, which now exists in pure Go
+  ([gotreesitter](https://github.com/odvcencio/gotreesitter), MIT, no cgo, with a
+  language-agnostic `ExtractDefinitionSpans`). Adding languages to the table here
+  is not the fix; it is the same mistake at greater length.
 - **Ranking is a reference count, not PageRank.** The
   [Aider repo map](https://aider.chat/2023/10/22/repomap.html) runs PageRank over
   a symbol graph; this counts how many other files mention each declaration. A
@@ -306,12 +318,31 @@ PDF, DOCX, and the rest are refused by name rather than attempted. Their bytes
 emitted as text cost a great many tokens of mojibake that the agent cannot detect,
 and converting them properly needs an extractor this module has no dependency for.
 
-One implementation note, because it cost a total failure to find. Script and style
-bodies are character data and have to be skipped by searching for their closing
-tag, never by tokenizing what is inside: JavaScript is full of `<`, and a
-tokenizer that reads `if (a < b) {` as a tag can step over the real `</script>`
-and swallow the rest of the document. The first real page this met returned a
-correct title and an empty body, with every unit test green.
+Three libraries do the work, and none of the HTML is parsed here:
+
+| Stage | Library |
+|---|---|
+| Parse to a tree, WHATWG algorithm and its error recovery | [`golang.org/x/net/html`](https://pkg.go.dev/golang.org/x/net/html) |
+| Strip navigation, header, footer, aside | [`codeberg.org/readeck/go-readability/v2`](https://pkg.go.dev/codeberg.org/readeck/go-readability/v2) |
+| Render, with tables and code blocks intact | [`html-to-markdown/v2`](https://pkg.go.dev/github.com/JohannesKaufmann/html-to-markdown/v2) |
+
+All three are pure Go, so `CGO_ENABLED=0` still holds. They cost about 6MB of
+binary, 7.6MB to 13.6MB stripped.
+
+**The first version tokenized HTML by hand and that was a mistake worth
+recording.** HTML is not a regular language: attribute values hold `>`, script
+bodies hold `<`, comments and CDATA nest, and browsers apply an error-correction
+algorithm to all of it. That version passed every test in this package and
+returned an empty body for the first real page it met, because JavaScript is full
+of `<` and one desync swallowed the document. Tables then arrived as `timeout30s`,
+two facts glued into something that reads like one. A spec-compliant parser is not
+a convenience here; it is the difference between working and appearing to work.
+
+Two settings differ from the library defaults. Escaping is off, because nothing
+renders this output — a model reads it, and `a &lt; b` spends three tokens to say
+`<`. The table plugin is on, because it is not on by default. Link targets are
+kept: an agent that cannot see where a link goes has to guess a URL, and the token
+cost of a link is bounded where a guess is not.
 
 Sources, measurements, and the parts deliberately not built:
 [`.ai-agents/references/token-efficiency.md`](../.ai-agents/references/token-efficiency.md).

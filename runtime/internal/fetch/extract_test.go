@@ -54,16 +54,22 @@ func TestExtractHTMLDecodesEntities(t *testing.T) {
 	}
 }
 
-// Link text is content; the href usually is not. A documentation page carries
-// hundreds of URLs, and their text is what the reader is after.
-func TestExtractHTMLKeepsLinkTextWithoutTheURL(t *testing.T) {
+// Links keep their target.
+//
+// An earlier version dropped hrefs to save tokens, and the saving was real: a
+// documentation page carries hundreds of them. It was still the wrong trade. The
+// most common thing to do with a fetched page is follow a link out of it, and an
+// agent that cannot see where a link goes has to guess a URL, which is how a
+// confident wrong answer gets made. Cost is bounded and paid once per link;
+// guessing is unbounded.
+func TestExtractHTMLKeepsLinksAndTheirTargets(t *testing.T) {
 	doc := ExtractHTML([]byte(
-		`<main><p>See <a href="https://example.com/very/long/path?utm_source=x">the guide</a> first.</p></main>`))
+		`<main><p>See <a href="https://example.com/guide">the guide</a> first.</p></main>`))
 	if !strings.Contains(doc.Text, "the guide") {
 		t.Errorf("link text lost:\n%s", doc.Text)
 	}
-	if strings.Contains(doc.Text, "utm_source") {
-		t.Errorf("href kept:\n%s", doc.Text)
+	if !strings.Contains(doc.Text, "https://example.com/guide") {
+		t.Errorf("link target lost, so the page cannot be followed:\n%s", doc.Text)
 	}
 }
 
@@ -142,6 +148,64 @@ func TestExtractHTMLTreatsAnUnclosedScriptAsScript(t *testing.T) {
 	}
 	if strings.Contains(doc.Text, "var a = 1") {
 		t.Errorf("an unclosed script was read as prose:\n%q", doc.Text)
+	}
+}
+
+// Running table cells together is worse than dropping the table. Documentation
+// is full of settings tables, and "timeout30s" reads as a value a reader can act
+// on while being two facts glued together.
+func TestExtractHTMLSeparatesTableCells(t *testing.T) {
+	doc := ExtractHTML([]byte(`<main><table>
+<tr><th>Setting</th><th>Default</th></tr>
+<tr><td>timeout</td><td>30s</td></tr>
+</table></main>`))
+
+	for _, glued := range []string{"SettingDefault", "timeout30s"} {
+		if strings.Contains(doc.Text, glued) {
+			t.Errorf("table cells run together as %q:\n%s", glued, doc.Text)
+		}
+	}
+	for _, want := range []string{"Setting", "Default", "timeout", "30s"} {
+		if !strings.Contains(doc.Text, want) {
+			t.Errorf("table lost %q:\n%s", want, doc.Text)
+		}
+	}
+	// One row per line, so a reader can tell which value belongs to which key.
+	if !strings.Contains(doc.Text, "timeout | 30s") {
+		t.Errorf("a row is not one line:\n%s", doc.Text)
+	}
+}
+
+// An agent cannot tell a literal from prose once the marking is gone, and a
+// flag name is exactly the thing it will copy into a command.
+func TestExtractHTMLMarksInlineCode(t *testing.T) {
+	doc := ExtractHTML([]byte(`<main><p>Pass <code>--budget</code> to raise it.</p></main>`))
+	if !strings.Contains(doc.Text, "`--budget`") {
+		t.Errorf("inline code lost its marking:\n%s", doc.Text)
+	}
+}
+
+// The silent failure that matters most. A client-rendered page has a title, a
+// script, and no prose, so extraction succeeds and returns nothing. Reported as
+// a 99% saving it looks like a win; the agent then answers from an empty
+// document.
+func TestExtractHTMLReportsAPageThatCarriedNoText(t *testing.T) {
+	doc := ExtractHTML([]byte(
+		`<html><head><title>App</title></head><body><div id="root"></div><script>renderApp()</script></body></html>`))
+
+	if doc.Text != "" {
+		t.Fatalf("this fixture is supposed to extract to nothing, got %q", doc.Text)
+	}
+	if !doc.Empty {
+		t.Error("a page that yielded no text does not say so, so a caller cannot tell " +
+			"an empty page from a page it failed to read")
+	}
+}
+
+func TestExtractHTMLDoesNotCryEmptyOnARealPage(t *testing.T) {
+	doc := ExtractHTML([]byte(`<main><p>There is prose here.</p></main>`))
+	if doc.Empty {
+		t.Errorf("a page with content was reported as empty: %q", doc.Text)
 	}
 }
 
