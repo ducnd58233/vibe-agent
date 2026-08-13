@@ -27,6 +27,7 @@ runtime/
     mcp.go                mcp serve
     hook.go               lifecycle hooks for Claude and Cursor
     memory.go             list, confirm, forget. The human side of the store
+    map.go                repository structure, cached by content hash
     doctor.go             workspace health checks
   internal/
     graph/                workflow graph model, loader, static validation
@@ -41,6 +42,7 @@ runtime/
       screen.go           an app rendered: no crash, expected content, not blank
       device.go           adb and simctl, the only shell this verifier needs
     memory/               SQLite store, FTS search, write policy, promotion
+    repomap/              declarations per file, cached by content hash
     mcp/                  stdio server, seven tools
     harness/              hook adapters for Claude and Cursor
       gate.go             the refusals: protected pushes, merges, state writes
@@ -232,6 +234,48 @@ With a query, two orderings are fused with [reciprocal rank fusion](https://dl.a
 Ties are frequent and expected. Two results that swap places between the two rankings score identically, so the tiebreak is recency, then confidence: when two memories say almost the same thing, the usual reason is that one replaced the other.
 
 Keyword search with metadata filters remains the deliberate first choice. Embeddings come only after this is measured as insufficient.
+
+## Orienting without reading
+
+`vibe-agent map` prints what a workspace declares and where. On this repository:
+545 files, roughly 743,000 tokens to read them all, and a complete map of them
+for about 5,000. The default budget of 2,000 buys the 173 files the rest of the
+repository refers to most.
+
+```sh
+vibe-agent map                    # ranked, within the default budget
+vibe-agent map --budget 8000      # the whole repository, if it fits
+vibe-agent map --json             # the full index, ordered by path
+vibe-agent map --refresh          # discard the cache and re-read everything
+```
+
+Four decisions are worth stating, because each had a cheaper option that was
+worse:
+
+- **Nothing here is a summary.** Every entry is a declaration at a line a reader
+  can open. The moment a map paraphrases code it becomes model output claiming
+  the authority of an index, and `internal/memory` refuses that everywhere else
+  for the same reason.
+- **The cache key is the content hash, not mtime.** A checkout moves mtime
+  without changing code, and a restored file changes code without moving it. The
+  cost is reading the file to hash it; the benefit is that the map cannot
+  describe code that is no longer there. `cacheVersion` covers the other
+  direction: when extraction changes, every row is stale while every hash still
+  matches, so bumping it discards the index whole.
+- **Regexes, not a parser.** A parser per language means tree-sitter, which means
+  cgo or a vendored grammar per language, in a module whose entire dependency set
+  is a pure-Go SQLite driver and a YAML reader. The honest cost: these find
+  declarations, not call graphs.
+- **Ranking is a reference count, not PageRank.** The
+  [Aider repo map](https://aider.chat/2023/10/22/repomap.html) runs PageRank over
+  a symbol graph; this counts how many other files mention each declaration. A
+  name more than one file declares is dropped rather than weighted, because every
+  script defines `main` and a mention of it attributes to nothing. Enough to
+  decide what survives a budget, and explainable without eigenvectors.
+
+Test files appear by name with their cases omitted. That a package has tests is
+orientation; thirty function names each restating one assertion is most of a
+budget spent on the part of a repository nobody navigates by.
 
 ## Contract with the schemas
 
