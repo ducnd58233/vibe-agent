@@ -5,7 +5,7 @@
 //
 // Edge conditions are guard names, never expressions. That keeps the loader a
 // parser rather than an interpreter, and lets a typo be a static error.
-package graph
+package domain
 
 import "fmt"
 
@@ -197,6 +197,9 @@ type Graph struct {
 	Metadata   Metadata `yaml:"metadata"`
 	Spec       Spec     `yaml:"spec"`
 
+	// guardsByName is built by Index once the spec is decoded. It stays
+	// unexported so nothing outside can populate it with something the spec
+	// does not contain.
 	guardsByName map[string]Guard
 }
 
@@ -249,4 +252,17 @@ func splitCondition(condition string) (string, bool) {
 		return condition[1:], true
 	}
 	return condition, false
+}
+
+// Index builds the lookups a decoded graph needs.
+//
+// The decoder fills the spec and nothing else, so a graph that has not been
+// indexed answers no guard. This is a method rather than an exported field
+// because the index has to agree with the spec, and the only way to guarantee
+// that is to derive it here.
+func (g *Graph) Index() {
+	g.guardsByName = make(map[string]Guard, len(g.Spec.Guards))
+	for _, guard := range g.Spec.Guards {
+		g.guardsByName[guard.Name] = guard
+	}
 }

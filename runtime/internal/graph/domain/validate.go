@@ -1,4 +1,4 @@
-package graph
+package domain
 
 import (
 	"fmt"
