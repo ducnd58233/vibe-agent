@@ -3,61 +3,12 @@ package fetch
 import (
 	"context"
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch/domain"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 )
-
-// Status is what a caller needs to know before trusting the text.
-//
-// A field rather than prose, because the caller that most needs this is a
-// program deciding whether to answer from the document. Prose on stderr is for
-// the person; this is for the branch.
-type Status string
-
-const (
-	// StatusOK means the page carried prose and nothing suggests it is not the
-	// page that was asked for.
-	StatusOK Status = "ok"
-	// StatusEmpty means the page parsed and held no readable text at all. Almost
-	// always a client-rendered shell.
-	StatusEmpty Status = "empty"
-	// StatusThin means there is text, and too little of it relative to the
-	// markup and script around it to be the content. A navigation bar and a
-	// footer with nothing between them lands here.
-	StatusThin Status = "thin"
-	// StatusAsset means the source was not text and is now a file on disk. Text
-	// holds the path and the description; LocalPath holds the path alone.
-	StatusAsset Status = "asset"
-)
-
-// thinTextRatio is the share of a page's bytes that has to survive extraction
-// before the result is treated as the content.
-//
-// Derived from the shape of the failure rather than tuned: a real article keeps
-// a few percent of a heavy page, and a shell keeps a fraction of one. The
-// threshold sits between, and the consequence of it being wrong in either
-// direction is a warning, never a refusal or a dropped document.
-const thinTextRatio = 0.005
-
-// minRealChars is the floor below which a ratio means nothing. A small page that
-// is genuinely short must not be called thin because its markup is efficient.
-const minRealChars = 400
-
-// classify decides what a caller may do with an extracted document.
-func classify(text string, originalBytes int) Status {
-	if strings.TrimSpace(text) == "" {
-		return StatusEmpty
-	}
-	if len(text) >= minRealChars {
-		return StatusOK
-	}
-	if originalBytes > 0 && float64(len(text))/float64(originalBytes) < thinTextRatio {
-		return StatusThin
-	}
-	return StatusOK
-}
 
 // challengeMarkers are the phrases a bot wall puts on the page it serves instead
 // of the one that was asked for.
@@ -199,4 +150,12 @@ func Advise(ctx context.Context, pageURL, problem string) string {
 		return advice + fmt.Sprintf(", or fetch %s, which this origin publishes as text", alternative)
 	}
 	return advice + ", or look for a server-rendered equivalent such as a raw or API URL"
+}
+
+// classify decides what a caller may do with an extracted document.
+//
+// The rule itself is in the domain package; this is the seam that lets the rest
+// of this package keep calling it by the old name while the module moves.
+func classify(text string, originalBytes int) Status {
+	return domain.Classify(text, originalBytes)
 }
