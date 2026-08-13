@@ -71,7 +71,9 @@ var defaultBranchCache sync.Map
 // `git remote set-head` writes and what clones get for free.
 func repositoryDefaultBranch(workspaceRoot string) string {
 	if cached, ok := defaultBranchCache.Load(workspaceRoot); ok {
-		return cached.(string)
+		if branch, isString := cached.(string); isString {
+			return branch
+		}
 	}
 	branch := readDefaultBranch(workspaceRoot)
 	defaultBranchCache.Store(workspaceRoot, branch)

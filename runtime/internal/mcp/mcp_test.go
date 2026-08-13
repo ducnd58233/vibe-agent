@@ -70,7 +70,7 @@ func toolText(t *testing.T, reply map[string]any) string {
 	if !ok || len(content) == 0 {
 		t.Fatalf("no content in result: %v", result)
 	}
-	return content[0].(map[string]any)["text"].(string)
+	return text(t, object(t, content[0], "content[0]")["text"], "content[0].text")
 }
 
 // Seven tools, deliberately. A long tool list makes routing worse.
@@ -146,11 +146,11 @@ func TestHandshakeAndToolListing(t *testing.T) {
 	if len(replies) != 2 {
 		t.Fatalf("got %d replies, want 2", len(replies))
 	}
-	result := replies[0]["result"].(map[string]any)
+	result := object(t, replies[0]["result"], "replies[0].result")
 	if result["protocolVersion"] != ProtocolVersion {
 		t.Errorf("protocolVersion = %v", result["protocolVersion"])
 	}
-	tools := replies[1]["result"].(map[string]any)["tools"].([]any)
+	tools := list(t, object(t, replies[1]["result"], "replies[1].result")["tools"], "tools")
 	if len(tools) != len(server.Tools) {
 		t.Errorf("listed %d tools, want %d", len(tools), len(server.Tools))
 	}
@@ -279,4 +279,34 @@ func TestBootstrapReportsTheSourceOfTruthOrder(t *testing.T) {
 	if !strings.Contains(text, "model assumptions") {
 		t.Error("bootstrap does not rank model assumptions last")
 	}
+}
+
+// object and list narrow a decoded reply, failing the test rather than
+// panicking, so a protocol change names itself instead of arriving as an
+// interface conversion three frames down.
+func object(t *testing.T, value any, what string) map[string]any {
+	t.Helper()
+	narrowed, ok := value.(map[string]any)
+	if !ok {
+		t.Fatalf("%s is %T, want an object", what, value)
+	}
+	return narrowed
+}
+
+func list(t *testing.T, value any, what string) []any {
+	t.Helper()
+	narrowed, ok := value.([]any)
+	if !ok {
+		t.Fatalf("%s is %T, want a list", what, value)
+	}
+	return narrowed
+}
+
+func text(t *testing.T, value any, what string) string {
+	t.Helper()
+	narrowed, ok := value.(string)
+	if !ok {
+		t.Fatalf("%s is %T, want a string", what, value)
+	}
+	return narrowed
 }
