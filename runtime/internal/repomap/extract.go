@@ -36,11 +36,11 @@ const binarySniff = 1024
 
 // rule is one language's pattern for one kind of declaration.
 //
-// Regexes rather than a parser, deliberately. A parser per language means
-// tree-sitter, which means cgo or a vendored grammar per language, in a module
-// whose entire dependency set is one pure-Go SQLite driver and a YAML reader.
-// The tradeoff is real and it is the shallow half: these find declarations, not
-// call graphs, and a declaration is what a map needs to name.
+// Regexes, and that is a known weakness rather than a defended choice. One
+// pattern set per language means every language not written here is silent, and
+// silence in a map reads as absence from the code. The dynamic answer is a
+// tree-sitter runtime with per-grammar tag queries, which now exists in pure Go;
+// until that lands, the coverage note in render.go is what keeps this honest.
 type rule struct {
 	pattern *regexp.Regexp
 	kind    string

@@ -72,6 +72,18 @@ func fetchCommand(args []string) error {
 	if doc.Title != "" {
 		fmt.Printf("# %s\n\n", doc.Title)
 	}
+	if doc.Empty {
+		// Said on stderr and stated plainly, because the alternative is an agent
+		// answering from a blank page while the summary line congratulates it on
+		// a 99% saving. No AI crawler runs JavaScript, this one included, so the
+		// fix is a tool that drives a real browser rather than a retry here.
+		fmt.Fprintf(os.Stderr,
+			"vibe-agent: %s parsed cleanly and carried no readable text. "+
+				"That usually means the page builds its content with JavaScript, "+
+				"which this does not run. Use a browser-driving tool to read it, "+
+				"or find a server-rendered equivalent such as a docs or raw URL. "+
+				"Do not answer from this document.\n", source)
+	}
 	clipped, omitted := fetch.Clip(doc.Text, *budget)
 	fmt.Println(clipped)
 

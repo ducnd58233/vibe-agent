@@ -176,6 +176,18 @@ func request(url string, options Options) ([]byte, bool, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		// 403 and 429 from a plain GET are usually a bot check rather than a
+		// missing page, and the distinction changes what to do next. Naming it
+		// is the whole of the help offered: working around a bot check is not
+		// this tool's business, and a browser-driving tool is the honest route
+		// to a page whose owner wants a browser.
+		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+			return nil, false, fmt.Errorf(
+				"fetch %s: %d %s. A plain request was refused, which usually means a bot "+
+					"check or a rate limit. Read it with a browser-driving tool, or look for "+
+					"a server-rendered equivalent such as a raw or API URL",
+				url, resp.StatusCode, http.StatusText(resp.StatusCode))
+		}
 		return nil, false, fmt.Errorf("fetch %s: %d %s", url, resp.StatusCode,
 			http.StatusText(resp.StatusCode))
 	}

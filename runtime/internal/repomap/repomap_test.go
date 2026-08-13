@@ -2,6 +2,7 @@ package repomap
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,6 +18,16 @@ func write(t *testing.T, root, relative, body string) string {
 		t.Fatalf("write %s: %v", relative, err)
 	}
 	return path
+}
+
+// gitInit makes a directory a repository, so discovery can ask git what the
+// repository keeps rather than guessing from directory names.
+func gitInit(t *testing.T, root string) {
+	t.Helper()
+	cmd := exec.Command("git", "init", "--quiet", root)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Skipf("git unavailable, so gitignore behaviour cannot be tested: %v\n%s", err, out)
+	}
 }
 
 func build(t *testing.T, root string) Result {
@@ -134,22 +145,58 @@ func TestABumpedCacheVersionDiscardsEveryRow(t *testing.T) {
 	}
 }
 
-// Indexing .git or node_modules would bury the repository's own code under
-// vendored code and cost most of the budget doing it.
-func TestNoiseDirectoriesAreSkipped(t *testing.T) {
+// The repository's own .gitignore decides what is noise, not a list in this
+// package. A hardcoded list is wrong in both directions: it skips a dist/ that
+// some repositories commit, and it indexes a generated directory it has never
+// heard of.
+func TestGitignoreDecidesWhatIsIndexed(t *testing.T) {
 	root := t.TempDir()
+	gitInit(t, root)
+	write(t, root, ".gitignore", "node_modules/\n/tmp/\n*.log\n.env\n")
 	write(t, root, "api/orders.go", "package api\n\nfunc CreateOrder() {}\n")
 	write(t, root, "node_modules/left-pad/index.js", "export function leftPad() {}\n")
-	write(t, root, ".git/hooks/pre-commit.py", "def main(): pass\n")
 	write(t, root, "tmp/demo/events.ndjson", "{}\n")
+	write(t, root, "build.log", "noise\n")
+	write(t, root, ".env", "API_KEY=x\n")
+	// Not ignored, and a hardcoded skip list would have dropped it.
+	write(t, root, "dist/bundle.mjs", "export function boot() {}\n")
 
 	result := build(t, root)
 
-	for _, file := range result.Files {
-		path := filepath.ToSlash(file.Path)
-		if strings.HasPrefix(path, "node_modules/") || strings.HasPrefix(path, ".git/") ||
-			strings.HasPrefix(path, "tmp/") {
-			t.Errorf("%s should not be indexed", path)
+	for _, gone := range []string{"node_modules/left-pad/index.js", "tmp/demo/events.ndjson",
+		"build.log", ".env"} {
+		if find(result, gone) != nil {
+			t.Errorf("%s is gitignored and should not be indexed", gone)
+		}
+	}
+	if find(result, "dist/bundle.mjs") == nil {
+		t.Error("dist/bundle.mjs is tracked and was dropped by a list this package should not have")
+	}
+	if find(result, ".git/config") != nil {
+		t.Error(".git is never content")
+	}
+}
+
+// Everything the repository keeps belongs in the map, whether or not this
+// package can read declarations out of it. A frontend is .mjs and .scss and
+// .yaml, and an agent told those files do not exist will go looking elsewhere.
+func TestEveryTrackedFileAppears(t *testing.T) {
+	root := t.TempDir()
+	gitInit(t, root)
+	paths := []string{
+		"web/app.mjs", "web/theme.scss", "web/styles.css",
+		"deploy/values.yaml", "docs/guide.md", "scripts/release.sh",
+		"db/schema.sql", "Dockerfile", "config.toml",
+	}
+	for _, p := range paths {
+		write(t, root, p, "placeholder\n")
+	}
+
+	result := build(t, root)
+
+	for _, p := range paths {
+		if find(result, p) == nil {
+			t.Errorf("%s is missing from the map", p)
 		}
 	}
 }
@@ -281,6 +328,29 @@ func TestTestFilesAppearByNameWithoutTheirCases(t *testing.T) {
 	}
 }
 
+// The map's silences are its most dangerous property. An unexported function, a
+// test case, and a shell script all appear the same way as something that does
+// not exist, and an agent that searched the map and found nothing will say so.
+// Stating the coverage is what turns "absent" back into "not indexed".
+func TestRenderStatesWhatItDoesNotIndex(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "api/orders.go", "package api\n\nfunc CreateOrder() {}\n\nfunc helper() {}\n")
+	write(t, root, "scripts/deploy.sh", "deploy() { echo hi; }\n")
+
+	rendered := Render(build(t, root), 4000)
+
+	for _, want := range []string{"exported", "test"} {
+		if !strings.Contains(strings.ToLower(rendered), want) {
+			t.Errorf("the map does not say it omits %s declarations:\n%s", want, rendered)
+		}
+	}
+	// The languages it can read have to be named, or a Ruby file with no symbols
+	// reads as a Ruby file with no code.
+	if !strings.Contains(rendered, "Go") || !strings.Contains(rendered, "Python") {
+		t.Errorf("the map does not name the languages it can read:\n%s", rendered)
+	}
+}
+
 // A budget that is quietly exceeded is not a budget. A budget that quietly
 // drops files is worse, so the render says what it left out.
 func TestRenderRespectsTheBudgetAndReportsWhatItDropped(t *testing.T) {
@@ -291,13 +361,31 @@ func TestRenderRespectsTheBudgetAndReportsWhatItDropped(t *testing.T) {
 	}
 	result := build(t, root)
 
-	rendered := Render(result, 40)
-	if estimateTokens(rendered) > 40 {
-		t.Errorf("render is %d tokens, over the 40 asked for:\n%s",
-			estimateTokens(rendered), rendered)
+	// Above the footer's own cost, and below the footer plus all eight files, so
+	// the clip is what is being measured rather than whether anything fits.
+	const budget = 80
+	rendered := Render(result, budget)
+	if estimateTokens(rendered) > budget {
+		t.Errorf("render is %d tokens, over the %d asked for:\n%s",
+			estimateTokens(rendered), budget, rendered)
 	}
 	if !strings.Contains(rendered, "omitted") {
 		t.Errorf("a truncated map does not say so:\n%s", rendered)
+	}
+}
+
+// The footer outranks the listing. A budget too small to hold anything must
+// still say what the map does not cover, because that sentence is what stops a
+// reader concluding something is missing from the code. Spending it on two more
+// filenames buys nothing and costs the only safeguard there is.
+func TestRenderKeepsTheCoverageNoteWhenTheBudgetIsTiny(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "api/orders.go", "package api\n\nfunc CreateOrder() {}\n")
+
+	rendered := Render(build(t, root), 1)
+
+	if !strings.Contains(rendered, "Not indexed") {
+		t.Errorf("a budget of 1 dropped the coverage note:\n%s", rendered)
 	}
 }
 

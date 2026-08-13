@@ -25,10 +25,17 @@ func estimateTokens(text string) int {
 // binds, the remainder is reported as a count rather than dropped in silence: an
 // agent that knows 200 files were omitted asks for a bigger budget, and one that
 // does not assumes it has seen the repository.
+//
+// The budget bounds the listing, and the footer always prints. That order is
+// deliberate: the footer is what stops a reader drawing a conclusion from what
+// is missing, so clipping it to save tokens would spend the safety to buy two
+// more filenames. A budget below the footer's own size therefore yields the
+// footer alone, which is the honest output for a budget that cannot hold a map.
 func Render(result Result, budget int) string {
 	var out strings.Builder
-	// Reserve room for the footer, which has to fit whatever else happens.
-	reserve := 24
+	// Everything the footer will print, so the listing stops early enough to
+	// leave room for it rather than overshooting the budget by its size.
+	reserve := estimateTokens(coverage) + 24
 	var written int
 
 	// Group by directory while keeping the rank order of first appearance, so
@@ -79,8 +86,21 @@ func Render(result Result, budget int) string {
 	}
 	fmt.Fprintf(&out, "\n%d files: %d read, %d from cache\n",
 		len(result.Files), result.Read, result.Cached)
+	out.WriteString(coverage)
 	return out.String()
 }
+
+// coverage states what the map does not contain.
+//
+// Its silences are its most dangerous property, and they are invisible from the
+// output alone: an unexported function, a test case, a shell function, and
+// something that genuinely does not exist all appear identically, which is to
+// say not at all. An agent that searches the map and finds nothing will report
+// nothing, confidently. Naming the limits turns "absent" back into "not
+// indexed", which is a different claim and the true one.
+const coverage = "\nNot indexed: unexported declarations, test cases, and languages " +
+	"other than Go, Python, JS/TS, Rust, Java, Kotlin. Absent here is not absent " +
+	"from the code; grep for anything this does not cover.\n"
 
 // fileLine is one file's row: its name, then what it declares.
 func fileLine(file File) string {
