@@ -29,7 +29,6 @@ Usage:
   vibe-agent verify --slug <slug> [--dry-run]
   vibe-agent checkpoint --slug <slug> --check <name> --source <source> [--passed|--failed|--skipped]
   vibe-agent graph validate [--graph <id>]
-  vibe-agent map [--budget <tokens>] [--json] [--refresh]
   vibe-agent fetch <url|path> [--budget <tokens>] [--json] [--refresh]
   vibe-agent mcp serve
   vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|post-tool-use-failure|stop|subagent-stop> [--client claude|cursor]
@@ -43,10 +42,6 @@ Usage:
 Run state is written to tmp/<slug>/manifest.json with an append-only log at
 tmp/<slug>/events.ndjson, both under the workspace root and both gitignored.
 
-"map" prints what the workspace declares and where, so an agent can orient
-without reading it. The index is cached in .agent-state/repomap.db keyed by
-content hash, so a second run re-reads only the files that changed. Nothing in
-it is a summary: every entry is a declaration at a named line.
 
 "fetch" reads a URL or a file and prints the text without the markup, scripts,
 and navigation that are most of a page. Documents are cached under
@@ -124,8 +119,6 @@ func run(args []string) error {
 		return verifyCommand(args[1:])
 	case "graph":
 		return graphCommand(args[1:])
-	case "map":
-		return mapCommand(args[1:])
 	case "fetch":
 		return fetchCommand(args[1:])
 	case "mcp":
