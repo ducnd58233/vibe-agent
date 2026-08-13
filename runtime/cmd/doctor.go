@@ -33,7 +33,10 @@ func doctorCommand(args []string) error {
 	fmt.Printf("  toolkit   %s\n\n", toolkitRoot)
 
 	checkGraphs(report, toolkitRoot)
-	checkHookWiring(report, toolkitRoot)
+	// The workspace, not the toolkit. A host reads hooks from the project
+	// directory it was opened on, so a vendored toolkit's own settings.json is
+	// wiring for opening the toolkit itself and reaches nothing here.
+	checkHookWiring(report, workspaceRoot)
 	checkCheckPlan(report, workspaceRoot, toolkitRoot)
 	checkMemory(report, workspaceRoot)
 	checkRunState(report, workspaceRoot)

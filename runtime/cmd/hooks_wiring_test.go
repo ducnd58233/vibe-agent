@@ -193,6 +193,56 @@ func TestWiringNeitherHalfIsNotADoctorFailure(t *testing.T) {
 	}
 }
 
+// A host reads hooks from the project directory it was opened on, so the
+// workspace is the only place wiring can take effect. A vendored toolkit ships
+// its own .claude/settings.json for when it is opened standalone, and reading
+// that one instead reports a workspace as wired when no hook there can fire.
+//
+// This was live: a consumer repo with five runs, no workspace hook config, and a
+// green doctor, while every tool call went unjournalled and memory.db stayed
+// empty for months.
+func TestAVendoredToolkitsOwnConfigIsNotTheWorkspaceWiring(t *testing.T) {
+	workspace := t.TempDir()
+	writeConfig(t, workspace, filepath.Join(".vibe-agent", ".claude", "settings.json"), `{
+  "hooks": {
+    "PostToolUse": [{"hooks": [{"command": "vibe-agent hook post-tool-use"}]}],
+    "PostToolUseFailure": [{"hooks": [{"command": "vibe-agent hook post-tool-use-failure"}]}]
+  }
+}`)
+	// A run in flight is what makes the gap actionable rather than a preference:
+	// the loop is being driven and nothing is recording it.
+	writeConfig(t, workspace, filepath.Join("tmp", "demo", "manifest.json"), `{"slug":"demo"}`)
+	t.Setenv("PATH", t.TempDir())
+
+	report := &diagnostics{}
+	checkHookWiring(report, workspace)
+
+	if report.problems == 0 {
+		t.Error("a workspace with runs and no hook config of its own was reported as fine; " +
+			"the toolkit's vendored config was read as though the host would see it")
+	}
+}
+
+// Without runs it stays a preference. A repository that mounts the toolkit for
+// its skills and commands and wants no control plane is not misconfigured.
+func TestAWorkspaceWithNoRunsAndNoHooksIsNotADoctorFailure(t *testing.T) {
+	workspace := t.TempDir()
+	writeConfig(t, workspace, filepath.Join(".vibe-agent", ".claude", "settings.json"), `{
+  "hooks": {
+    "PostToolUse": [{"hooks": [{"command": "vibe-agent hook post-tool-use"}]}]
+  }
+}`)
+	t.Setenv("PATH", t.TempDir())
+
+	report := &diagnostics{}
+	checkHookWiring(report, workspace)
+
+	if report.problems != 0 {
+		t.Errorf("a workspace that simply does not use the control plane reported %d problems",
+			report.problems)
+	}
+}
+
 // The other half. A config wiring an event no build implements is a real defect
 // whether or not anything is installed, because no install will fix it.
 func TestAnUnimplementedEventIsADoctorFailure(t *testing.T) {

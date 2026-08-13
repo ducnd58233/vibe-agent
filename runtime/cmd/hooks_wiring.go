@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/harness"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
 )
 
 // This file answers one question doctor could not: is the binary that will
@@ -30,7 +31,14 @@ import (
 // diff that against what the configs call for.
 
 // hookConfigs are the host files that register hook commands, relative to the
-// toolkit root.
+// workspace root.
+//
+// The workspace, because that is the directory a host is opened on and the only
+// one whose config it reads. A repository that mounts the toolkit at
+// .vibe-agent/ gets that copy's settings.json too, and it is wiring for opening
+// the toolkit standalone: nothing in it fires for the repository around it.
+// Checking the toolkit's copy reported a workspace as wired while every hook in
+// it was dead.
 var hookConfigs = []string{
 	filepath.Join(".claude", "settings.json"),
 	filepath.Join(".cursor", "hooks.json"),
@@ -172,9 +180,20 @@ func pathBinaryEvents(ctx context.Context) (path string, events []string, err er
 // fixes. Against this build: a config naming an event no version implements is a
 // typo. Against the binary on PATH: a config ahead of the install is a missing
 // `make install`.
-func checkHookWiring(report *diagnostics, toolkitRoot string) {
-	registered, err := registeredEvents(toolkitRoot)
+func checkHookWiring(report *diagnostics, workspaceRoot string) {
+	registered, err := registeredEvents(workspaceRoot)
 	if err != nil {
+		// No wiring is a preference until the workspace has runs. Then it is a
+		// half-connected control plane: the loop is being driven through the CLI
+		// while nothing journals a tool call, and the symptom is a memory
+		// database that stays empty however long the work goes on.
+		if hasRunState(workspaceRoot) {
+			report.check("the workspace wires the control plane it is running", false,
+				fmt.Sprintf("%v, yet tmp/ holds run state. Runs advance and nothing records "+
+					"what the session did, so memory stays empty. Add the hook blocks from the "+
+					"toolkit's %s to the one in this workspace", err, hookConfigs[0]))
+			return
+		}
 		fmt.Printf("  note  %v\n", err)
 		return
 	}
@@ -236,6 +255,27 @@ func checkHookWiring(report *diagnostics, toolkitRoot string) {
 					binary, installed, built))
 		}
 	}
+}
+
+// hasRunState reports whether anything has ever started a run here.
+//
+// Presence of a manifest, not its status. A finished run is still evidence that
+// this workspace drives the control plane and therefore wants the hooks that
+// record it.
+func hasRunState(workspaceRoot string) bool {
+	entries, err := os.ReadDir(filepath.Join(workspaceRoot, "tmp"))
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if _, err := os.Stat(state.ManifestPath(workspaceRoot, entry.Name())); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // checkOutcomePair reports a config that registers one half of a tool call's
