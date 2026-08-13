@@ -1,7 +1,6 @@
 package verifier
 
 import (
-	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -72,7 +71,7 @@ func attachedDevice(t *testing.T) string {
 func TestScreenVerifierAgainstAnAttachedDevice(t *testing.T) {
 	serial := attachedDevice(t)
 	device := android{serial: serial, dir: t.TempDir()}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tree, err := device.ViewHierarchy(ctx)
 	if err != nil {

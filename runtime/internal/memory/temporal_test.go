@@ -1,7 +1,6 @@
 package memory
 
 import (
-	"context"
 	"database/sql"
 	"path/filepath"
 	"testing"
@@ -14,7 +13,7 @@ func day(n int) time.Time {
 
 func storeWithMemory(t *testing.T, content string, at time.Time) (*Store, Record) {
 	t.Helper()
-	store, err := OpenAt(context.Background(), ":memory:")
+	store, err := OpenAt(t.Context(), ":memory:")
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -26,7 +25,7 @@ func storeWithMemory(t *testing.T, content string, at time.Time) (*Store, Record
 
 func confirmMemory(t *testing.T, store *Store, content string, at time.Time) Record {
 	t.Helper()
-	ctx := context.Background()
+	ctx := t.Context()
 	stored, decision, err := store.Propose(ctx, Record{
 		WorkspaceID: "ws",
 		Kind:        KindSemantic,
@@ -87,13 +86,13 @@ func TestADatabaseFromBeforeTheIntervalStillOpens(t *testing.T) {
 	}
 	_ = old.Close()
 
-	store, err := OpenAt(context.Background(), path)
+	store, err := OpenAt(t.Context(), path)
 	if err != nil {
 		t.Fatalf("opening a database from an earlier version failed: %v", err)
 	}
 	defer func() { _ = store.Close() }()
 
-	hits, err := store.Search(context.Background(), Query{WorkspaceID: "ws"})
+	hits, err := store.Search(t.Context(), Query{WorkspaceID: "ws"})
 	if err != nil {
 		t.Fatalf("search a migrated database: %v", err)
 	}
@@ -121,7 +120,7 @@ func TestAConfirmedMemoryIsValidFromWhenItWasRecorded(t *testing.T) {
 // true is closed, not deleted, so the record of having believed it survives.
 func TestInvalidateClosesAMemoryInsteadOfDeletingIt(t *testing.T) {
 	store, record := storeWithMemory(t, "the api listens on port 8080", day(1))
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if err := store.Invalidate(ctx, record.ID, day(5)); err != nil {
 		t.Fatalf("invalidate: %v", err)
@@ -141,7 +140,7 @@ func TestInvalidateClosesAMemoryInsteadOfDeletingIt(t *testing.T) {
 
 func TestSearchSkipsAnInvalidatedMemory(t *testing.T) {
 	store, record := storeWithMemory(t, "the api listens on port 8080", day(1))
-	ctx := context.Background()
+	ctx := t.Context()
 	if err := store.Invalidate(ctx, record.ID, day(5)); err != nil {
 		t.Fatalf("invalidate: %v", err)
 	}
@@ -159,7 +158,7 @@ func TestSearchSkipsAnInvalidatedMemory(t *testing.T) {
 // answer what it believed at a past moment.
 func TestSearchAsOfReturnsWhatWasBelievedThen(t *testing.T) {
 	store, record := storeWithMemory(t, "the api listens on port 8080", day(1))
-	ctx := context.Background()
+	ctx := t.Context()
 	if err := store.Invalidate(ctx, record.ID, day(5)); err != nil {
 		t.Fatalf("invalidate: %v", err)
 	}
@@ -186,7 +185,7 @@ func TestSearchAsOfReturnsWhatWasBelievedThen(t *testing.T) {
 // retrievable.
 func TestConfirmingASupersedingMemoryClosesTheOldOne(t *testing.T) {
 	store, original := storeWithMemory(t, "the api listens on port 8080", day(1))
-	ctx := context.Background()
+	ctx := t.Context()
 
 	replacement, decision, err := store.Propose(ctx, Record{
 		WorkspaceID:  "ws",
@@ -227,7 +226,7 @@ func TestConfirmingASupersedingMemoryClosesTheOldOne(t *testing.T) {
 // slightly less well. Fusing the two ranked lists is what fixes that, and it
 // needs no weights to tune.
 func TestSearchFusesKeywordRankWithRecency(t *testing.T) {
-	store, err := OpenAt(context.Background(), ":memory:")
+	store, err := OpenAt(t.Context(), ":memory:")
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -236,7 +235,7 @@ func TestSearchFusesKeywordRankWithRecency(t *testing.T) {
 	confirmMemory(t, store, "the payment service retries webhook delivery", day(1))
 	confirmMemory(t, store, "the payment service now retries webhook delivery with backoff", day(20))
 
-	hits, err := store.Search(context.Background(), Query{
+	hits, err := store.Search(t.Context(), Query{
 		WorkspaceID: "ws", Text: "payment webhook retries",
 	})
 	if err != nil {
@@ -251,7 +250,7 @@ func TestSearchFusesKeywordRankWithRecency(t *testing.T) {
 }
 
 func TestSearchStillHonoursTheLimitAfterFusing(t *testing.T) {
-	store, err := OpenAt(context.Background(), ":memory:")
+	store, err := OpenAt(t.Context(), ":memory:")
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -265,7 +264,7 @@ func TestSearchStillHonoursTheLimitAfterFusing(t *testing.T) {
 		confirmMemory(t, store, content, day(1))
 	}
 
-	hits, err := store.Search(context.Background(), Query{
+	hits, err := store.Search(t.Context(), Query{
 		WorkspaceID: "ws", Text: "queue consumer offsets", Limit: 2,
 	})
 	if err != nil {

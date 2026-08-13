@@ -2,7 +2,6 @@ package harness
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -42,13 +41,13 @@ func jsonPath(root string, parts ...string) string {
 // have: proposed against evidence, then confirmed by a command result.
 func seedMemory(t *testing.T, root, content string) {
 	t.Helper()
-	store, err := memory.Open(context.Background(), root)
+	store, err := memory.Open(t.Context(), root)
 	if err != nil {
 		t.Fatalf("open memory: %v", err)
 	}
 	defer func() { _ = store.Close() }()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	record, decision, err := store.Propose(ctx, memory.Record{
 		WorkspaceID: root,
 		Kind:        memory.KindSemantic,
@@ -336,12 +335,12 @@ func TestPostToolUseRecordsAFailedCommand(t *testing.T) {
 	root := workspaceWithRun(t)
 	failingCommand(t, root)
 
-	store, err := memory.Open(context.Background(), root)
+	store, err := memory.Open(t.Context(), root)
 	if err != nil {
 		t.Fatalf("open memory: %v", err)
 	}
 	defer func() { _ = store.Close() }()
-	records, err := store.List(context.Background(), root)
+	records, err := store.List(t.Context(), root)
 	if err != nil {
 		t.Fatalf("list memories: %v", err)
 	}
