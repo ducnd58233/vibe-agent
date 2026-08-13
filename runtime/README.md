@@ -173,14 +173,16 @@ An MCP tool call happens because the model chose to make it. A hook happens beca
 | `session-start` | Injects rules, active runs, and stored memory. Steers a lone running goal through `initialUserMessage` | no |
 | `user-prompt-submit` | Injects the current node and the memories matching the prompt, on every prompt | no |
 | `pre-tool-use` | Refuses a push to a protected branch, `gh pr merge`, and any write to a run's manifest or event log | **yes** |
-| `post-tool-use` | Appends a `tool_use` entry to the run's journal, and proposes a memory when a command reported a non-zero exit | no |
+| `post-tool-use` | Appends a `tool_use` entry to the run's journal. Success only; a host fires this or the failure event, never both | no |
+| `post-tool-use-failure` | The same entry marked `failed`, plus a confirmed memory citing what the host printed | no |
 | `stop`, `subagent-stop` | Refuses to end the turn while a run sits mid-graph with nothing recorded | **yes** |
 
 Three constraints hold this together:
 
 - **`stop_hook_active` is the loop guard.** A blocking Stop hook that ignores it blocks its own continuation forever. `stop` blocks at most once per turn, and never for a run awaiting a human or one past `MaxBlockerAttempts`, because neither can be moved by another model turn.
-- **Reads never create state.** `recall` opens the memory database only if it already exists, so a hook firing in an unrelated workspace leaves nothing behind. Only the `post-tool-use` write path creates it.
-- **An outcome is read, never inferred.** `post-tool-use` proposes a memory only when the host reported a structured exit code. Parsing a result string for the word "error" would put a guess where this design accepts only evidence.
+- **Reads never create state.** `recall` opens the memory database only if it already exists, so a hook firing in an unrelated workspace leaves nothing behind. Only the `post-tool-use-failure` write path creates it.
+- **An outcome is read, never inferred.** The host decides that a call failed, by firing `post-tool-use-failure` or by reporting a non-zero exit code, and either is an observation. Claude Code supplies no exit code in any field, so its memories say a command "fails" where Cursor's say it "exits 2". Quoting the host's own error text keeps the number legible without this package claiming to have parsed one; searching a result string for the word "error" would put a guess where this design accepts only evidence.
+- **Both halves of an outcome are wired, or neither.** `doctor` fails a config registering `post-tool-use` alone. That config does not record less, it records the wrong half: every failure, which is what the journal exists for, is dropped in silence.
 
 ## Who confirms a memory
 
@@ -192,7 +194,9 @@ vibe-agent memory confirm --id <id>     # a person vouches: source human_event
 vibe-agent memory forget  --id <id>     # retract one that turned out wrong
 ```
 
-The other path is `post-tool-use`, which confirms from the exit code the host reported, citing the event-log entry it just wrote. Those memories carry an expiry of `FailureMemoryLife`, because "this command fails" is true about a moment and would otherwise become the stale memory this design keeps warning about.
+The other path is `post-tool-use-failure`, which confirms from the host's own report that the call failed, citing the event-log entry it just wrote. Those memories carry an expiry of `FailureMemoryLife`, because "this command fails" is true about a moment and would otherwise become the stale memory this design keeps warning about.
+
+This path was dead for the whole of the runtime's first life, and the shape of the failure is worth keeping: the journal read `tool_response` for an exit code, Claude Code sends none in any field, and every failing call went to `PostToolUseFailure`, an event no config registered and no build implemented. Unit tests passed against an invented payload, `doctor` reported the database opening, and `memory.db` stayed empty in every workspace. A green suite over a fixture nobody captured from the real host is the failure mode this whole package is otherwise built to prevent.
 
 `forget` closes the memory's validity interval rather than flipping a flag, so the store still knows when the fact stopped being true. It is one way: a retracted memory is re-earned with fresh evidence rather than toggled back on.
 ## Recording a checkpoint twice

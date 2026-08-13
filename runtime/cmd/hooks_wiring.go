@@ -197,6 +197,8 @@ func checkHookWiring(report *diagnostics, toolkitRoot string) {
 		"no handler for "+strings.Join(unimplemented, "; ")+
 			"; either the event name is wrong or this build is older than the config")
 
+	checkOutcomePair(report, registered)
+
 	// The staleness comparison. Its own failure is reported rather than skipped:
 	// "could not ask" is not "the binary is fine". The one exception is an absent
 	// binary, which the design supports.
@@ -234,6 +236,32 @@ func checkHookWiring(report *diagnostics, toolkitRoot string) {
 					binary, installed, built))
 		}
 	}
+}
+
+// checkOutcomePair reports a config that registers one half of a tool call's
+// outcome and not the other.
+//
+// Wiring a subset of events is a legitimate choice, so doctor does not ask for
+// all of them. These two are not a subset of each other: a host fires exactly
+// one per tool call, post-tool-use on success and post-tool-use-failure on
+// failure. A config naming only the first therefore does not record less, it
+// records the wrong half. The journal exists to remember what broke, and what
+// broke is precisely what it never saw.
+//
+// This is the check that would have caught the defect it was written for. The
+// journal ran for months against a config with no failure hook, every test
+// green, because nothing compared the pair.
+func checkOutcomePair(report *diagnostics, registered map[string][]string) {
+	success, hasSuccess := registered[string(harness.EventPostToolUse)]
+	_, hasFailure := registered[string(harness.EventPostToolUseFailure)]
+	if !hasSuccess || hasFailure {
+		return
+	}
+	report.check("tool-call outcomes are wired in both halves", false, fmt.Sprintf(
+		"%s registers %s but not %s, so every successful tool call is journalled "+
+			"and every failed one is dropped; add %s alongside it",
+		strings.Join(success, ", "), harness.EventPostToolUse,
+		harness.EventPostToolUseFailure, harness.EventPostToolUseFailure))
 }
 
 func buildVersion() string { return version }

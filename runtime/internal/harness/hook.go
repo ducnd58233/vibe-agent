@@ -56,6 +56,18 @@ const (
 	// EventPostToolUse records what a tool actually did. It never refuses:
 	// the work already happened by the time it fires.
 	EventPostToolUse Event = "post-tool-use"
+	// EventPostToolUseFailure records a tool call the host reported as failed.
+	//
+	// It is a separate event because Claude Code fires exactly one of the two,
+	// and PostToolUse is the success half. Registering only that one is what
+	// made this control plane blind to every failing command: the journal's
+	// entire purpose is to remember what broke, and the break was the one
+	// outcome that never arrived.
+	//
+	// The event name is itself the evidence. A host that routes a call here has
+	// observed the failure, which is the same provenance as an exit code and a
+	// world away from reading "error" out of result text.
+	EventPostToolUseFailure Event = "post-tool-use-failure"
 )
 
 // Events is every event this build handles.
@@ -75,6 +87,7 @@ func Events() []Event {
 		EventUserPromptSubmit,
 		EventPreToolUse,
 		EventPostToolUse,
+		EventPostToolUseFailure,
 		EventStop,
 		EventSubagentStop,
 	}
@@ -150,6 +163,20 @@ type payload struct {
 	// ToolResponse stays raw: its shape differs per tool and per host version,
 	// and a shape this package does not recognise must not be an error.
 	ToolResponse json.RawMessage `json:"tool_response"`
+
+	// Error is what a failing tool printed. Claude Code sends no tool_response
+	// at all on PostToolUseFailure, so this is the only account of what went
+	// wrong, and it is where the exit code appears: "Exit code 2\nundefined: Foo".
+	//
+	// The number is deliberately not parsed out of it. A field this package can
+	// read is evidence; a number recovered from a sentence is a guess that would
+	// stay confident after the host reworded it. Quoting the line keeps the
+	// figure legible to a human without anyone claiming to have measured it.
+	Error string `json:"error"`
+
+	// IsInterrupt is Claude's top-level cancellation flag. Cursor puts the same
+	// meaning inside the response as "interrupted", so both are read.
+	IsInterrupt bool `json:"is_interrupt"`
 }
 
 // shellCommand returns whichever field the host filled in.
@@ -216,7 +243,9 @@ func Run(req Request, out io.Writer) error {
 	case EventPreToolUse:
 		return gate(req, body, out)
 	case EventPostToolUse:
-		return journal(req, body)
+		return journal(req, body, false)
+	case EventPostToolUseFailure:
+		return journal(req, body, true)
 	default:
 		// Naming the events this build does handle turns the message into a
 		// diagnosis. The original text said only that the event was unknown, which

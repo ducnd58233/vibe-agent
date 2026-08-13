@@ -24,7 +24,7 @@ Lookup table for hook scripts in this folder. **After you add, rename, or remove
 
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md) - document stdin/stdout JSON and wiring in [`.cursor/hooks.json`](../../.cursor/hooks.json) / [`.claude/settings.json`](../../.claude/settings.json).
 
-**Not in this folder:** the optional runtime binary supplies six more hooks as `vibe-agent hook <event>`, wired in the same two config files. Two of them **refuse**, and no script in this folder does:
+**Not in this folder:** the optional runtime binary supplies seven more hooks as `vibe-agent hook <event>`, wired in the same two config files. Two of them **refuse**, and no script in this folder does:
 
 - `pre-tool-use` exits 2 on a push to `main`/`master`, on a `gh pr merge` while no active run has recorded `merge_approved`, on any write to a run's own `manifest.json` or `events.ndjson`, and on any write carrying a **live credential literal** (private-key block, `gh*_`/`sk-`/`xox*-` provider token, AWS access key or secret key). The credential guard is tier 2 of the pair whose tier 1 is [`sensitive-data-guard.py`](sensitive-data-guard.py): this side refuses the shapes with no honest use, that side warns on the shapes that sometimes have one. Unlike the other three refusals it does **not** require an active run, since a key entering source is the same event either way. Per-line exemption via the greppable `vibe-agent: allow-credential-literal`.
 - `stop` returns `decision: "block"` while a run sits mid-graph with nothing recorded, at most once per turn, and never for a run awaiting a human.
