@@ -50,7 +50,7 @@ func confirmMemory(t *testing.T, store *Store, content string, at time.Time) Rec
 func contents(hits []Hit) []string {
 	out := make([]string, 0, len(hits))
 	for _, hit := range hits {
-		out = append(out, hit.Record.Content)
+		out = append(out, hit.Content)
 	}
 	return out
 }
@@ -101,8 +101,8 @@ func TestADatabaseFromBeforeTheIntervalStillOpens(t *testing.T) {
 	}
 	// Backfilled from created_at: the closest honest answer available for a row
 	// recorded before anyone was tracking when its fact started.
-	if !hits[0].Record.ValidFrom.Equal(time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC)) {
-		t.Errorf("validFrom was not backfilled from created_at: %v", hits[0].Record.ValidFrom)
+	if !hits[0].ValidFrom.Equal(time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC)) {
+		t.Errorf("validFrom was not backfilled from created_at: %v", hits[0].ValidFrom)
 	}
 }
 
@@ -215,7 +215,7 @@ func TestConfirmingASupersedingMemoryClosesTheOldOne(t *testing.T) {
 	if err != nil {
 		t.Fatalf("search: %v", err)
 	}
-	if len(hits) != 1 || hits[0].Record.Content != "the api listens on port 9090" {
+	if len(hits) != 1 || hits[0].Content != "the api listens on port 9090" {
 		t.Errorf("retrieval returned both sides of a contradiction: %v", contents(hits))
 	}
 }
@@ -244,7 +244,7 @@ func TestSearchFusesKeywordRankWithRecency(t *testing.T) {
 	if len(hits) != 2 {
 		t.Fatalf("want both matches, got %v", contents(hits))
 	}
-	if hits[0].Record.Content != "the payment service now retries webhook delivery with backoff" {
+	if hits[0].Content != "the payment service now retries webhook delivery with backoff" {
 		t.Errorf("the newer fact did not rank first: %v", contents(hits))
 	}
 }

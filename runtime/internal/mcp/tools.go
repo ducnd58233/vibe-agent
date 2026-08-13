@@ -449,9 +449,9 @@ func renderHits(hits []memory.Hit) []map[string]any {
 	rendered := make([]map[string]any, 0, len(hits))
 	for _, hit := range hits {
 		rendered = append(rendered, map[string]any{
-			"id": hit.Record.ID, "kind": string(hit.Record.Kind),
-			"content": hit.Record.Content, "confidence": hit.Record.Confidence,
-			"evidence": hit.Record.Evidence, "source": hit.Record.SourceRef,
+			"id": hit.ID, "kind": string(hit.Kind),
+			"content": hit.Content, "confidence": hit.Confidence,
+			"evidence": hit.Evidence, "source": hit.SourceRef,
 		})
 	}
 	return rendered
