@@ -99,12 +99,101 @@ HEALTH_NAME = re.compile(
 )
 
 
-class Block:
-    """One test and the text of its body."""
+# --- what is code, and what is only quoted ------------------------------------
+#
+# A test for a parser, a linter, or a code generator states its input as source
+# code, and that source starts lines with `func`, `def`, or `class` in column
+# one. Read literally it breaks the guard in both directions:
+#
+#   - a block ends at the first declaration inside the fixture, hiding every
+#     assertion that follows it. That is a false positive on precisely the tests
+#     that most need checking.
+#   - an assertion quoted inside a fixture counts as a real one, so a test that
+#     checks nothing passes because its own example says `assert`.
+#
+# Both go away by blanking the inside of literals and comments before anything
+# else looks at the text. Length and newlines are preserved, so every offset and
+# reported line number stays the same as in the file the human will open.
+#
+# Openers are tried longest first, so Python's triple quote wins over its single
+# one. `escapes` marks the literals where a backslash defers the closer; Go's
+# raw string and Python's triple quote take a backslash as an ordinary byte.
+LITERALS = {
+    "go": {
+        "comments": (("//", "\n"), ("/*", "*/")),
+        "strings": (("`", "`", False), ('"', '"', True), ("'", "'", True)),
+    },
+    "python": {
+        "comments": (("#", "\n"),),
+        "strings": (('"""', '"""', False), ("'''", "'''", False),
+                    ('"', '"', True), ("'", "'", True)),
+    },
+    "js": {
+        "comments": (("//", "\n"), ("/*", "*/")),
+        "strings": (("`", "`", True), ('"', '"', True), ("'", "'", True)),
+    },
+}
 
-    def __init__(self, name: str, text: str, line: int) -> None:
+
+def _blank(span: str) -> str:
+    """Replace a span with spaces, keeping its newlines so lines still count."""
+    return "".join("\n" if char == "\n" else " " for char in span)
+
+
+def _mask_literals(language: str, text: str) -> str:
+    """Return text with the inside of every literal and comment blanked out."""
+    spec = LITERALS[language]
+    comments = sorted(spec["comments"], key=lambda pair: -len(pair[0]))
+    strings = sorted(spec["strings"], key=lambda triple: -len(triple[0]))
+
+    out: list[str] = []
+    index, size = 0, len(text)
+    while index < size:
+        for opener, closer in comments:
+            if text.startswith(opener, index):
+                end = text.find(closer, index + len(opener))
+                # An unterminated comment runs to the end of the file. A line
+                # comment keeps its newline, which is the closer itself.
+                stop = size if end < 0 else end + (0 if closer == "\n" else len(closer))
+                out.append(opener + _blank(text[index + len(opener):stop]))
+                index = stop
+                break
+        else:
+            for opener, closer, escapes in strings:
+                if not text.startswith(opener, index):
+                    continue
+                cursor = index + len(opener)
+                while cursor < size:
+                    if escapes and text[cursor] == "\\":
+                        cursor += 2
+                        continue
+                    if text.startswith(closer, cursor):
+                        break
+                    cursor += 1
+                stop = min(cursor + len(closer), size)
+                out.append(opener + _blank(text[index + len(opener):cursor]) +
+                           text[cursor:stop])
+                index = stop
+                break
+            else:
+                out.append(text[index])
+                index += 1
+    return "".join(out)
+
+
+class Block:
+    """One test and the text of its body.
+
+    Two copies of the body, because the two questions want different text.
+    `text` is masked and answers "does this check anything", where a literal is
+    data. `source` is verbatim and answers "did someone opt out", where the
+    marker lives in a comment that masking blanks.
+    """
+
+    def __init__(self, name: str, text: str, source: str, line: int) -> None:
         self.name = name
         self.text = text
+        self.source = source
         self.line = line
 
 
@@ -158,33 +247,42 @@ def _line_of(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
 
 
-def _blocks(language: str, text: str) -> list[Block]:
+def _blocks(language: str, masked: str, source: str) -> list[Block]:
+    """Find test blocks in the masked text, carrying the verbatim body along.
+
+    Boundaries come from the masked copy so a declaration quoted in a fixture
+    cannot end a block early. Masking preserves length and newlines, so the same
+    offsets slice the original and the reported line numbers match the file.
+    """
     if language == "go":
-        return _delimited(text, GO_TEST, GO_BLOCK_END, group=1)
+        return _delimited(masked, source, GO_TEST, GO_BLOCK_END, group=1)
     if language == "python":
-        return _delimited(text, PY_TEST, PY_BLOCK_END, group="name")
-    return _sequential(text, JS_TEST)
+        return _delimited(masked, source, PY_TEST, PY_BLOCK_END, group="name")
+    return _sequential(masked, source, JS_TEST)
 
 
-def _delimited(text: str, opener: re.Pattern[str], closer: re.Pattern[str], group) -> list[Block]:
+def _delimited(masked: str, source: str, opener: re.Pattern[str],
+               closer: re.Pattern[str], group) -> list[Block]:
     """Blocks that end at the next declaration, as Go and Python ones do."""
     blocks: list[Block] = []
-    for match in opener.finditer(text):
+    for match in opener.finditer(masked):
         start = match.end()
-        following = closer.search(text, start)
-        end = following.start() if following else len(text)
-        blocks.append(Block(match.group(group), text[start:end], _line_of(text, match.start())))
+        following = closer.search(masked, start)
+        end = following.start() if following else len(masked)
+        blocks.append(Block(match.group(group), masked[start:end], source[start:end],
+                            _line_of(masked, match.start())))
     return blocks
 
 
-def _sequential(text: str, opener: re.Pattern[str]) -> list[Block]:
+def _sequential(masked: str, source: str, opener: re.Pattern[str]) -> list[Block]:
     """Blocks that end where the next one begins, as nested `it(` calls do."""
-    matches = list(opener.finditer(text))
+    matches = list(opener.finditer(masked))
     blocks: list[Block] = []
     for index, match in enumerate(matches):
         start = match.end()
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        blocks.append(Block(match.group("name"), text[start:end], _line_of(text, match.start())))
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(masked)
+        blocks.append(Block(match.group("name"), masked[start:end], source[start:end],
+                            _line_of(masked, match.start())))
     return blocks
 
 
@@ -200,7 +298,7 @@ def _exempt(language: str, body: str) -> bool:
 
 def _allowed(text: str, block: Block) -> bool:
     """The marker may sit inside the block or on the lines just above it."""
-    if ALLOW_MARKER in block.text:
+    if ALLOW_MARKER in block.source:
         return True
     lines = text.splitlines()
     above = lines[max(0, block.line - 4) : block.line]
@@ -261,7 +359,7 @@ def main() -> int:
         return 0
 
     findings: list[str] = []
-    for block in _blocks(language, text):
+    for block in _blocks(language, _mask_literals(language, text), text):
         if _allowed(text, block):
             continue
         problem = _inspect(language, block)
