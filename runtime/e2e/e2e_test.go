@@ -236,8 +236,8 @@ func TestConsumerRepoRunsAGoalToCompletion(t *testing.T) {
 	// The e2e check must carry an exit code. That field is what distinguishes a
 	// result a process produced from a conclusion someone typed: only the command
 	// verifier writes it, and it is the reason this walk cannot be faked.
-	checks := final["checks"].(map[string]any)
-	e2e := checks["e2e"].(map[string]any)
+	checks := object(t, final["checks"], "checks")
+	e2e := object(t, checks["e2e"], "checks.e2e")
 	if _, recorded := e2e["exitCode"]; !recorded {
 		t.Errorf("the e2e check has no exit code, so nothing ran to produce it: %v", e2e)
 	}
@@ -343,7 +343,7 @@ spec:
 	if err := json.Unmarshal([]byte(status), &final); err != nil {
 		t.Fatalf("status is not JSON: %v\n%s", err, status)
 	}
-	unit := final["checks"].(map[string]any)["unit"].(map[string]any)
+	unit := object(t, object(t, final["checks"], "checks")["unit"], "checks.unit")
 	if unit["passed"] == true {
 		t.Error("a command that exited non-zero was recorded as passed")
 	}
@@ -386,7 +386,7 @@ spec:
 	if err := json.Unmarshal([]byte(status), &final); err != nil {
 		t.Fatalf("status is not JSON: %v", err)
 	}
-	e2e := final["checks"].(map[string]any)["e2e"].(map[string]any)
+	e2e := object(t, object(t, final["checks"], "checks")["e2e"], "checks.e2e")
 	if e2e["passed"] == true {
 		t.Error("a skipped e2e check was recorded as passed")
 	}
@@ -674,4 +674,16 @@ func write(t *testing.T, path, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
+}
+
+// object narrows a decoded manifest, failing the test rather than
+// panicking, so a shape change names itself instead of arriving as an
+// interface conversion three frames down.
+func object(t *testing.T, value any, what string) map[string]any {
+	t.Helper()
+	narrowed, ok := value.(map[string]any)
+	if !ok {
+		t.Fatalf("%s is %T, want an object", what, value)
+	}
+	return narrowed
 }

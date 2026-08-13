@@ -78,16 +78,39 @@ func mutate(t *testing.T, change func(map[string]any)) []byte {
 	return out
 }
 
-func spec(doc map[string]any) map[string]any {
-	return doc["spec"].(map[string]any)
+// object and list narrow a decoded fixture, failing the test rather than
+// panicking, so a broken fixture names itself.
+func object(t *testing.T, value any, what string) map[string]any {
+	t.Helper()
+	narrowed, ok := value.(map[string]any)
+	if !ok {
+		t.Fatalf("%s is %T, want an object", what, value)
+	}
+	return narrowed
 }
 
-func nodes(doc map[string]any) map[string]any {
-	return spec(doc)["nodes"].(map[string]any)
+func list(t *testing.T, value any, what string) []any {
+	t.Helper()
+	narrowed, ok := value.([]any)
+	if !ok {
+		t.Fatalf("%s is %T, want a list", what, value)
+	}
+	return narrowed
 }
 
-func edges(doc map[string]any) []any {
-	return spec(doc)["edges"].([]any)
+func spec(t *testing.T, doc map[string]any) map[string]any {
+	t.Helper()
+	return object(t, doc["spec"], "spec")
+}
+
+func nodes(t *testing.T, doc map[string]any) map[string]any {
+	t.Helper()
+	return object(t, spec(t, doc)["nodes"], "spec.nodes")
+}
+
+func edges(t *testing.T, doc map[string]any) []any {
+	t.Helper()
+	return list(t, spec(t, doc)["edges"], "spec.edges")
 }
 
 // Every case here has a matching case in scripts/check-graphs-test.py. The two
@@ -101,16 +124,16 @@ func TestParseRejectsBrokenGraphs(t *testing.T) {
 		{
 			name: "unreachable node",
 			change: func(doc map[string]any) {
-				nodes(doc)["orphan"] = map[string]any{"type": "agent", "command": "build"}
+				nodes(t, doc)["orphan"] = map[string]any{"type": "agent", "command": "build"}
 			},
 			want: "unreachable",
 		},
 		{
 			name: "node cannot reach a terminal",
 			change: func(doc map[string]any) {
-				nodes(doc)["spin_a"] = map[string]any{"type": "agent", "command": "build"}
-				nodes(doc)["spin_b"] = map[string]any{"type": "agent", "command": "build"}
-				spec(doc)["edges"] = append(edges(doc),
+				nodes(t, doc)["spin_a"] = map[string]any{"type": "agent", "command": "build"}
+				nodes(t, doc)["spin_b"] = map[string]any{"type": "agent", "command": "build"}
+				spec(t, doc)["edges"] = append(edges(t, doc),
 					map[string]any{"from": "build", "to": "spin_a", "when": "blocked"},
 					map[string]any{"from": "spin_a", "to": "spin_b"},
 					map[string]any{"from": "spin_b", "to": "spin_a"},
@@ -121,7 +144,7 @@ func TestParseRejectsBrokenGraphs(t *testing.T) {
 		{
 			name: "undeclared guard",
 			change: func(doc map[string]any) {
-				spec(doc)["edges"] = append(edges(doc),
+				spec(t, doc)["edges"] = append(edges(t, doc),
 					map[string]any{"from": "build", "to": "done", "when": "nobody_declared_me"})
 			},
 			want: "undeclared guard",
@@ -129,7 +152,7 @@ func TestParseRejectsBrokenGraphs(t *testing.T) {
 		{
 			name: "expression instead of a guard name",
 			change: func(doc map[string]any) {
-				spec(doc)["edges"] = append(edges(doc),
+				spec(t, doc)["edges"] = append(edges(t, doc),
 					map[string]any{"from": "build", "to": "done", "when": "state.e2eRequired == false"})
 			},
 			want: "never expressions",
@@ -137,7 +160,7 @@ func TestParseRejectsBrokenGraphs(t *testing.T) {
 		{
 			name: "terminal with an outgoing edge",
 			change: func(doc map[string]any) {
-				spec(doc)["edges"] = append(edges(doc),
+				spec(t, doc)["edges"] = append(edges(t, doc),
 					map[string]any{"from": "done", "to": "build"})
 			},
 			want: "terminal node \"done\" has outgoing edges",
@@ -145,7 +168,7 @@ func TestParseRejectsBrokenGraphs(t *testing.T) {
 		{
 			name: "two unconditional edges from one node",
 			change: func(doc map[string]any) {
-				spec(doc)["edges"] = append(edges(doc),
+				spec(t, doc)["edges"] = append(edges(t, doc),
 					map[string]any{"from": "test", "to": "done"},
 					map[string]any{"from": "test", "to": "failed"})
 			},
@@ -154,8 +177,8 @@ func TestParseRejectsBrokenGraphs(t *testing.T) {
 		{
 			name: "unknown node type",
 			change: func(doc map[string]any) {
-				nodes(doc)["waiter"] = map[string]any{"type": "wait"}
-				spec(doc)["edges"] = append(edges(doc),
+				nodes(t, doc)["waiter"] = map[string]any{"type": "wait"}
+				spec(t, doc)["edges"] = append(edges(t, doc),
 					map[string]any{"from": "build", "to": "waiter", "when": "blocked"})
 			},
 			want: "unknown type",
@@ -163,7 +186,7 @@ func TestParseRejectsBrokenGraphs(t *testing.T) {
 		{
 			name: "human gate without a prompt",
 			change: func(doc map[string]any) {
-				gate := nodes(doc)["approve_spec"].(map[string]any)
+				gate := object(t, nodes(t, doc)["approve_spec"], "approve_spec")
 				delete(gate, "prompt")
 			},
 			want: "needs a prompt",
@@ -171,10 +194,10 @@ func TestParseRejectsBrokenGraphs(t *testing.T) {
 		{
 			name: "two nodes writing the same check",
 			change: func(doc map[string]any) {
-				nodes(doc)["second_test"] = map[string]any{
+				nodes(t, doc)["second_test"] = map[string]any{
 					"type": "verifier", "verifier": "command", "check": "unit",
 				}
-				spec(doc)["edges"] = append(edges(doc),
+				spec(t, doc)["edges"] = append(edges(t, doc),
 					map[string]any{"from": "build", "to": "second_test", "when": "blocked"},
 					map[string]any{"from": "second_test", "to": "done"})
 			},
@@ -183,8 +206,8 @@ func TestParseRejectsBrokenGraphs(t *testing.T) {
 		{
 			name: "guard reads a check no node writes",
 			change: func(doc map[string]any) {
-				for _, item := range spec(doc)["guards"].([]any) {
-					guard := item.(map[string]any)
+				for _, item := range list(t, spec(t, doc)["guards"], "spec.guards") {
+					guard := object(t, item, "guard")
 					if guard["name"] == "unit_passed" {
 						guard["reads"] = "no_node_writes_this"
 					}
@@ -195,7 +218,7 @@ func TestParseRejectsBrokenGraphs(t *testing.T) {
 		{
 			name: "guard declared but never used",
 			change: func(doc map[string]any) {
-				spec(doc)["guards"] = append(spec(doc)["guards"].([]any),
+				spec(t, doc)["guards"] = append(list(t, spec(t, doc)["guards"], "spec.guards"),
 					map[string]any{"name": "never_referenced", "description": "d", "source": "flag"})
 			},
 			want: "never used",
@@ -203,14 +226,14 @@ func TestParseRejectsBrokenGraphs(t *testing.T) {
 		{
 			name: "unknown field",
 			change: func(doc map[string]any) {
-				spec(doc)["surpriseField"] = true
+				spec(t, doc)["surpriseField"] = true
 			},
 			want: "field surpriseField not found",
 		},
 		{
 			name: "initial node does not exist",
 			change: func(doc map[string]any) {
-				spec(doc)["initial"] = "nowhere"
+				spec(t, doc)["initial"] = "nowhere"
 			},
 			want: "not a declared node",
 		},
