@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -28,11 +29,11 @@ func mcpCommand(args []string) error {
 		return err
 	}
 
-	store, err := memory.Open(workspaceRoot)
+	store, err := memory.Open(context.Background(), workspaceRoot)
 	if err != nil {
 		return err
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	server := mcp.NewServer(version, mcp.Deps{
 		WorkspaceRoot: workspaceRoot,

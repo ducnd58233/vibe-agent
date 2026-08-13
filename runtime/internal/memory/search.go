@@ -163,7 +163,7 @@ func (s *Store) candidates(ctx context.Context, query Query, text string, limit 
 	if err != nil {
 		return nil, fmt.Errorf("search memories: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var hits []Hit
 	for rows.Next() {

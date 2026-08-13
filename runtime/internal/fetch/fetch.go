@@ -144,10 +144,10 @@ func saveAsset(workspaceRoot, source, contentType string, raw []byte) (Document,
 	sum := sha256.Sum256([]byte(source))
 	path := filepath.Join(AssetDir(workspaceRoot),
 		hex.EncodeToString(sum[:])[:16]+assetExtension(source, contentType))
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return Document{}, fmt.Errorf("create asset directory: %w", err)
 	}
-	if err := os.WriteFile(path, raw, 0o644); err != nil {
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
 		return Document{}, fmt.Errorf("save %s: %w", source, err)
 	}
 	return describeAsset(source, path, contentType, len(raw)), nil
@@ -182,7 +182,7 @@ type cached struct {
 //
 // The second return value reports whether the cache answered, so a caller can
 // say so rather than implying a request happened.
-func Get(workspaceRoot, source string, options Options) (Document, bool, error) {
+func Get(ctx context.Context, workspaceRoot, source string, options Options) (Document, bool, error) {
 	if strings.TrimSpace(source) == "" {
 		return Document{}, false, fmt.Errorf("fetch needs a URL or a file path")
 	}
@@ -193,7 +193,7 @@ func Get(workspaceRoot, source string, options Options) (Document, bool, error) 
 		}
 	}
 
-	raw, contentType, err := read(source, options)
+	raw, contentType, err := read(ctx, source, options)
 	if err != nil {
 		return Document{}, false, err
 	}
@@ -281,9 +281,9 @@ func Clip(text string, budget int) (clipped string, omittedLines int) {
 }
 
 // read returns the source's bytes and the media type they turned out to be.
-func read(source string, options Options) (raw []byte, contentType string, err error) {
+func read(ctx context.Context, source string, options Options) (raw []byte, contentType string, err error) {
 	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
-		return request(source, options)
+		return request(ctx, source, options)
 	}
 
 	info, err := os.Stat(source)
@@ -318,14 +318,14 @@ func retrieveAsset(workspaceRoot, source, contentType string, raw []byte) (Docum
 }
 
 // request fetches a URL.
-func request(url string, options Options) ([]byte, string, error) {
+func request(ctx context.Context, url string, options Options) ([]byte, string, error) {
 	timeout := options.Timeout
 	if timeout <= 0 {
 		timeout = DefaultTimeout
 	}
 	client := &http.Client{Timeout: timeout}
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("request %s: %w", url, err)
 	}
@@ -336,7 +336,7 @@ func request(url string, options Options) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("fetch %s: %w", url, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		// 403 and 429 from a plain GET are usually a bot check rather than a
 		// missing page, and the distinction changes what to do next. Naming it
@@ -423,12 +423,12 @@ func readCache(path string) (Document, bool) {
 }
 
 func writeCache(path string, doc Document) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return err
 	}
 	raw, err := json.Marshal(cached{Document: doc, FetchedAt: time.Now().UTC()})
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, raw, 0o644)
+	return os.WriteFile(path, raw, 0o600)
 }

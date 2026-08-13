@@ -26,10 +26,10 @@ func approved(run *state.Run) {
 func onBranch(t *testing.T, root, branch string) {
 	t.Helper()
 	gitDir := filepath.Join(root, ".git")
-	if err := os.MkdirAll(gitDir, 0o755); err != nil {
+	if err := os.MkdirAll(gitDir, 0o750); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/"+branch+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/"+branch+"\n"), 0o600); err != nil {
 		t.Fatalf("WriteFile HEAD: %v", err)
 	}
 }
@@ -39,11 +39,11 @@ func onBranch(t *testing.T, root, branch string) {
 func withDefaultBranch(t *testing.T, root, branch string) {
 	t.Helper()
 	dir := filepath.Join(root, ".git", "refs", "remotes", "origin")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "HEAD"),
-		[]byte("ref: refs/remotes/origin/"+branch+"\n"), 0o644); err != nil {
+		[]byte("ref: refs/remotes/origin/"+branch+"\n"), 0o600); err != nil {
 		t.Fatalf("WriteFile origin/HEAD: %v", err)
 	}
 }

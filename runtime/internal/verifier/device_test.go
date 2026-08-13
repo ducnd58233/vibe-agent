@@ -17,7 +17,7 @@ import (
 func TestAdbIsFoundUnderAnSDKRootWhenNotOnPath(t *testing.T) {
 	root := t.TempDir()
 	tools := filepath.Join(root, "platform-tools")
-	if err := os.MkdirAll(tools, 0o755); err != nil {
+	if err := os.MkdirAll(tools, 0o750); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
 
@@ -25,7 +25,7 @@ func TestAdbIsFoundUnderAnSDKRootWhenNotOnPath(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
-	if err := os.WriteFile(filepath.Join(tools, name), []byte("#!/bin/sh\n"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(tools, name), []byte("#!/bin/sh\n"), 0o750); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 

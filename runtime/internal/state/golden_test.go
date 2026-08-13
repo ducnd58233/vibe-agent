@@ -35,10 +35,10 @@ func TestFreshRunMatchesGolden(t *testing.T) {
 	}
 
 	if update {
-		if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(goldenPath), 0o750); err != nil {
 			t.Fatalf("MkdirAll: %v", err)
 		}
-		if err := os.WriteFile(goldenPath, produced, 0o644); err != nil {
+		if err := os.WriteFile(goldenPath, produced, 0o600); err != nil {
 			t.Fatalf("write golden: %v", err)
 		}
 		t.Logf("updated %s", goldenPath)

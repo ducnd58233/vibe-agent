@@ -1,0 +1,71 @@
+# Linters for the control plane.
+#
+# Chosen against what this module does, with the reason kept next to each one. A
+# linter with no stated reason is one nobody can argue with later, and the first
+# time it fires on honest work someone disables the lot.
+#
+# `make lint` runs this and CI runs `make lint`, so a rule is decided here and in
+# the Makefile and nowhere else.
+#
+# Validate changes with `./bin/golangci-lint config verify`. The v1 schema used a
+# top-level `linters-settings`, v2 nests it under `linters.settings`, and a v1 key
+# left in place is ignored rather than rejected at run time: the linters run with
+# their defaults and the config looks like it is working.
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: standard
+  enable:
+    # internal/fetch makes HTTP requests. A body left open leaks a connection per
+    # fetch, and a request without a context cannot honour the timeout the
+    # package promises.
+    - bodyclose
+    - noctx
+    - contextcheck
+
+    # The hooks decide whether to refuse a tool call. An error compared with ==
+    # instead of errors.Is stops matching the moment anything wraps it, and this
+    # is a gate: it fails open.
+    - errorlint
+    - errname
+    # Returning nil after checking an error is how a guard reports success on a
+    # failure it just saw.
+    - nilerr
+
+    # A package that reads credentials, writes files, and runs subprocesses.
+    - gosec
+    - forcetypeassert
+
+    # sqlite and file handles across the memory, repomap and fetch stores.
+    - sqlclosecheck
+    - rowserrcheck
+
+    - copyloopvar
+    - durationcheck
+    - makezero
+    - unconvert
+    - wastedassign
+
+    # Prose quality is a stated rule in AGENTS.md. This is the part a machine
+    # can check.
+    - misspell
+
+    # An exemption has to say what it exempts and why, or the next reader cannot
+    # tell a considered decision from a silenced warning.
+    - nolintlint
+
+  settings:
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+
+issues:
+  # Every finding, not the first three per rule. A cap hides the second half of a
+  # systematic problem and makes a clean run mean less than it looks.
+  max-issues-per-linter: 0
+  max-same-issues: 0

@@ -104,7 +104,7 @@ func writeLog(req Request, output []byte) (string, error) {
 		return "", nil
 	}
 	dir := filepath.Join(req.WorkspaceRoot, "tmp", req.Slug, req.LogDir)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return "", fmt.Errorf("create log directory: %w", err)
 	}
 	name := req.Check
@@ -112,7 +112,7 @@ func writeLog(req Request, output []byte) (string, error) {
 		name = "command"
 	}
 	path := filepath.Join(dir, name+".log")
-	if err := os.WriteFile(path, output, 0o644); err != nil {
+	if err := os.WriteFile(path, output, 0o600); err != nil {
 		return "", fmt.Errorf("write log: %w", err)
 	}
 	relative, err := filepath.Rel(req.WorkspaceRoot, path)

@@ -13,16 +13,16 @@ var (
 	conditionPattern  = regexp.MustCompile(`^!?[a-z][a-z0-9_]*$`)
 )
 
-// Problems collects every validation failure so one run reports all of them
+// ProblemsError collects every validation failure so one run reports all of them
 // rather than making the author fix and rerun one at a time.
-type Problems []string
+type ProblemsError []string
 
-func (p Problems) Error() string {
+func (p ProblemsError) Error() string {
 	return strings.Join(p, "\n")
 }
 
-func (p Problems) sorted() Problems {
-	out := append(Problems(nil), p...)
+func (p ProblemsError) sorted() ProblemsError {
+	out := append(ProblemsError(nil), p...)
 	sort.Strings(out)
 	return out
 }
@@ -33,7 +33,7 @@ func (p Problems) sorted() Problems {
 // It mirrors scripts/check-graphs.py deliberately: the shell check runs on a
 // fresh clone, this one runs wherever the binary does, and they must agree.
 func (g *Graph) Validate() error {
-	var problems Problems
+	var problems ProblemsError
 
 	if g.APIVersion != APIVersion {
 		problems = append(problems, fmt.Sprintf("apiVersion %q is not %q", g.APIVersion, APIVersion))
@@ -69,8 +69,8 @@ func (g *Graph) Validate() error {
 	return nil
 }
 
-func (g *Graph) validateGuards() Problems {
-	var problems Problems
+func (g *Graph) validateGuards() ProblemsError {
+	var problems ProblemsError
 	seen := map[string]bool{}
 	for _, guard := range g.Spec.Guards {
 		if !identifierPattern.MatchString(guard.Name) {
@@ -110,8 +110,8 @@ func orFlag(source GuardSource) GuardSource {
 	return source
 }
 
-func (g *Graph) validateNodes() Problems {
-	var problems Problems
+func (g *Graph) validateNodes() ProblemsError {
+	var problems ProblemsError
 	for id, node := range g.Spec.Nodes {
 		if !identifierPattern.MatchString(id) {
 			problems = append(problems, fmt.Sprintf("node %q must be lowercase with underscores", id))
@@ -159,8 +159,8 @@ func (g *Graph) validateNodes() Problems {
 	return problems
 }
 
-func (g *Graph) validateEdges() Problems {
-	var problems Problems
+func (g *Graph) validateEdges() ProblemsError {
+	var problems ProblemsError
 	declared := map[string]bool{}
 	for _, guard := range g.Spec.Guards {
 		declared[guard.Name] = true
@@ -252,8 +252,8 @@ func (g *Graph) validateEdges() Problems {
 	return problems
 }
 
-func (g *Graph) validateReachability() Problems {
-	var problems Problems
+func (g *Graph) validateReachability() ProblemsError {
+	var problems ProblemsError
 
 	if _, ok := g.Spec.Nodes[g.Spec.Initial]; !ok {
 		problems = append(problems, fmt.Sprintf("spec.initial %q is not a declared node", g.Spec.Initial))
@@ -301,8 +301,8 @@ func (g *Graph) validateReachability() Problems {
 
 // validateChecks holds the two invariants that keep evidence honest: no node
 // silently overwrites another's check, and no guard reads a key nothing writes.
-func (g *Graph) validateChecks() Problems {
-	var problems Problems
+func (g *Graph) validateChecks() ProblemsError {
+	var problems ProblemsError
 
 	writers := map[string][]string{}
 	for _, id := range sortedKeys(g.Spec.Nodes) {

@@ -29,7 +29,7 @@ func TestAnImageIsSavedAndHandedBackAsAPath(t *testing.T) {
 	defer server.Close()
 	root := t.TempDir()
 
-	doc, _, err := Get(root, server.URL+"/assets/diagram.png", Options{})
+	doc, _, err := Get(t.Context(), root, server.URL+"/assets/diagram.png", Options{})
 	if err != nil {
 		t.Fatalf("an image was refused: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestAnExtensionlessAssetIsNamedFromItsContentType(t *testing.T) {
 	}))
 	defer server.Close()
 
-	doc, _, err := Get(t.TempDir(), server.URL+"/cdn/8f2a1c", Options{})
+	doc, _, err := Get(t.Context(), t.TempDir(), server.URL+"/cdn/8f2a1c", Options{})
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
@@ -84,11 +84,11 @@ func TestAnExtensionlessAssetIsNamedFromItsContentType(t *testing.T) {
 func TestALocalBinaryFileIsReportedWithoutBeingCopied(t *testing.T) {
 	root := t.TempDir()
 	original := filepath.Join(root, "shot.png")
-	if err := os.WriteFile(original, pngBytes, 0o644); err != nil {
+	if err := os.WriteFile(original, pngBytes, 0o600); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
-	doc, _, err := Get(root, original, Options{})
+	doc, _, err := Get(t.Context(), root, original, Options{})
 	if err != nil {
 		t.Fatalf("a local image was refused: %v", err)
 	}

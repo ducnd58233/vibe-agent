@@ -53,7 +53,7 @@ func memoryListCommand(args []string) error {
 		fmt.Println("No memory database yet. One is created the first time something is stored.")
 		return nil
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	records, err := store.List(context.Background(), workspaceRoot)
 	if err != nil {
@@ -106,7 +106,7 @@ func memorySetStatus(args []string, action string) error {
 	if store == nil {
 		return fmt.Errorf("no memory database at %s", memory.DBPath(workspaceRoot))
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	ctx := context.Background()
 	now := time.Now().UTC()
@@ -140,7 +140,7 @@ func openExistingMemory(workspaceRoot string) (*memory.Store, error) {
 	if _, err := os.Stat(path); err != nil {
 		return nil, nil
 	}
-	return memory.OpenAt(path)
+	return memory.OpenAt(context.Background(), path)
 }
 
 func stamp(label string, value *time.Time) string {

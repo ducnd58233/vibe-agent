@@ -10,7 +10,7 @@ func write(t *testing.T, body string) string {
 	t.Helper()
 	root := t.TempDir()
 	path := DefaultPath(root)
-	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatalf("write plan: %v", err)
 	}
 	return root

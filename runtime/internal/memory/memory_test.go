@@ -12,11 +12,11 @@ func at() time.Time { return time.Date(2026, 7, 29, 10, 0, 0, 0, time.UTC) }
 
 func openStore(t *testing.T) *Store {
 	t.Helper()
-	store, err := OpenAt(filepath.Join(t.TempDir(), "memory.db"))
+	store, err := OpenAt(context.Background(), filepath.Join(t.TempDir(), "memory.db"))
 	if err != nil {
 		t.Fatalf("OpenAt: %v", err)
 	}
-	t.Cleanup(func() { store.Close() })
+	t.Cleanup(func() { _ = store.Close() })
 	return store
 }
 

@@ -419,5 +419,5 @@ func Blank(encoded []byte) (Blankness, error) {
 // tolerance above is in 8-bit units because that is what the source describes.
 func rgb8(img image.Image, x, y int) (uint8, uint8, uint8) {
 	r, g, b, _ := img.At(x, y).RGBA()
-	return uint8(r >> 8), uint8(g >> 8), uint8(b >> 8)
+	return uint8((r >> 8) & 0xff), uint8((g >> 8) & 0xff), uint8((b >> 8) & 0xff)
 }

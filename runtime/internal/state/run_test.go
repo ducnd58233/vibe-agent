@@ -142,7 +142,7 @@ func TestLoadRejectsAForgedCheckSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	if err := os.WriteFile(path, forged, 0o644); err != nil {
+	if err := os.WriteFile(path, forged, 0o600); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 

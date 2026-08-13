@@ -27,7 +27,7 @@ func recall(workspaceRoot, query string) string {
 	if !opened {
 		return ""
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	hits, err := store.Search(context.Background(), memory.Query{
 		WorkspaceID: workspaceRoot,
@@ -56,7 +56,7 @@ func openMemory(workspaceRoot string) (*memory.Store, bool) {
 	if _, err := os.Stat(path); err != nil {
 		return nil, false
 	}
-	store, err := memory.OpenAt(path)
+	store, err := memory.OpenAt(context.Background(), path)
 	if err != nil {
 		return nil, false
 	}

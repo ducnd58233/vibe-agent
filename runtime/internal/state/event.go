@@ -53,7 +53,7 @@ func AppendEvent(path string, event Event) (Event, error) {
 	}
 	event.At = event.At.UTC()
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return Event{}, fmt.Errorf("create run directory: %w", err)
 	}
 
@@ -68,11 +68,11 @@ func AppendEvent(path string, event Event) (Event, error) {
 		return Event{}, fmt.Errorf("encode event: %w", err)
 	}
 
-	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return Event{}, fmt.Errorf("open event log: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if _, err := file.Write(append(encoded, '\n')); err != nil {
 		return Event{}, fmt.Errorf("append event: %w", err)
@@ -93,7 +93,7 @@ func ReadEvents(path string) ([]Event, error) {
 		}
 		return nil, fmt.Errorf("open event log: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var events []Event
 	scanner := bufio.NewScanner(file)
@@ -125,7 +125,7 @@ func countLines(path string) (int, error) {
 		}
 		return 0, fmt.Errorf("open event log: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	count := 0
 	scanner := bufio.NewScanner(file)

@@ -34,7 +34,7 @@ func isolate(t *testing.T) {
 // withAssets builds a directory that looks like a toolkit root.
 func withAssets(t *testing.T, dir string) string {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Join(dir, ".ai-agents", "graphs"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, ".ai-agents", "graphs"), 0o750); err != nil {
 		t.Fatalf("create assets in %s: %v", dir, err)
 	}
 	return dir
@@ -125,7 +125,7 @@ func TestDiscoverToolkitOrder(t *testing.T) {
 // a confusing error far from the cause.
 func TestHoldsAssetsRejectsAFile(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, ".ai-agents"), []byte("not a directory"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".ai-agents"), []byte("not a directory"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if holdsAssets(dir) {

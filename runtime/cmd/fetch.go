@@ -19,6 +19,12 @@ import (
 // shape than the whole thing.
 const fetchBudget = 4000
 
+// commandTimeout bounds the whole command: the request, and the probe for a text
+// route that runs when the request comes back with something that is not the
+// page. A command that hangs is worse than one that reports a timeout, because
+// the session waits on it.
+const commandTimeout = 60 * time.Second
+
 // fetchCommand retrieves a URL or a file and prints the text an agent needs.
 //
 // The saving comes from two places and both are reported rather than claimed.
@@ -60,7 +66,10 @@ func fetchCommand(args []string) error {
 		return err
 	}
 
-	doc, cached, err := fetch.Get(workspaceRoot, source, fetch.Options{Refresh: *refresh})
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+
+	doc, cached, err := fetch.Get(ctx, workspaceRoot, source, fetch.Options{Refresh: *refresh})
 	if err != nil {
 		return err
 	}
@@ -91,8 +100,6 @@ func fetchCommand(args []string) error {
 			problem = "returned far more markup and script than text, which is the shape " +
 				"of a page shell rather than a page"
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
 		fmt.Fprintf(os.Stderr, "vibe-agent: %s %s. Do not answer from this document. %s.\n",
 			source, problem, fetch.Advise(ctx, source,
 				"It is almost certainly built with JavaScript, which no AI crawler runs"))

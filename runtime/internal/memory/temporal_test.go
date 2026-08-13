@@ -14,11 +14,11 @@ func day(n int) time.Time {
 
 func storeWithMemory(t *testing.T, content string, at time.Time) (*Store, Record) {
 	t.Helper()
-	store, err := OpenAt(":memory:")
+	store, err := OpenAt(context.Background(), ":memory:")
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	t.Cleanup(func() { store.Close() })
+	t.Cleanup(func() { _ = store.Close() })
 
 	record := confirmMemory(t, store, content, at)
 	return store, record
@@ -67,7 +67,7 @@ func TestADatabaseFromBeforeTheIntervalStillOpens(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open raw: %v", err)
 	}
-	if _, err := old.Exec(`
+	if _, err := old.ExecContext(t.Context(), `
         CREATE TABLE memories (
             id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, kind TEXT NOT NULL,
             content TEXT NOT NULL, tags TEXT NOT NULL DEFAULT '',
@@ -85,13 +85,13 @@ func TestADatabaseFromBeforeTheIntervalStillOpens(t *testing.T) {
         VALUES ('mem_legacy', 'the build runs on node 20', '');`); err != nil {
 		t.Fatalf("seed legacy schema: %v", err)
 	}
-	old.Close()
+	_ = old.Close()
 
-	store, err := OpenAt(path)
+	store, err := OpenAt(context.Background(), path)
 	if err != nil {
 		t.Fatalf("opening a database from an earlier version failed: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	hits, err := store.Search(context.Background(), Query{WorkspaceID: "ws"})
 	if err != nil {
@@ -227,11 +227,11 @@ func TestConfirmingASupersedingMemoryClosesTheOldOne(t *testing.T) {
 // slightly less well. Fusing the two ranked lists is what fixes that, and it
 // needs no weights to tune.
 func TestSearchFusesKeywordRankWithRecency(t *testing.T) {
-	store, err := OpenAt(":memory:")
+	store, err := OpenAt(context.Background(), ":memory:")
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	confirmMemory(t, store, "the payment service retries webhook delivery", day(1))
 	confirmMemory(t, store, "the payment service now retries webhook delivery with backoff", day(20))
@@ -251,11 +251,11 @@ func TestSearchFusesKeywordRankWithRecency(t *testing.T) {
 }
 
 func TestSearchStillHonoursTheLimitAfterFusing(t *testing.T) {
-	store, err := OpenAt(":memory:")
+	store, err := OpenAt(context.Background(), ":memory:")
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	for _, content := range []string{
 		"the queue consumer commits offsets after processing",

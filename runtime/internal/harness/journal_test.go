@@ -74,11 +74,11 @@ func memories(t *testing.T, root string) []memory.Record {
 	if _, err := os.Stat(memory.DBPath(root)); err != nil {
 		return nil
 	}
-	store, err := memory.OpenAt(memory.DBPath(root))
+	store, err := memory.OpenAt(context.Background(), memory.DBPath(root))
 	if err != nil {
 		t.Fatalf("OpenAt: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	records, err := store.List(context.Background(), root)
 	if err != nil {
 		t.Fatalf("List: %v", err)

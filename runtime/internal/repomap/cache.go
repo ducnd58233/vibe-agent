@@ -45,7 +45,7 @@ func Stat(ctx context.Context, workspaceRoot string) (files int, exists bool, er
 	if err != nil {
 		return 0, true, fmt.Errorf("open %s: %w", path, err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM files`).Scan(&files); err != nil {
 		return 0, true, fmt.Errorf("read %s: %w", path, err)
 	}
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS meta (
 // differently than the build that wrote it.
 func openCache(ctx context.Context, workspaceRoot string, version int) (*cache, error) {
 	path := CachePath(workspaceRoot)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return nil, fmt.Errorf("create state directory: %w", err)
 	}
 	db, err := sql.Open("sqlite", path)
@@ -82,26 +82,26 @@ func openCache(ctx context.Context, workspaceRoot string, version int) (*cache, 
 		return nil, fmt.Errorf("open %s: %w", path, err)
 	}
 	if _, err := db.ExecContext(ctx, cacheSchema); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("create schema: %w", err)
 	}
 
 	c := &cache{db: db}
 	stored, err := c.version(ctx)
 	if err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, err
 	}
 	if stored != version {
 		if _, err := db.ExecContext(ctx, `DELETE FROM files`); err != nil {
-			db.Close()
+			_ = db.Close()
 			return nil, fmt.Errorf("discard stale index: %w", err)
 		}
 		if _, err := db.ExecContext(ctx,
 			`INSERT INTO meta (key, value) VALUES ('version', ?)
 			 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
 			fmt.Sprint(version)); err != nil {
-			db.Close()
+			_ = db.Close()
 			return nil, fmt.Errorf("record index version: %w", err)
 		}
 	}
@@ -178,18 +178,17 @@ func (c *cache) prune(ctx context.Context, live map[string]bool) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = rows.Close() }()
 	var gone []string
 	for rows.Next() {
 		var path string
 		if err := rows.Scan(&path); err != nil {
-			rows.Close()
 			return err
 		}
 		if !live[path] {
 			gone = append(gone, path)
 		}
 	}
-	rows.Close()
 	if err := rows.Err(); err != nil {
 		return err
 	}

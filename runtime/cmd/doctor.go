@@ -155,7 +155,7 @@ func checkMemory(report *diagnostics, workspaceRoot string) {
 		return
 	}
 	report.check("memory database opens", true, "")
-	store.Close()
+	_ = store.Close()
 }
 
 // checkRunState loads every manifest under tmp/, so a run that would fail to

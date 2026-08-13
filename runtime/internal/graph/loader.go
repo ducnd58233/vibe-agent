@@ -78,7 +78,7 @@ func LoadDir(dir string) (map[string]*Graph, error) {
 	}
 
 	graphs := map[string]*Graph{}
-	var problems Problems
+	var problems ProblemsError
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue

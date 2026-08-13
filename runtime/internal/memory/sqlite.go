@@ -63,26 +63,30 @@ type Store struct {
 }
 
 // Open creates or opens the memory database for a workspace.
-func Open(workspaceRoot string) (*Store, error) {
+//
+// The context covers the schema work Open does: creating tables and adding the
+// columns an older database is missing. A caller that gave up waiting should not
+// leave a migration running behind it.
+func Open(ctx context.Context, workspaceRoot string) (*Store, error) {
 	path := DBPath(workspaceRoot)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return nil, fmt.Errorf("create state directory: %w", err)
 	}
-	return OpenAt(path)
+	return OpenAt(ctx, path)
 }
 
 // OpenAt opens a database at an explicit path. Use ":memory:" in tests.
-func OpenAt(path string) (*Store, error) {
+func OpenAt(ctx context.Context, path string) (*Store, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, fmt.Errorf("open memory database: %w", err)
 	}
-	if _, err := db.Exec(schema); err != nil {
-		db.Close()
+	if _, err := db.ExecContext(ctx, schema); err != nil {
+		_ = db.Close()
 		return nil, fmt.Errorf("apply memory schema: %w", err)
 	}
-	if err := migrate(db); err != nil {
-		db.Close()
+	if err := migrate(ctx, db); err != nil {
+		_ = db.Close()
 		return nil, err
 	}
 	return &Store{db: db}, nil
@@ -93,11 +97,12 @@ func OpenAt(path string) (*Store, error) {
 // CREATE TABLE IF NOT EXISTS does nothing to a table that already exists, so a
 // workspace that has been storing memories since before the validity interval
 // would otherwise fail every query against the new columns.
-func migrate(db *sql.DB) error {
-	rows, err := db.Query(`PRAGMA table_info(memories)`)
+func migrate(ctx context.Context, db *sql.DB) error {
+	rows, err := db.QueryContext(ctx, `PRAGMA table_info(memories)`)
 	if err != nil {
 		return fmt.Errorf("inspect memory schema: %w", err)
 	}
+	defer func() { _ = rows.Close() }()
 	present := map[string]bool{}
 	for rows.Next() {
 		var (
@@ -109,12 +114,10 @@ func migrate(db *sql.DB) error {
 			primary    int
 		)
 		if err := rows.Scan(&index, &name, &columnType, &notNull, &preset, &primary); err != nil {
-			rows.Close()
 			return fmt.Errorf("read memory schema: %w", err)
 		}
 		present[name] = true
 	}
-	rows.Close()
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("read memory schema: %w", err)
 	}
@@ -126,14 +129,14 @@ func migrate(db *sql.DB) error {
 		if present[column.name] {
 			continue
 		}
-		if _, err := db.Exec(`ALTER TABLE memories ADD COLUMN ` + column.definition); err != nil {
+		if _, err := db.ExecContext(ctx, `ALTER TABLE memories ADD COLUMN `+column.definition); err != nil {
 			return fmt.Errorf("add memory column %s: %w", column.name, err)
 		}
 	}
 
 	// Rows written before the interval existed were true from when they were
 	// recorded, which is the closest honest answer available.
-	_, err = db.Exec(`UPDATE memories SET valid_from = created_at WHERE valid_from = ''`)
+	_, err = db.ExecContext(ctx, `UPDATE memories SET valid_from = created_at WHERE valid_from = ''`)
 	if err != nil {
 		return fmt.Errorf("backfill memory validity: %w", err)
 	}
@@ -275,7 +278,7 @@ func (s *Store) Get(ctx context.Context, id string) (Record, error) {
 	if err != nil {
 		return Record{}, fmt.Errorf("read memory: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	records, err := scanRecords(rows)
 	if err != nil {
 		return Record{}, err
@@ -293,7 +296,7 @@ func (s *Store) List(ctx context.Context, workspaceID string) ([]Record, error) 
 	if err != nil {
 		return nil, fmt.Errorf("list memories: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return scanRecords(rows)
 }
 
@@ -302,7 +305,7 @@ func (s *Store) insert(ctx context.Context, record Record) error {
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if _, err := tx.ExecContext(ctx, `
         INSERT INTO memories (id, workspace_id, kind, content, tags, confidence,
@@ -332,7 +335,7 @@ func (s *Store) update(ctx context.Context, record Record) error {
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	if _, err := tx.ExecContext(ctx, `
         UPDATE memories SET kind=?, content=?, tags=?, confidence=?, status=?,

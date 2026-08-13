@@ -67,7 +67,7 @@ func apply(t *testing.T, root string, outcome loop.Outcome) *Result {
 // who may write a verifier node's check, so most of these tests need one.
 func declarePlan(t *testing.T, root, body string) {
 	t.Helper()
-	if err := os.WriteFile(checkplan.DefaultPath(root), []byte(body), 0o644); err != nil {
+	if err := os.WriteFile(checkplan.DefaultPath(root), []byte(body), 0o600); err != nil {
 		t.Fatalf("write plan: %v", err)
 	}
 }
