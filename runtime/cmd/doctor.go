@@ -10,6 +10,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/repomap"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
 )
 
@@ -39,6 +40,7 @@ func doctorCommand(args []string) error {
 	checkHookWiring(report, workspaceRoot)
 	checkCheckPlan(report, workspaceRoot, toolkitRoot)
 	checkMemory(report, workspaceRoot)
+	checkRepoMap(report, workspaceRoot)
 	checkRunState(report, workspaceRoot)
 	checkGitignore(report, workspaceRoot)
 
@@ -111,6 +113,25 @@ func checkCheckPlan(report *diagnostics, workspaceRoot, toolkitRoot string) {
 		report.check("graph "+id+": every verifier node has a planned check",
 			len(missing) == 0,
 			"undeclared in "+checkplan.FileName+": "+strings.Join(missing, ", "))
+	}
+}
+
+// checkRepoMap reports on the structural index without building one.
+//
+// Building here would make doctor slow and would seed a database in whatever
+// directory someone happened to run it from, which is the side effect the
+// memory package refuses for the same reason. An absent index is not a defect:
+// `map` builds it on first use.
+func checkRepoMap(report *diagnostics, workspaceRoot string) {
+	files, exists, err := repomap.Stat(workspaceRoot)
+	switch {
+	case err != nil:
+		report.check("repository index opens", false, err.Error())
+	case !exists:
+		fmt.Println("  note  no repository index yet; `vibe-agent map` builds one and " +
+			"caches it by content hash")
+	default:
+		report.check(fmt.Sprintf("repository index holds %d files", files), true, "")
 	}
 }
 
