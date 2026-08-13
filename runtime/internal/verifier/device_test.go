@@ -54,7 +54,7 @@ func TestAdbIsFoundUnderAnSDKRootWhenNotOnPath(t *testing.T) {
 // plumbing; adb's actual output shape is the part a fake cannot check.
 func attachedDevice(t *testing.T) string {
 	t.Helper()
-	out, err := exec.Command(adbCommand(), "devices").Output()
+	out, err := exec.CommandContext(t.Context(), adbCommand(), "devices").Output()
 	if err != nil {
 		t.Skipf("no adb available: %v", err)
 	}

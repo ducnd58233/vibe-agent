@@ -67,19 +67,21 @@ jobs:
         with:
           go-version-file: runtime/go.mod
 
-      - name: Vet and test the runtime
-        working-directory: runtime
-        run: |
-          go vet ./...
-          go test ./...
+      # golangci-lint is installed on demand into runtime/bin by `make tools`.
+      # Caching on the Makefile and go.sum means a run that changed neither
+      # skips the install entirely.
+      - name: Cache the pinned linter
+        uses: actions/cache@v4
+        with:
+          path: runtime/bin
+          key: gotools-${{ runner.os }}-${{ hashFiles('runtime/Makefile', 'runtime/go.sum') }}
 
-      - name: Check runtime formatting
-        working-directory: runtime
-        run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformatted" ]; then
-            echo "gofmt needed on:"; echo "$unformatted"; exit 1
-          fi
+      # `make check` is gofmt, vet, golangci-lint and the tests. Spelled out
+      # here it would be a second copy of the rules, and the copy that drifts is
+      # the one deciding whether a pull request merges. The Makefile is where a
+      # command is decided; this file decides only when to run one.
+      - name: Check the runtime
+        run: make -C runtime check
 
       - name: Cross-compile every release target
         working-directory: runtime

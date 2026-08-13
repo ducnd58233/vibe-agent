@@ -52,7 +52,7 @@ func buildBinary(t *testing.T) string {
 	}
 	binary := filepath.Join(t.TempDir(), name)
 
-	build := exec.Command("go", "build", "-o", binary, "./cmd")
+	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "./cmd")
 	build.Dir = moduleRoot(t)
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := build.CombinedOutput(); err != nil {
@@ -118,7 +118,7 @@ type cli struct {
 func (c cli) run(args ...string) (string, error) {
 	c.t.Helper()
 	full := append(args, "--workspace", c.root, "--toolkit", c.toolkit)
-	cmd := exec.Command(c.binary, full...)
+	cmd := exec.CommandContext(c.t.Context(), c.binary, full...)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
@@ -128,7 +128,7 @@ func (c cli) run(args ...string) (string, error) {
 func (c cli) hook(stdin string, args ...string) (string, int) {
 	c.t.Helper()
 	full := append(args, "--workspace", c.root, "--toolkit", c.toolkit)
-	cmd := exec.Command(c.binary, full...)
+	cmd := exec.CommandContext(c.t.Context(), c.binary, full...)
 	cmd.Stdin = strings.NewReader(stdin)
 	out, err := cmd.CombinedOutput()
 
@@ -612,7 +612,7 @@ func TestToolkitIsFoundWhenMountedAsASubmodule(t *testing.T) {
 	// No --toolkit anywhere below.
 	noToolkit := func(args ...string) (string, error) {
 		full := append(args, "--workspace", root)
-		out, err := exec.Command(binary, full...).CombinedOutput()
+		out, err := exec.CommandContext(t.Context(), binary, full...).CombinedOutput()
 		return string(out), err
 	}
 
@@ -689,7 +689,7 @@ func copyTree(t *testing.T, src, dst string) {
 
 func TestGraphValidateRunsAgainstTheShippedGraph(t *testing.T) {
 	run := cli{t, buildBinary(t), t.TempDir(), toolkitRoot(t)}
-	cmd := exec.Command(run.binary, "graph", "validate", "--toolkit", run.toolkit)
+	cmd := exec.CommandContext(run.t.Context(), run.binary, "graph", "validate", "--toolkit", run.toolkit)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("graph validate failed: %v\n%s", err, out)
