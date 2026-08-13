@@ -360,7 +360,7 @@ func TestOrdinaryCodeIsNotRefused(t *testing.T) {
 
 func TestAMarkedLineIsExempt(t *testing.T) {
 	root := t.TempDir()
-	content := "const fixture = \"gh" + "p_" + strings.Repeat("A1b2", 5) + "\" // " + credentialAllowMarker
+	content := "const fixture = \"gh" + "p_" + strings.Repeat("A1b2", 5) + "\" // " + allowMarker
 
 	if blocked, _ := writeAttempt(t, root, "fixture_test.ts", content); blocked != nil {
 		t.Fatalf("the documented opt-out did not work: %s", blocked.Reason)

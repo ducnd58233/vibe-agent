@@ -94,7 +94,7 @@ func extensionlessOnPath() string {
 			continue
 		}
 		candidate := filepath.Join(dir, "vibe-agent")
-		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+		if info, err := os.Stat(filepath.Clean(candidate)); err == nil && !info.IsDir() {
 			return candidate
 		}
 	}

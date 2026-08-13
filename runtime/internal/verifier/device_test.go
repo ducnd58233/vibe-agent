@@ -24,9 +24,12 @@ func TestAdbIsFoundUnderAnSDKRootWhenNotOnPath(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
-	if err := os.WriteFile(filepath.Join(tools, name), []byte("#!/bin/sh\n"), 0o750); err != nil {
+	stub := filepath.Join(tools, name)
+	if err := os.WriteFile(stub, []byte("#!/bin/sh\n"), 0o600); err != nil {
 		t.Fatalf("write: %v", err)
 	}
+	// Not made executable: ToolInSDK answers by stat, so what this fixture needs
+	// is to exist and not be a directory.
 
 	found := ToolInSDK("adb", []string{root})
 	if found == "" {

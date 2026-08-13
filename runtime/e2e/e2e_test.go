@@ -647,7 +647,7 @@ func copyTree(t *testing.T, src, dst string) {
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(target, data, 0o600)
+		return os.WriteFile(filepath.Clean(target), data, 0o600)
 	})
 	if err != nil {
 		t.Fatalf("copy %s: %v", src, err)

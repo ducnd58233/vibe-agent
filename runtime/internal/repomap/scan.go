@@ -266,8 +266,11 @@ func gitFiles(ctx context.Context, workspaceRoot string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "git", "-C", workspaceRoot,
+	// cmd.Dir rather than "-C <path>": the working directory is where a working
+	// directory belongs, and it keeps every argument a literal.
+	cmd := exec.CommandContext(ctx, "git",
 		"ls-files", "--cached", "--others", "--exclude-standard", "-z")
+	cmd.Dir = workspaceRoot
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, err
