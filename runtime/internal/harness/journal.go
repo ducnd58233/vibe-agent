@@ -24,6 +24,10 @@ type toolUse struct {
 	// ExitCode is a pointer so "the host did not report one" stays different
 	// from "it exited 0".
 	ExitCode *int `json:"exitCode,omitempty"`
+	// Failed is the host's own verdict, carried by which event fired. Claude
+	// Code reports no exit code at all, so without this the log could not tell
+	// a green command from a red one.
+	Failed bool `json:"failed,omitempty"`
 }
 
 // response is the subset of a tool result this package can read.
@@ -46,13 +50,34 @@ func (r response) exit() *int {
 	return r.ExitCodeAlt
 }
 
+// readResponse parses whatever the host put in tool_response.
+//
+// Claude Code sends a bare JSON string for Bash, which is why the earlier
+// struct-only parse produced an empty response every time and cost this package
+// its evidence. A string carries no exit code, so it lands in Stderr, where the
+// only caller uses it: as the detail line on a failure memory.
+func readResponse(raw json.RawMessage) response {
+	if len(raw) == 0 {
+		return response{}
+	}
+	var structured response
+	if err := json.Unmarshal(raw, &structured); err == nil {
+		return structured
+	}
+	var text string
+	if err := json.Unmarshal(raw, &text); err == nil {
+		return response{Stderr: text}
+	}
+	return response{}
+}
+
 // journal records tool use against every active run, and proposes a memory when
 // a command reported a real failure.
 //
 // It fires after the tool ran, so it never refuses anything and never returns
 // an error: a control plane that fails a session over its own bookkeeping is
 // worse than one that records nothing.
-func journal(req Request, body payload) error {
+func journal(req Request, body payload, failed bool) error {
 	if body.ToolName == "" {
 		return nil
 	}
@@ -61,9 +86,22 @@ func journal(req Request, body payload) error {
 		return nil
 	}
 
-	var result response
-	if len(body.ToolResponse) > 0 {
-		_ = json.Unmarshal(body.ToolResponse, &result)
+	result := readResponse(body.ToolResponse)
+
+	// Fold in the fields Claude puts beside the response rather than inside it.
+	// A failure payload has no tool_response, so without this the detail line
+	// every failure memory is supposed to carry would always be empty.
+	if result.Stderr == "" {
+		result.Stderr = body.Error
+	}
+	if body.IsInterrupt {
+		result.Interrupted = true
+	}
+
+	// A host that reports an exit code has said the same thing twice. Trust
+	// either witness: Cursor supplies the number, Claude supplies the event.
+	if exit := result.exit(); exit != nil && *exit != 0 {
+		failed = true
 	}
 
 	command := truncate(body.shellCommand(), commandLimit)
@@ -72,6 +110,7 @@ func journal(req Request, body payload) error {
 		Command:  command,
 		File:     body.writeTarget(),
 		ExitCode: result.exit(),
+		Failed:   failed,
 	})
 	if err != nil {
 		return nil
@@ -86,7 +125,9 @@ func journal(req Request, body payload) error {
 		if err != nil {
 			continue
 		}
-		proposeFailure(req.WorkspaceRoot, run, command, result, recorded.Ref())
+		if failed {
+			proposeFailure(req.WorkspaceRoot, run, command, result, recorded.Ref())
+		}
 	}
 	return nil
 }
@@ -110,11 +151,12 @@ const FailureMemoryLife = 7 * 24 * time.Hour
 // The alternative was leaving it proposed, which is what retrieval filters
 // out. That is a memory the runtime writes and can never read.
 //
-// When the host does not report an exit code, nothing is written. An outcome
-// read out of result text would be a guess wearing evidence's clothes.
+// The caller decides that the call failed, from the event the host fired or the
+// exit code it reported. Both are observations. What is still refused is reading
+// an outcome out of result text, which would be a guess wearing evidence's
+// clothes.
 func proposeFailure(workspaceRoot string, run *state.Run, command string, result response, ref string) {
-	exit := result.exit()
-	if exit == nil || *exit == 0 || command == "" || result.Interrupted {
+	if command == "" || result.Interrupted {
 		return
 	}
 
@@ -124,8 +166,8 @@ func proposeFailure(workspaceRoot string, run *state.Run, command string, result
 	}
 	defer store.Close()
 
-	evidence := []string{fmt.Sprintf("%s exited %d during run %s at node %s",
-		command, *exit, run.Slug, orDash(run.CurrentNode))}
+	evidence := []string{fmt.Sprintf("%s %s during run %s at node %s",
+		command, exitedPhrase(result.exit()), run.Slug, orDash(run.CurrentNode))}
 	if detail := truncate(singleLine(result.Stderr), 300); detail != "" {
 		evidence = append(evidence, detail)
 	}
@@ -137,7 +179,7 @@ func proposeFailure(workspaceRoot string, run *state.Run, command string, result
 	stored, decision, err := store.Propose(ctx, memory.Record{
 		WorkspaceID: workspaceRoot,
 		Kind:        memory.KindEpisodic,
-		Content:     fmt.Sprintf("%s exits %d in this workspace", command, *exit),
+		Content:     fmt.Sprintf("%s %s in this workspace", command, exitsPhrase(result.exit())),
 		Tags:        []string{"command-failure", run.Slug},
 		Confidence:  0.6,
 		SourceType:  memory.SourceCommandResult,
@@ -149,6 +191,26 @@ func proposeFailure(workspaceRoot string, run *state.Run, command string, result
 		return
 	}
 	_, _ = store.Confirm(ctx, stored.ID, memory.SourceCommandResult, ref, now)
+}
+
+// exitedPhrase and exitsPhrase name the outcome as precisely as the host allowed.
+//
+// A number is worth keeping where there is one: "exits 2" tells the next session
+// which failure this was, and "fails" only that there was one. Claude Code
+// supplies no exit code, so the vaguer phrasing is the honest ceiling there
+// rather than a default.
+func exitedPhrase(exit *int) string {
+	if exit == nil {
+		return "failed"
+	}
+	return fmt.Sprintf("exited %d", *exit)
+}
+
+func exitsPhrase(exit *int) string {
+	if exit == nil {
+		return "fails"
+	}
+	return fmt.Sprintf("exits %d", *exit)
 }
 
 func truncate(text string, limit int) string {

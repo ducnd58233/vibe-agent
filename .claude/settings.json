@@ -149,6 +149,20 @@
         ]
       }
     ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "vibe-agent hook post-tool-use-failure --workspace ${CLAUDE_PROJECT_DIR}",
+            "timeout": 5000,
+            "statusMessage": "vibe-journal-failure",
+            "async": false
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Bash|Edit|Write|NotebookEdit",

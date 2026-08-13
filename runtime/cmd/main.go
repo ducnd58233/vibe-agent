@@ -30,7 +30,7 @@ Usage:
   vibe-agent checkpoint --slug <slug> --check <name> --source <source> [--passed|--failed|--skipped]
   vibe-agent graph validate [--graph <id>]
   vibe-agent mcp serve
-  vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|stop|subagent-stop> [--client claude|cursor]
+  vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|post-tool-use-failure|stop|subagent-stop> [--client claude|cursor]
   vibe-agent hook --events
   vibe-agent memory list [--status <status>]
   vibe-agent memory confirm --id <id>

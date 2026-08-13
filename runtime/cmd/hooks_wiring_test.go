@@ -133,9 +133,12 @@ func keysOf(m map[string][]string) []string {
 // invisible and half-works.
 func TestAnAbsentBinaryIsNotADoctorFailure(t *testing.T) {
 	root := t.TempDir()
+	// Both halves of the outcome, because wiring only the success half is itself
+	// a reported defect and would mask what this test is about.
 	writeConfig(t, root, filepath.Join(".claude", "settings.json"), `{
   "hooks": {
-    "PostToolUse": [{"hooks": [{"command": "vibe-agent hook post-tool-use"}]}]
+    "PostToolUse": [{"hooks": [{"command": "vibe-agent hook post-tool-use"}]}],
+    "PostToolUseFailure": [{"hooks": [{"command": "vibe-agent hook post-tool-use-failure"}]}]
   }
 }`)
 
@@ -149,6 +152,44 @@ func TestAnAbsentBinaryIsNotADoctorFailure(t *testing.T) {
 		t.Errorf("doctor reported %d problems with no binary installed; "+
 			"the design calls that a supported state, and CI runs in it",
 			report.problems)
+	}
+}
+
+// Registering the success half alone is the shape the journal ran in for months
+// while recording nothing that mattered.
+func TestWiringOnlySuccessfulToolCallsIsADoctorFailure(t *testing.T) {
+	root := t.TempDir()
+	writeConfig(t, root, filepath.Join(".claude", "settings.json"), `{
+  "hooks": {
+    "PostToolUse": [{"hooks": [{"command": "vibe-agent hook post-tool-use"}]}]
+  }
+}`)
+	t.Setenv("PATH", t.TempDir())
+
+	report := &diagnostics{}
+	checkHookWiring(report, root)
+
+	if report.problems == 0 {
+		t.Error("a config that journals successes and drops every failure was reported as fine")
+	}
+}
+
+// Wiring neither half stays a choice. A consumer repo that wants no journal at
+// all is not misconfigured, and reporting it would make doctor cry wolf.
+func TestWiringNeitherHalfIsNotADoctorFailure(t *testing.T) {
+	root := t.TempDir()
+	writeConfig(t, root, filepath.Join(".claude", "settings.json"), `{
+  "hooks": {
+    "SessionStart": [{"hooks": [{"command": "vibe-agent hook session-start"}]}]
+  }
+}`)
+	t.Setenv("PATH", t.TempDir())
+
+	report := &diagnostics{}
+	checkHookWiring(report, root)
+
+	if report.problems != 0 {
+		t.Errorf("a config wiring neither outcome hook reported %d problems", report.problems)
 	}
 }
 

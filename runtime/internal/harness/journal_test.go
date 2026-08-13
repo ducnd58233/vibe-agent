@@ -1,0 +1,241 @@
+package harness
+
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"strings"
+	"testing"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
+)
+
+// The payloads here were captured from Claude Code 2.1.229, not written from the
+// documentation. Three properties of the real shape are what this package got
+// wrong, and only the first is visible in the docs:
+//
+//   - a failing tool call arrives as PostToolUseFailure. PostToolUse fires on
+//     success only, so the failure the journal exists to record never reached it.
+//   - the failure payload carries no tool_response at all. What the tool printed
+//     is in "error", and reading only tool_response left every failure with no
+//     detail.
+//   - the interruption flag is "is_interrupt" at the top level, not "interrupted"
+//     inside the response.
+//
+// tool_response on success is a bare JSON string, so unmarshalling it into a
+// struct with an exit_code field yields nothing. No Claude payload carries an
+// exit code in any field.
+//
+// Ref: https://code.claude.com/docs/en/hooks
+const (
+	claudeFailurePayload = `{
+		"hook_event_name": "PostToolUseFailure",
+		"tool_name": "Bash",
+		"tool_input": {"command": "go build ./..."},
+		"tool_use_id": "toolu_01Uz19Ck61bCqAir3ENcLnki",
+		"error": "Exit code 2\nundefined: Foo",
+		"is_interrupt": false,
+		"duration_ms": 122
+	}`
+
+	claudeSuccessPayload = `{
+		"hook_event_name": "PostToolUse",
+		"tool_name": "Bash",
+		"tool_input": {"command": "go test ./..."},
+		"tool_response": "ok\texample\t0.2s"
+	}`
+)
+
+// events reads back the run's log so a test can assert on what was recorded
+// rather than on what the code was asked to record.
+func events(t *testing.T, root string) []state.Event {
+	t.Helper()
+	raw, err := os.ReadFile(state.EventLogPath(root, "demo"))
+	if err != nil {
+		return nil
+	}
+	var log []state.Event
+	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+		if line == "" {
+			continue
+		}
+		var event state.Event
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			t.Fatalf("event log holds a line that is not an event: %s", line)
+		}
+		log = append(log, event)
+	}
+	return log
+}
+
+func memories(t *testing.T, root string) []memory.Record {
+	t.Helper()
+	if _, err := os.Stat(memory.DBPath(root)); err != nil {
+		return nil
+	}
+	store, err := memory.OpenAt(memory.DBPath(root))
+	if err != nil {
+		t.Fatalf("OpenAt: %v", err)
+	}
+	defer store.Close()
+	records, err := store.List(context.Background(), root)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	return records
+}
+
+func TestPostToolUseFailureIsHandled(t *testing.T) {
+	if !Handles(EventPostToolUseFailure) {
+		t.Fatalf("this build does not handle %s, so every failing tool call is dropped",
+			EventPostToolUseFailure)
+	}
+}
+
+// A failed command is the whole reason the journal exists. It has to survive
+// the trip with no exit code anywhere in the payload.
+func TestFailingCommandIsJournalledAndRemembered(t *testing.T) {
+	root := workspaceWithRun(t)
+
+	invoke(t, Request{
+		Event:         EventPostToolUseFailure,
+		Client:        ClientClaude,
+		WorkspaceRoot: root,
+		Stdin:         strings.NewReader(claudeFailurePayload),
+	})
+
+	log := events(t, root)
+	if len(log) != 1 {
+		t.Fatalf("want one journal entry, got %d", len(log))
+	}
+	var recorded toolUse
+	if err := json.Unmarshal(log[0].Payload, &recorded); err != nil {
+		t.Fatalf("journal payload: %v", err)
+	}
+	if !recorded.Failed {
+		t.Errorf("a PostToolUseFailure entry is not marked failed: %+v", recorded)
+	}
+	if recorded.Command != "go build ./..." {
+		t.Errorf("command = %q, want the command from tool_input", recorded.Command)
+	}
+
+	stored := memories(t, root)
+	if len(stored) != 1 {
+		t.Fatalf("want one memory from a failed command, got %d", len(stored))
+	}
+	if stored[0].Status != memory.StatusConfirmed {
+		t.Errorf("status = %s, want confirmed: a proposed memory is never retrieved",
+			stored[0].Status)
+	}
+	if !strings.Contains(stored[0].Content, "go build ./...") {
+		t.Errorf("memory does not name the command: %q", stored[0].Content)
+	}
+	// The host's own output is the evidence. Without it the memory says a
+	// command failed and cannot say how.
+	joined := strings.Join(stored[0].Evidence, " ")
+	if !strings.Contains(joined, "undefined: Foo") {
+		t.Errorf("evidence drops the tool output: %v", stored[0].Evidence)
+	}
+	// Claude puts the exit code in that text and in no field. Quoting the host
+	// keeps the number available to whoever reads the memory without this
+	// package claiming to have parsed one.
+	if !strings.Contains(joined, "Exit code 2") {
+		t.Errorf("evidence drops the host's own exit line: %v", stored[0].Evidence)
+	}
+}
+
+// An interrupted call is one the human stopped, not one the code got wrong.
+// Remembering it would fill the store with the user's own cancellations.
+func TestInterruptedCallIsNotRemembered(t *testing.T) {
+	root := workspaceWithRun(t)
+
+	invoke(t, Request{
+		Event:         EventPostToolUseFailure,
+		Client:        ClientClaude,
+		WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{
+			"tool_name": "Bash",
+			"tool_input": {"command": "sleep 600"},
+			"error": "The user doesn't want to proceed with this tool use.",
+			"is_interrupt": true
+		}`),
+	})
+
+	if stored := memories(t, root); len(stored) != 0 {
+		t.Errorf("an interrupted call produced %d memories: %+v", len(stored), stored)
+	}
+}
+
+// A success is worth logging and not worth remembering. Proposing a memory for
+// every green command would bury the failures that matter.
+func TestSucceedingCommandIsJournalledButNotRemembered(t *testing.T) {
+	root := workspaceWithRun(t)
+
+	invoke(t, Request{
+		Event:         EventPostToolUse,
+		Client:        ClientClaude,
+		WorkspaceRoot: root,
+		Stdin:         strings.NewReader(claudeSuccessPayload),
+	})
+
+	if log := events(t, root); len(log) != 1 {
+		t.Fatalf("want one journal entry, got %d", len(log))
+	}
+	if stored := memories(t, root); len(stored) != 0 {
+		t.Errorf("a successful command produced %d memories", len(stored))
+	}
+}
+
+// The quiet path stays quiet. Without a run there is nothing to journal against,
+// and seeding a database in a workspace nobody started a run in would litter.
+func TestFailureWithoutARunWritesNothing(t *testing.T) {
+	root := t.TempDir()
+
+	invoke(t, Request{
+		Event:         EventPostToolUseFailure,
+		Client:        ClientClaude,
+		WorkspaceRoot: root,
+		Stdin:         strings.NewReader(claudeFailurePayload),
+	})
+
+	if _, err := os.Stat(memory.DBPath(root)); err == nil {
+		t.Errorf("a workspace with no run got a memory database at %s", memory.DBPath(root))
+	}
+}
+
+// Cursor reports an exit code where Claude does not. When one arrives it belongs
+// in the record, because "exits 2" is more use later than "failed".
+func TestExitCodeIsKeptWhenTheHostReportsOne(t *testing.T) {
+	root := workspaceWithRun(t)
+
+	invoke(t, Request{
+		Event:         EventPostToolUseFailure,
+		Client:        ClientCursor,
+		WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{
+			"tool_name": "Bash",
+			"command": "pytest",
+			"tool_response": {"exit_code": 1, "stderr": "2 failed"}
+		}`),
+	})
+
+	log := events(t, root)
+	if len(log) != 1 {
+		t.Fatalf("want one journal entry, got %d", len(log))
+	}
+	var recorded toolUse
+	if err := json.Unmarshal(log[0].Payload, &recorded); err != nil {
+		t.Fatalf("journal payload: %v", err)
+	}
+	if recorded.ExitCode == nil || *recorded.ExitCode != 1 {
+		t.Errorf("exit code lost: %+v", recorded)
+	}
+	stored := memories(t, root)
+	if len(stored) != 1 {
+		t.Fatalf("want one memory, got %d", len(stored))
+	}
+	if !strings.Contains(stored[0].Content, "exits 1") {
+		t.Errorf("content = %q, want it to name the exit code", stored[0].Content)
+	}
+}
