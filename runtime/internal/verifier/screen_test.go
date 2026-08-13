@@ -94,7 +94,7 @@ func screenSpec() ScreenSpec {
 
 func verifyScreen(t *testing.T, device Device, spec ScreenSpec) Result {
 	t.Helper()
-	result, err := Screen{Device: device}.Verify(context.Background(), Request{
+	result, err := Screen{Device: device}.Verify(t.Context(), Request{
 		Check: "e2e", WorkspaceRoot: t.TempDir(), Screen: &spec,
 	})
 	if err != nil {
@@ -374,7 +374,7 @@ func TestNewDeviceRejectsAnUnknownPlatform(t *testing.T) {
 }
 
 func TestScreenNeedsAScreenBlock(t *testing.T) {
-	if _, err := (Screen{}).Verify(context.Background(), Request{Check: "e2e"}); err == nil {
+	if _, err := (Screen{}).Verify(t.Context(), Request{Check: "e2e"}); err == nil {
 		t.Error("Verify ran without a screen block")
 	}
 }

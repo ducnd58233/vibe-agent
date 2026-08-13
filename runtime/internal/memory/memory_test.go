@@ -10,9 +10,12 @@ import (
 
 func at() time.Time { return time.Date(2026, 7, 29, 10, 0, 0, 0, time.UTC) }
 
-func openStore(t *testing.T) *Store {
+// The context comes from the caller rather than from this helper's own t: a
+// subtest gets a fresh t, and a store opened under one lifetime while queried
+// under another is a difference that only shows up as a flake.
+func openStore(t *testing.T, ctx context.Context) *Store {
 	t.Helper()
-	store, err := OpenAt(context.Background(), filepath.Join(t.TempDir(), "memory.db"))
+	store, err := OpenAt(ctx, filepath.Join(t.TempDir(), "memory.db"))
 	if err != nil {
 		t.Fatalf("OpenAt: %v", err)
 	}
@@ -38,10 +41,10 @@ func candidate(mutate ...func(*Record)) Record {
 
 // The six policy cases named in the spec.
 func TestPolicyCases(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("secret candidate is rejected", func(t *testing.T) {
-		store := openStore(t)
+		store := openStore(t, ctx)
 		for _, content := range []string{
 			"The deploy uses api_key = sk-abcdef0123456789abcdef",
 			"Set AWS_SECRET_ACCESS_KEY before running the suite",
@@ -58,7 +61,7 @@ func TestPolicyCases(t *testing.T) {
 	})
 
 	t.Run("temporary task detail is rejected", func(t *testing.T) {
-		store := openStore(t)
+		store := openStore(t, ctx)
 		for _, content := range []string{
 			"Currently working on the webhook retry branch",
 			"TODO: split the migration before merging",
@@ -75,7 +78,7 @@ func TestPolicyCases(t *testing.T) {
 	})
 
 	t.Run("evidence-backed convention is proposed", func(t *testing.T) {
-		store := openStore(t)
+		store := openStore(t, ctx)
 		stored, decision, err := store.Propose(ctx, candidate(), at())
 		if err != nil {
 			t.Fatalf("Propose: %v", err)
@@ -89,7 +92,7 @@ func TestPolicyCases(t *testing.T) {
 	})
 
 	t.Run("duplicate is merged", func(t *testing.T) {
-		store := openStore(t)
+		store := openStore(t, ctx)
 		first, _, err := store.Propose(ctx, candidate(), at())
 		if err != nil {
 			t.Fatalf("Propose: %v", err)
@@ -112,7 +115,7 @@ func TestPolicyCases(t *testing.T) {
 	})
 
 	t.Run("superseded convention goes stale", func(t *testing.T) {
-		store := openStore(t)
+		store := openStore(t, ctx)
 		old, _, err := store.Propose(ctx, candidate(func(r *Record) {
 			r.Content = "The suite runs against Postgres 14."
 		}), at())
@@ -144,7 +147,7 @@ func TestPolicyCases(t *testing.T) {
 	})
 
 	t.Run("another workspace is not retrieved", func(t *testing.T) {
-		store := openStore(t)
+		store := openStore(t, ctx)
 		mine, _, err := store.Propose(ctx, candidate(), at())
 		if err != nil {
 			t.Fatalf("Propose: %v", err)
@@ -181,8 +184,9 @@ func TestPolicyCases(t *testing.T) {
 // Procedural memory is refused with a message that says where it belongs,
 // rather than a generic validation error.
 func TestProceduralMemoryIsRefusedWithGuidance(t *testing.T) {
-	store := openStore(t)
-	_, decision, err := store.Propose(context.Background(),
+	ctx := t.Context()
+	store := openStore(t, ctx)
+	_, decision, err := store.Propose(t.Context(),
 		candidate(func(r *Record) { r.Kind = KindProcedural }), at())
 	if err != nil {
 		t.Fatalf("Propose: %v", err)
@@ -196,9 +200,10 @@ func TestProceduralMemoryIsRefusedWithGuidance(t *testing.T) {
 }
 
 func TestEvidenceFreeCandidateIsRejected(t *testing.T) {
-	store := openStore(t)
+	ctx := t.Context()
+	store := openStore(t, ctx)
 	for _, evidence := range [][]string{nil, {}, {"ok"}} {
-		_, decision, err := store.Propose(context.Background(),
+		_, decision, err := store.Propose(t.Context(),
 			candidate(func(r *Record) { r.Evidence = evidence }), at())
 		if err != nil {
 			t.Fatalf("Propose: %v", err)
@@ -210,8 +215,9 @@ func TestEvidenceFreeCandidateIsRejected(t *testing.T) {
 }
 
 func TestHedgedClaimIsRejected(t *testing.T) {
-	store := openStore(t)
-	_, decision, err := store.Propose(context.Background(),
+	ctx := t.Context()
+	store := openStore(t, ctx)
+	_, decision, err := store.Propose(t.Context(),
 		candidate(func(r *Record) { r.Content = "This project probably needs Redis." }), at())
 	if err != nil {
 		t.Fatalf("Propose: %v", err)
@@ -223,8 +229,9 @@ func TestHedgedClaimIsRejected(t *testing.T) {
 
 // The gate is the point. A caller cannot arrive already confirmed.
 func TestProposeRefusesAConfirmedCandidate(t *testing.T) {
-	store := openStore(t)
-	_, decision, err := store.Propose(context.Background(),
+	ctx := t.Context()
+	store := openStore(t, ctx)
+	_, decision, err := store.Propose(t.Context(),
 		candidate(func(r *Record) { r.Status = StatusConfirmed }), at())
 	if err != nil {
 		t.Fatalf("Propose: %v", err)
@@ -235,20 +242,21 @@ func TestProposeRefusesAConfirmedCandidate(t *testing.T) {
 }
 
 func TestConfirmDemandsRealProvenance(t *testing.T) {
-	store := openStore(t)
-	stored, _, err := store.Propose(context.Background(), candidate(), at())
+	ctx := t.Context()
+	store := openStore(t, ctx)
+	stored, _, err := store.Propose(t.Context(), candidate(), at())
 	if err != nil {
 		t.Fatalf("Propose: %v", err)
 	}
-	if _, err := store.Confirm(context.Background(), stored.ID, "model_inference", "", at()); err == nil {
+	if _, err := store.Confirm(t.Context(), stored.ID, "model_inference", "", at()); err == nil {
 		t.Error("Confirm accepted model_inference as provenance")
 	}
 }
 
 // Retrieval returns knowledge, not candidates.
 func TestSearchExcludesProposedMemoriesByDefault(t *testing.T) {
-	ctx := context.Background()
-	store := openStore(t)
+	ctx := t.Context()
+	store := openStore(t, ctx)
 	if _, _, err := store.Propose(ctx, candidate(), at()); err != nil {
 		t.Fatalf("Propose: %v", err)
 	}
@@ -273,8 +281,8 @@ func TestSearchExcludesProposedMemoriesByDefault(t *testing.T) {
 }
 
 func TestSearchRanksAndCaps(t *testing.T) {
-	ctx := context.Background()
-	store := openStore(t)
+	ctx := t.Context()
+	store := openStore(t, ctx)
 
 	contents := []string{
 		"Integration tests require Redis on localhost:6379.",
@@ -315,8 +323,8 @@ func TestSearchRanksAndCaps(t *testing.T) {
 
 // Punctuation in a phrase must not be read as FTS syntax.
 func TestSearchHandlesPunctuationInTerms(t *testing.T) {
-	ctx := context.Background()
-	store := openStore(t)
+	ctx := t.Context()
+	store := openStore(t, ctx)
 	stored, _, err := store.Propose(ctx, candidate(), at())
 	if err != nil {
 		t.Fatalf("Propose: %v", err)
@@ -330,16 +338,17 @@ func TestSearchHandlesPunctuationInTerms(t *testing.T) {
 }
 
 func TestSearchRequiresAWorkspace(t *testing.T) {
-	store := openStore(t)
-	if _, err := store.Search(context.Background(), Query{Text: "anything"}); err == nil {
+	ctx := t.Context()
+	store := openStore(t, ctx)
+	if _, err := store.Search(t.Context(), Query{Text: "anything"}); err == nil {
 		t.Error("Search ran without a workspace filter")
 	}
 }
 
 // Promotion proposes; it never writes the rule.
 func TestPromotionIsProposedAfterRepeatedUse(t *testing.T) {
-	ctx := context.Background()
-	store := openStore(t)
+	ctx := t.Context()
+	store := openStore(t, ctx)
 	stored, _, err := store.Propose(ctx, candidate(), at())
 	if err != nil {
 		t.Fatalf("Propose: %v", err)
@@ -378,8 +387,8 @@ func TestPromotionIsProposedAfterRepeatedUse(t *testing.T) {
 }
 
 func TestExpiredMemoriesAreNotRetrieved(t *testing.T) {
-	ctx := context.Background()
-	store := openStore(t)
+	ctx := t.Context()
+	store := openStore(t, ctx)
 	expired := time.Now().UTC().Add(-time.Hour)
 	stored, _, err := store.Propose(ctx, candidate(func(r *Record) { r.ExpiresAt = &expired }), at())
 	if err != nil {

@@ -1,7 +1,6 @@
 package verifier
 
 import (
-	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,7 +21,7 @@ func shell(script string) (string, []string) {
 
 func TestCommandExitZeroPasses(t *testing.T) {
 	name, args := shell("exit 0")
-	result, err := Command{}.Verify(context.Background(), Request{
+	result, err := Command{}.Verify(t.Context(), Request{
 		Check: "unit", WorkspaceRoot: t.TempDir(), Command: name, Args: args,
 	})
 	if err != nil {
@@ -41,7 +40,7 @@ func TestCommandExitZeroPasses(t *testing.T) {
 
 func TestCommandNonZeroFails(t *testing.T) {
 	name, args := shell("exit 3")
-	result, err := Command{}.Verify(context.Background(), Request{
+	result, err := Command{}.Verify(t.Context(), Request{
 		Check: "unit", WorkspaceRoot: t.TempDir(), Command: name, Args: args,
 	})
 	if err != nil {
@@ -59,7 +58,7 @@ func TestCommandNonZeroFails(t *testing.T) {
 // code is the evidence; output is only for the record.
 func TestCommandIgnoresOutputWhenDecidingTheVerdict(t *testing.T) {
 	name, args := shell("echo PASS && exit 1")
-	result, err := Command{}.Verify(context.Background(), Request{
+	result, err := Command{}.Verify(t.Context(), Request{
 		Check: "unit", WorkspaceRoot: t.TempDir(), Command: name, Args: args,
 	})
 	if err != nil {
@@ -73,7 +72,7 @@ func TestCommandIgnoresOutputWhenDecidingTheVerdict(t *testing.T) {
 func TestCommandCapturesOutputToTheEvidenceTree(t *testing.T) {
 	root := t.TempDir()
 	name, args := shell("echo hello from the verifier")
-	result, err := Command{}.Verify(context.Background(), Request{
+	result, err := Command{}.Verify(t.Context(), Request{
 		Check: "unit", WorkspaceRoot: root, Slug: "demo", LogDir: "unit",
 		Command: name, Args: args,
 	})
@@ -100,7 +99,7 @@ func TestCommandTimeoutIsNotAnOrdinaryFailure(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		name, args = shell("ping -n 6 127.0.0.1 > nul")
 	}
-	result, err := Command{}.Verify(context.Background(), Request{
+	result, err := Command{}.Verify(t.Context(), Request{
 		Check: "slow", WorkspaceRoot: t.TempDir(),
 		Command: name, Args: args, Timeout: 200 * time.Millisecond,
 	})
@@ -116,7 +115,7 @@ func TestCommandTimeoutIsNotAnOrdinaryFailure(t *testing.T) {
 }
 
 func TestCommandNeedsACommand(t *testing.T) {
-	if _, err := (Command{}).Verify(context.Background(), Request{}); err == nil {
+	if _, err := (Command{}).Verify(t.Context(), Request{}); err == nil {
 		t.Error("Verify accepted an empty command")
 	}
 }
@@ -125,7 +124,7 @@ func TestCommandNeedsACommand(t *testing.T) {
 // ordinary mistake, so it must fail closed rather than error out or pass. It
 // also must not be described as an exit code: nothing exited.
 func TestCommandThatCannotStartIsUnprovenNotPassed(t *testing.T) {
-	result, err := Command{}.Verify(context.Background(), Request{
+	result, err := Command{}.Verify(t.Context(), Request{
 		Check: "absent", WorkspaceRoot: t.TempDir(),
 		Command: "vibe-agent-no-such-tool-exists", Args: []string{"--version"},
 	})
@@ -145,7 +144,7 @@ func TestFilesPassesWhenEveryPathHasContent(t *testing.T) {
 	write(t, filepath.Join(root, "docs", "SPEC.md"), "content")
 	write(t, filepath.Join(root, "docs", "PLAN.md"), "content")
 
-	result, err := Files{}.Verify(context.Background(), Request{
+	result, err := Files{}.Verify(t.Context(), Request{
 		WorkspaceRoot: root, Paths: []string{"docs/SPEC.md", "docs/PLAN.md"},
 	})
 	if err != nil {
@@ -164,7 +163,7 @@ func TestFilesRejectsAnEmptyFile(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "docs", "SPEC.md"), "")
 
-	result, err := Files{}.Verify(context.Background(), Request{
+	result, err := Files{}.Verify(t.Context(), Request{
 		WorkspaceRoot: root, Paths: []string{"docs/SPEC.md"},
 	})
 	if err != nil {
@@ -179,7 +178,7 @@ func TestFilesRejectsAnEmptyFile(t *testing.T) {
 }
 
 func TestFilesRejectsAMissingPath(t *testing.T) {
-	result, err := Files{}.Verify(context.Background(), Request{
+	result, err := Files{}.Verify(t.Context(), Request{
 		WorkspaceRoot: t.TempDir(), Paths: []string{"docs/SPEC.md"},
 	})
 	if err != nil {
@@ -194,14 +193,14 @@ func TestFilesRejectsAMissingPath(t *testing.T) {
 }
 
 func TestFilesNeedsAtLeastOnePath(t *testing.T) {
-	if _, err := (Files{}).Verify(context.Background(), Request{}); err == nil {
+	if _, err := (Files{}).Verify(t.Context(), Request{}); err == nil {
 		t.Error("Verify accepted an empty path list")
 	}
 }
 
 func TestGitReportsBranchAndCleanliness(t *testing.T) {
 	root := initRepo(t)
-	result, err := Git{}.Verify(context.Background(), Request{
+	result, err := Git{}.Verify(t.Context(), Request{
 		WorkspaceRoot: root, Expect: GitExpectation{CleanTree: true},
 	})
 	if err != nil {
@@ -219,7 +218,7 @@ func TestGitFailsADirtyTreeWhenCleanIsRequired(t *testing.T) {
 	root := initRepo(t)
 	write(t, filepath.Join(root, "untracked.txt"), "x")
 
-	result, err := Git{}.Verify(context.Background(), Request{
+	result, err := Git{}.Verify(t.Context(), Request{
 		WorkspaceRoot: root, Expect: GitExpectation{CleanTree: true},
 	})
 	if err != nil {
@@ -233,12 +232,12 @@ func TestGitFailsADirtyTreeWhenCleanIsRequired(t *testing.T) {
 // The delivery rule is that work never happens on the default branch.
 func TestGitCanRequireNotBeingOnAGivenBranch(t *testing.T) {
 	root := initRepo(t)
-	observation, err := Observe(context.Background(), root)
+	observation, err := Observe(t.Context(), root)
 	if err != nil {
 		t.Fatalf("Observe: %v", err)
 	}
 
-	result, err := Git{}.Verify(context.Background(), Request{
+	result, err := Git{}.Verify(t.Context(), Request{
 		WorkspaceRoot: root, Expect: GitExpectation{NotBranch: observation.Branch},
 	})
 	if err != nil {

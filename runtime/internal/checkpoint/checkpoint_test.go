@@ -1,7 +1,6 @@
 package checkpoint
 
 import (
-	"context"
 	"os"
 	"strings"
 	"testing"
@@ -253,7 +252,7 @@ spec:
 `)
 	atTestNode(t, root)
 
-	result, err := Verify(context.Background(), VerifyRequest{
+	result, err := Verify(t.Context(), VerifyRequest{
 		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo", Now: at(),
 	})
 	if err != nil {

@@ -231,10 +231,10 @@ func Get(ctx context.Context, workspaceRoot, source string, options Options) (Do
 		// read "Verifying you are human" as the answer is the failure that
 		// cannot be recovered from.
 		if reason := challengeReason(raw, doc); reason != "" {
-			ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+			probeCtx, cancel := context.WithTimeout(ctx, probeTimeout)
 			defer cancel()
 			return Document{}, false, fmt.Errorf("fetch %s: %s",
-				source, Advise(ctx, source, "answered with a bot check, matching "+reason))
+				source, Advise(probeCtx, source, "answered with a bot check, matching "+reason))
 		}
 	} else {
 		text := tidyPlain(string(raw))
@@ -344,9 +344,9 @@ func request(ctx context.Context, url string, options Options) ([]byte, string, 
 		// this tool's business, and a browser-driving tool is the honest route
 		// to a page whose owner wants a browser.
 		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
-			ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+			probeCtx, cancel := context.WithTimeout(ctx, probeTimeout)
 			defer cancel()
-			return nil, "", fmt.Errorf("fetch %s: %s", url, Advise(ctx, url, fmt.Sprintf(
+			return nil, "", fmt.Errorf("fetch %s: %s", url, Advise(probeCtx, url, fmt.Sprintf(
 				"%d %s, which for a plain request usually means a bot check or a rate limit",
 				resp.StatusCode, http.StatusText(resp.StatusCode))))
 		}
