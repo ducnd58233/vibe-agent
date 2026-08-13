@@ -159,7 +159,7 @@ func findAlternative(ctx context.Context, pageURL string) string {
 			continue
 		}
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, probeSniff))
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			continue
 		}

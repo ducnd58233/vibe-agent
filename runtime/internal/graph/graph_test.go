@@ -245,7 +245,7 @@ func TestParseAcceptsTheUnmodifiedGraph(t *testing.T) {
 func TestLoadRejectsAnIDThatDoesNotMatchTheFilename(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "renamed.yaml")
-	if err := os.WriteFile(path, mutate(t, func(map[string]any) {}), 0o644); err != nil {
+	if err := os.WriteFile(path, mutate(t, func(map[string]any) {}), 0o600); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 	if _, err := Load(path); err == nil {

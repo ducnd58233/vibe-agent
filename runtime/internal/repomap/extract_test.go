@@ -16,8 +16,8 @@ func equal(got, want []string) bool {
 	if len(got) != len(want) {
 		return false
 	}
-	for i := range got {
-		if got[i] != want[i] {
+	for i, value := range got {
+		if value != want[i] {
 			return false
 		}
 	}

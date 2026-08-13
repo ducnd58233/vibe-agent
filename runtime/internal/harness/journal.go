@@ -160,11 +160,11 @@ func proposeFailure(workspaceRoot string, run *state.Run, command string, result
 		return
 	}
 
-	store, err := memory.Open(workspaceRoot)
+	store, err := memory.Open(context.Background(), workspaceRoot)
 	if err != nil {
 		return
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	evidence := []string{fmt.Sprintf("%s %s during run %s at node %s",
 		command, exitedPhrase(result.exit()), run.Slug, orDash(run.CurrentNode))}

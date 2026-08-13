@@ -296,7 +296,7 @@ func Save(path string, run *Run) error {
 	}
 
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("create run directory: %w", err)
 	}
 
@@ -311,14 +311,16 @@ func Save(path string, run *Run) error {
 		return fmt.Errorf("create temp manifest: %w", err)
 	}
 	tempName := temp.Name()
-	defer os.Remove(tempName) // no-op once the rename succeeds
+	// A no-op once the rename succeeds, and unactionable if it does not: the
+	// temp file is already orphaned by then.
+	defer func() { _ = os.Remove(tempName) }()
 
 	if _, err := temp.Write(encoded); err != nil {
-		temp.Close()
+		_ = temp.Close()
 		return fmt.Errorf("write temp manifest: %w", err)
 	}
 	if err := temp.Sync(); err != nil {
-		temp.Close()
+		_ = temp.Close()
 		return fmt.Errorf("sync temp manifest: %w", err)
 	}
 	if err := temp.Close(); err != nil {

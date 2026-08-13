@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"path/filepath"
 	"strings"
@@ -17,11 +18,11 @@ func at() time.Time { return time.Date(2026, 7, 29, 10, 0, 0, 0, time.UTC) }
 
 func newDeps(t *testing.T) Deps {
 	t.Helper()
-	store, err := memory.OpenAt(filepath.Join(t.TempDir(), "memory.db"))
+	store, err := memory.OpenAt(context.Background(), filepath.Join(t.TempDir(), "memory.db"))
 	if err != nil {
 		t.Fatalf("OpenAt: %v", err)
 	}
-	t.Cleanup(func() { store.Close() })
+	t.Cleanup(func() { _ = store.Close() })
 	return Deps{
 		WorkspaceRoot: t.TempDir(),
 		ToolkitRoot:   toolkitRoot,

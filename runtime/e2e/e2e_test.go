@@ -603,7 +603,7 @@ func TestToolkitIsFoundWhenMountedAsASubmodule(t *testing.T) {
 	// Mirror the documented layout: toolkit under .vibe-agent, no .ai-agents at
 	// the workspace root.
 	mount := filepath.Join(root, ".vibe-agent")
-	if err := os.MkdirAll(mount, 0o755); err != nil {
+	if err := os.MkdirAll(mount, 0o750); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 	copyTree(t, filepath.Join(toolkitRoot(t), ".ai-agents"), filepath.Join(mount, ".ai-agents"))
@@ -641,13 +641,13 @@ func copyTree(t *testing.T, src, dst string) {
 		}
 		target := filepath.Join(dst, rel)
 		if info.IsDir() {
-			return os.MkdirAll(target, 0o755)
+			return os.MkdirAll(target, 0o750)
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(target, data, 0o644)
+		return os.WriteFile(target, data, 0o600)
 	})
 	if err != nil {
 		t.Fatalf("copy %s: %v", src, err)
@@ -668,10 +668,10 @@ func TestGraphValidateRunsAgainstTheShippedGraph(t *testing.T) {
 
 func write(t *testing.T, path, content string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
 	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 }

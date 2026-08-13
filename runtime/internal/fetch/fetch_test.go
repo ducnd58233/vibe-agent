@@ -14,9 +14,9 @@ const page = `<html><head><title>Guide</title><script>var x=1</script></head>
 
 func get(t *testing.T, root, source string, options Options) (Document, bool) {
 	t.Helper()
-	doc, cached, err := Get(root, source, options)
+	doc, cached, err := Get(t.Context(), root, source, options)
 	if err != nil {
-		t.Fatalf("Get(%s): %v", source, err)
+		t.Fatalf("Get(t.Context(), %s): %v", source, err)
 	}
 	return doc, cached
 }
@@ -76,7 +76,7 @@ func TestRefreshBypassesTheCache(t *testing.T) {
 func TestGetReadsALocalFile(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "notes.md")
-	if err := os.WriteFile(path, []byte("# Notes\n\nPlain markdown stays as it is.\n"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("# Notes\n\nPlain markdown stays as it is.\n"), 0o600); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
@@ -89,7 +89,7 @@ func TestGetReadsALocalFile(t *testing.T) {
 func TestGetExtractsALocalHTMLFile(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "saved.html")
-	if err := os.WriteFile(path, []byte(page), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(page), 0o600); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
@@ -106,11 +106,11 @@ func TestGetExtractsALocalHTMLFile(t *testing.T) {
 func TestABinaryDocumentIsNamedAndNotPrinted(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "spec.pdf")
-	if err := os.WriteFile(path, []byte("%PDF-1.7\n%\xe2\xe3\xcf\xd3\nbinary"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("%PDF-1.7\n%\xe2\xe3\xcf\xd3\nbinary"), 0o600); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
-	doc, _, err := Get(root, path, Options{})
+	doc, _, err := Get(t.Context(), root, path, Options{})
 	if err != nil {
 		t.Fatalf("a PDF was refused: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestABinaryDocumentIsNamedAndNotPrinted(t *testing.T) {
 
 func TestGetRefusesAMissingFile(t *testing.T) {
 	root := t.TempDir()
-	if _, _, err := Get(root, filepath.Join(root, "missing.md"), Options{}); err == nil {
+	if _, _, err := Get(t.Context(), root, filepath.Join(root, "missing.md"), Options{}); err == nil {
 		t.Error("a missing file was accepted")
 	}
 }
@@ -159,7 +159,7 @@ func TestGetRefusesAnOversizeResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	if _, _, err := Get(t.TempDir(), server.URL, Options{}); err == nil {
+	if _, _, err := Get(t.Context(), t.TempDir(), server.URL, Options{}); err == nil {
 		t.Error("an oversize response was accepted")
 	}
 }
@@ -194,7 +194,7 @@ func TestGetReportsTheHTTPStatusItWasRefusedWith(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, _, err := Get(t.TempDir(), server.URL, Options{})
+	_, _, err := Get(t.Context(), t.TempDir(), server.URL, Options{})
 	if err == nil || !strings.Contains(err.Error(), "404") {
 		t.Errorf("a 404 was not reported as one: %v", err)
 	}

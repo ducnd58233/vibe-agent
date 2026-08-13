@@ -28,7 +28,7 @@ func TestAChallengePageIsRefusedRatherThanReturned(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, _, err := Get(t.TempDir(), server.URL, Options{})
+	_, _, err := Get(t.Context(), t.TempDir(), server.URL, Options{})
 	if err == nil {
 		t.Fatal("a bot check answered with 200 was accepted as the page")
 	}
@@ -120,7 +120,7 @@ func TestAnAlternativeIsNamedWhenTheOriginPublishesOne(t *testing.T) {
 	server := httptest.NewServer(&mux)
 	defer server.Close()
 
-	_, _, err := Get(t.TempDir(), server.URL+"/blocked", Options{})
+	_, _, err := Get(t.Context(), t.TempDir(), server.URL+"/blocked", Options{})
 	if err == nil {
 		t.Fatal("the challenge was accepted")
 	}
@@ -139,7 +139,7 @@ func TestNoAlternativeIsInventedWhenTheOriginHasNone(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, _, err := Get(t.TempDir(), server.URL, Options{})
+	_, _, err := Get(t.Context(), t.TempDir(), server.URL, Options{})
 	if err == nil {
 		t.Fatal("the challenge was accepted")
 	}

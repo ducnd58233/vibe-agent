@@ -232,8 +232,8 @@ func (s simulator) Screenshot(ctx context.Context) ([]byte, error) {
 		return nil, fmt.Errorf("create screenshot file: %w", err)
 	}
 	path := file.Name()
-	file.Close()
-	defer os.Remove(path)
+	_ = file.Close()
+	defer func() { _ = os.Remove(path) }()
 
 	if _, err := capture(ctx, s.dir, "xcrun", "simctl", "io", s.target(), "screenshot", path); err != nil {
 		return nil, err
@@ -248,7 +248,7 @@ func writeScreenshot(req Request, png []byte) (string, error) {
 		return "", nil
 	}
 	dir := filepath.Join(req.WorkspaceRoot, "tmp", req.Slug, req.LogDir)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return "", err
 	}
 	name := req.Check
@@ -256,7 +256,7 @@ func writeScreenshot(req Request, png []byte) (string, error) {
 		name = "screen"
 	}
 	path := filepath.Join(dir, name+".png")
-	if err := os.WriteFile(path, png, 0o644); err != nil {
+	if err := os.WriteFile(path, png, 0o600); err != nil {
 		return "", err
 	}
 	relative, err := filepath.Rel(req.WorkspaceRoot, path)

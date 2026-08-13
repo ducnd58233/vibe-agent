@@ -80,7 +80,7 @@ func Build(ctx context.Context, workspaceRoot string) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	defer index.Close()
+	defer func() { _ = index.Close() }()
 
 	var result Result
 	entries := make(map[string]entry, len(paths))

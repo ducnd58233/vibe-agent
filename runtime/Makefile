@@ -43,7 +43,14 @@ PLATFORMS := \
 
 export CGO_ENABLED := 0
 
-.PHONY: all build test vet fmt fmt-check lint check release clean install help
+# golangci-lint is installed on demand into this module's own bin/, never into
+# the user's GOPATH, so a contributor's global toolchain is left alone and CI
+# and a laptop run the same binary.
+TOOLS_DIR    := $(CURDIR)/bin
+GOLANGCI     := $(TOOLS_DIR)/golangci-lint$(EXE)
+GOLANGCI_REF ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+
+.PHONY: all build test vet fmt fmt-check lint golangci tools check release clean install help
 
 all: check build
 
@@ -94,11 +101,21 @@ fmt-check:
 		echo "gofmt needed on:"; echo "$$unformatted"; exit 1; \
 	fi
 
-## lint: alias for the checks CI enforces
-lint: vet fmt-check
+## tools: install the pinned linters into ./bin
+tools: $(GOLANGCI)
+
+$(GOLANGCI):
+	GOBIN=$(TOOLS_DIR) go install $(GOLANGCI_REF)
+
+## golangci: the configured linter set, see .golangci.yml
+golangci: $(GOLANGCI)
+	$(GOLANGCI) run ./...
+
+## lint: every static check, no tests
+lint: vet fmt-check golangci
 
 ## check: everything CI runs for this module
-check: fmt-check vet test
+check: lint test
 
 ## release: cross-compile every published target and write checksums
 release: clean
@@ -114,7 +131,7 @@ release: clean
 
 ## clean: remove build output
 clean:
-	rm -rf $(DIST)
+	rm -rf $(DIST) $(TOOLS_DIR)
 
 ## help: list targets
 help:
