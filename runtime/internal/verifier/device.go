@@ -76,7 +76,7 @@ func ToolInSDK(name string, roots []string) string {
 	for _, root := range roots {
 		for _, candidate := range names {
 			path := filepath.Join(root, "platform-tools", candidate)
-			if info, err := os.Stat(path); err == nil && !info.IsDir() {
+			if info, err := os.Stat(filepath.Clean(path)); err == nil && !info.IsDir() {
 				return path
 			}
 		}

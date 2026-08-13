@@ -1,6 +1,9 @@
 package repomap
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 // names is what a test asserts on. The line numbers matter to the renderer, not
 // to whether extraction found the right things.
@@ -13,15 +16,7 @@ func names(symbols []Symbol) []string {
 }
 
 func equal(got, want []string) bool {
-	if len(got) != len(want) {
-		return false
-	}
-	for i, value := range got {
-		if value != want[i] {
-			return false
-		}
-	}
-	return true
+	return slices.Equal(got, want)
 }
 
 func TestExtractFindsDeclarations(t *testing.T) {

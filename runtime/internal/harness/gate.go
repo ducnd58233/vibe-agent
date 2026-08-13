@@ -169,11 +169,11 @@ var credentialLiteral = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)aws_secret_access_key\s*[:=]\s*\S{16,}`),
 }
 
-// credentialAllowMarker lets a line hold one of these shapes on purpose, which a
+// allowMarker lets a line hold one of these shapes on purpose, which a
 // test fixture and this project's own documentation both need. It is a single
 // greppable string rather than a config setting, so every exemption in the
 // repository can be listed with one search and reviewed as a diff.
-const credentialAllowMarker = "vibe-agent: allow-credential-literal" // sensitive-data-guard: allow this is the marker's definition, not a credential
+const allowMarker = "vibe-agent: allow-credential-literal" // sensitive-data-guard: allow this is the marker's definition, not a credential
 
 // credentialVerdict refuses to let a live credential be written into the
 // workspace.
@@ -190,7 +190,7 @@ func credentialVerdict(body payload) *BlockError {
 	}
 
 	for line := range strings.SplitSeq(text, "\n") {
-		if strings.Contains(line, credentialAllowMarker) {
+		if strings.Contains(line, allowMarker) {
 			continue
 		}
 		for _, pattern := range credentialLiteral {
@@ -220,7 +220,7 @@ func credentialReason(match, target string) string {
 		"Committed history is permanent, so the only real fix afterwards is rotation.",
 		"Read it from the configured secret source instead, and keep a placeholder in the file.",
 		"If this shape is deliberate, such as a test fixture, mark that line with:",
-		"  "+credentialAllowMarker,
+		"  "+allowMarker,
 		"That marker is greppable on purpose: every exemption should be reviewable as a diff.",
 	), "\n")
 }
