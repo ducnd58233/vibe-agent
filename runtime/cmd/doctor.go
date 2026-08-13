@@ -139,7 +139,7 @@ func checkMemory(report *diagnostics, workspaceRoot string) {
 // checkRunState loads every manifest under tmp/, so a run that would fail to
 // resume is found now rather than mid-delivery.
 func checkRunState(report *diagnostics, workspaceRoot string) {
-	entries, err := os.ReadDir(filepath.Join(workspaceRoot, "tmp"))
+	entries, err := os.ReadDir(state.RunsDir(workspaceRoot))
 	if err != nil {
 		return // no runs yet is not a problem
 	}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/state"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -247,7 +248,7 @@ func writeScreenshot(req Request, png []byte) (string, error) {
 	if req.Slug == "" || req.LogDir == "" || len(png) == 0 {
 		return "", nil
 	}
-	dir := filepath.Join(req.WorkspaceRoot, "tmp", req.Slug, req.LogDir)
+	dir := filepath.Join(state.RunDir(req.WorkspaceRoot, req.Slug), req.LogDir)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return "", err
 	}

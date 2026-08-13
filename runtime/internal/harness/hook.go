@@ -469,7 +469,7 @@ func nodeFor(req Request, run *state.Run) (graph.Node, bool) {
 // or invalid manifest is skipped rather than reported: a hook is not the place
 // to fail a session over a stale file.
 func activeRuns(workspaceRoot string) []*state.Run {
-	entries, err := os.ReadDir(filepath.Join(workspaceRoot, "tmp"))
+	entries, err := os.ReadDir(state.RunsDir(workspaceRoot))
 	if err != nil {
 		return nil
 	}

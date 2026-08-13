@@ -103,7 +103,7 @@ func writeLog(req Request, output []byte) (string, error) {
 	if req.Slug == "" || req.LogDir == "" {
 		return "", nil
 	}
-	dir := filepath.Join(req.WorkspaceRoot, "tmp", req.Slug, req.LogDir)
+	dir := filepath.Join(state.RunDir(req.WorkspaceRoot, req.Slug), req.LogDir)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return "", fmt.Errorf("create log directory: %w", err)
 	}
