@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strings"
 	"time"
@@ -45,11 +47,11 @@ func memoryListCommand(args []string) error {
 		return err
 	}
 
-	store, err := openExistingMemory(workspaceRoot)
+	store, exists, err := openExistingMemory(workspaceRoot)
 	if err != nil {
 		return err
 	}
-	if store == nil {
+	if !exists {
 		fmt.Println("No memory database yet. One is created the first time something is stored.")
 		return nil
 	}
@@ -99,11 +101,11 @@ func memorySetStatus(args []string, action string) error {
 		return err
 	}
 
-	store, err := openExistingMemory(workspaceRoot)
+	store, exists, err := openExistingMemory(workspaceRoot)
 	if err != nil {
 		return err
 	}
-	if store == nil {
+	if !exists {
 		return fmt.Errorf("no memory database at %s", memory.DBPath(workspaceRoot))
 	}
 	defer func() { _ = store.Close() }()
@@ -135,12 +137,16 @@ func memorySetStatus(args []string, action string) error {
 
 // openExistingMemory opens the store without creating one, so a command run in
 // the wrong directory reports that rather than seeding an empty database there.
-func openExistingMemory(workspaceRoot string) (*memory.Store, error) {
+func openExistingMemory(workspaceRoot string) (store *memory.Store, exists bool, err error) {
 	path := memory.DBPath(workspaceRoot)
-	if _, err := os.Stat(path); err != nil {
-		return nil, nil
+	if _, statErr := os.Stat(path); statErr != nil {
+		if errors.Is(statErr, fs.ErrNotExist) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("check for memory database: %w", statErr)
 	}
-	return memory.OpenAt(context.Background(), path)
+	store, err = memory.OpenAt(context.Background(), path)
+	return store, err == nil, err
 }
 
 func stamp(label string, value *time.Time) string {

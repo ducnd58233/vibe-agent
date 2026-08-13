@@ -115,9 +115,5 @@ func writeLog(req Request, output []byte) (string, error) {
 	if err := os.WriteFile(path, output, 0o600); err != nil {
 		return "", fmt.Errorf("write log: %w", err)
 	}
-	relative, err := filepath.Rel(req.WorkspaceRoot, path)
-	if err != nil {
-		return path, nil
-	}
-	return relative, nil
+	return relativeTo(req.WorkspaceRoot, path), nil
 }

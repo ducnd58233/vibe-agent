@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
 
@@ -117,11 +119,20 @@ func (c *cache) version(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("read index version: %w", err)
 	}
-	var version int
-	if _, err := fmt.Sscanf(raw, "%d", &version); err != nil {
-		return 0, nil
+	return parseVersion(raw), nil
+}
+
+// parseVersion reads a stored version, treating anything unreadable as zero.
+//
+// A meta row that is not a number means a database written by something that is
+// not this package, and rebuilding is the answer either way, so there is no
+// error worth returning.
+func parseVersion(raw string) int {
+	version, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return 0
 	}
-	return version, nil
+	return version
 }
 
 // entry is one file's cached index.

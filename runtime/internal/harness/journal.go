@@ -105,14 +105,14 @@ func journal(req Request, body payload, failed bool) error {
 	}
 
 	command := truncate(body.shellCommand(), commandLimit)
-	entry, err := json.Marshal(toolUse{
+	entry := encodeToolUse(toolUse{
 		Tool:     body.ToolName,
 		Command:  command,
 		File:     body.writeTarget(),
 		ExitCode: result.exit(),
 		Failed:   failed,
 	})
-	if err != nil {
+	if entry == nil {
 		return nil
 	}
 
@@ -130,6 +130,19 @@ func journal(req Request, body payload, failed bool) error {
 		}
 	}
 	return nil
+}
+
+// encodeToolUse renders a journal entry, or nil if it somehow cannot.
+//
+// A struct of strings and an int does not fail to marshal. The journal also
+// never fails a session over its own bookkeeping, so this returns bytes rather
+// than an error nobody upstream would act on.
+func encodeToolUse(use toolUse) []byte {
+	encoded, err := json.Marshal(use)
+	if err != nil {
+		return nil
+	}
+	return encoded
 }
 
 // FailureMemoryLife is how long a recorded command failure stays retrievable.

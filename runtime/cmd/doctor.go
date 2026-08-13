@@ -144,12 +144,12 @@ func checkRepoMap(report *diagnostics, workspaceRoot string) {
 // create state, which is why recall opens the database only if it exists.
 // checkRepoMap beside it follows the same rule.
 func checkMemory(report *diagnostics, workspaceRoot string) {
-	store, err := openExistingMemory(workspaceRoot)
+	store, exists, err := openExistingMemory(workspaceRoot)
 	if err != nil {
 		report.check("memory database opens", false, err.Error())
 		return
 	}
-	if store == nil {
+	if !exists {
 		fmt.Println("  note  no memory database yet; one is created the first time " +
 			"something is stored")
 		return
