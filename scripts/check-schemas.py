@@ -318,13 +318,17 @@ def check_go_fixtures(root: Path, run_schema: dict) -> tuple[int, int]:
     pins what Save emits; this pins that the schema accepts it. Without both,
     the two drift and nobody notices until a run fails to load.
     """
-    fixtures_dir = root / "runtime/internal/state/testdata"
-    if not fixtures_dir.is_dir():
-        return 0, 0
-
-    paths = sorted(fixtures_dir.glob("*.json"))
+    fixtures_dir = root / "runtime/internal/run/infra/persistence/testdata"
+    paths = sorted(fixtures_dir.glob("*.json")) if fixtures_dir.is_dir() else []
     if not paths:
-        return 0, 0
+        # A missing fixture is a failure, not a skip. This used to return
+        # silently, so moving the Go package left the check reporting OK while
+        # validating nothing: the contract across the language boundary was
+        # unguarded and the output said it was fine.
+        print()
+        print(f"  FAIL  no Go fixtures under {fixtures_dir.relative_to(root)}; "
+              "the run-state contract is unchecked")
+        return 1, 1
 
     print()
     failures = 0
