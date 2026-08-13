@@ -1,4 +1,4 @@
-package memory
+package domain
 
 import (
 	"fmt"

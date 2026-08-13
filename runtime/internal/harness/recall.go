@@ -40,7 +40,7 @@ func recall(workspaceRoot, query string) string {
 
 	lines := []string{"Retrieved memory. " + memory.Disclaimer}
 	for _, hit := range hits {
-		lines = append(lines, "  - "+singleLine(hit.Record.Content))
+		lines = append(lines, "  - "+singleLine(hit.Content))
 	}
 	return strings.Join(lines, "\n")
 }

@@ -1,4 +1,4 @@
-package memory
+package persistence
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"encoding/base32"
 	"errors"
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/memory/domain"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"os"
 	"path/filepath"
@@ -151,27 +152,27 @@ func (s *Store) Close() error { return s.db.Close() }
 //
 // This is the only write path model output can reach, and it cannot produce a
 // confirmed record.
-func (s *Store) Propose(ctx context.Context, candidate Record, now time.Time) (Record, Decision, error) {
+func (s *Store) Propose(ctx context.Context, candidate domain.Record, now time.Time) (domain.Record, domain.Decision, error) {
 	existing, err := s.List(ctx, candidate.WorkspaceID)
 	if err != nil {
-		return Record{}, Decision{}, err
+		return domain.Record{}, domain.Decision{}, err
 	}
 
 	if candidate.Status == "" {
-		candidate.Status = StatusProposed
+		candidate.Status = domain.StatusProposed
 	}
-	decision := Filter{Existing: existing}.Decide(candidate)
+	decision := domain.Filter{Existing: existing}.Decide(candidate)
 
 	switch decision.Verdict {
-	case VerdictReject:
-		return Record{}, decision, nil
-	case VerdictMerge:
+	case domain.VerdictReject:
+		return domain.Record{}, decision, nil
+	case domain.VerdictMerge:
 		merged, err := s.mergeEvidence(ctx, decision.MergeInto, candidate, now)
 		return merged, decision, err
 	}
 
 	candidate.ID = newID()
-	candidate.Status = StatusProposed
+	candidate.Status = domain.StatusProposed
 	candidate.CreatedAt = now.UTC()
 	candidate.UpdatedAt = now.UTC()
 	// A candidate that does not say when its fact started being true started
@@ -180,26 +181,26 @@ func (s *Store) Propose(ctx context.Context, candidate Record, now time.Time) (R
 		candidate.ValidFrom = now.UTC()
 	}
 	if err := s.insert(ctx, candidate); err != nil {
-		return Record{}, decision, err
+		return domain.Record{}, decision, err
 	}
 	return candidate, decision, nil
 }
 
 // Confirm promotes a proposed memory. The caller must supply real provenance,
 // which is why this takes a source rather than trusting the record's own.
-func (s *Store) Confirm(ctx context.Context, id string, source SourceType, ref string, now time.Time) (Record, error) {
-	if !source.valid() {
-		return Record{}, fmt.Errorf("confirmation needs real provenance; %q is not a source", source)
+func (s *Store) Confirm(ctx context.Context, id string, source domain.SourceType, ref string, now time.Time) (domain.Record, error) {
+	if !source.Valid() {
+		return domain.Record{}, fmt.Errorf("confirmation needs real provenance; %q is not a source", source)
 	}
 	record, err := s.Get(ctx, id)
 	if err != nil {
-		return Record{}, err
+		return domain.Record{}, err
 	}
-	if record.Status == StatusStale || record.Status == StatusRejected {
-		return Record{}, fmt.Errorf("memory %s is %s and cannot be confirmed", id, record.Status)
+	if record.Status == domain.StatusStale || record.Status == domain.StatusRejected {
+		return domain.Record{}, fmt.Errorf("memory %s is %s and cannot be confirmed", id, record.Status)
 	}
 
-	record.Status = StatusConfirmed
+	record.Status = domain.StatusConfirmed
 	record.SourceType = source
 	if ref != "" {
 		record.SourceRef = ref
@@ -207,7 +208,7 @@ func (s *Store) Confirm(ctx context.Context, id string, source SourceType, ref s
 	record.UpdatedAt = now.UTC()
 
 	if err := s.update(ctx, record); err != nil {
-		return Record{}, err
+		return domain.Record{}, err
 	}
 	// Confirming a superseding memory closes the one it replaces, so retrieval
 	// never returns both sides of a contradiction.
@@ -217,7 +218,7 @@ func (s *Store) Confirm(ctx context.Context, id string, source SourceType, ref s
 	// moment somebody got around to recording it.
 	if record.SupersedesID != "" {
 		if err := s.Invalidate(ctx, record.SupersedesID, record.ValidFrom); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return Record{}, err
+			return domain.Record{}, err
 		}
 	}
 	return record, nil
@@ -232,7 +233,7 @@ func (s *Store) Invalidate(ctx context.Context, id string, at time.Time) error {
 	result, err := s.db.ExecContext(ctx,
 		`UPDATE memories SET valid_to = ?, status = ?, updated_at = ?
          WHERE id = ? AND valid_to IS NULL`,
-		at.UTC().Format(ExpiryLayout), string(StatusStale),
+		at.UTC().Format(ExpiryLayout), string(domain.StatusStale),
 		at.UTC().Format(time.RFC3339Nano), id)
 	if err != nil {
 		return fmt.Errorf("invalidate memory: %w", err)
@@ -245,8 +246,8 @@ func (s *Store) Invalidate(ctx context.Context, id string, at time.Time) error {
 }
 
 // SetStatus changes a memory's status, for example retiring a stale fact.
-func (s *Store) SetStatus(ctx context.Context, id string, status Status, now time.Time) error {
-	if !status.valid() {
+func (s *Store) SetStatus(ctx context.Context, id string, status domain.Status, now time.Time) error {
+	if !status.Valid() {
 		return fmt.Errorf("status %q is not known", status)
 	}
 	result, err := s.db.ExecContext(ctx,
@@ -274,24 +275,24 @@ func (s *Store) RecordUse(ctx context.Context, id string, now time.Time) error {
 }
 
 // Get returns one memory.
-func (s *Store) Get(ctx context.Context, id string) (Record, error) {
+func (s *Store) Get(ctx context.Context, id string) (domain.Record, error) {
 	rows, err := s.db.QueryContext(ctx, selectColumns+` WHERE id = ?`, id)
 	if err != nil {
-		return Record{}, fmt.Errorf("read memory: %w", err)
+		return domain.Record{}, fmt.Errorf("read memory: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	records, err := scanRecords(rows)
 	if err != nil {
-		return Record{}, err
+		return domain.Record{}, err
 	}
 	if len(records) == 0 {
-		return Record{}, fmt.Errorf("no memory %s: %w", id, sql.ErrNoRows)
+		return domain.Record{}, fmt.Errorf("no memory %s: %w", id, sql.ErrNoRows)
 	}
 	return records[0], nil
 }
 
 // List returns every memory for a workspace, newest first.
-func (s *Store) List(ctx context.Context, workspaceID string) ([]Record, error) {
+func (s *Store) List(ctx context.Context, workspaceID string) ([]domain.Record, error) {
 	rows, err := s.db.QueryContext(ctx,
 		selectColumns+` WHERE workspace_id = ? ORDER BY created_at DESC`, workspaceID)
 	if err != nil {
@@ -301,7 +302,7 @@ func (s *Store) List(ctx context.Context, workspaceID string) ([]Record, error) 
 	return scanRecords(rows)
 }
 
-func (s *Store) insert(ctx context.Context, record Record) error {
+func (s *Store) insert(ctx context.Context, record domain.Record) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
@@ -331,7 +332,7 @@ func (s *Store) insert(ctx context.Context, record Record) error {
 	return tx.Commit()
 }
 
-func (s *Store) update(ctx context.Context, record Record) error {
+func (s *Store) update(ctx context.Context, record domain.Record) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
@@ -363,10 +364,10 @@ func (s *Store) update(ctx context.Context, record Record) error {
 
 // mergeEvidence folds a duplicate candidate's evidence into the record it
 // duplicates, rather than storing the same claim twice.
-func (s *Store) mergeEvidence(ctx context.Context, id string, candidate Record, now time.Time) (Record, error) {
+func (s *Store) mergeEvidence(ctx context.Context, id string, candidate domain.Record, now time.Time) (domain.Record, error) {
 	existing, err := s.Get(ctx, id)
 	if err != nil {
-		return Record{}, err
+		return domain.Record{}, err
 	}
 	seen := map[string]bool{}
 	for _, item := range existing.Evidence {
@@ -383,7 +384,7 @@ func (s *Store) mergeEvidence(ctx context.Context, id string, candidate Record, 
 	}
 	existing.UpdatedAt = now.UTC()
 	if err := s.update(ctx, existing); err != nil {
-		return Record{}, err
+		return domain.Record{}, err
 	}
 	return existing, nil
 }
@@ -394,8 +395,8 @@ SELECT id, workspace_id, kind, content, tags, confidence, status, source_type,
        valid_from, valid_to, created_at, updated_at
 FROM memories`
 
-func scanRecords(rows *sql.Rows) ([]Record, error) {
-	var records []Record
+func scanRecords(rows *sql.Rows) ([]domain.Record, error) {
+	var records []domain.Record
 	for rows.Next() {
 		record, err := scanRecord(rows.Scan)
 		if err != nil {
@@ -409,9 +410,9 @@ func scanRecords(rows *sql.Rows) ([]Record, error) {
 // scanRecord reads the shared column list. Search adds a score column of its
 // own, so it passes a scan function that consumes one more value rather than
 // duplicating this list and letting the two drift.
-func scanRecord(scan func(...any) error, extra ...any) (Record, error) {
+func scanRecord(scan func(...any) error, extra ...any) (domain.Record, error) {
 	var (
-		record       Record
+		record       domain.Record
 		tags         string
 		sourceRef    sql.NullString
 		evidence     string
@@ -431,11 +432,11 @@ func scanRecord(scan func(...any) error, extra ...any) (Record, error) {
 		&createdAt, &updatedAt}, extra...)
 
 	if err := scan(targets...); err != nil {
-		return Record{}, fmt.Errorf("scan memory: %w", err)
+		return domain.Record{}, fmt.Errorf("scan memory: %w", err)
 	}
-	record.Kind = Kind(kind)
-	record.Status = Status(status)
-	record.SourceType = SourceType(sourceType)
+	record.Kind = domain.Kind(kind)
+	record.Status = domain.Status(status)
+	record.SourceType = domain.SourceType(sourceType)
 	record.SourceRef = sourceRef.String
 	record.SupersedesID = supersedesID.String
 	if tags != "" {

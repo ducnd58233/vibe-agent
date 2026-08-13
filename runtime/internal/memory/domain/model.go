@@ -9,7 +9,7 @@
 //   - Procedural memory does not belong here. A workflow worth keeping is
 //     promoted to a skill, a rule, a stack profile, or a deterministic check,
 //     where it is reviewable and versioned.
-package memory
+package domain
 
 import (
 	"fmt"
@@ -35,7 +35,7 @@ const (
 // rejection message can be specific rather than "unknown kind".
 const KindProcedural Kind = "procedural"
 
-func (k Kind) valid() bool {
+func (k Kind) Valid() bool {
 	switch k {
 	case KindSemantic, KindEpisodic, KindCorrection, KindPreference:
 		return true
@@ -57,7 +57,7 @@ const (
 	StatusRejected Status = "rejected"
 )
 
-func (s Status) valid() bool {
+func (s Status) Valid() bool {
 	switch s {
 	case StatusProposed, StatusConfirmed, StatusStale, StatusRejected:
 		return true
@@ -76,7 +76,7 @@ const (
 	SourceReviewComment  SourceType = "review_comment"
 )
 
-func (s SourceType) valid() bool {
+func (s SourceType) Valid() bool {
 	switch s {
 	case SourceCommandResult, SourceFileContent, SourceCIAPI,
 		SourceHumanStatement, SourceReviewComment:
@@ -127,7 +127,7 @@ func (r Record) Validate() error {
 	if r.Kind == KindProcedural {
 		return fmt.Errorf("procedural memory is not stored here: promote the workflow to a SKILL.md, an AGENTS.md rule, a stack profile, or a deterministic check")
 	}
-	if !r.Kind.valid() {
+	if !r.Kind.Valid() {
 		return fmt.Errorf("kind %q is not one of semantic, episodic, correction, preference", r.Kind)
 	}
 	if r.Content == "" {
@@ -136,10 +136,10 @@ func (r Record) Validate() error {
 	if len(r.Content) > 2000 {
 		return fmt.Errorf("content is %d characters; keep a memory to one fact under 2000", len(r.Content))
 	}
-	if !r.Status.valid() {
+	if !r.Status.Valid() {
 		return fmt.Errorf("status %q is not known", r.Status)
 	}
-	if !r.SourceType.valid() {
+	if !r.SourceType.Valid() {
 		return fmt.Errorf("sourceType %q is not evidence; model inference is not a source", r.SourceType)
 	}
 	if r.Confidence < 0 || r.Confidence > 1 {

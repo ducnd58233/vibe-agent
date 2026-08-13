@@ -172,8 +172,8 @@ func TestPolicyCases(t *testing.T) {
 			t.Fatalf("Search: %v", err)
 		}
 		for _, hit := range hits {
-			if hit.Record.WorkspaceID != "ws1" {
-				t.Errorf("search returned a memory from %q", hit.Record.WorkspaceID)
+			if hit.WorkspaceID != "ws1" {
+				t.Errorf("search returned a memory from %q", hit.WorkspaceID)
 			}
 		}
 		if len(hits) != 1 {
@@ -308,8 +308,8 @@ func TestSearchRanksAndCaps(t *testing.T) {
 		t.Fatalf("got %d hits for Redis, want the 2 that mention it", len(hits))
 	}
 	for _, hit := range hits {
-		if !strings.Contains(hit.Record.Content, "Redis") {
-			t.Errorf("irrelevant hit: %q", hit.Record.Content)
+		if !strings.Contains(hit.Content, "Redis") {
+			t.Errorf("irrelevant hit: %q", hit.Content)
 		}
 	}
 

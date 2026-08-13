@@ -1,8 +1,9 @@
-package memory
+package persistence
 
 import (
 	"context"
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/memory/domain"
 	"sort"
 	"strings"
 	"time"
@@ -25,14 +26,14 @@ type Query struct {
 	// WorkspaceID is required. Retrieval never crosses workspaces.
 	WorkspaceID string
 	Text        string
-	Kinds       []Kind
+	Kinds       []domain.Kind
 	// Statuses defaults to confirmed only. Proposed memories are candidates,
 	// not knowledge, and returning them would make the gate meaningless.
 	//
 	// An as-of query defaults to confirmed and stale together, because a fact
 	// that was true then is usually stale now, and excluding it would make
 	// every as-of query answer with the present.
-	Statuses []Status
+	Statuses []domain.Status
 	// AsOf asks what the workspace believed at an instant rather than what it
 	// believes now. Zero means now.
 	AsOf  time.Time
@@ -41,8 +42,8 @@ type Query struct {
 
 // Hit is one retrieved memory and its fused score. Higher is a better match.
 type Hit struct {
-	Record Record
-	Score  float64
+	domain.Record
+	Score float64
 }
 
 // rrfK damps the contribution of low-ranked results in reciprocal rank fusion.
@@ -75,9 +76,9 @@ func (s *Store) Search(ctx context.Context, query Query) ([]Hit, error) {
 	}
 	if len(query.Statuses) == 0 {
 		if query.AsOf.IsZero() {
-			query.Statuses = []Status{StatusConfirmed}
+			query.Statuses = []domain.Status{domain.StatusConfirmed}
 		} else {
-			query.Statuses = []Status{StatusConfirmed, StatusStale}
+			query.Statuses = []domain.Status{domain.StatusConfirmed, domain.StatusStale}
 		}
 	}
 
@@ -201,7 +202,7 @@ func fuse(hits []Hit, limit int) []Hit {
 		byRecency[i] = i
 	}
 	sort.SliceStable(byRecency, func(a, b int) bool {
-		return hits[byRecency[a]].Record.UpdatedAt.After(hits[byRecency[b]].Record.UpdatedAt)
+		return hits[byRecency[a]].UpdatedAt.After(hits[byRecency[b]].UpdatedAt)
 	})
 
 	score := make([]float64, len(hits))
@@ -225,10 +226,10 @@ func fuse(hits []Hit, limit int) []Hit {
 		if left.Score != right.Score {
 			return left.Score > right.Score
 		}
-		if !left.Record.UpdatedAt.Equal(right.Record.UpdatedAt) {
-			return left.Record.UpdatedAt.After(right.Record.UpdatedAt)
+		if !left.UpdatedAt.Equal(right.UpdatedAt) {
+			return left.UpdatedAt.After(right.UpdatedAt)
 		}
-		return left.Record.Confidence > right.Record.Confidence
+		return left.Confidence > right.Confidence
 	})
 	if len(fused) > limit {
 		fused = fused[:limit]
