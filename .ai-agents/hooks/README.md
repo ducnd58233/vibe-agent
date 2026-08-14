@@ -41,7 +41,8 @@ Cursor users get the same guidance through [`CURSOR.md`](../../CURSOR.md) and `.
 
 The wiring above follows the current Cursor hooks documentation. It has **not** been confirmed in a live Cursor session from this repository. Two things to check when someone next runs Cursor here:
 
-- Whether the existing `matcher` values in [`.cursor/hooks.json`](../../.cursor/hooks.json) (`"WebFetch"`, `"Edit|Write"`) actually match. Cursor documents tool-type matchers such as `"Shell"`, `"Read"`, `"Write"`, `"Grep"`, `"Delete"`, `"Task"`, and `"MCP:<name>"`; `"Edit"` and `"WebFetch"` are Claude tool names and may match nothing. These entries predate this change and were left alone rather than guessed at.
+- Whether `"WebFetch"` matches anything. Cursor documents tool-type matchers such as `"Shell"`, `"Read"`, `"Write"`, `"Grep"`, `"Delete"`, `"Task"`, and `"MCP:<name>"`, and `"WebFetch"` is a Claude tool name absent from that list. The two `sdd-cache` hooks do not filter by tool themselves, so a wrong matcher here means they never run rather than running too often. Cursor's own name for its web tool is not in the documentation this was written from, so it was left alone rather than guessed at.
+- The control-plane matchers were **not** left alone: `"Bash|Edit|NotebookEdit"` named no Cursor tool, so `post-tool-use` fired for `Write` and for nothing else, and no shell command in any Cursor session was ever journalled. They now use the documented names.
 - Whether `afterFileEdit` surfaces a script's stdout. It is documented as observational with no output fields, so the two UI guards may run without their warnings reaching anyone.
 </context>
 
