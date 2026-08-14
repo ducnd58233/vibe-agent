@@ -12,14 +12,13 @@ model_instructions_file = "../AGENTS.md"
 max_threads = 8
 max_depth = 1
 
-# Outer-loop control plane, reached over MCP, so unlike Claude and Cursor these
-# tools are model-decided rather than guaranteed to fire.
+# Outer-loop control plane over MCP: model-decided, so best effort. The
+# deterministic surface is hooks.json beside this file, which Codex loads only
+# for a project marked trusted below.
 #
-# Codex has had a shell-command hook system since v0.114, which would make this
-# deterministic here too. Deliberately not wired yet: every event except the
-# journal writes a host-shaped JSON response, this repository has no Codex
-# install to verify those shapes against, and an unrecognised client silently
-# gets Claude's shape. See https://learn.chatgpt.com/docs/hooks
+# One gap is the host's, not this config's: codex-cli 0.147.0 fires PostToolUse
+# on success only and publishes no failure event, so a failed command cannot be
+# journalled on Codex the way it is on Claude and Cursor.
 #
 # Requires the vibe-agent binary on PATH; without it Codex simply sees no tools.
 [mcp_servers.vibe-agent]

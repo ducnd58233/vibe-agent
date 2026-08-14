@@ -58,15 +58,22 @@ type hostConfig struct {
 	// rather than less.
 	//
 	// Claude Code and Cursor both split: each fires exactly one of PostToolUse
-	// and PostToolUseFailure per call. Codex does not split, because its
-	// PostToolUse fires after the tool completes "including when commands exit
-	// with a non-zero status" - there is no second event to wire, and asking for
-	// one would be a false alarm. opencode exposes tool lifecycle through JS/TS
-	// plugins rather than shell commands, so it registers no events here at all.
+	// and PostToolUseFailure per call, so wiring one alone is a defect.
+	//
+	// Codex is false for a different and worse reason. Its documentation says
+	// PostToolUse fires "including when commands exit with a non-zero status",
+	// and codex-cli 0.147.0 does not: a failing command produces PreToolUse and
+	// then nothing, measured twice, while a passing one in the same session
+	// produced both. Codex publishes no failure event either, so there is no
+	// second hook to ask for - the gap is the host's and cannot be wired shut.
+	// Reporting it here would only tell someone to add a hook that does not
+	// exist.
+	//
+	// opencode exposes tool lifecycle through JS/TS plugins rather than shell
+	// commands, so it registers no events here at all.
 	//
 	// Refs: https://code.claude.com/docs/en/hooks,
-	// https://cursor.com/docs/agent/hooks, https://learn.chatgpt.com/docs/hooks,
-	// https://opencode.ai/docs/plugins/
+	// https://cursor.com/docs/agent/hooks, https://opencode.ai/docs/plugins/
 	SplitsToolOutcome bool
 }
 

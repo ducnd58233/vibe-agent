@@ -124,7 +124,8 @@ func gate(req Request, body payload, out io.Writer) error {
 	if blocked == nil {
 		return nil
 	}
-	if req.Client == ClientCursor {
+	switch req.Client {
+	case ClientCursor:
 		// Cursor's beforeShellExecution decides through JSON rather than exit
 		// codes, so the same verdict has to travel a different way.
 		return write(out, map[string]any{
@@ -132,6 +133,20 @@ func gate(req Request, body payload, out io.Writer) error {
 			"agentMessage": blocked.Reason,
 			"userMessage":  "vibe-agent blocked a command that would bypass the delivery graph.",
 		})
+	case ClientCodex:
+		// Codex ignores exit 2 outright. It was measured running the command
+		// anyway while the hook exited 2 and printed the refusal, and blocking
+		// it with this shape instead - the model then reported the reason back
+		// verbatim. A gate that fails open is not a gate, so this is the branch
+		// that had to be established by experiment rather than inference.
+		return write(out, map[string]any{
+			"hookSpecificOutput": map[string]any{
+				"hookEventName":            "PreToolUse",
+				"permissionDecision":       "deny",
+				"permissionDecisionReason": blocked.Reason,
+			},
+		})
+	case ClientClaude:
 	}
 	return blocked
 }
