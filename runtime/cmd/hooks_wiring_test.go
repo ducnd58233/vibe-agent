@@ -43,14 +43,14 @@ func TestRegisteredEventsReadsBothHostConfigs(t *testing.T) {
 		t.Fatalf("registeredEvents: %v", err)
 	}
 	for _, want := range []string{"session-start", "post-tool-use", "stop"} {
-		if _, ok := found[want]; !ok {
-			t.Errorf("%q was registered and not found; keys were %v", want, keysOf(found))
+		if _, ok := found.byEvent[want]; !ok {
+			t.Errorf("%q was registered and not found; keys were %v", want, keysOf(found.byEvent))
 		}
 	}
 
 	// An event wired in both files has to name both, so a failure message points
 	// at every file that needs editing rather than one of them.
-	sources := found["post-tool-use"]
+	sources := found.byEvent["post-tool-use"]
 	if len(sources) != 2 {
 		t.Errorf("post-tool-use is in both configs but reported %v", sources)
 	}
@@ -78,11 +78,11 @@ func TestRegisteredEventsIgnoresOtherVibeAgentCommands(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registeredEvents: %v", err)
 	}
-	if len(found) != 1 {
-		t.Errorf("expected only the hook event, got %v", keysOf(found))
+	if len(found.byEvent) != 1 {
+		t.Errorf("expected only the hook event, got %v", keysOf(found.byEvent))
 	}
 	for _, notAnEvent := range []string{"verify", "run", "start"} {
-		if _, ok := found[notAnEvent]; ok {
+		if _, ok := found.byEvent[notAnEvent]; ok {
 			t.Errorf("%q is a command, not a hook event, and was read as one", notAnEvent)
 		}
 	}
@@ -100,14 +100,14 @@ func TestTheShippedConfigsOnlyWireImplementedEvents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("registeredEvents on the toolkit itself: %v", err)
 	}
-	if len(found) == 0 {
+	if len(found.byEvent) == 0 {
 		t.Fatal("no hook events found in the shipped configs")
 	}
 
 	// The PATH comparison depends on what happens to be installed on the machine
 	// running tests, so this asserts only the static half: nothing is wired to an
 	// event this build does not implement.
-	for event, sources := range found {
+	for event, sources := range found.byEvent {
 		if !harness.Handles(harness.Event(event)) {
 			t.Errorf("%s wires %q, which this build does not handle",
 				strings.Join(sources, " and "), event)
@@ -190,6 +190,75 @@ func TestWiringNeitherHalfIsNotADoctorFailure(t *testing.T) {
 
 	if report.problems != 0 {
 		t.Errorf("a config wiring neither outcome hook reported %d problems", report.problems)
+	}
+}
+
+// One host wiring both halves says nothing about another that wired one, and
+// reading the merged view let it say exactly that. This is the live shape: the
+// shipped .claude/settings.json registered both, the shipped .cursor/hooks.json
+// registered only the success half, and doctor was green while every failing
+// tool call in every Cursor session went unrecorded.
+func TestOneHostsCorrectWiringDoesNotCoverAnother(t *testing.T) {
+	root := t.TempDir()
+	writeConfig(t, root, filepath.Join(".claude", "settings.json"), `{
+  "hooks": {
+    "PostToolUse": [{"hooks": [{"command": "vibe-agent hook post-tool-use"}]}],
+    "PostToolUseFailure": [{"hooks": [{"command": "vibe-agent hook post-tool-use-failure"}]}]
+  }
+}`)
+	writeConfig(t, root, filepath.Join(".cursor", "hooks.json"), `{
+  "hooks": {
+    "postToolUse": [{"command": "vibe-agent hook post-tool-use --client cursor"}]
+  }
+}`)
+	t.Setenv("PATH", t.TempDir())
+
+	report := &diagnostics{}
+	checkHookWiring(report, root)
+
+	if report.problems == 0 {
+		t.Error("Cursor journals successes and drops every failure, and doctor was green " +
+			"because Claude's config answered the question on its behalf")
+	}
+}
+
+// Codex reports a failed tool call through PostToolUse itself, which "fires
+// after tools complete, including when commands exit with a non-zero status".
+// There is no second event to wire, so demanding one would send a consumer
+// looking for a hook their host does not have.
+//
+// Ref: https://learn.chatgpt.com/docs/hooks
+func TestAHostThatDoesNotSplitOutcomesIsNotAskedForTheFailureHalf(t *testing.T) {
+	root := t.TempDir()
+	writeConfig(t, root, filepath.Join(".codex", "hooks.json"), `{
+  "hooks": {
+    "PostToolUse": [{"command": "vibe-agent hook post-tool-use --client codex"}]
+  }
+}`)
+	t.Setenv("PATH", t.TempDir())
+
+	report := &diagnostics{}
+	checkHookWiring(report, root)
+
+	if report.problems != 0 {
+		t.Errorf("a Codex config wiring the only outcome event it has reported %d problems",
+			report.problems)
+	}
+}
+
+// A file that exists and registers nothing is not wiring. opencode.json is
+// always present in this repository and drives the control plane over MCP, so
+// counting it as a readable hook config would report a workspace with no hooks
+// at all as fully wired - the same "green because it looked at nothing" shape
+// this checker exists to prevent.
+func TestAConfigThatRegistersNoHooksIsNotWiring(t *testing.T) {
+	root := t.TempDir()
+	writeConfig(t, root, "opencode.json", `{
+  "mcp": {"vibe-agent": {"type": "local", "command": ["vibe-agent", "mcp", "serve"]}}
+}`)
+
+	if _, err := registeredEvents(root); err == nil {
+		t.Error("a workspace whose only host config registers no hook was reported as wired")
 	}
 }
 
