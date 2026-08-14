@@ -39,7 +39,7 @@ Cursor users get the same guidance through [`CURSOR.md`](../../CURSOR.md) and `.
 
 ### Unverified
 
-The wiring above follows the current Cursor hooks documentation. It has **not** been confirmed in a live Cursor session from this repository. Two things to check when someone next runs Cursor here:
+The wiring above follows the current Cursor hooks documentation, and the runtime's side of it is exercised against Cursor's real payload shapes. What has **not** been confirmed is a live Cursor **editor** session from this repository. The Cursor **CLI** was tried and cannot confirm it: `cursor-agent` 2026.08.11 fails every hook, including `"command": "true"`, with `--: eval: line 1: syntax error near unexpected token '&'` before the hook process starts, and treats that shell's exit 2 as a block. That is Cursor composing its own wrapper, not anything in this repository. Two things to check when someone next runs the editor here:
 
 - Whether `"WebFetch"` matches anything. Cursor documents tool-type matchers such as `"Shell"`, `"Read"`, `"Write"`, `"Grep"`, `"Delete"`, `"Task"`, and `"MCP:<name>"`, and `"WebFetch"` is a Claude tool name absent from that list. The two `sdd-cache` hooks do not filter by tool themselves, so a wrong matcher here means they never run rather than running too often. Cursor's own name for its web tool is not in the documentation this was written from, so it was left alone rather than guessed at.
 - The control-plane matchers were **not** left alone: `"Bash|Edit|NotebookEdit"` named no Cursor tool, so `post-tool-use` fired for `Write` and for nothing else, and no shell command in any Cursor session was ever journalled. They now use the documented names.

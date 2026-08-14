@@ -40,6 +40,15 @@ type Client string
 const (
 	ClientClaude Client = "claude"
 	ClientCursor Client = "cursor"
+	// ClientCodex is Claude's envelope everywhere but the gate.
+	//
+	// Measured against codex-cli 0.147.0 rather than read from documentation,
+	// because the one place the two disagree is the one that refuses an
+	// irreversible action, and a guard that only looks connected is worse than
+	// none. Codex reads hookSpecificOutput.additionalContext, {"decision":
+	// "block"} on Stop, and tool_name / tool_input.command / tool_response with
+	// Claude's spelling. It ignores exit 2.
+	ClientCodex Client = "codex"
 )
 
 // Clients is every host this build has an envelope for.
@@ -51,7 +60,7 @@ const (
 // which leaves a hook that is registered, fires on every tool call, and delivers
 // nothing. Silence is the one failure this control plane cannot see.
 func Clients() []Client {
-	return []Client{ClientClaude, ClientCursor}
+	return []Client{ClientClaude, ClientCursor, ClientCodex}
 }
 
 // KnownClient reports whether this build can answer a host.
@@ -350,7 +359,12 @@ func sessionStart(req Request, body payload, out io.Writer) error {
 	}
 	// Compaction re-fires SessionStart in the middle of a session. Steering
 	// there would hijack the conversation already in progress.
-	if body.Source != "compact" {
+	//
+	// Claude only. Codex reads the same envelope but rejects fields it does not
+	// know, and this one was never measured against it. A rejected response
+	// would cost the retrieved memory as well as the steer, so what is
+	// unverified stays out rather than endangering what is verified.
+	if req.Client == ClientClaude && body.Source != "compact" {
 		if steer := steerMessage(req); steer != "" {
 			specific["initialUserMessage"] = steer
 		}
@@ -449,9 +463,11 @@ func stop(req Request, body payload, out io.Writer) error {
 		}
 	}
 
-	// Cursor's stop hook has one field, followup_message, and using it is the
-	// blocking behavior. With nothing to block on there is nothing to say.
-	if req.Client == ClientCursor {
+	// The advisory line is Claude's systemMessage and nothing else's. Cursor's
+	// stop hook has one field, followup_message, and using it is the blocking
+	// behavior; Codex's blocking shape is measured but this one is not. With
+	// nothing to block on, saying nothing is the correct output for both.
+	if req.Client != ClientClaude {
 		return nil
 	}
 	text := runReminder(runs)

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vibe-agent": {
+      "command": "vibe-agent",
+      "args": ["mcp", "serve"]
+    }
+  }
+}

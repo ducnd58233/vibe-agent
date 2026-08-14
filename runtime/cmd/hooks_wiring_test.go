@@ -272,7 +272,7 @@ func TestAnUnknownClientIsADoctorFailure(t *testing.T) {
 	root := t.TempDir()
 	writeConfig(t, root, filepath.Join(".claude", "settings.json"), `{
   "hooks": {
-    "SessionStart": [{"hooks": [{"command": "vibe-agent hook session-start --client codex"}]}]
+    "SessionStart": [{"hooks": [{"command": "vibe-agent hook session-start --client windsurf"}]}]
   }
 }`)
 	t.Setenv("PATH", t.TempDir())
@@ -282,6 +282,27 @@ func TestAnUnknownClientIsADoctorFailure(t *testing.T) {
 
 	if report.problems == 0 {
 		t.Error("a hook naming a host this build has no envelope for was reported as fine")
+	}
+}
+
+// Every host this build claims to answer has to survive the same check, or the
+// list and the checker could disagree and nobody would find out from a test.
+func TestEveryKnownClientPassesTheWiringCheck(t *testing.T) {
+	for _, client := range harness.Clients() {
+		root := t.TempDir()
+		writeConfig(t, root, filepath.Join(".claude", "settings.json"), `{
+  "hooks": {
+    "SessionStart": [{"hooks": [{"command": "vibe-agent hook session-start --client `+string(client)+`"}]}]
+  }
+}`)
+		t.Setenv("PATH", t.TempDir())
+
+		report := &diagnostics{}
+		checkHookWiring(report, root)
+
+		if report.problems != 0 {
+			t.Errorf("client %q is in Clients() and doctor rejects it", client)
+		}
 	}
 }
 
