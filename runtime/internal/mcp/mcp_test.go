@@ -3,6 +3,7 @@ package mcp
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -26,7 +27,7 @@ func newDeps(t *testing.T) Deps {
 		WorkspaceRoot: t.TempDir(),
 		ToolkitRoot:   toolkitRoot,
 		WorkspaceID:   "ws1",
-		Memory:        store,
+		Memory:        memory.Adopt(store),
 		Now:           at,
 	}
 }
@@ -283,6 +284,56 @@ func TestBootstrapReportsTheSourceOfTruthOrder(t *testing.T) {
 // object and list narrow a decoded reply, failing the test rather than
 // panicking, so a protocol change names itself instead of arriving as an
 // interface conversion three frames down.
+// A host starts this server in every workspace it opens, and Codex and opencode
+// reach the control plane no other way. Creating the database at startup put an
+// empty .agent-state/ into repositories that had never used the toolkit, which
+// is the rule recall and doctor already keep and this surface did not.
+func TestServingAWorkspaceDoesNotCreateADatabase(t *testing.T) {
+	root := t.TempDir()
+	deps := Deps{
+		WorkspaceRoot: root,
+		WorkspaceID:   root,
+		Memory:        memory.NewLazy(root),
+	}
+	defer func() { _ = deps.Memory.Close() }()
+
+	server := NewServer("test", deps)
+
+	// Both reads, on a workspace that has stored nothing.
+	if _, err := bootstrap(deps, json.RawMessage(`{}`)); err != nil {
+		t.Fatalf("bootstrap: %v", err)
+	}
+	if _, err := searchMemory(deps, json.RawMessage(`{"query":"anything"}`)); err != nil {
+		t.Fatalf("searchMemory: %v", err)
+	}
+	_ = server
+
+	if _, err := os.Stat(memory.DBPath(root)); err == nil {
+		t.Errorf("reading an untouched workspace created %s", memory.DBPath(root))
+	}
+}
+
+// The write path is what creates it, because that is what a write is for.
+func TestProposingCreatesTheDatabase(t *testing.T) {
+	root := t.TempDir()
+	deps := Deps{
+		WorkspaceRoot: root,
+		WorkspaceID:   root,
+		Memory:        memory.NewLazy(root),
+	}
+	defer func() { _ = deps.Memory.Close() }()
+
+	if _, err := proposeMemory(deps, json.RawMessage(`{
+		"kind":"episodic","content":"the build needs CGO_ENABLED=0",
+		"evidence":["Makefile line 3"],"sourceType":"file_assert","sourceRef":"Makefile:3"
+	}`)); err != nil {
+		t.Fatalf("proposeMemory: %v", err)
+	}
+	if _, err := os.Stat(memory.DBPath(root)); err != nil {
+		t.Errorf("a stored memory left no database at %s", memory.DBPath(root))
+	}
+}
+
 func object(t *testing.T, value any, what string) map[string]any {
 	t.Helper()
 	narrowed, ok := value.(map[string]any)

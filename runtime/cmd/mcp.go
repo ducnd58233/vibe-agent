@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -11,9 +10,9 @@ import (
 
 // mcpCommand serves the control plane over stdio.
 //
-// This is the fallback surface, for Codex and opencode, which have no hook
-// system. An MCP tool call is model-decided, so it is best effort by nature;
-// Claude and Cursor get the same capabilities through hooks, which always fire.
+// This is the fallback surface, for Codex and opencode. An MCP tool call is
+// model-decided, so it is best effort by nature; Claude and Cursor get the same
+// capabilities through hooks, which always fire.
 func mcpCommand(args []string) error {
 	if len(args) == 0 || args[0] != "serve" {
 		return fmt.Errorf("mcp needs the serve subcommand")
@@ -29,10 +28,11 @@ func mcpCommand(args []string) error {
 		return err
 	}
 
-	store, err := memory.Open(context.Background(), workspaceRoot)
-	if err != nil {
-		return err
-	}
+	// Opened on demand, not here. A host starts this server in every workspace it
+	// opens, so creating the database at startup put an empty .agent-state/ into
+	// repositories that had never used the toolkit - the rule the memory package
+	// states and the hooks already keep.
+	store := memory.NewLazy(workspaceRoot)
 	defer func() { _ = store.Close() }()
 
 	server := mcp.NewServer(version, mcp.Deps{
