@@ -92,7 +92,7 @@ Three failures this closes, all of which happened:
 - The three installation routes wrote to three different directories: `GOPATH/bin` here, `~/.local/bin` from the shell installer, and a third under `%LOCALAPPDATA%` from the PowerShell one. A machine ended up holding several binaries at different versions, and `PATH` order decided which the hooks called — so a `make install` could be silently ineffective because a copy installed elsewhere still won. All three now share one location, and all three report when `PATH` resolves `vibe-agent` to a different build.
 - On Windows, `install` wrote an extensionless file. Git Bash can execute it; nothing else can resolve it by name. Worse, once the `.exe` existed too, a POSIX shell still picked the older extensionless one, so `vibe-agent` meant a different build depending on who asked. `make install` now appends `GOEXE`, and `doctor` reports the shadow if an old file is still there.
 
-`doctor` reads the events `.claude/settings.json` and `.cursor/hooks.json` register, then asks the binary on `PATH` which ones it handles. It asks that binary rather than reporting its own list, because the process running `doctor` is not necessarily the one answering hooks — and that difference is the whole failure.
+`doctor` reads the events every host config in the workspace registers, then asks the binary on `PATH` which ones it handles. It asks that binary rather than reporting its own list, because the process running `doctor` is not necessarily the one answering hooks — and that difference is the whole failure.
 
 Regenerate the golden manifest after an intentional shape change:
 

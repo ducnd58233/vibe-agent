@@ -176,7 +176,7 @@ Three paths, in descending order of reliability:
 |------|-----------|-------|
 | Claude Code | hooks in [`.claude/settings.json`](.claude/settings.json) | **Always.** The harness runs them; the model does not choose. |
 | Cursor | hooks in [`.cursor/hooks.json`](.cursor/hooks.json) | **Always**, for the events Cursor exposes. |
-| Codex, opencode | MCP server, `vibe-agent mcp serve` | **When the model decides to call a tool.** Neither has a hook system, so this is best effort. |
+| Codex, opencode | MCP server, `vibe-agent mcp serve` | **When the model decides to call a tool.** Best effort. Codex has since grown a hook system and is not wired to it yet; opencode exposes tool lifecycle through JS/TS plugins rather than shell commands. |
 | You, or an agent in a shell | the CLI directly | On demand. |
 
 The wiring already exists in this repo. Once the binary is on `PATH`, a new session picks it up; before that, every hook is a deliberate no-op rather than an error, so a missing binary never wedges a session.
@@ -196,7 +196,7 @@ The gate does not invent a rule. [`goal-delivery.yaml`](.ai-agents/graphs/goal-d
 
 It refuses with **exit 2** on Claude Code, and a `deny` decision on Cursor, which uses JSON rather than exit codes for this event. Exit 2 is deliberate: a JSON `permissionDecision` fails open, because one stray line on stdout makes the JSON unparseable and the command proceeds. In front of an irreversible action a guard has to fail closed.
 
-Two ways it stays out of the way: a workspace with **no active run is never gated**, and a workspace with **no binary installed** gets a non-blocking error rather than a refusal. Codex and opencode have no hook system, so they get no gate.
+Two ways it stays out of the way: a workspace with **no active run is never gated**, and a workspace with **no binary installed** gets a non-blocking error rather than a refusal. Codex and opencode reach the runtime over MCP, which the model chooses to call, so they get no gate.
 
 ### Using it
 
