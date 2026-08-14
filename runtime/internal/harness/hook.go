@@ -42,6 +42,37 @@ const (
 	ClientCursor Client = "cursor"
 )
 
+// Clients is every host this build has an envelope for.
+//
+// One list, for the reason Events gives, and with a sharper failure mode. The
+// envelopes differ per host and Claude's is the fallback, so an unrecognised
+// name - a typo, or a host wired into a config before the binary learned it -
+// used to be answered in Claude's shape. Every other host ignores that shape,
+// which leaves a hook that is registered, fires on every tool call, and delivers
+// nothing. Silence is the one failure this control plane cannot see.
+func Clients() []Client {
+	return []Client{ClientClaude, ClientCursor}
+}
+
+// KnownClient reports whether this build can answer a host.
+func KnownClient(client Client) bool {
+	for _, known := range Clients() {
+		if known == client {
+			return true
+		}
+	}
+	return false
+}
+
+// ClientNames is Clients as strings, for messages and flag help.
+func ClientNames() []string {
+	names := make([]string, 0, len(Clients()))
+	for _, client := range Clients() {
+		names = append(names, string(client))
+	}
+	return names
+}
+
 // Event is a lifecycle moment, named in the vendor-neutral form the CLI accepts.
 type Event string
 
