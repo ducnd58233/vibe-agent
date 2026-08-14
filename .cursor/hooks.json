@@ -19,7 +19,7 @@
         "command": "python3 .ai-agents/hooks/simplify-ignore.py"
       },
       {
-        "matcher": "Edit|Write|NotebookEdit",
+        "matcher": "Write|Delete",
         "command": "vibe-agent hook pre-tool-use --client cursor"
       }
     ],
@@ -38,8 +38,14 @@
         "command": "python3 .ai-agents/hooks/simplify-ignore.py"
       },
       {
-        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "matcher": "Shell|Write|Delete",
         "command": "vibe-agent hook post-tool-use --client cursor"
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "matcher": "Shell|Write|Delete",
+        "command": "vibe-agent hook post-tool-use-failure --client cursor"
       }
     ],
     "afterFileEdit": [

@@ -166,6 +166,63 @@ func TestInterruptedCallIsNotRemembered(t *testing.T) {
 	}
 }
 
+// Cursor names the failure text error_message where Claude names it error, and
+// it was the only host whose failure event went unwired. Wiring it while reading
+// only Claude's spelling would record every Cursor failure with no account of
+// what broke - the same emptiness, one field deeper.
+//
+// Ref: https://cursor.com/docs/agent/hooks
+func TestCursorFailureTextIsKept(t *testing.T) {
+	root := workspaceWithRun(t)
+
+	invoke(t, Request{
+		Event:         EventPostToolUseFailure,
+		Client:        ClientCursor,
+		WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{
+			"hook_event_name": "postToolUseFailure",
+			"tool_name": "Bash",
+			"tool_input": {"command": "npm test"},
+			"error_message": "1 test failed: expected 200, got 500",
+			"failure_type": "error",
+			"duration": 1200,
+			"is_interrupt": false
+		}`),
+	})
+
+	stored := memories(t, root)
+	if len(stored) != 1 {
+		t.Fatalf("want one memory from a failed Cursor command, got %d", len(stored))
+	}
+	joined := strings.Join(stored[0].Evidence, " ")
+	if !strings.Contains(joined, "expected 200, got 500") {
+		t.Errorf("evidence drops Cursor's error_message: %v", stored[0].Evidence)
+	}
+}
+
+// A denied tool call and an interrupted one are the same event under two names:
+// the tool never ran, and the person said no. Remembering it would fill the
+// store with a record of the user declining rather than of anything breaking.
+func TestADeniedCallIsNotRemembered(t *testing.T) {
+	root := workspaceWithRun(t)
+
+	invoke(t, Request{
+		Event:         EventPostToolUseFailure,
+		Client:        ClientCursor,
+		WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{
+			"tool_name": "Bash",
+			"tool_input": {"command": "rm -rf build"},
+			"error_message": "The user denied this command.",
+			"failure_type": "permission_denied"
+		}`),
+	})
+
+	if stored := memories(t, root); len(stored) != 0 {
+		t.Errorf("a denied call produced %d memories: %+v", len(stored), stored)
+	}
+}
+
 // A success is worth logging and not worth remembering. Proposing a memory for
 // every green command would bury the failures that matter.
 func TestSucceedingCommandIsJournalledButNotRemembered(t *testing.T) {

@@ -174,9 +174,41 @@ type payload struct {
 	// figure legible to a human without anyone claiming to have measured it.
 	Error string `json:"error"`
 
+	// ErrorMessage is Cursor's name for the same text. Reading only Claude's
+	// spelling would give every Cursor failure an empty detail line, which is
+	// the whole defect the failure event exists to fix, reintroduced one field
+	// deeper. Ref: https://cursor.com/docs/agent/hooks
+	ErrorMessage string `json:"error_message"`
+
+	// FailureType is Cursor's category for a failure: "error", "timeout", or
+	// "permission_denied".
+	FailureType string `json:"failure_type"`
+
 	// IsInterrupt is Claude's top-level cancellation flag. Cursor puts the same
 	// meaning inside the response as "interrupted", so both are read.
 	IsInterrupt bool `json:"is_interrupt"`
+}
+
+// failurePermissionDenied is the failure_type Cursor reports when a tool call
+// was refused rather than attempted.
+const failurePermissionDenied = "permission_denied"
+
+// failureText returns the account of what went wrong, from whichever field the
+// host filled in.
+func (p payload) failureText() string {
+	if p.Error != "" {
+		return p.Error
+	}
+	return p.ErrorMessage
+}
+
+// declined reports a call the person stopped rather than one the code got wrong.
+//
+// A cancellation and a denied permission are the same event wearing two names:
+// in both the tool never ran, and remembering them would fill the store with a
+// record of the user saying no.
+func (p payload) declined() bool {
+	return p.IsInterrupt || p.FailureType == failurePermissionDenied
 }
 
 // shellCommand returns whichever field the host filled in.

@@ -92,9 +92,9 @@ func journal(req Request, body payload, failed bool) error {
 	// A failure payload has no tool_response, so without this the detail line
 	// every failure memory is supposed to carry would always be empty.
 	if result.Stderr == "" {
-		result.Stderr = body.Error
+		result.Stderr = body.failureText()
 	}
-	if body.IsInterrupt {
+	if body.declined() {
 		result.Interrupted = true
 	}
 
