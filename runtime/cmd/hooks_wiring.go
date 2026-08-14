@@ -73,6 +73,9 @@ type hostConfig struct {
 // hookInvocation matches `vibe-agent hook <event>` however a config quotes it.
 var hookInvocation = regexp.MustCompile(`vibe-agent\s+hook\s+([a-z][a-z-]*)`)
 
+// clientInvocation matches the `--client <host>` a config passes along with it.
+var clientInvocation = regexp.MustCompile(`--client[\s=]+([a-z][a-z0-9-]*)`)
+
 // wiring is what a workspace's host configs register, indexed both ways.
 //
 // Both directions, because the two checks ask opposite questions. "Is this event
@@ -82,12 +85,20 @@ var hookInvocation = regexp.MustCompile(`vibe-agent\s+hook\s+([a-z][a-z-]*)`)
 type wiring struct {
 	byEvent map[string][]string
 	byFile  map[string][]string
+	// byClient maps a --client value to the files passing it. A host the binary
+	// has no envelope for is answered in Claude's shape, which that host
+	// discards, so the wiring looks complete and delivers nothing.
+	byClient map[string][]string
 }
 
 // registeredEvents returns the events every host config asks for, and which file
 // asked, so a failure names something to open.
 func registeredEvents(toolkitRoot string) (wiring, error) {
-	found := wiring{byEvent: map[string][]string{}, byFile: map[string][]string{}}
+	found := wiring{
+		byEvent:  map[string][]string{},
+		byFile:   map[string][]string{},
+		byClient: map[string][]string{},
+	}
 	for _, host := range hookConfigs {
 		path := filepath.Join(toolkitRoot, host.Path)
 		raw, err := os.ReadFile(filepath.Clean(path))
@@ -101,6 +112,12 @@ func registeredEvents(toolkitRoot string) (wiring, error) {
 			}
 			if !contains(found.byFile[host.Path], event) {
 				found.byFile[host.Path] = append(found.byFile[host.Path], event)
+			}
+		}
+		for _, match := range clientInvocation.FindAllStringSubmatch(string(raw), -1) {
+			client := match[1]
+			if !contains(found.byClient[client], host.Path) {
+				found.byClient[client] = append(found.byClient[client], host.Path)
 			}
 		}
 	}
@@ -258,6 +275,7 @@ func checkHookWiring(report *diagnostics, workspaceRoot string) {
 			"; either the event name is wrong or this build is older than the config")
 
 	checkOutcomePair(report, registered)
+	checkClients(report, registered)
 
 	// The staleness comparison. Its own failure is reported rather than skipped:
 	// "could not ask" is not "the binary is fine". The one exception is an absent
@@ -357,6 +375,27 @@ func checkOutcomePair(report *diagnostics, registered wiring) {
 			"and every failed one is dropped; add %s alongside it",
 		strings.Join(offenders, ", "), harness.EventPostToolUse,
 		harness.EventPostToolUseFailure, harness.EventPostToolUseFailure))
+}
+
+// checkClients reports a config passing a --client this build has no envelope
+// for.
+//
+// The same shape as the event check and a quieter failure. A wrong event name
+// is refused and says so; a wrong host name used to be answered in Claude's
+// shape, so the hook ran on every tool call, the host discarded every reply, and
+// nothing reported anything.
+func checkClients(report *diagnostics, registered wiring) {
+	var unknown []string
+	for client, sources := range registered.byClient {
+		if !harness.KnownClient(harness.Client(client)) {
+			unknown = append(unknown, fmt.Sprintf("%s (in %s)", client, strings.Join(sources, ", ")))
+		}
+	}
+	sort.Strings(unknown)
+	report.check("every hook names a host this build can answer", len(unknown) == 0,
+		fmt.Sprintf("no envelope for %s; this build answers %s. The hook would fire and "+
+			"the host would discard every reply", strings.Join(unknown, "; "),
+			strings.Join(harness.ClientNames(), ", ")))
 }
 
 func buildVersion() string { return version }

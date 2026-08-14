@@ -230,9 +230,12 @@ func TestOneHostsCorrectWiringDoesNotCoverAnother(t *testing.T) {
 // Ref: https://learn.chatgpt.com/docs/hooks
 func TestAHostThatDoesNotSplitOutcomesIsNotAskedForTheFailureHalf(t *testing.T) {
 	root := t.TempDir()
+	// No --client: this build has no Codex envelope yet, and checkClients would
+	// rightly refuse one. The fixture is about the outcome pair, so it wires the
+	// only shape a Codex config could take today.
 	writeConfig(t, root, filepath.Join(".codex", "hooks.json"), `{
   "hooks": {
-    "PostToolUse": [{"command": "vibe-agent hook post-tool-use --client codex"}]
+    "PostToolUse": [{"command": "vibe-agent hook post-tool-use"}]
   }
 }`)
 	t.Setenv("PATH", t.TempDir())
@@ -259,6 +262,26 @@ func TestAConfigThatRegistersNoHooksIsNotWiring(t *testing.T) {
 
 	if _, err := registeredEvents(root); err == nil {
 		t.Error("a workspace whose only host config registers no hook was reported as wired")
+	}
+}
+
+// A wrong event name is refused loudly. A wrong host name was not refused at
+// all: it fell through to Claude's envelope, so the hook fired on every tool
+// call and the host discarded every reply. Nothing anywhere said so.
+func TestAnUnknownClientIsADoctorFailure(t *testing.T) {
+	root := t.TempDir()
+	writeConfig(t, root, filepath.Join(".claude", "settings.json"), `{
+  "hooks": {
+    "SessionStart": [{"hooks": [{"command": "vibe-agent hook session-start --client codex"}]}]
+  }
+}`)
+	t.Setenv("PATH", t.TempDir())
+
+	report := &diagnostics{}
+	checkHookWiring(report, root)
+
+	if report.problems == 0 {
+		t.Error("a hook naming a host this build has no envelope for was reported as fine")
 	}
 }
 
