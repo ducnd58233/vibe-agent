@@ -27,8 +27,18 @@ type Deps struct {
 	WorkspaceRoot string
 	ToolkitRoot   string
 	WorkspaceID   string
-	Memory        *memory.Store
-	Now           func() time.Time
+	// Memory is opened on demand, so a host that starts this server in every
+	// workspace it opens does not leave a database in each one.
+	Memory *memory.Lazy
+	Now    func() time.Time
+}
+
+// read returns the store for a retrieval, or nil where this workspace has none.
+func (d Deps) read() *memory.Store {
+	if d.Memory == nil {
+		return nil
+	}
+	return d.Memory.Read(context.Background())
 }
 
 func (d Deps) now() time.Time {
@@ -121,8 +131,8 @@ func bootstrap(deps Deps, raw json.RawMessage) (any, error) {
 			out["run"] = summarize(run)
 		}
 	}
-	if deps.Memory != nil {
-		hits, err := deps.Memory.Search(context.Background(), memory.Query{
+	if store := deps.read(); store != nil {
+		hits, err := store.Search(context.Background(), memory.Query{
 			WorkspaceID: deps.WorkspaceID, Limit: memory.DefaultLimit,
 		})
 		if err != nil {
@@ -134,8 +144,11 @@ func bootstrap(deps Deps, raw json.RawMessage) (any, error) {
 }
 
 func searchMemory(deps Deps, raw json.RawMessage) (any, error) {
-	if deps.Memory == nil {
-		return nil, fmt.Errorf("memory store is not available")
+	store := deps.read()
+	if store == nil {
+		// Nothing stored here yet is an answer, not a fault. Erroring would make
+		// a fresh workspace look broken on the first tool call a host makes.
+		return map[string]any{"memories": []any{}, "policy": MemoryDisclaimer}, nil
 	}
 	var args struct {
 		Query string   `json:"query"`
@@ -150,7 +163,7 @@ func searchMemory(deps Deps, raw json.RawMessage) (any, error) {
 	for _, kind := range args.Kinds {
 		query.Kinds = append(query.Kinds, memory.Kind(kind))
 	}
-	hits, err := deps.Memory.Search(context.Background(), query)
+	hits, err := store.Search(context.Background(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -160,6 +173,12 @@ func searchMemory(deps Deps, raw json.RawMessage) (any, error) {
 func proposeMemory(deps Deps, raw json.RawMessage) (any, error) {
 	if deps.Memory == nil {
 		return nil, fmt.Errorf("memory store is not available")
+	}
+	// A write is what creates the database. Everything before this point can run
+	// in a workspace that has never stored anything and leave it as it was.
+	store, err := deps.Memory.Write(context.Background())
+	if err != nil {
+		return nil, err
 	}
 	var args struct {
 		Kind       string   `json:"kind"`
@@ -177,7 +196,7 @@ func proposeMemory(deps Deps, raw json.RawMessage) (any, error) {
 		args.Confidence = 0.7
 	}
 
-	stored, decision, err := deps.Memory.Propose(context.Background(), memory.Record{
+	stored, decision, err := store.Propose(context.Background(), memory.Record{
 		WorkspaceID: deps.WorkspaceID,
 		Kind:        memory.Kind(args.Kind),
 		Content:     args.Content,
