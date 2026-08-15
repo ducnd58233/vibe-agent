@@ -178,6 +178,10 @@ type Request struct {
 
 // payload is the union of the fields this package reads from either host.
 type payload struct {
+	// raw is the host's original bytes, kept for hooks this package delegates
+	// to another process rather than handles itself.
+	raw []byte
+
 	// Claude Code sends user_prompt; older builds and Cursor send prompt.
 	// Reading both keeps one adapter working across versions.
 	Prompt     string `json:"prompt"`
@@ -334,7 +338,13 @@ func Run(req Request, out io.Writer) error {
 	case EventPreToolUse:
 		return gate(req, body, out)
 	case EventPostToolUse:
-		return postToolUse(req, body, out, false)
+		if err := postToolUse(req, body, out, false); err != nil {
+			return err
+		}
+		// The write half cannot refuse: the fetch already happened. Its exit
+		// status is the script's own business.
+		_ = sddCache(req, body, "sdd-cache-post.py", out)
+		return nil
 	case EventPostToolUseFailure:
 		return postToolUse(req, body, out, true)
 	default:
@@ -360,6 +370,10 @@ func readPayload(reader io.Reader) payload {
 		return body
 	}
 	_ = json.Unmarshal(raw, &body)
+	// Kept so a delegated hook can be handed exactly what the host sent. Re-
+	// encoding the parsed struct would forward this package's view of the
+	// payload rather than the host's, and drop every field it does not read.
+	body.raw = raw
 	return body
 }
 

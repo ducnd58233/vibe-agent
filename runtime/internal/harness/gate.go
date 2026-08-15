@@ -120,10 +120,30 @@ func afterPrefix(line, prefix string) string {
 // its JSON would wedge the session completely, while the thing actually being
 // guarded is also written down in the run manifest, which this cannot corrupt.
 func gate(req Request, body payload, out io.Writer) error {
-	blocked := verdict(req, body)
-	if blocked == nil {
-		return nil
+	// The safety gate first. The delegated cache can only make a call cheaper,
+	// and a call this package is about to refuse should not be made cheaper.
+	if blocked := verdict(req, body); blocked != nil {
+		return deliverBlock(req, blocked, out)
 	}
+	// The WebFetch cache refuses too, by serving a stored page instead of
+	// letting the fetch run. It is a refusal on the same event, so it leaves
+	// through the same door.
+	if blocked := sddCache(req, body, "sdd-cache-pre.py", out); blocked != nil {
+		return deliverBlock(req, blocked, out)
+	}
+	return nil
+}
+
+// deliverBlock hands one refusal to the host in the form that host understands.
+//
+// Separate from gate because gate is no longer the only source of a refusal:
+// the delegated WebFetch cache also refuses, by serving cached content instead
+// of letting the fetch run. Leaving the translation inside gate meant that
+// refusal returned an error nobody rendered, so Cursor and Codex received exit
+// 0 and an empty reply while Claude got the cached page. That is the same class
+// of silent per-host divergence the contract table was added to catch, produced
+// while fixing another one.
+func deliverBlock(req Request, blocked *BlockError, out io.Writer) error {
 	switch req.Client {
 	case ClientCursor:
 		// Cursor's beforeShellExecution decides through JSON rather than exit

@@ -104,19 +104,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "WebFetch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/sdd-cache-pre.py",
-            "timeout": 10000,
-            "statusMessage": "sdd-cache-pre",
-            "async": false
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "matcher": "Bash|Edit|Write|NotebookEdit|WebFetch",
         "hooks": [
           {
             "type": "command",
@@ -144,26 +132,14 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "matcher": "Bash|Edit|Write|NotebookEdit|WebFetch",
         "hooks": [
           {
             "type": "command",
             "command": "vibe-agent hook post-tool-use --workspace ${CLAUDE_PROJECT_DIR}",
-            "timeout": 5000,
+            "timeout": 10000,
             "statusMessage": "vibe-journal",
             "async": false
-          }
-        ]
-      },
-      {
-        "matcher": "WebFetch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/sdd-cache-post.py",
-            "timeout": 10000,
-            "statusMessage": "sdd-cache-post",
-            "async": true
           }
         ]
       }

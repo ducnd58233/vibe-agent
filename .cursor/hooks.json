@@ -8,11 +8,7 @@
     ],
     "preToolUse": [
       {
-        "matcher": "WebFetch",
-        "command": "python3 .ai-agents/hooks/sdd-cache-pre.py"
-      },
-      {
-        "matcher": "Write|Delete",
+        "matcher": "Write|Delete|WebFetch",
         "command": "vibe-agent hook pre-tool-use --client cursor"
       }
     ],
@@ -23,11 +19,7 @@
     ],
     "postToolUse": [
       {
-        "matcher": "WebFetch",
-        "command": "python3 .ai-agents/hooks/sdd-cache-post.py"
-      },
-      {
-        "matcher": "Shell|Write|Delete",
+        "matcher": "Shell|Write|Delete|WebFetch",
         "command": "vibe-agent hook post-tool-use --client cursor"
       }
     ],

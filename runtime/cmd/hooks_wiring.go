@@ -288,6 +288,13 @@ func checkHookWiring(report *diagnostics, workspaceRoot string) {
 	checkOutcomePair(report, registered)
 	checkClients(report, registered)
 
+	// The host half. Everything above reads the vibe-agent side of the command
+	// string and proves this build understands the event; these two ask whether
+	// the host will ever fire it and whether it will land in the right
+	// directory when it does.
+	checkHostEventKeys(report, workspaceRoot)
+	checkHookPathsResolve(report, workspaceRoot)
+
 	// The staleness comparison. Its own failure is reported rather than skipped:
 	// "could not ask" is not "the binary is fine". The one exception is an absent
 	// binary, which the design supports.
