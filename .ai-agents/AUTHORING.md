@@ -152,7 +152,7 @@ frontmatter, a tag nested inside itself, or nesting past one level.
 | Anything, before trusting a harness read | `bash scripts/check-generated-views.sh` - a canonical edit does not reach the harness until the link script re-runs |
 | `.ai-agents/graphs/*.yaml` or `schemas/*.json` | `python3 scripts/check-graphs.py` and `python3 scripts/check-schemas.py` |
 | [`runtime/`](../runtime) | `cd runtime && make check` |
-| `.ai-agents/agents/*.md` or `.ai-agents/commands/*.md` | re-run the link script, then `powershell -File scripts/check-codex-assets.ps1` so Codex generated agents and prompts stay loadable |
+| `.ai-agents/agents/*.md` or `.ai-agents/commands/*.md` | re-run the link script, then `powershell -File scripts/check-codex-assets.ps1 -Global` so Codex generated agents and `/prompts:vibe-<name>` prompts stay loadable |
 
 The python checks need `python3 -m pip install -r scripts/requirements.txt`. Full table:
 [`README.md`](README.md).
@@ -163,9 +163,10 @@ The python checks need `python3 -m pip install -r scripts/requirements.txt`. Ful
 <procedure>
 
 Run `scripts/link-ai-agents.ps1` (Windows) or `scripts/link-ai-agents.sh` (macOS, Linux) so
-`.claude`, `.cursor`, `.opencode`, `.agents`, `.codex/agents`, and `.codex/prompts` point at or are
-generated from `.ai-agents`. The script also installs the git `prepare-commit-msg` attribution hook
-and refreshes the runtime binary.
+`.claude`, `.cursor`, `.opencode`, `.agents`, `.codex/agents`, `.codex/prompts`, and
+`$CODEX_HOME/prompts/vibe-*.md` point at or are generated from `.ai-agents`. Codex custom prompts
+are invoked as `/prompts:vibe-<name>`. The script also installs the git `prepare-commit-msg`
+attribution hook and refreshes the runtime binary.
 
 **Re-run it after every asset edit.** On Windows the script writes copies rather than symlinks, so
 until it runs again the harness serves the previous text while every other check reports green.
@@ -231,7 +232,7 @@ an empty `~/.codex/skills` exists on some machines.
 |---|---|---|
 | Skills | linked dirs in the two paths above | The command name is the directory name, so a rename is enough and edits stay live |
 | Control plane | `~/.vibe-agent/.ai-agents` | The runtime needs the workflow graphs and hook wiring, and neither is repository-specific |
-| Commands | `vibe-<name>.md` in each tool's own commands directory, and `~/.codex/prompts/` | The command name is the file name; no shared convention exists here |
+| Commands | `vibe-<name>.md` in each tool's own commands directory, and `~/.codex/prompts/` | Codex exposes these as `/prompts:vibe-<name>`; no shared command convention exists |
 | Subagents | generated copies with `name: vibe-<name>` | A subagent is identified by its frontmatter `name:` and the filename need not match, so renaming namespaces nothing |
 | Rules | a marked block in each global instructions file, plus `~/.cursor/rules/vibe-toolkit.mdc` | Codex concatenates global with project rules; Cursor has no global `AGENTS.md`, so it gets an `alwaysApply` rule instead |
 

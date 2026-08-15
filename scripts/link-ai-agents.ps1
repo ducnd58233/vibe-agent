@@ -26,7 +26,8 @@
     LINK_WORKSPACE, LINK_ASSETS — same paths as -WorkspaceRoot / -AssetsRoot (useful from CI or wrappers).
   The script also adds generated discovery paths to <WorkspaceRoot>/.git/info/exclude when WorkspaceRoot is a
   Git repository. This keeps local links and generated Codex agent and prompt files out of Git without requiring root
-  .gitignore rules in consumer repositories.
+  .gitignore rules in consumer repositories. Codex custom prompts are also copied to $CODEX_HOME\prompts with the
+  vibe- prefix, because that is the path the Codex composer reads.
 #>
 [CmdletBinding()]
 param(
@@ -221,6 +222,57 @@ function Sync-CodexPrompts {
     }
 }
 
+function Get-CodexHome {
+    if (-not [string]::IsNullOrWhiteSpace($env:CODEX_HOME)) {
+        return $env:CODEX_HOME
+    }
+    $homeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $HOME }
+    if ([string]::IsNullOrWhiteSpace($homeDir)) {
+        throw 'Cannot resolve CODEX_HOME or a home directory.'
+    }
+    return (Join-Path $homeDir '.codex')
+}
+
+function Sync-CodexGlobalPrompts {
+    param(
+        [Parameter(Mandatory = $true)][string] $AssetsFull
+    )
+    $commandsSrc = Join-Path $AssetsFull 'commands'
+    $codexHome = Get-CodexHome
+    $promptsDest = Join-Path $codexHome 'prompts'
+    $manifest = Join-Path $codexHome '.vibe-agent-prompts.manifest'
+    $prefix = if ($env:LINK_CODEX_PROMPT_PREFIX) { $env:LINK_CODEX_PROMPT_PREFIX } else { 'vibe-' }
+    $excludeNames = @('TEMPLATE.md', 'README.md', 'ROUTER.md')
+    if (-not (Test-Path -LiteralPath $promptsDest)) {
+        New-Item -ItemType Directory -Path $promptsDest -Force | Out-Null
+    }
+    $generatedPaths = New-Object 'System.Collections.Generic.List[string]'
+    Get-ChildItem -LiteralPath $commandsSrc -Filter '*.md' -File | ForEach-Object {
+        if ($excludeNames -contains $_.Name) {
+            return
+        }
+        $dest = Join-Path $promptsDest ($prefix + $_.Name)
+        Copy-Item -LiteralPath $_.FullName -Destination $dest -Force
+        [void]$generatedPaths.Add((Get-Item -LiteralPath $dest).FullName)
+    }
+    if (Test-Path -LiteralPath $manifest) {
+        $promptsRoot = (Get-Item -LiteralPath $promptsDest).FullName.TrimEnd('\') + '\'
+        Get-Content -LiteralPath $manifest -ErrorAction SilentlyContinue | ForEach-Object {
+            if ([string]::IsNullOrWhiteSpace($_)) {
+                return
+            }
+            $old = $_
+            if ((Test-Path -LiteralPath $old) -and
+                ($generatedPaths -notcontains (Get-Item -LiteralPath $old).FullName) -and
+                ((Get-Item -LiteralPath $old).FullName.StartsWith($promptsRoot, [System.StringComparison]::OrdinalIgnoreCase)) -and
+                ((Split-Path -Leaf $old).StartsWith($prefix))) {
+                Remove-Item -LiteralPath $old -Force
+            }
+        }
+    }
+    [System.IO.File]::WriteAllText($manifest, ($generatedPaths -join "`n") + "`n", (New-Object System.Text.UTF8Encoding $false))
+}
+
 function Ensure-Junction {
     param(
         [Parameter(Mandatory = $true)][string] $LinkFullPath,
@@ -256,6 +308,7 @@ Ensure-Junction (Join-Path $workspaceFull ".opencode\commands") (Join-Path $asse
 Ensure-Junction (Join-Path $workspaceFull ".agents\skills") (Join-Path $assetsFull "skills")
 Ensure-Junction (Join-Path $workspaceFull ".agents\commands") (Join-Path $assetsFull "commands")
 Sync-CodexPrompts -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
+Sync-CodexGlobalPrompts -AssetsFull $assetsFull
 Sync-CodexAgents -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
 
 function Install-LocalGitExclude {
@@ -403,3 +456,5 @@ Install-Runtime
 Write-Host "Links created under $workspaceFull (.claude, .cursor, .opencode, .agents) -> $assetsFull"
 Write-Host "Codex custom agents synced to $workspaceFull\.codex\agents"
 Write-Host "Codex custom prompts synced to $workspaceFull\.codex\prompts"
+$codexPromptPrefix = if ($env:LINK_CODEX_PROMPT_PREFIX) { $env:LINK_CODEX_PROMPT_PREFIX } else { 'vibe-' }
+Write-Host "Codex global prompts synced to $(Join-Path (Get-CodexHome) 'prompts') as /prompts:$codexPromptPrefix<name>"

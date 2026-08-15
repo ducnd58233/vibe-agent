@@ -16,7 +16,8 @@
 # The script also adds generated discovery paths to <workspace>/.git/info/exclude
 # when the workspace is a Git repository. This keeps local links and generated
 # Codex agent and prompt files out of Git without root .gitignore rules in
-# consumer repos.
+# consumer repos. Codex custom prompts are also copied to $CODEX_HOME/prompts
+# with the vibe- prefix, because that is the path the Codex composer reads.
 
 set -euo pipefail
 
@@ -179,6 +180,60 @@ sync_codex_prompts_from_md() {
   done
 }
 
+codex_home_dir() {
+  local home="${CODEX_HOME:-}"
+  if [[ -z "$home" ]]; then
+    home="${HOME:-${USERPROFILE:-}}"
+    [[ -n "$home" ]] || return 1
+    home="$home/.codex"
+  fi
+  to_unix_path_if_needed "$home"
+}
+
+sync_codex_global_prompts_from_md() {
+  local assets="$1"
+  local commands_src="$assets/commands"
+  local codex_home
+  if ! codex_home="$(codex_home_dir)"; then
+    echo "Warning: cannot resolve CODEX_HOME; skipped global Codex prompts." >&2
+    return 0
+  fi
+  local prompts_dest="$codex_home/prompts"
+  local manifest="$codex_home/.vibe-agent-prompts.manifest"
+  local prefix="${LINK_CODEX_PROMPT_PREFIX:-vibe-}"
+  mkdir -p "$prompts_dest"
+  local -a generated=()
+  local md base dest
+  for md in "$commands_src"/*.md; do
+    [[ -f "$md" ]] || continue
+    base="$(basename "$md")"
+    case "$base" in
+      TEMPLATE.md|README.md|ROUTER.md) continue ;;
+    esac
+    dest="$prompts_dest/$prefix$base"
+    cp "$md" "$dest"
+    generated+=("$dest")
+  done
+
+  if [[ -f "$manifest" ]]; then
+    while IFS= read -r old; do
+      [[ -n "$old" ]] || continue
+      old="$(to_unix_path_if_needed "$old")"
+      keep=0
+      for dest in "${generated[@]}"; do
+        if [[ "$old" == "$dest" ]]; then
+          keep=1
+          break
+        fi
+      done
+      if [[ $keep -eq 0 && "$old" == "$prompts_dest/$prefix"* ]]; then
+        rm -f "$old"
+      fi
+    done < "$manifest"
+  fi
+  printf '%s\n' "${generated[@]}" > "$manifest"
+}
+
 sync_codex_agents_from_md() {
   local assets="$1"
   local workspace="$2"
@@ -261,6 +316,7 @@ sync_codex_agents_from_md() {
 }
 
 sync_codex_prompts_from_md "$ASSETS" "$WORKSPACE"
+sync_codex_global_prompts_from_md "$ASSETS"
 sync_codex_agents_from_md "$ASSETS" "$WORKSPACE"
 
 install_local_git_exclude() {
@@ -392,3 +448,4 @@ install_runtime
 echo "Symlinks created under $WORKSPACE (.claude, .cursor, .opencode, .agents) -> $ASSETS"
 echo "Codex custom agents synced to $WORKSPACE/.codex/agents"
 echo "Codex custom prompts synced to $WORKSPACE/.codex/prompts"
+echo "Codex global prompts synced to $(codex_home_dir 2>/dev/null || echo '<unknown>')/prompts as /prompts:${LINK_CODEX_PROMPT_PREFIX:-vibe-}<name>"
