@@ -61,7 +61,7 @@ Canonical command prompts live in `.ai-agents/commands/`.
 | Claude Code | Use `/vibe-<command>` after global install, or `/<command>` in a workspace after `link-ai-agents`. |
 | Cursor | Use `/vibe-<command>` after global install, or `/<command>` in a linked workspace if Cursor command discovery is enabled. |
 | opencode | Global install writes `~/.config/opencode/commands/vibe-*.md`; workspace install writes `.opencode/commands`. Use opencode's command picker or ask by command name if the picker is unavailable. |
-| Codex | Codex loads vibe-agent skills from `.agents/skills` or `~/.agents/skills`. This Codex surface does not accept `/prompts:vibe-doctor`; use `$vibe-<skill>` where skills are available, or ask by intent, for example "run vibe doctor". The prompt files under `$CODEX_HOME/prompts` are best-effort files for ChatGPT desktop surfaces that support custom prompts. |
+| Codex | Tested with Codex CLI 0.147.0: command prompts are not loaded as `/vibe-*`, and `$CODEX_HOME/prompts/vibe-*.md` is not expanded by `/prompts:vibe-*` in this surface. Use plain intent, for example "run the vibe build command from `.ai-agents/commands/build.md`". Prompt files under `$CODEX_HOME/prompts` stay best-effort for ChatGPT desktop surfaces that support custom prompts. |
 
 Available toolkit commands:
 
@@ -82,11 +82,11 @@ Available toolkit commands:
 | `code-simplify` | Reduce complexity without changing behavior. |
 | `design` | Build or audit UI with design-system and accessibility checks. |
 
-Examples:
+Claude, Cursor, and opencode examples:
 
 ```text
 /vibe-doctor
-/vibe-research current Codex slash command support
+/vibe-research current React Router release notes
 /vibe-goal finish the payments retry work and open a PR
 ```
 
@@ -94,7 +94,7 @@ In a linked workspace that exposes unprefixed project commands, use the same nam
 
 ```text
 /doctor
-/research current Codex slash command support
+/research current React Router release notes
 /goal finish the payments retry work and open a PR
 ```
 
