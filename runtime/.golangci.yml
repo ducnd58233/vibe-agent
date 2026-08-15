@@ -82,19 +82,10 @@ linters:
       #
       # What actually bounds the risk is elsewhere and is checked: the command
       # comes from vibe-checks.yaml, a tracked file that a human reviews, and
-      # `checkpoint` cannot forge the evidence a verifier produces. The slop
-      # audit adapter is similar but narrower: it runs only three built-in tool
-      # names from its registry, with config ownership left to the consumer repo.
+      # `checkpoint` cannot forge the evidence a verifier produces.
       - linters: [gosec]
         text: G204
-        path: (internal/verifier/|internal/slopaudit/infra/tool/adapter\.go|_test\.go$)
-
-      # Slop audit scanners exist to read local source files named by the
-      # target path, then report rule ids and line numbers rather than file
-      # contents. Secret-like files are skipped in the scanner itself.
-      - linters: [gosec]
-        text: G304
-        path: internal/slopaudit/infra/(source|golang)/scanner\.go
+        path: (internal/verifier/|_test\.go$)
 
 issues:
   # Every finding, not the first three per rule. A cap hides the second half of a

@@ -29,6 +29,12 @@ func NewAuditor(scanners []Scanner, adapters []Adapter) *Auditor {
 func (a *Auditor) Audit(ctx context.Context, target string) domain.Report {
 	scanResult := a.scan(ctx, target)
 	adapters := a.runAdapters(ctx, target)
+	if scanResult.Findings == nil {
+		scanResult.Findings = []domain.Finding{}
+	}
+	if adapters == nil {
+		adapters = []domain.AdapterResult{}
+	}
 	domain.SortFindings(scanResult.Findings)
 	domain.SortAdapters(adapters)
 	score := domain.Score(scanResult.Findings, scanResult.Summary.LinesScanned)

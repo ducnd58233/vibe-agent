@@ -3,6 +3,7 @@ package source
 import (
 	"bufio"
 	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -146,7 +147,7 @@ func sourceLanguage(path string, data []byte) string {
 }
 
 func (s *Scanner) scanFile(path string) fileResult {
-	data, err := os.ReadFile(path)
+	data, err := fs.ReadFile(os.DirFS(filepath.Dir(path)), filepath.Base(path))
 	if err != nil {
 		return fileResult{language: LanguageUnknown, lines: 1, findings: []domain.Finding{{Path: path, Line: 1, Rule: domain.RuleScanError, Severity: domain.SeverityHigh, Message: err.Error()}}}
 	}

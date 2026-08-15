@@ -53,8 +53,7 @@ budget and says how many lines were left, rather than implying the page fit.
 
 "slop audit" scans local code for AI-generated code slop signals. The built-in
 scanner uses go-enry language detection rather than a local extension table.
-ast-grep adds a Tree-sitter-backed outline pass when installed; semgrep and
-slop-detector remain optional external adapters.
+It does not spawn external linters from user-controlled paths.
 
 Evidence sources: exit_code, file_assert, ci_api, human_event. There is no
 source for model assertion, so nothing can mark its own work complete.

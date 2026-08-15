@@ -24,3 +24,20 @@ func TestAuditorReportsScannerFailure(t *testing.T) {
 		t.Fatalf("rule = %q, want %q", report.Findings[0].Rule, domain.RuleScanError)
 	}
 }
+
+type emptyScanner struct{}
+
+func (emptyScanner) Scan(ctx context.Context, target string) (domain.ScanResult, error) {
+	return domain.ScanResult{}, nil
+}
+
+func TestAuditorReturnsEmptySlices(t *testing.T) {
+	auditor := NewAuditor([]Scanner{emptyScanner{}}, nil)
+	report := auditor.Audit(context.Background(), "clean")
+	if report.Findings == nil {
+		t.Fatal("findings is nil")
+	}
+	if report.Adapters == nil {
+		t.Fatal("adapters is nil")
+	}
+}
