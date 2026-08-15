@@ -127,7 +127,7 @@ Constraints specific to this domain, on top of the shared rules:
 - [`ui-design-fidelity`](../skills/ui-design-fidelity/SKILL.md) - the workflow that consumes this contract
 - [`design-to-code-patterns.md`](design-to-code-patterns.md) - design-tool and MCP handoff
 - [`accessibility-checklist.md`](accessibility-checklist.md) - WCAG gate applied after implementation
-- `hooks/ui-slop-guard.py`, `hooks/design-token-guard.py` - deterministic post-edit checks
+- runtime `ui-slop-guard` and `design-token-guard` - deterministic post-edit checks
 
 ## References
 

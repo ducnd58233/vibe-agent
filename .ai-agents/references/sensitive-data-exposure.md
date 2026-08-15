@@ -162,7 +162,7 @@ Channel-by-channel, this is what an agent should actually run or check:
 - [ ] `tmp/` evidence redacted before write
 
 The deterministic part of this list is enforced by
-[`hooks/sensitive-data-guard.py`](../hooks/sensitive-data-guard.py) on `Edit`/`Write`. The guard is
+runtime `sensitive-data-guard` on file writes. The guard is
 a floor; it cannot tell whether an object carries personal data, whether a response field is
 authorized for its audience, or whether a leak is assembled across two files.
 </verification>

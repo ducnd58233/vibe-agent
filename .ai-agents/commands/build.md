@@ -53,7 +53,7 @@ For **one** task only (then stop or ask before starting the next task on a new b
 4. RED - failing test for new behavior.
 5. GREEN - minimal implementation.
 6. Run full tests and typecheck/build per project (`npm`/`pnpm`/`uv` as documented).
-7. **Disclosure pass (MUST, before commit):** apply [`secure-by-default`](../skills/secure-by-default/SKILL.md) to the diff. For every sink the task added or changed (log call, response body, client storage, analytics event, error path, env var), name what goes into it. A clean [`sensitive-data-guard`](../hooks/sensitive-data-guard.py) run is a floor, not evidence. Channel detail: [`sensitive-data-exposure.md`](../references/sensitive-data-exposure.md).
+7. **Disclosure pass (MUST, before commit):** apply [`secure-by-default`](../skills/secure-by-default/SKILL.md) to the diff. For every sink the task added or changed (log call, response body, client storage, analytics event, error path, env var), name what goes into it. A clean runtime `sensitive-data-guard` finding set is a floor, not evidence. Channel detail: [`sensitive-data-exposure.md`](../references/sensitive-data-exposure.md).
 8. Commit with a human-friendly conventional message, `type(scope): subject`, that matches the branch. Use plain words, no AI-tell filler, no emojis/icons, no em-dash. **MUST NOT** add AI/agent co-author trailers (`Co-Authored-By: ...`) or "Generated with ..." lines; attribute commits solely to the human's git identity.
 9. Mark the task complete in `TASKS.md` if that file is in scope; report branch name and PR link if created. **Do not merge to `main`.**
 
