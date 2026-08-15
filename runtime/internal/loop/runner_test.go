@@ -66,7 +66,7 @@ func TestEnterStartsAtTheGraphInitialNode(t *testing.T) {
 	}
 }
 
-// The six transitions named in the spec. These are the contract between the
+// The transitions named in the spec. These are the contract between the
 // graph file and the runner.
 func TestSpecTransitions(t *testing.T) {
 	cases := []struct {
@@ -89,9 +89,27 @@ func TestSpecTransitions(t *testing.T) {
 			want:    "e2e",
 		},
 		{
-			name:    "e2e skipped advances to review",
+			name:    "e2e skipped advances to slop",
 			from:    "e2e",
 			outcome: Outcome{Check: &NamedCheck{Name: "e2e", Check: state.Check{Skipped: true, Source: state.SourceFileAssert, At: at()}}},
+			want:    "slop",
+		},
+		{
+			name:    "slop skipped advances to review",
+			from:    "slop",
+			outcome: Outcome{Check: &NamedCheck{Name: "slop", Check: state.Check{Skipped: true, Source: state.SourceFileAssert, At: at()}}},
+			want:    "review",
+		},
+		{
+			name:    "e2e pass advances to slop",
+			from:    "e2e",
+			outcome: Outcome{Check: pass("e2e")},
+			want:    "slop",
+		},
+		{
+			name:    "slop pass advances to review",
+			from:    "slop",
+			outcome: Outcome{Check: pass("slop")},
 			want:    "review",
 		},
 		{
@@ -296,7 +314,8 @@ func TestFullDeliveryPathReachesDone(t *testing.T) {
 		{"build", Outcome{Check: approve("plan_approved")}},
 		{"test", Outcome{}},
 		{"e2e", Outcome{Check: pass("unit")}},
-		{"review", Outcome{Check: pass("e2e")}},
+		{"slop", Outcome{Check: pass("e2e")}},
+		{"review", Outcome{Check: pass("slop")}},
 		{"open_pr", Outcome{}},
 		{"pr_checks", Outcome{Check: pass("pr_open")}},
 		{"external_reviews", Outcome{Check: pass("ci")}},
@@ -459,24 +478,29 @@ func TestASkippedCheckAdvancesWithoutBeingAPass(t *testing.T) {
 
 // The bug this closes. The runner used to return `check.Passed || check.Skipped`
 // for every check-sourced guard, so any check that got skipped satisfied its own
-// gate. The delivery graph even documented e2e_ok as the only place the two were
-// treated alike, and that was not what the code did.
+// gate. Skipped now satisfies a guard only where the graph opted in.
 //
-// Skipped now satisfies a guard only where the graph opted in.
+// The delivery graph opts in two gates: e2e_ok and slop_ok. Both sit on
+// verifier nodes every workspace shares, while each workspace keeps its own
+// vibe-checks.yaml. Without the opt-in, adding either node would stall every
+// consumer that has not declared that check.
 func TestASkippedCheckSatisfiesOnlyAGuardThatOptedIn(t *testing.T) {
 	runner := newRunner(t)
 
-	optedIn, ok := runner.Graph.Guard("e2e_ok")
-	if !ok {
-		t.Fatal("the delivery graph has no e2e_ok guard")
-	}
-	if !optedIn.AcceptsSkipped {
-		t.Error("e2e_ok does not accept a skip, so a workspace with no e2e surface would stall")
+	allowed := map[string]bool{"e2e_ok": true, "slop_ok": true}
+	for name := range allowed {
+		optedIn, ok := runner.Graph.Guard(name)
+		if !ok {
+			t.Fatalf("the delivery graph has no %s guard", name)
+		}
+		if !optedIn.AcceptsSkipped {
+			t.Errorf("%s does not accept a skip, so a workspace with no matching check would stall", name)
+		}
 	}
 
 	for _, guard := range runner.Graph.Spec.Guards {
-		if guard.Name != "e2e_ok" && guard.AcceptsSkipped {
-			t.Errorf("guard %q accepts a skip; only e2e_ok is meant to", guard.Name)
+		if guard.AcceptsSkipped && !allowed[guard.Name] {
+			t.Errorf("guard %q accepts a skip; only e2e_ok and slop_ok are meant to", guard.Name)
 		}
 	}
 }
