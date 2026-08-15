@@ -12,7 +12,7 @@ Permissions described here are for reusable agent assets, not for domain-specifi
 
 | Mechanism | Location | Notes |
 |-----------|----------|--------|
-| Project permissions | [`.claude/settings.json`](../.claude/settings.json) | `permissions.allow`, `permissions.ask`, `permissions.deny` for tools (`Bash(...)`, `Read(...)`, `Edit(...)`, `WebFetch(...)`, MCP tools). **Deny overrides allow.** See [official permissions](https://code.claude.com/docs/en/permissions). |
+| Project permissions | [`.claude/settings.json`](../.claude/settings.json) | `permissions.allow`, `permissions.ask`, `permissions.deny` for tools (`Bash(...)`, `Read(...)`, `Edit(...)`, `WebFetch(...)`, MCP tools). Use `Edit(path)` for file-write path scopes; `Write(path)` is not matched by Claude's file permission checks. **Deny overrides allow.** See [official permissions](https://code.claude.com/docs/en/permissions). |
 | Subagent authority | `agents/*.md` YAML **`tools:`** | Map of tool name ? `true` (OpenCode-valid). Restricts which tools a subagent may use. |
 | Hooks | `hooks` in settings + scripts under `.ai-agents/hooks/` | Hook commands may need shell access; align `Bash` rules with what scripts run. |
 
