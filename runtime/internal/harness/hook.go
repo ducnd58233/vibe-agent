@@ -315,9 +315,9 @@ func Run(req Request, out io.Writer) error {
 	case EventPreToolUse:
 		return gate(req, body, out)
 	case EventPostToolUse:
-		return journal(req, body, false)
+		return postToolUse(req, body, out, false)
 	case EventPostToolUseFailure:
-		return journal(req, body, true)
+		return postToolUse(req, body, out, true)
 	default:
 		// Naming the events this build does handle turns the message into a
 		// diagnosis. The original text said only that the event was unknown, which
