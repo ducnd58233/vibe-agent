@@ -80,6 +80,9 @@ metadata:
 	if result.Summary.FilesScanned != len(files) {
 		t.Fatalf("files scanned = %d, want %d", result.Summary.FilesScanned, len(files))
 	}
+	if result.Summary.TreeSitterParsed < 3 {
+		t.Fatalf("tree-sitter parsed = %d, want at least Go, TSX, and YAML", result.Summary.TreeSitterParsed)
+	}
 	for _, language := range []string{"Go", "TypeScript", "Python", "SCSS", "PHP", "Rust", "Zig", "Vue", "Dockerfile", "YAML"} {
 		if result.Summary.Languages[language] < 1 {
 			t.Fatalf("language %s missing in summary: %+v", language, result.Summary.Languages)
@@ -149,4 +152,29 @@ func TestScannerScoresByDensity(t *testing.T) {
 	if shortScore <= longScore {
 		t.Fatalf("shortScore = %d, longScore = %d", shortScore, longScore)
 	}
+}
+
+func TestScannerReportsTreeSitterParseErrors(t *testing.T) {
+	dir := t.TempDir()
+	badPath := filepath.Join(dir, "broken.tsx")
+	if err := os.WriteFile(badPath, []byte("export function Broken() { return <div>\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := NewScanner(1).Scan(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Summary.TreeSitterParsed != 1 {
+		t.Fatalf("tree-sitter parsed = %d, want 1", result.Summary.TreeSitterParsed)
+	}
+	if result.Summary.TreeSitterFailures != 1 {
+		t.Fatalf("tree-sitter failures = %d, want 1", result.Summary.TreeSitterFailures)
+	}
+	for _, finding := range result.Findings {
+		if finding.Rule == domain.RuleParseError {
+			return
+		}
+	}
+	t.Fatalf("missing parse error finding: %+v", result.Findings)
 }

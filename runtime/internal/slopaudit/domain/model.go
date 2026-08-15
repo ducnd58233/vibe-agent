@@ -57,11 +57,13 @@ type Finding struct {
 }
 
 type ScanSummary struct {
-	FilesScanned int            `json:"files_scanned"`
-	LinesScanned int            `json:"lines_scanned"`
-	Languages    map[string]int `json:"languages"`
-	Parser       string         `json:"parser"`
-	Scoring      string         `json:"scoring"`
+	FilesScanned       int            `json:"files_scanned"`
+	LinesScanned       int            `json:"lines_scanned"`
+	TreeSitterParsed   int            `json:"tree_sitter_parsed"`
+	TreeSitterFailures int            `json:"tree_sitter_failures"`
+	Languages          map[string]int `json:"languages"`
+	Parser             string         `json:"parser"`
+	Scoring            string         `json:"scoring"`
 }
 
 type ScanResult struct {
@@ -122,16 +124,18 @@ func Score(findings []Finding, linesScanned int) int {
 func MergeSummary(summaries []ScanSummary) ScanSummary {
 	merged := ScanSummary{
 		Languages: map[string]int{},
-		Parser:    "text",
+		Parser:    "tree-sitter plus text",
 		Scoring:   "weighted finding density per KLOC, capped at 100",
 	}
 	for _, summary := range summaries {
 		merged.FilesScanned += summary.FilesScanned
 		merged.LinesScanned += summary.LinesScanned
+		merged.TreeSitterParsed += summary.TreeSitterParsed
+		merged.TreeSitterFailures += summary.TreeSitterFailures
 		for language, count := range summary.Languages {
 			merged.Languages[language] += count
 		}
-		if summary.Parser != "" && merged.Parser == "text" {
+		if summary.Parser != "" {
 			merged.Parser = summary.Parser
 		}
 		if summary.Scoring != "" {

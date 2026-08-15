@@ -13,6 +13,7 @@ import (
 	enry "github.com/go-enry/go-enry/v2"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/slopaudit/domain"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/slopaudit/infra/syntax"
 )
 
 const (
@@ -26,7 +27,7 @@ const (
 const (
 	LanguageUnknown = "Unknown"
 	LanguageText    = "Text"
-	ParserText      = "go-enry language detection plus text rules with optional tree-sitter adapters"
+	ParserText      = "go-enry language detection plus gotreesitter syntax parse plus text rules"
 )
 
 var skippedDirectories = map[string]struct{}{
@@ -37,18 +38,28 @@ var (
 	emptyBraceFunction = regexp.MustCompile(`(?i)\b(func|function|fn|def|class|interface|method)\b[^\n{}]*\{\s*\}`)
 	emptyPythonBody    = regexp.MustCompile(`(?i)^\s*(async\s+)?def\s+\w+\([^)]*\):\s*$`)
 	ignoredCall        = regexp.MustCompile(`(^|[^[:alnum:]_])_\s*=\s*[[:alnum:]_\.]+\s*\(`)
+	unfinishedMarker   = regexp.MustCompile(`(?i)\b(todo|fixme|hack|placeholder)\b|not implemented|unimplemented`)
 )
+
+type SyntaxParser interface {
+	Parse(path string, source []byte) syntax.Result
+}
 
 type Scanner struct {
 	workers       int
 	longFileLines int
+	syntaxParser  SyntaxParser
 }
 
 func NewScanner(workers int) *Scanner {
+	return NewScannerWithSyntax(workers, syntax.NewParser())
+}
+
+func NewScannerWithSyntax(workers int, syntaxParser SyntaxParser) *Scanner {
 	if workers <= 0 {
 		workers = DefaultWorkers
 	}
-	return &Scanner{workers: workers, longFileLines: DefaultLongFileLines}
+	return &Scanner{workers: workers, longFileLines: DefaultLongFileLines, syntaxParser: syntaxParser}
 }
 
 func (s *Scanner) Scan(ctx context.Context, target string) (domain.ScanResult, error) {
@@ -95,16 +106,20 @@ sendJobs:
 		result.Findings = append(result.Findings, scanned.findings...)
 		result.Summary.FilesScanned++
 		result.Summary.LinesScanned += scanned.lines
+		result.Summary.TreeSitterParsed += scanned.treeParsed
+		result.Summary.TreeSitterFailures += scanned.treeFailures
 		result.Summary.Languages[scanned.language]++
 	}
 	return result, ctx.Err()
 }
 
 type fileResult struct {
-	findings []domain.Finding
-	language string
-	lines    int
-	skipped  bool
+	findings     []domain.Finding
+	language     string
+	lines        int
+	treeParsed   int
+	treeFailures int
+	skipped      bool
 }
 
 func sourceFiles(target string) ([]string, error) {
@@ -159,7 +174,18 @@ func (s *Scanner) scanFile(path string) fileResult {
 	lines := strings.Split(text, "\n")
 	findings := s.lineFindings(path, language, lines)
 	findings = append(findings, fileFindings(path, text, lines)...)
-	return fileResult{findings: findings, language: language, lines: len(lines)}
+	treeParsed, treeFailures := 0, 0
+	if s.syntaxParser != nil {
+		parsed := s.syntaxParser.Parse(path, data)
+		if parsed.Parsed {
+			treeParsed = 1
+		}
+		if parsed.Error != "" {
+			treeFailures = 1
+			findings = append(findings, syntaxFinding(path, parsed))
+		}
+	}
+	return fileResult{findings: findings, language: language, lines: len(lines), treeParsed: treeParsed, treeFailures: treeFailures}
 }
 
 func skipFile(path string, data []byte) bool {
@@ -188,7 +214,7 @@ func (s *Scanner) lineFindings(path, language string, lines []string) []domain.F
 		lineNumber := index + 1
 		lower := strings.ToLower(line)
 		trimmed := strings.TrimSpace(line)
-		if hasUnfinishedMarker(lower) {
+		if hasUnfinishedComment(lower) {
 			findings = append(findings, finding(path, lineNumber, domain.RuleTodoComment, domain.SeverityLow, "unfinished marker in source text"))
 		}
 		if ignoredCall.MatchString(line) {
@@ -215,8 +241,9 @@ func (s *Scanner) lineFindings(path, language string, lines []string) []domain.F
 
 func fileFindings(path, text string, lines []string) []domain.Finding {
 	var findings []domain.Finding
-	if emptyBraceFunction.MatchString(text) {
-		findings = append(findings, finding(path, firstMatchLine(text, emptyBraceFunction), domain.RuleEmptyFunction, domain.SeverityHigh, "empty declaration body"))
+	searchText := maskQuotedText(text)
+	if emptyBraceFunction.MatchString(searchText) {
+		findings = append(findings, finding(path, firstMatchLine(searchText, emptyBraceFunction), domain.RuleEmptyFunction, domain.SeverityHigh, "empty declaration body"))
 	}
 	for index, line := range lines {
 		if !emptyPythonBody.MatchString(line) || index+1 >= len(lines) {
@@ -230,8 +257,17 @@ func fileFindings(path, text string, lines []string) []domain.Finding {
 	return findings
 }
 
+func hasUnfinishedComment(lower string) bool {
+	for _, marker := range []string{"//", "#", "/*", "<!--"} {
+		if index := strings.Index(lower, marker); index >= 0 {
+			return unfinishedMarker.MatchString(lower[index:])
+		}
+	}
+	return false
+}
+
 func hasUnfinishedMarker(lower string) bool {
-	return strings.Contains(lower, "todo") || strings.Contains(lower, "fixme") || strings.Contains(lower, "hack") || strings.Contains(lower, "placeholder")
+	return unfinishedMarker.MatchString(lower)
 }
 
 func hasDebugOutput(language, lower string) bool {
@@ -253,10 +289,46 @@ func hasDebugOutput(language, lower string) bool {
 }
 
 func hasPlaceholderAbort(lower string) bool {
-	if !strings.Contains(lower, "todo") && !strings.Contains(lower, "not implemented") && !strings.Contains(lower, "unimplemented") && !strings.Contains(lower, "placeholder") {
+	if !hasUnfinishedMarker(lower) {
 		return false
 	}
 	return strings.Contains(lower, "panic") || strings.Contains(lower, "throw") || strings.Contains(lower, "raise") || strings.Contains(lower, "fatal")
+}
+
+func maskQuotedText(text string) string {
+	var out strings.Builder
+	out.Grow(len(text))
+	quote := rune(0)
+	escaped := false
+	for _, char := range text {
+		if quote != 0 {
+			if char == '\n' {
+				out.WriteRune(char)
+			} else {
+				out.WriteRune(' ')
+			}
+			if quote != '`' && escaped {
+				escaped = false
+				continue
+			}
+			if quote != '`' && char == '\\' {
+				escaped = true
+				continue
+			}
+			if char == quote {
+				quote = 0
+			}
+			continue
+		}
+		switch char {
+		case '\'', '"', '`':
+			quote = char
+			out.WriteRune(' ')
+		default:
+			out.WriteRune(char)
+		}
+	}
+	return out.String()
 }
 
 func firstMatchLine(text string, pattern *regexp.Regexp) int {
@@ -273,6 +345,18 @@ func firstMatchLine(text string, pattern *regexp.Regexp) int {
 		}
 		line++
 	}
+}
+
+func syntaxFinding(path string, parsed syntax.Result) domain.Finding {
+	line := parsed.Line
+	if line <= 0 {
+		line = 1
+	}
+	message := parsed.Error
+	if message == "" {
+		message = "tree-sitter parse error"
+	}
+	return finding(path, line, domain.RuleParseError, domain.SeverityMedium, message)
 }
 
 func finding(path string, line int, rule string, severity domain.Severity, message string) domain.Finding {

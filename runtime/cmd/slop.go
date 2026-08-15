@@ -77,6 +77,7 @@ func printSlopReport(report domain.Report) {
 	fmt.Printf("  findings %d\n", len(report.Findings))
 	fmt.Printf("  files    %d\n", report.Summary.FilesScanned)
 	fmt.Printf("  lines    %d\n", report.Summary.LinesScanned)
+	fmt.Printf("  tree     %d parsed, %d failed\n", report.Summary.TreeSitterParsed, report.Summary.TreeSitterFailures)
 	fmt.Printf("  parser   %s\n", report.Summary.Parser)
 	fmt.Printf("  scoring  %s\n", report.Summary.Scoring)
 	if len(report.Findings) > 0 {

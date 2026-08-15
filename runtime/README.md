@@ -111,7 +111,7 @@ State lands in `tmp/my-feature/manifest.json` with the log at `tmp/my-feature/ev
 
 ## Audit code slop
 
-`vibe-agent slop audit [path]` scans source-like text across a codebase for signals that often show up in low-quality AI-generated patches: unfinished markers, empty declarations, ignored call results, debug output, placeholder aborts, oversized files, and repeated non-trivial lines.
+`vibe-agent slop audit [path]` scans source-like text across a codebase for signals that often show up in low-quality AI-generated patches: unfinished markers, empty declarations, ignored call results, debug output, placeholder aborts, parse errors, oversized files, and repeated non-trivial lines.
 
 ```sh
 vibe-agent slop audit .
@@ -119,9 +119,9 @@ vibe-agent slop audit . --json
 vibe-agent slop audit . --fail-on 49
 ```
 
-The built-in scanner runs without external tools and reports files, lines, languages, parser basis, and scoring basis. Language detection comes from [`go-enry`](https://pkg.go.dev/github.com/go-enry/go-enry/v2), the Go port of GitHub Linguist, instead of a local extension table. Unknown non-binary text files are still scanned as `Text`. Vendor, generated, binary, image, and sensitive local config files are skipped before scoring. The score is weighted finding density per KLOC, capped at 100, so a large repo is not marked worse only because it has more files.
+The built-in scanner runs without external tools and reports files, lines, languages, tree-sitter parse counts, parser basis, and scoring basis. Language detection comes from [`go-enry`](https://pkg.go.dev/github.com/go-enry/go-enry/v2), the Go port of GitHub Linguist, instead of a local extension table. Syntax parsing uses [`gotreesitter`](https://pkg.go.dev/github.com/odvcencio/gotreesitter), a pure-Go tree-sitter runtime with bundled grammar metadata, so the runtime stays `CGO_ENABLED=0` and still handles mixed repos such as Go, Python, TSX, Vue, YAML, Dockerfiles, PHP, Rust, and Zig. Unknown non-binary text files are still scanned as `Text`. Vendor, generated, binary, image, and sensitive local config files are skipped before scoring.
 
-The command does not spawn external linters from user-controlled paths. That keeps the runtime's lint and security gates clean; Tree-sitter-based checks should be added through a reviewed in-process parser package or a verifier command declared by the consumer repo.
+The score is weighted finding density per KLOC, capped at 100. It is a review signal, not proof that code is correct. The command does not spawn external linters from user-controlled paths; teams that want Semgrep, ast-grep, or benchmark gates should add them as repo-owned verifier commands.
 
 ## The rule this module enforces
 
