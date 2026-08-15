@@ -1,0 +1,64 @@
+# Guard rules for this repository.
+#
+# Written by `vibe-agent guards init`. Everything below is commented out, so
+# this file changes nothing until you uncomment something. That is deliberate:
+# an init that silently altered what runs would be a worse default than none.
+#
+# The built-in rules travel inside the binary and always run. This file adds to
+# them, retargets them, or switches them off. Keep it in git - weakening a guard
+# should be a diff someone reviews rather than an argument nobody sees.
+#
+# See `vibe-agent guards list` for what is running right now.
+
+apiVersion: vibe-agent/v1
+kind: GuardPlan
+
+spec:
+  # Reusable pattern fragments, referenced as {{name}} in any rule below. The
+  # built-in vocabulary (secret, personal, bulkObject, logCall, publicEnv,
+  # quote) is available here too; redefining a name replaces it.
+  #
+  # vocabulary:
+  #   railsLogger: 'Rails\.logger\.\w+'
+
+  guards:
+    # Add a rule for your own stack. Checks are appended to the built-in ones,
+    # never replacing them.
+    #
+    # sensitive-data-guard:
+    #   lineChecks:
+    #     - id: rails-secret-in-log
+    #       pattern: '{{railsLogger}}.*{{secret}}'
+    #       message: Rails logger receives authentication material. Log an id instead.
+
+    # Switch off one check without losing the rest of its guard.
+    #
+    # sensitive-data-guard:
+    #   disabledChecks: [hardcoded-credential]
+
+    # Switch off a whole guard.
+    #
+    # ui-slop-guard:
+    #   disabled: true
+
+    # Retarget a guard. `types` are the language categories enry reports -
+    # Programming, Data, Markup, Prose - and reach a stack without naming it.
+    # `languages` name one exactly. `extensions` are the escape hatch for files
+    # enry cannot name, such as Dockerfile.prod.
+    #
+    # design-token-guard:
+    #   appliesTo:
+    #     types: [Markup]
+    #     languages: [TSX, JSX]
+    #     extensions: ['.styl']
+
+    # Raise or lower a density threshold.
+    #
+    # ui-slop-guard:
+    #   densityChecks:
+    #     - id: radius-monotony
+    #       pattern: '\brounded-(?:2xl|3xl)\b'
+    #       threshold: 8
+    #       message: Uniform large corner radius flattens hierarchy.
+
+    {}
