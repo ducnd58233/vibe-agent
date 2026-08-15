@@ -30,6 +30,7 @@ Usage:
   vibe-agent checkpoint --slug <slug> --check <name> --source <source> [--passed|--failed|--skipped]
   vibe-agent graph validate [--graph <id>]
   vibe-agent fetch <url|path> [--budget <tokens>] [--json] [--refresh]
+  vibe-agent slop audit [path] [--json] [--workers N] [--fail-on score]
   vibe-agent mcp serve
   vibe-agent guards <list|init> [--workspace <dir>] [--force]
   vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|post-tool-use-failure|stop|subagent-stop> [--client claude|cursor]
@@ -49,6 +50,11 @@ tmp/<slug>/events.ndjson, both under the workspace root and both gitignored.
 and navigation that are most of a page. Documents are cached under
 .agent-state/fetch/, so asking twice costs one request. Output is clipped to a
 budget and says how many lines were left, rather than implying the page fit.
+
+
+"slop audit" scans local code for AI-generated code slop signals. The built-in
+scanner uses go-enry language detection rather than a local extension table.
+It does not spawn external linters from user-controlled paths.
 
 Evidence sources: exit_code, file_assert, ci_api, human_event. There is no
 source for model assertion, so nothing can mark its own work complete.
@@ -139,6 +145,8 @@ func run(args []string) error {
 		return graphCommand(args[1:])
 	case "fetch":
 		return fetchCommand(args[1:])
+	case "slop":
+		return slopCommand(args[1:])
 	case "mcp":
 		return mcpCommand(args[1:])
 	case "guards":
