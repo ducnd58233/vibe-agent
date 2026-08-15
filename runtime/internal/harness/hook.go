@@ -397,6 +397,14 @@ func sessionContext(req Request) string {
 				"  %s at node %s (%s, iteration %d/%d). Do not infer or manually advance workflow state; ask the runtime.",
 				run.Slug, orDash(run.CurrentNode), run.Status, run.Iteration, run.MaxTransitions))
 		}
+	} else {
+		// Name the state rather than leave it to be inferred from silence.
+		// Silence is what this looked like before: hooks fired, said nothing,
+		// and the reasonable reading was that the control plane was broken
+		// rather than that nothing had asked it to track anything.
+		lines = append(lines,
+			"No active run. Tool use is journalled to the workspace, and gates that need a run "+
+				"(stop, the pre-tool refusals) stay off until one starts. `vibe-agent run start` begins one.")
 	}
 
 	// Retrieval happens here rather than behind a tool call, so what the

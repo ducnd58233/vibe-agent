@@ -81,18 +81,15 @@ func readResponse(raw json.RawMessage) response {
 	return response{}
 }
 
-// journal records tool use against every active run, and proposes a memory when
-// a command reported a real failure.
+// journal records tool use against every active run, or against the workspace
+// when no run is in flight, and proposes a memory when a command reported a
+// real failure.
 //
 // It fires after the tool ran, so it never refuses anything and never returns
 // an error: a control plane that fails a session over its own bookkeeping is
 // worse than one that records nothing.
 func journal(req Request, body payload, failed bool) error {
 	if body.ToolName == "" {
-		return nil
-	}
-	runs := activeRuns(req.WorkspaceRoot)
-	if len(runs) == 0 {
 		return nil
 	}
 
@@ -126,6 +123,17 @@ func journal(req Request, body payload, failed bool) error {
 		return nil
 	}
 
+	// Read the runs here rather than at the top. The entry is the same either
+	// way, and computing it first is what lets the no-run case record instead of
+	// return.
+	runs := activeRuns(req.WorkspaceRoot)
+	if len(runs) == 0 {
+		if ref := ambientJournal(req.WorkspaceRoot, entry); ref != "" && failed {
+			proposeFailure(req.WorkspaceRoot, "", "", command, result, ref)
+		}
+		return nil
+	}
+
 	for _, run := range runs {
 		recorded, err := state.AppendEvent(state.EventLogPath(req.WorkspaceRoot, run.Slug), state.Event{
 			Type:    "tool_use",
@@ -136,7 +144,7 @@ func journal(req Request, body payload, failed bool) error {
 			continue
 		}
 		if failed {
-			proposeFailure(req.WorkspaceRoot, run, command, result, recorded.Ref())
+			proposeFailure(req.WorkspaceRoot, run.Slug, run.CurrentNode, command, result, recorded.Ref())
 		}
 	}
 	return nil
@@ -200,7 +208,13 @@ const FailureMemoryLife = 7 * 24 * time.Hour
 //
 // A command that fails is not automatically one worth remembering; memorable
 // decides that part.
-func proposeFailure(workspaceRoot string, run *state.Run, command string, result response, ref string) {
+//
+// Slug and node are passed rather than a *state.Run because a failure outside
+// any run has neither, and is worth remembering for exactly the same reason one
+// inside a run is: the host reported the exit code. An empty slug is that case,
+// and it changes the wording of the evidence line and drops the run tag. It does
+// not change whether the memory is written.
+func proposeFailure(workspaceRoot, slug, node, command string, result response, ref string) {
 	if !memorable(command) || result.Interrupted {
 		return
 	}
@@ -211,8 +225,7 @@ func proposeFailure(workspaceRoot string, run *state.Run, command string, result
 	}
 	defer func() { _ = store.Close() }()
 
-	evidence := []string{fmt.Sprintf("%s %s during run %s at node %s",
-		command, exitedPhrase(result.exit()), run.Slug, orDash(run.CurrentNode))}
+	evidence := []string{failureContext(slug, node, command, result)}
 	if detail := truncate(singleLine(result.Stderr), 300); detail != "" {
 		evidence = append(evidence, detail)
 	}
@@ -225,7 +238,7 @@ func proposeFailure(workspaceRoot string, run *state.Run, command string, result
 		WorkspaceID: workspaceRoot,
 		Kind:        memory.KindEpisodic,
 		Content:     fmt.Sprintf("%s %s in this workspace", command, exitsPhrase(result.exit())),
-		Tags:        []string{"command-failure", run.Slug},
+		Tags:        failureTags(slug),
 		Confidence:  0.6,
 		SourceType:  memory.SourceCommandResult,
 		SourceRef:   ref,
@@ -236,6 +249,31 @@ func proposeFailure(workspaceRoot string, run *state.Run, command string, result
 		return
 	}
 	_, _ = store.Confirm(ctx, stored.ID, memory.SourceCommandResult, ref, now)
+}
+
+// failureContext says where the command failed, in whichever terms exist.
+//
+// A run gives the line a slug and a node to point at. Outside one there is no
+// such anchor, and inventing a placeholder would put a fact in the record that
+// nothing observed. Saying plainly that it happened outside a run is both
+// shorter and true.
+func failureContext(slug, node, command string, result response) string {
+	if slug == "" {
+		return fmt.Sprintf("%s %s outside any run", command, exitedPhrase(result.exit()))
+	}
+	return fmt.Sprintf("%s %s during run %s at node %s",
+		command, exitedPhrase(result.exit()), slug, orDash(node))
+}
+
+// failureTags labels the memory so retrieval can narrow by run.
+//
+// The empty slug is dropped rather than stored. A tag of "" matches nothing a
+// person would search for and would still occupy the row.
+func failureTags(slug string) []string {
+	if slug == "" {
+		return []string{"command-failure"}
+	}
+	return []string{"command-failure", slug}
 }
 
 // exitedPhrase and exitsPhrase name the outcome as precisely as the host allowed.
