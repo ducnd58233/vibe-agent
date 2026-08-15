@@ -13,6 +13,20 @@ Review the current change across five axes: correctness, readability, architectu
 
 Follow the [`code-review-and-quality`](../skills/code-review-and-quality/SKILL.md) skill.
 
+**Run the slop audit first (MUST).** It is the deterministic half of this review,
+and it is cheap:
+
+```sh
+vibe-agent slop audit <path>            # text, for reading
+vibe-agent slop audit <path> --json     # for a record under tmp/<slug>/
+```
+
+Read its findings before writing yours. A machine can say a line is duplicated
+or a result discarded; it cannot say a boundary is wrong. Spending review
+attention on what the audit already reports wastes the half only a person can
+do. Where you disagree with a finding, say so in the review rather than
+silently skipping it.
+
 Review current changes (staged diff, branch, or paths the user specifies) across:
 
 1. **Correctness** - Spec alignment, edge cases, adequate tests.

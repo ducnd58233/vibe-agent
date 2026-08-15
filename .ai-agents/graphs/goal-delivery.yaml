@@ -39,6 +39,15 @@ spec:
       source: check
       reads: unit
 
+    - name: slop_ok
+      description: >-
+        The code slop audit scored at or below the threshold vibe-checks.yaml
+        declares. It sits between e2e and review because it is the cheap
+        deterministic pass: a machine can say the score rose, and a reviewer
+        should be spending their attention on what a machine cannot say.
+      source: check
+      reads: slop
+
     - name: e2e_ok
       description: >-
         E2E check passed, or was skipped because vibe-checks.yaml declares no e2e
@@ -150,6 +159,15 @@ spec:
       verifier: command
       check: e2e
 
+    slop:
+      type: verifier
+      description: >-
+        Code slop audit over the workspace. Fails when the score rises above the
+        threshold in vibe-checks.yaml, so the rule is "do not get worse" and
+        raising it is a reviewed diff rather than an argument.
+      verifier: command
+      check: slop
+
     review:
       type: agent
       description: Local five-axis review before the PR goes out.
@@ -251,11 +269,18 @@ spec:
       when: "!unit_passed"
 
     - from: e2e
-      to: review
+      to: slop
       when: e2e_ok
     - from: e2e
       to: build
       when: "!e2e_ok"
+
+    - from: slop
+      to: review
+      when: slop_ok
+    - from: slop
+      to: build
+      when: "!slop_ok"
 
     - from: review
       to: build

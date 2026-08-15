@@ -218,6 +218,13 @@ func adviseAll(req Request, body payload) string {
 			said = append(said, text)
 		}
 	}
+
+	// Last, because the rule guards above are about correctness and disclosure
+	// and this one is about craft. When both have something to say, the one that
+	// can leak a credential should be read first.
+	if text := slopAdvice(req, file); text != "" {
+		said = append(said, text)
+	}
 	return strings.Join(said, "\n\n")
 }
 
