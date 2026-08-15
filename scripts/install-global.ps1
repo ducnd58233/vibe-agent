@@ -389,7 +389,8 @@ function Install-Runtime {
 Write-Output ''
 Write-Output "Installed $script:Installed entries: $script:Linked symlinked, $script:Copied copied."
 Write-Output "  skills      $ClaudeHome\skills, $AgentsHome\skills   (all four tools)"
-Write-Output "  commands    claude, cursor, opencode, codex          (as /$Prefix<name>)"
+Write-Output "  commands    claude, cursor, opencode                (as /$Prefix<name> where supported)"
+Write-Output "  prompts     codex prompt files                       (best effort; not a CLI slash command)"
 Write-Output "  subagents   generated with name: $Prefix<name>"
 Write-Output "  rules       marked block in each global instructions file, plus a Cursor .mdc"
 Write-Output "  manifest    $Manifest"

@@ -15,7 +15,7 @@
     .opencode/agents, .opencode/commands
     .agents/skills, .agents/commands (Codex discovery when supported; mirrors .ai-agents)
     .codex/agents/*.toml (Codex custom subagents, generated from .ai-agents/agents/*.md)
-    .codex/prompts/*.md (Codex custom prompts, generated from .ai-agents/commands/*.md)
+    .codex/prompts/*.md (best-effort custom prompts, generated from .ai-agents/commands/*.md)
 
   Examples:
     powershell -File scripts/link-ai-agents.ps1
@@ -23,11 +23,11 @@
     powershell -File .vibe-agent/scripts/link-ai-agents.ps1 -WorkspaceRoot $PWD -AssetsRoot (Join-Path $PWD '.vibe-agent\.ai-agents')
 
   Optional environment variables (when the matching parameter is omitted):
-    LINK_WORKSPACE, LINK_ASSETS — same paths as -WorkspaceRoot / -AssetsRoot (useful from CI or wrappers).
+    LINK_WORKSPACE, LINK_ASSETS - same paths as -WorkspaceRoot / -AssetsRoot (useful from CI or wrappers).
   The script also adds generated discovery paths to <WorkspaceRoot>/.git/info/exclude when WorkspaceRoot is a
   Git repository. This keeps local links and generated Codex agent and prompt files out of Git without requiring root
-  .gitignore rules in consumer repositories. Codex custom prompts are also copied to $CODEX_HOME\prompts with the
-  vibe- prefix, because that is the path the Codex composer reads.
+  .gitignore rules in consumer repositories. Prompt files are also copied to $CODEX_HOME\prompts with the
+  vibe- prefix for surfaces that support custom prompt files.
 #>
 [CmdletBinding()]
 param(
@@ -455,6 +455,6 @@ Install-Runtime
 
 Write-Host "Links created under $workspaceFull (.claude, .cursor, .opencode, .agents) -> $assetsFull"
 Write-Host "Codex custom agents synced to $workspaceFull\.codex\agents"
-Write-Host "Codex custom prompts synced to $workspaceFull\.codex\prompts"
+Write-Host "Best-effort prompt files synced to $workspaceFull\.codex\prompts"
 $codexPromptPrefix = if ($env:LINK_CODEX_PROMPT_PREFIX) { $env:LINK_CODEX_PROMPT_PREFIX } else { 'vibe-' }
-Write-Host "Codex global prompts synced to $(Join-Path (Get-CodexHome) 'prompts') as /prompts:$codexPromptPrefix<name>"
+Write-Host "Best-effort global prompt files synced to $(Join-Path (Get-CodexHome) 'prompts') as $codexPromptPrefix<name>.md"
