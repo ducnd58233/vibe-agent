@@ -15,7 +15,7 @@
     .opencode/agents, .opencode/commands
     .agents/skills, .agents/commands (Codex discovery when supported; mirrors .ai-agents)
     .codex/agents/*.toml (Codex custom subagents, generated from .ai-agents/agents/*.md)
-    .codex/prompts/*.md (best-effort custom prompts, generated from .ai-agents/commands/*.md)
+    .codex/prompts/*.md (project-local copies for inspection; Codex CLI loads custom prompts from $CODEX_HOME\prompts)
 
   Examples:
     powershell -File scripts/link-ai-agents.ps1
@@ -27,7 +27,7 @@
   The script also adds generated discovery paths to <WorkspaceRoot>/.git/info/exclude when WorkspaceRoot is a
   Git repository. This keeps local links and generated Codex agent and prompt files out of Git without requiring root
   .gitignore rules in consumer repositories. Prompt files are also copied to $CODEX_HOME\prompts with the
-  vibe- prefix for surfaces that support custom prompt files.
+  vibe- prefix. Codex custom prompts are invoked as /prompts:vibe-<name>, not as top-level /vibe-<name>.
 #>
 [CmdletBinding()]
 param(
@@ -455,6 +455,7 @@ Install-Runtime
 
 Write-Host "Links created under $workspaceFull (.claude, .cursor, .opencode, .agents) -> $assetsFull"
 Write-Host "Codex custom agents synced to $workspaceFull\.codex\agents"
-Write-Host "Best-effort prompt files synced to $workspaceFull\.codex\prompts"
+Write-Host "Workspace prompt copies synced to $workspaceFull\.codex\prompts for inspection"
 $codexPromptPrefix = if ($env:LINK_CODEX_PROMPT_PREFIX) { $env:LINK_CODEX_PROMPT_PREFIX } else { 'vibe-' }
-Write-Host "Best-effort global prompt files synced to $(Join-Path (Get-CodexHome) 'prompts') as $codexPromptPrefix<name>.md"
+Write-Host "Global Codex prompt files synced to $(Join-Path (Get-CodexHome) 'prompts') as $codexPromptPrefix<name>.md"
+Write-Host "Codex custom prompt form: /prompts:$codexPromptPrefix<name> (top-level /$codexPromptPrefix<name> is not file-installable in Codex CLI 0.147.0)"

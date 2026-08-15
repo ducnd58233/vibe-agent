@@ -23,7 +23,8 @@
 #              first; Codex reads only $HOME/.agents/skills; Cursor reads
 #              ~/.agents/skills and ~/.cursor/skills; opencode reads all of
 #              them plus its own. ~/.agents is the Agent Skills convention.
-#   commands   each tool keeps its own directory, so all four are written
+#   commands   Claude, Cursor, and opencode keep command directories; Codex
+#              uses $CODEX_HOME/prompts with the /prompts:<name> namespace
 #   subagents  ~/.claude/agents, ~/.cursor/agents, opencode agents
 #   rules      a marked block in each tool's global instructions file, plus an
 #              .mdc rule for Cursor, which has no global AGENTS.md
@@ -405,7 +406,7 @@ echo ""
 echo "Installed $installed entries: $linked symlinked, $copied copied."
 echo "  skills      $CLAUDE_HOME/skills, $AGENTS_HOME/skills   (all four tools)"
 echo "  commands    claude, cursor, opencode                  (as /${PREFIX}<name> where supported)"
-echo "  prompts     codex prompt files                         (best effort; not a CLI slash command)"
+echo "  prompts     $CODEX_HOME/prompts                       (Codex form: /prompts:${PREFIX}<name>)"
 echo "  subagents   generated with name: ${PREFIX}<name>"
 echo "  rules       marked block in each global instructions file, plus a Cursor .mdc"
 echo "  manifest    $MANIFEST"
@@ -424,5 +425,7 @@ fi
 echo ""
 echo "Permissions and hooks were not installed. To apply this repo's policy to a"
 echo "project, run link-ai-agents.sh in that project instead."
+echo ""
+echo "Codex does not install these as top-level /${PREFIX}<name> commands in CLI 0.147.0."
 
 install_runtime

@@ -390,7 +390,7 @@ Write-Output ''
 Write-Output "Installed $script:Installed entries: $script:Linked symlinked, $script:Copied copied."
 Write-Output "  skills      $ClaudeHome\skills, $AgentsHome\skills   (all four tools)"
 Write-Output "  commands    claude, cursor, opencode                (as /$Prefix<name> where supported)"
-Write-Output "  prompts     codex prompt files                       (best effort; not a CLI slash command)"
+Write-Output "  prompts     $CodexHome\prompts                      (Codex form: /prompts:$Prefix<name>)"
 Write-Output "  subagents   generated with name: $Prefix<name>"
 Write-Output "  rules       marked block in each global instructions file, plus a Cursor .mdc"
 Write-Output "  manifest    $Manifest"
@@ -410,5 +410,7 @@ if ($script:Copied -gt 0) {
 Write-Output ''
 Write-Output 'Permissions and hooks were not installed. To apply this repo''s policy to a'
 Write-Output 'project, run link-ai-agents.ps1 in that project instead.'
+Write-Output ''
+Write-Output "Codex does not install these as top-level /$Prefix<name> commands in CLI 0.147.0."
 
 Install-Runtime

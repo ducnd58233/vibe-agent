@@ -61,7 +61,7 @@ Canonical command prompts live in `.ai-agents/commands/`.
 | Claude Code | Use `/vibe-<command>` after global install, or `/<command>` in a workspace after `link-ai-agents`. |
 | Cursor | Use `/vibe-<command>` after global install, or `/<command>` in a linked workspace if Cursor command discovery is enabled. |
 | opencode | Global install writes `~/.config/opencode/commands/vibe-*.md`; workspace install writes `.opencode/commands`. Use opencode's command picker or ask by command name if the picker is unavailable. |
-| Codex | Tested with Codex CLI 0.147.0: command prompts are not loaded as `/vibe-*`, and `$CODEX_HOME/prompts/vibe-*.md` is not expanded by `/prompts:vibe-*` in this surface. Use plain intent, for example "run the vibe build command from `.ai-agents/commands/build.md`". Prompt files under `$CODEX_HOME/prompts` stay best-effort for ChatGPT desktop surfaces that support custom prompts. |
+| Codex | Global install writes `$CODEX_HOME/prompts/vibe-*.md`. In Codex CLI or the Codex IDE extension, use `/prompts:vibe-<command>` where custom prompts are available. Codex 0.147.0 does not provide a file-based way to install top-level `/vibe-<command>` commands. If `/prompts:vibe-doctor` is unrecognized after restart, check that the surface is local Codex CLI or IDE and that `codex doctor` reports the same `CODEX_HOME`. |
 
 Available toolkit commands:
 
@@ -88,6 +88,12 @@ Claude, Cursor, and opencode examples:
 /vibe-doctor
 /vibe-research current React Router release notes
 /vibe-goal finish the payments retry work and open a PR
+```
+
+Codex custom prompt example:
+
+```text
+/prompts:vibe-doctor
 ```
 
 In a linked workspace that exposes unprefixed project commands, use the same names without `vibe-`:

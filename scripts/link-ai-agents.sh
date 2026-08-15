@@ -17,7 +17,8 @@
 # when the workspace is a Git repository. This keeps local links and generated
 # Codex agent and prompt files out of Git without root .gitignore rules in
 # consumer repos. Prompt files are also copied to $CODEX_HOME/prompts
-# with the vibe- prefix for surfaces that support custom prompt files.
+# with the vibe- prefix. Codex custom prompts are invoked as
+# /prompts:vibe-<name>, not as top-level /vibe-<name>.
 
 set -euo pipefail
 
@@ -447,5 +448,6 @@ install_runtime
 
 echo "Symlinks created under $WORKSPACE (.claude, .cursor, .opencode, .agents) -> $ASSETS"
 echo "Codex custom agents synced to $WORKSPACE/.codex/agents"
-echo "Best-effort prompt files synced to $WORKSPACE/.codex/prompts"
-echo "Best-effort global prompt files synced to $(codex_home_dir 2>/dev/null || echo '<unknown>')/prompts as ${LINK_CODEX_PROMPT_PREFIX:-vibe-}<name>.md"
+echo "Workspace prompt copies synced to $WORKSPACE/.codex/prompts for inspection"
+echo "Global Codex prompt files synced to $(codex_home_dir 2>/dev/null || echo '<unknown>')/prompts as ${LINK_CODEX_PROMPT_PREFIX:-vibe-}<name>.md"
+echo "Codex custom prompt form: /prompts:${LINK_CODEX_PROMPT_PREFIX:-vibe-}<name> (top-level /${LINK_CODEX_PROMPT_PREFIX:-vibe-}<name> is not file-installable in Codex CLI 0.147.0)"

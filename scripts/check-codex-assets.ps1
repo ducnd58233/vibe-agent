@@ -6,8 +6,9 @@
 .DESCRIPTION
   Checks:
   - .agents/skills and .agents/commands discovery paths exist.
-  - every .ai-agents/commands/*.md command has a generated .codex/prompts/*.md prompt.
+  - every .ai-agents/commands/*.md command has a generated .codex/prompts/*.md inspection copy.
   - with -Global, every command also has a $CODEX_HOME/prompts/vibe-*.md prompt.
+    Codex invokes those as /prompts:vibe-<name>, not as top-level /vibe-<name>.
   - every .ai-agents/agents/*.md persona has a generated .codex/agents/*.toml.
   - generated TOML avoids stale relative links and common mojibake from non-UTF8 generation.
 #>
@@ -172,3 +173,7 @@ if ($fail -ne 0) {
 }
 
 Write-Host 'check-codex-assets: OK'
+if ($Global) {
+  $promptPrefix = if ($env:LINK_CODEX_PROMPT_PREFIX) { $env:LINK_CODEX_PROMPT_PREFIX } else { 'vibe-' }
+  Write-Host "Codex custom prompt form: /prompts:$promptPrefix<name>; top-level /$promptPrefix<name> is not file-installable in Codex CLI 0.147.0."
+}
