@@ -63,6 +63,11 @@ $OpencodeHome = Join-Path $ConfigRoot 'opencode'
 
 $Manifest = Join-Path $ClaudeHome '.vibe-agent-global.manifest'
 $ManifestTmp = "$Manifest.tmp"
+$PreviousManifestEntries = if (Test-Path -LiteralPath $Manifest) {
+    Get-Content -LiteralPath $Manifest -Encoding UTF8
+} else {
+    @()
+}
 
 $BeginMark = '<!-- vibe-agent:begin -->'
 $EndMark = '<!-- vibe-agent:end -->'
@@ -169,6 +174,70 @@ function Install-Agent([string]$Source, [string]$Destination, [string]$NewName) 
     }
     # No BOM: a BOM ahead of YAML frontmatter stops the loader parsing it.
     [System.IO.File]::WriteAllText($Destination, (Get-AgentBody $Source $NewName), (New-Object System.Text.UTF8Encoding $false))
+    Add-Manifest $Destination
+    $script:Installed++
+    $script:Copied++
+}
+
+function Get-FrontmatterField {
+    param(
+        [Parameter(Mandatory = $true)][string] $YamlBlock,
+        [Parameter(Mandatory = $true)][string] $FieldName
+    )
+    if ($YamlBlock -match "(?ms)^${FieldName}:\s*>\-?\s*\r?\n(.*?)(?=^\S|\z)") {
+        return (($matches[1] -split "\r?\n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }) -join ' ').Trim()
+    }
+    if ($YamlBlock -match "(?m)^${FieldName}:\s*(.+)$") {
+        return $matches[1].Trim().Trim('"').Trim("'")
+    }
+    return ''
+}
+
+function Get-CommandSkillBody([string]$Source, [string]$NewName) {
+    $content = Get-Content -LiteralPath $Source -Raw -Encoding UTF8
+    if ($content -notmatch '(?s)\A---\r?\n(.*?)\r?\n---\r?\n(.*)\z') {
+        throw "Missing YAML frontmatter in command: $Source"
+    }
+    $description = Get-FrontmatterField -YamlBlock $matches[1] -FieldName 'description'
+    if ([string]::IsNullOrWhiteSpace($description)) {
+        $description = "Run the vibe-agent $NewName command"
+    }
+    $body = $matches[2].Trim()
+    $body = $body.Replace('../skills/', "$NativeAssets/skills/")
+    $body = $body.Replace('../references/', "$NativeAssets/references/")
+    $body = $body.Replace('../stack-profiles/', "$NativeAssets/stack-profiles/")
+    $body = $body.Replace('../commands/', "$NativeAssets/commands/")
+    $body = $body.Replace('../agents/', "$NativeAssets/agents/")
+    $mention = '$' + $NewName
+    return @"
+---
+name: $NewName
+description: >-
+  Codex-compatible command adapter. Use only when the user explicitly mentions
+  $mention or asks to run this vibe-agent command: $description
+disable-model-invocation: true
+---
+
+# $NewName
+
+This is the Codex-compatible form of $NativeAssets/commands/$([System.IO.Path]::GetFileName($Source)).
+Codex CLI removed custom `/prompts` support in 0.117.0, so command prompts are exposed as explicit skills.
+
+Treat any text after $mention as the command arguments, then follow the command prompt below.
+
+<command_prompt>
+$body
+</command_prompt>
+"@
+}
+
+function Install-CommandSkill([string]$Source, [string]$Destination, [string]$NewName) {
+    if ($DryRun) { Write-Output "would generate $Destination (name: $NewName)"; return }
+    $parent = Split-Path -Parent $Destination
+    if (-not (Test-Path -LiteralPath $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+    [System.IO.File]::WriteAllText($Destination, (Get-CommandSkillBody $Source $NewName), (New-Object System.Text.UTF8Encoding $false))
     Add-Manifest $Destination
     $script:Installed++
     $script:Copied++
@@ -318,7 +387,7 @@ foreach ($file in (Get-ChildItem -File -Filter *.md -LiteralPath (Join-Path $Ass
     Install-Entry $file.FullName (Join-Path $ClaudeHome "commands/$Prefix$name.md")
     Install-Entry $file.FullName (Join-Path $CursorHome "commands/$Prefix$name.md")
     Install-Entry $file.FullName (Join-Path $OpencodeHome "commands/$Prefix$name.md")
-    Install-Entry $file.FullName (Join-Path $CodexHome "prompts/$Prefix$name.md")
+    Install-CommandSkill $file.FullName (Join-Path $AgentsHome "skills/$Prefix$name/SKILL.md") "$Prefix$name"
 }
 
 foreach ($file in (Get-ChildItem -File -Filter *.md -LiteralPath (Join-Path $Assets 'agents'))) {
@@ -349,6 +418,18 @@ if ($DryRun) {
     exit 0
 }
 
+$newManifestEntries = Get-Content -LiteralPath $ManifestTmp -Encoding UTF8
+foreach ($entry in $PreviousManifestEntries) {
+    if ([string]::IsNullOrWhiteSpace($entry) -or ($newManifestEntries -contains $entry)) {
+        continue
+    }
+    $normalized = $entry -replace '/', '\'
+    $oldPromptRoot = (Join-Path $CodexHome 'prompts') -replace '/', '\'
+    if ($normalized.StartsWith($oldPromptRoot, [System.StringComparison]::OrdinalIgnoreCase) -and
+        ((Split-Path -Leaf $entry).StartsWith($Prefix))) {
+        Remove-Item -LiteralPath $entry -Force -ErrorAction SilentlyContinue
+    }
+}
 Move-Item -LiteralPath $ManifestTmp -Destination $Manifest -Force
 
 # Install the binary too, mirroring link-ai-agents.ps1. Linking .ai-agents into
@@ -388,9 +469,10 @@ function Install-Runtime {
 
 Write-Output ''
 Write-Output "Installed $script:Installed entries: $script:Linked symlinked, $script:Copied copied."
-Write-Output "  skills      $ClaudeHome\skills, $AgentsHome\skills   (all four tools)"
+Write-Output "  skills      $ClaudeHome\skills, $AgentsHome\skills   (all four tools; Codex command adapters in $AgentsHome\skills)"
 Write-Output "  commands    claude, cursor, opencode                (as /$Prefix<name> where supported)"
-Write-Output "  prompts     $CodexHome\prompts                      (Codex form: /prompts:$Prefix<name>)"
+$codexCommandForm = '$' + $Prefix + '<name>'
+Write-Output "  codex       $AgentsHome\skills\$Prefix<name>        (Codex form: $codexCommandForm)"
 Write-Output "  subagents   generated with name: $Prefix<name>"
 Write-Output "  rules       marked block in each global instructions file, plus a Cursor .mdc"
 Write-Output "  manifest    $Manifest"
@@ -411,6 +493,6 @@ Write-Output ''
 Write-Output 'Permissions and hooks were not installed. To apply this repo''s policy to a'
 Write-Output 'project, run link-ai-agents.ps1 in that project instead.'
 Write-Output ''
-Write-Output "Codex does not install these as top-level /$Prefix<name> commands in CLI 0.147.0."
+Write-Output "Codex does not install these as top-level /$Prefix<name> commands in CLI 0.147.0, because custom prompts were removed."
 
 Install-Runtime

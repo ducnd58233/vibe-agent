@@ -20,6 +20,11 @@ for view in "$root/.claude" "$root/.cursor" "$root/.opencode" "$root/.agents"; d
     srcdir="$assets/$kind"
     [ -d "$viewdir" ] || continue
     [ -d "$srcdir" ] || continue
+    # Codex uses .agents/skills for both canonical skills and generated command
+    # adapters. scripts/check-codex-assets.ps1 validates that mixed view.
+    if [ "$view" = "$root/.agents" ] && [ "$kind" = "skills" ]; then
+      continue
+    fi
     # A symlink or junction always matches by construction; only compare copies.
     if [ -L "$viewdir" ]; then continue; fi
     if ! diff -r -q "$srcdir" "$viewdir" >/dev/null 2>&1; then

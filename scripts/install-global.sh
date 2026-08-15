@@ -24,7 +24,8 @@
 #              ~/.agents/skills and ~/.cursor/skills; opencode reads all of
 #              them plus its own. ~/.agents is the Agent Skills convention.
 #   commands   Claude, Cursor, and opencode keep command directories; Codex
-#              uses $CODEX_HOME/prompts with the /prompts:<name> namespace
+#              uses generated skills because custom /prompts were removed
+#              in Codex CLI 0.117.0
 #   subagents  ~/.claude/agents, ~/.cursor/agents, opencode agents
 #   rules      a marked block in each tool's global instructions file, plus an
 #              .mdc rule for Cursor, which has no global AGENTS.md
@@ -109,6 +110,11 @@ OPENCODE_HOME="${XDG_CONFIG_HOME:-$HOME_DIR/.config}/opencode"
 # A manifest records what this script owns, so --uninstall removes exactly that
 # and never a hand-written asset that happens to share the prefix.
 MANIFEST="$CLAUDE_HOME/.vibe-agent-global.manifest"
+OLD_MANIFEST_COPY=""
+if [ -f "$MANIFEST" ]; then
+  OLD_MANIFEST_COPY="$(mktemp)"
+  cp "$MANIFEST" "$OLD_MANIFEST_COPY"
+fi
 
 installed=0
 linked=0
@@ -171,6 +177,58 @@ write_agent() {
   if [ "$DRY" -eq 1 ]; then printf 'would generate %s (name: %s)\n' "$dest" "$newname"; return 0; fi
   mkdir -p "$(dirname "$dest")"
   write_agent_body "$src" "$dest" "$newname"
+  record "$dest"
+  installed=$((installed + 1))
+  copied=$((copied + 1))
+}
+
+frontmatter_description() {
+  awk '
+    /^description:/ {
+      line=$0
+      sub(/^description:[[:space:]]*/, "", line)
+      if (line ~ /^>/) { fold=1; next }
+      gsub(/^["'\'']|["'\'']$/, "", line)
+      print line
+      exit
+    }
+    fold && /^[[:space:]]/ {
+      gsub(/^[[:space:]]+/, "")
+      print
+      next
+    }
+    fold && /^[^[:space:]]/ { exit }
+  ' "$1" | tr '\n' ' ' | sed 's/[[:space:]]*$//'
+}
+
+write_command_skill() {
+  src="$1"; dest="$2"; newname="$3"
+  if [ "$DRY" -eq 1 ]; then printf 'would generate %s (name: %s)\n' "$dest" "$newname"; return 0; fi
+  mkdir -p "$(dirname "$dest")"
+  command_base="$(basename "$src")"
+  description="$(frontmatter_description "$src")"
+  [ -n "$description" ] || description="Run the vibe-agent $newname command"
+  {
+    printf -- '---\n'
+    printf 'name: %s\n' "$newname"
+    printf 'description: >-\n'
+    printf '  Codex-compatible command adapter. Use only when the user explicitly mentions\n'
+    printf '  $%s or asks to run this vibe-agent command: %s\n' "$newname" "$description"
+    printf 'disable-model-invocation: true\n'
+    printf -- '---\n\n'
+    printf '# %s\n\n' "$newname"
+    printf 'This is the Codex-compatible form of `%s/commands/%s`.\n' "$NATIVE_ASSETS" "$command_base"
+    printf 'Codex CLI removed custom `/prompts` support in 0.117.0, so command prompts are exposed as explicit skills.\n\n'
+    printf 'Treat any text after `$%s` as the command arguments, then follow the command prompt below.\n\n' "$newname"
+    printf '<command_prompt>\n'
+    awk 'BEGIN{n=0} /^---$/ { n++; next } n>=2 { print }' "$src" \
+      | sed "s#../skills/#$NATIVE_ASSETS/skills/#g" \
+      | sed "s#../references/#$NATIVE_ASSETS/references/#g" \
+      | sed "s#../stack-profiles/#$NATIVE_ASSETS/stack-profiles/#g" \
+      | sed "s#../commands/#$NATIVE_ASSETS/commands/#g" \
+      | sed "s#../agents/#$NATIVE_ASSETS/agents/#g"
+    printf '\n</command_prompt>\n'
+  } > "$dest"
   record "$dest"
   installed=$((installed + 1))
   copied=$((copied + 1))
@@ -321,7 +379,7 @@ for file in "$ASSETS"/commands/*.md; do
   link_or_copy "$file" "$CLAUDE_HOME/commands/$PREFIX$name.md"
   link_or_copy "$file" "$CURSOR_HOME/commands/$PREFIX$name.md"
   link_or_copy "$file" "$OPENCODE_HOME/commands/$PREFIX$name.md"
-  link_or_copy "$file" "$CODEX_HOME/prompts/$PREFIX$name.md"
+  write_command_skill "$file" "$AGENTS_HOME/skills/$PREFIX$name/SKILL.md" "$PREFIX$name"
 done
 
 # Subagents, rewritten because the frontmatter carries the identity.
@@ -351,11 +409,24 @@ write_cursor_rule
 
 if [ "$DRY" -eq 1 ]; then
   rm -f "$MANIFEST.tmp"
+  [ -n "$OLD_MANIFEST_COPY" ] && rm -f "$OLD_MANIFEST_COPY"
   echo ""
   echo "Dry run. Nothing was written."
   exit 0
 fi
 
+if [ -n "$OLD_MANIFEST_COPY" ]; then
+  while IFS= read -r entry; do
+    [ -n "$entry" ] || continue
+    if grep -Fxq "$entry" "$MANIFEST.tmp"; then
+      continue
+    fi
+    case "$entry" in
+      *".codex/prompts/$PREFIX"*|*".codex\\prompts\\$PREFIX"*) rm -f "$entry" ;;
+    esac
+  done < "$OLD_MANIFEST_COPY"
+  rm -f "$OLD_MANIFEST_COPY"
+fi
 mv "$MANIFEST.tmp" "$MANIFEST"
 
 # Install the binary too, mirroring link-ai-agents.sh. Linking .ai-agents into
@@ -404,9 +475,9 @@ install_runtime() {
 
 echo ""
 echo "Installed $installed entries: $linked symlinked, $copied copied."
-echo "  skills      $CLAUDE_HOME/skills, $AGENTS_HOME/skills   (all four tools)"
+echo "  skills      $CLAUDE_HOME/skills, $AGENTS_HOME/skills   (all four tools; Codex command adapters in $AGENTS_HOME/skills)"
 echo "  commands    claude, cursor, opencode                  (as /${PREFIX}<name> where supported)"
-echo "  prompts     $CODEX_HOME/prompts                       (Codex form: /prompts:${PREFIX}<name>)"
+echo "  codex       $AGENTS_HOME/skills/${PREFIX}<name>       (Codex form: \$${PREFIX}<name>)"
 echo "  subagents   generated with name: ${PREFIX}<name>"
 echo "  rules       marked block in each global instructions file, plus a Cursor .mdc"
 echo "  manifest    $MANIFEST"
@@ -426,6 +497,6 @@ echo ""
 echo "Permissions and hooks were not installed. To apply this repo's policy to a"
 echo "project, run link-ai-agents.sh in that project instead."
 echo ""
-echo "Codex does not install these as top-level /${PREFIX}<name> commands in CLI 0.147.0."
+echo "Codex does not install these as top-level /${PREFIX}<name> commands in CLI 0.147.0, because custom prompts were removed."
 
 install_runtime
