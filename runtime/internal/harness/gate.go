@@ -146,12 +146,24 @@ func gate(req Request, body payload, out io.Writer) error {
 func deliverBlock(req Request, blocked *BlockError, out io.Writer) error {
 	switch req.Client {
 	case ClientCursor:
-		// Cursor's beforeShellExecution decides through JSON rather than exit
-		// codes, so the same verdict has to travel a different way.
+		// Cursor decides through JSON rather than exit codes, so the same
+		// verdict has to travel a different way.
+		//
+		// snake_case, and that was the defect. This wrote agentMessage and
+		// userMessage, which Cursor does not read: it honoured the deny and
+		// discarded both messages, so the agent was refused with no stated
+		// reason and retried. The same file spelled additional_context and
+		// followup_message correctly, so this was one field pair out of step
+		// rather than a convention anyone had chosen.
+		//
+		// "deny" and not "ask": beforeShellExecution accepts all three of allow,
+		// deny and ask, while preToolUse accepts only allow and deny. Emitting
+		// the value both events share is what lets one branch answer both, and
+		// TestCursorNeverAsks keeps it that way.
 		return write(out, map[string]any{
-			"permission":   "deny",
-			"agentMessage": blocked.Reason,
-			"userMessage":  "vibe-agent blocked a command that would bypass the delivery graph.",
+			"permission":    "deny",
+			"agent_message": blocked.Reason,
+			"user_message":  "vibe-agent blocked a command that would bypass the delivery graph.",
 		})
 	case ClientCodex:
 		// Codex ignores exit 2 outright. It was measured running the command

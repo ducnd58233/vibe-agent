@@ -85,6 +85,7 @@ Two rules govern this table:
 - `beforeSubmitPrompt` - Cannot inject context: it validates or blocks the prompt and nothing else. The runtime therefore returns no prompt-time context for Cursor, so Cursor gets no per-prompt node or memory injection at all.
 - `beforeShellExecution` - permission accepts allow, deny or ask.
 - `preToolUse` - permission accepts allow or deny only. Unlike beforeShellExecution, there is no ask.
+- `postToolUse` - The only injection point Cursor has, so the run's current node is delivered here rather than at prompt time. Once per node change, not once per tool call: a run sitting at one node for twenty edits has nothing new to report, and repeating it teaches a reader to skip the line that matters when it does change.
 - `postToolUseFailure` - No output fields are supported. Names the failure text error_message, the category failure_type, and reports an exit code where Claude does not.
 - `stop` - Sending followup_message is the blocking behaviour; there is no decision field.
 
@@ -95,7 +96,8 @@ Two rules govern this table:
 
 **What this host does not provide**
 
-- No per-prompt context injection. beforeSubmitPrompt can only validate or block, so the run's current node and matching memories never reach a Cursor session.
+- No per-prompt context injection. beforeSubmitPrompt can only validate or block. The run's current node is delivered on postToolUse instead, which is a partial substitute: it arrives after a tool call rather than before a prompt, and a session that runs no tools never sees it.
+- No per-prompt memory retrieval. Memories reach a Cursor session at session start and not again, so one that runs for hours works from what was true when it opened.
 - No documented project-directory variable and no documented cwd for hook commands.
 
 </context>

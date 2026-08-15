@@ -252,6 +252,10 @@ var cursorContract = HostContract{
 			OutputKeys: []string{"additional_context", "updated_mcp_tool_output"},
 			CanInject:  true, Wired: true,
 			Verification: unverified(cursorNeverObserved),
+			Note: "The only injection point Cursor has, so the run's current node is delivered here " +
+				"rather than at prompt time. Once per node change, not once per tool call: a run sitting " +
+				"at one node for twenty edits has nothing new to report, and repeating it teaches a reader " +
+				"to skip the line that matters when it does change.",
 		},
 		{
 			HostKey: "postToolUseFailure", Event: EventPostToolUseFailure,
@@ -275,7 +279,8 @@ var cursorContract = HostContract{
 		},
 	},
 	Gaps: []string{
-		"No per-prompt context injection. beforeSubmitPrompt can only validate or block, so the run's current node and matching memories never reach a Cursor session.",
+		"No per-prompt context injection. beforeSubmitPrompt can only validate or block. The run's current node is delivered on postToolUse instead, which is a partial substitute: it arrives after a tool call rather than before a prompt, and a session that runs no tools never sees it.",
+		"No per-prompt memory retrieval. Memories reach a Cursor session at session start and not again, so one that runs for hours works from what was true when it opened.",
 		"No documented project-directory variable and no documented cwd for hook commands.",
 	},
 }

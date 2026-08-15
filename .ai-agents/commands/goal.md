@@ -83,7 +83,7 @@ Three hooks keep it there, and two of them refuse:
 | Hook | What it does for `/goal` |
 |---|---|
 | `session-start` | Injects active runs and memory; steers a fresh session back into the run already in flight |
-| `user-prompt-submit` | Injects the current node and matching memories on **every** prompt |
+| `user-prompt-submit` | Injects the current node and matching memories on every prompt, on **Claude Code and Codex**. Cursor's prompt hook can only validate or block a prompt, so it receives this on `postToolUse` instead, once per node change. See [`host-hook-contracts.md`](../references/host-hook-contracts.md) |
 | `stop` | **Refuses to end the turn** while a run sits mid-graph with nothing recorded |
 | `pre-tool-use` | **Refuses** a push to `main`, an unapproved `gh pr merge`, a hand-write to run state, and a live credential literal |
 | `post-tool-use` | Journals the tool call; proposes a memory when a command reported a non-zero exit |
@@ -93,7 +93,8 @@ blocker attempts, because neither can be moved by another model turn.
 
 ### Memory (MUST)
 
-- **Read every phase.** `user-prompt-submit` injects matching memories automatically. Do not
+- **Read every phase.** `user-prompt-submit` injects matching memories automatically on Claude Code
+  and Codex; on Cursor they arrive at session start only, because its prompt hook cannot inject. Do not
   re-derive what a previous run already established; check what arrived before searching.
 - **Write on failure.** `post-tool-use` proposes a memory when a command exits non-zero, and
   confirms it from that exit code. Failure memories carry an expiry, because "this command fails"
