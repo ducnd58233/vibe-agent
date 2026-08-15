@@ -197,8 +197,8 @@ Optional personas (user or phase invokes; no persona-to-persona chains): [`archi
 <references>
 
 - Commit attribution stripped by [`strip-ai-attribution`](../hooks/strip-ai-attribution.sh) when link script installed.
-- UI guard: [`design-token-guard.py`](../hooks/design-token-guard.py) when configured in workspace hooks.
-- Disclosure guard: [`sensitive-data-guard.py`](../hooks/sensitive-data-guard.py) when configured in workspace hooks.
+- UI guard: runtime `design-token-guard` when configured in workspace hooks.
+- Disclosure guard: runtime `sensitive-data-guard` when configured in workspace hooks.
 - **Redact before writing `tmp/<slug>/` evidence.** PR comments, test output, and captured responses routinely carry tokens and personal data, and evidence records are written on every phase. See [`goal-verification-records.md`](../references/goal-verification-records.md) and [`secure-by-default`](../skills/secure-by-default/SKILL.md).
 </references>
 

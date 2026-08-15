@@ -51,11 +51,12 @@ fi
 if [ -n "$(staged '.ai-agents' '.claude' '.cursor' '.codex' '.opencode')" ]; then
     sh scripts/check-ai-agents-routers.sh
     sh scripts/check-generated-views.sh
+    sh scripts/check-workspace-install.sh
     sh scripts/check-xml-tags.sh
 fi
 
-# The Python guards own contract tests. A guard that no longer does what its
-# fixtures say is worse than no guard, because it reports clean.
+# Remaining Python hook scripts may own local contract tests. The runtime-owned
+# guards are tested by the Go suite under runtime/.
 if [ -n "$(staged '.ai-agents/hooks')" ]; then
     for suite in .ai-agents/hooks/*-test.py; do
         [ -e "$suite" ] || continue

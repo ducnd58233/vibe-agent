@@ -163,10 +163,7 @@ The python checks need `python3 -m pip install -r scripts/requirements.txt`. Ful
 <procedure>
 
 Run `scripts/link-ai-agents.ps1` (Windows) or `scripts/link-ai-agents.sh` (macOS, Linux) so
-`.claude`, `.cursor`, `.opencode`, `.agents`, `.codex/agents`, `.codex/prompts`, and
-`$CODEX_HOME/prompts/vibe-*.md` point at or are generated from `.ai-agents`. Some ChatGPT desktop
-surfaces expose those prompt files as `/prompts:vibe-<name>`; Codex CLI/current Codex surfaces may not. The script also installs the git `prepare-commit-msg`
-attribution hook and refreshes the runtime binary.
+`.claude`, `.cursor`, `.opencode`, `.agents`, and `.codex/agents` point at or are generated from `.ai-agents`. Codex commands are generated as skills under `.agents/skills`; current Codex CLI does not load custom `/prompts`. The script also installs minimal hook configs when they are absent, installs the git `prepare-commit-msg` attribution hook, and refreshes the runtime binary.
 
 **Re-run it after every asset edit.** On Windows the script writes copies rather than symlinks, so
 until it runs again the harness serves the previous text while every other check reports green.
@@ -232,7 +229,7 @@ an empty `~/.codex/skills` exists on some machines.
 |---|---|---|
 | Skills | linked dirs in the two paths above | The command name is the directory name, so a rename is enough and edits stay live |
 | Control plane | `~/.vibe-agent/.ai-agents` | The runtime needs the workflow graphs and hook wiring, and neither is repository-specific |
-| Commands | `vibe-<name>.md` in each tool's own commands directory, and `~/.codex/prompts/` | Some ChatGPT desktop surfaces expose prompt files as `/prompts:vibe-<name>`; no shared command convention exists |
+| Commands | `vibe-<name>.md` in tools that read command folders, plus generated Codex skill adapters | Codex CLI reads skills and does not load custom `/prompts`; no shared command convention exists |
 | Subagents | generated copies with `name: vibe-<name>` | A subagent is identified by its frontmatter `name:` and the filename need not match, so renaming namespaces nothing |
 | Rules | a marked block in each global instructions file, plus `~/.cursor/rules/vibe-toolkit.mdc` | Codex concatenates global with project rules; Cursor has no global `AGENTS.md`, so it gets an `alwaysApply` rule instead |
 
@@ -250,7 +247,7 @@ ships its own assets means them. Without steps 4 and 5, a consumer repo had to v
 toolkit to obtain two files, and `doctor` failed on a missing `.ai-agents/graphs` in a workspace that
 was otherwise set up correctly.
 
-**Permissions and hooks are never installed.** This repo denies 21 patterns and hooks six events;
+**Hooks are installed per workspace by the link script when a host config file is absent. Permissions remain repository-local policy and are never installed globally.** This repo denies 21 patterns and hooks six events;
 applying that to every unrelated repository on the machine is the user's call, made by running the
 link script in a specific project.
 

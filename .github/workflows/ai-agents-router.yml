@@ -53,6 +53,9 @@ jobs:
       - name: Check generated harness views
         run: bash scripts/check-generated-views.sh
 
+      - name: Check workspace install wiring
+        run: bash scripts/check-workspace-install.sh
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'

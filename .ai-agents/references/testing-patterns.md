@@ -183,7 +183,7 @@ What one pass actually found here, in code written the same day and fully passin
 
 **2. Has this test ever failed?** Coplien's framing: *"Tests that continually pass are producing no information - or at least very little information, and the value of the information they produce may not be worth the expense of maintaining and running the tests"* ([essay](https://wikileaks.org/ciav7p1/cms/files/Why-Most-Unit-Testing-is-Waste.pdf)). Treat it as a prompt to check the test can still fail, not as licence to delete a regression guard - see the [counter-argument](https://henrikwarne.com/2014/09/04/a-response-to-why-most-unit-testing-is-waste/).
 
-The cheap signals - no assertion, an assertion only on the environment, an assertion only that a mock was called - are caught automatically by [`core-logic-test-guard.py`](../hooks/core-logic-test-guard.py) on every write to a test file.
+The cheap signals - no assertion, an assertion only on the environment, an assertion only that a mock was called - are caught automatically by the runtime `core-logic-test-guard` on every write to a test file.
 </rules>
 
 ## Test Anti-Patterns

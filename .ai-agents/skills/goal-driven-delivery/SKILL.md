@@ -177,7 +177,7 @@ Follow [`/review`](../../commands/review.md) and [`code-review-and-quality`](../
 
 Optional persona: [`code-reviewer`](../../agents/code-reviewer.md).
 
-UI changes: [`references/accessibility-checklist.md`](../../references/accessibility-checklist.md). Hooks such as [`design-token-guard.py`](../../hooks/design-token-guard.py) may warn on raw colors in UI files when configured.
+UI changes: [`references/accessibility-checklist.md`](../../references/accessibility-checklist.md). Runtime hooks such as `design-token-guard` may warn on raw colors in UI files when configured.
 
 ### Phase 6b - PR open, CI wait, external review wait
 

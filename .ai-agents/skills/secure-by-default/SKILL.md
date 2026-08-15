@@ -121,7 +121,7 @@ error object, or a moved log line creates a disclosure, because no test asserts 
 
 <context>
 
-[`hooks/sensitive-data-guard.py`](../../hooks/sensitive-data-guard.py) is the sensor for the subset
+The runtime `sensitive-data-guard` is the sensor for the subset
 a regular expression can settle. It is a floor, not the ceiling:
 
 - It cannot tell whether `user` in `log.info(user)` carries personal data.

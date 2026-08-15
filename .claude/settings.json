@@ -116,18 +116,6 @@
         ]
       },
       {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
-            "timeout": 5000,
-            "statusMessage": "simplify-ignore-pre",
-            "async": false
-          }
-        ]
-      },
-      {
         "matcher": "Bash|Edit|Write|NotebookEdit",
         "hooks": [
           {
@@ -178,73 +166,11 @@
             "async": true
           }
         ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
-            "timeout": 5000,
-            "statusMessage": "simplify-ignore-post",
-            "async": false
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/design-token-guard.py",
-            "timeout": 5000,
-            "statusMessage": "design-token-guard",
-            "async": false
-          },
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/ui-slop-guard.py",
-            "timeout": 5000,
-            "statusMessage": "ui-slop-guard",
-            "async": false
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write|NotebookEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/sensitive-data-guard.py",
-            "timeout": 5000,
-            "statusMessage": "sensitive-data-guard",
-            "async": false
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write|NotebookEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/core-logic-test-guard.py",
-            "timeout": 5000,
-            "statusMessage": "core-logic-test-guard",
-            "async": false
-          }
-        ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
-            "timeout": 5000,
-            "statusMessage": "simplify-ignore-stop",
-            "async": false
-          },
           {
             "type": "command",
             "command": "vibe-agent hook stop --workspace ${CLAUDE_PROJECT_DIR}",
@@ -260,14 +186,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/session-start.py",
-            "timeout": 5000,
-            "statusMessage": "session-start-meta-skill",
-            "once": true,
-            "async": false
-          },
-          {
-            "type": "command",
             "command": "vibe-agent hook session-start --workspace ${CLAUDE_PROJECT_DIR}",
             "statusMessage": "vibe-bootstrap",
             "timeout": 5000,
@@ -281,13 +199,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/precedence-reminder.py",
-            "timeout": 5000,
-            "statusMessage": "precedence-reminder",
-            "async": false
-          },
-          {
-            "type": "command",
             "command": "vibe-agent hook user-prompt-submit --workspace ${CLAUDE_PROJECT_DIR}",
             "statusMessage": "vibe-route",
             "timeout": 5000,
@@ -299,13 +210,6 @@
     "SubagentStop": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/subagent-grounding-guard.py",
-            "timeout": 10000,
-            "statusMessage": "subagent-grounding-guard",
-            "async": false
-          },
           {
             "type": "command",
             "command": "vibe-agent hook subagent-stop --workspace ${CLAUDE_PROJECT_DIR}",

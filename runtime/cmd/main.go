@@ -31,6 +31,7 @@ Usage:
   vibe-agent graph validate [--graph <id>]
   vibe-agent fetch <url|path> [--budget <tokens>] [--json] [--refresh]
   vibe-agent mcp serve
+  vibe-agent guards <list|init> [--workspace <dir>] [--force]
   vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|post-tool-use-failure|stop|subagent-stop> [--client claude|cursor]
   vibe-agent hook --events
   vibe-agent memory list [--status <status>]
@@ -140,6 +141,8 @@ func run(args []string) error {
 		return fetchCommand(args[1:])
 	case "mcp":
 		return mcpCommand(args[1:])
+	case "guards":
+		return guardsCommand(args[1:])
 	case "hook":
 		return hookCommand(args[1:])
 	case "memory":
