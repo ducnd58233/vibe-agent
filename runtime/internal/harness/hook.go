@@ -49,6 +49,22 @@ const (
 	// "block"} on Stop, and tool_name / tool_input.command / tool_response with
 	// Claude's spelling. It ignores exit 2.
 	ClientCodex Client = "codex"
+
+	// ClientOpencode is opencode, answered through the plugin at
+	// .opencode/plugin/vibe-agent.js.
+	//
+	// opencode publishes no shell-command hook surface, so unlike the other
+	// three this host cannot be wired from a config file at all: its lifecycle
+	// is reachable only from a JS/TS plugin. Registering an MCP server is not a
+	// substitute, because the model decides whether to call a tool and a control
+	// plane the model may skip is not deterministic.
+	//
+	// Its envelope is this package's choice rather than a vendor's, since the
+	// plugin on the other side is in this repository. Flat and snake_case, which
+	// is the shape a small JS reader wants; it is written down in the contract
+	// like every other host's so the two sides have one source rather than two
+	// habits.
+	ClientOpencode Client = "opencode"
 )
 
 // Clients is every host this build has an envelope for.
@@ -60,7 +76,7 @@ const (
 // which leaves a hook that is registered, fires on every tool call, and delivers
 // nothing. Silence is the one failure this control plane cannot see.
 func Clients() []Client {
-	return []Client{ClientClaude, ClientCursor, ClientCodex}
+	return []Client{ClientClaude, ClientCursor, ClientCodex, ClientOpencode}
 }
 
 // KnownClient reports whether this build can answer a host.
@@ -163,6 +179,10 @@ type Request struct {
 
 // payload is the union of the fields this package reads from either host.
 type payload struct {
+	// raw is the host's original bytes, kept for hooks this package delegates
+	// to another process rather than handles itself.
+	raw []byte
+
 	// Claude Code sends user_prompt; older builds and Cursor send prompt.
 	// Reading both keeps one adapter working across versions.
 	Prompt     string `json:"prompt"`
@@ -319,7 +339,13 @@ func Run(req Request, out io.Writer) error {
 	case EventPreToolUse:
 		return gate(req, body, out)
 	case EventPostToolUse:
-		return postToolUse(req, body, out, false)
+		if err := postToolUse(req, body, out, false); err != nil {
+			return err
+		}
+		// The write half cannot refuse: the fetch already happened. Its exit
+		// status is the script's own business.
+		_ = sddCache(req, body, "sdd-cache-post.py")
+		return nil
 	case EventPostToolUseFailure:
 		return postToolUse(req, body, out, true)
 	default:
@@ -345,6 +371,10 @@ func readPayload(reader io.Reader) payload {
 		return body
 	}
 	_ = json.Unmarshal(raw, &body)
+	// Kept so a delegated hook can be handed exactly what the host sent. Re-
+	// encoding the parsed struct would forward this package's view of the
+	// payload rather than the host's, and drop every field it does not read.
+	body.raw = raw
 	return body
 }
 
@@ -353,7 +383,12 @@ func readPayload(reader io.Reader) payload {
 // starting over.
 func sessionStart(req Request, body payload, out io.Writer) error {
 	text := sessionContext(req)
-	if req.Client == ClientCursor {
+	// The flat-envelope hosts. This branch named only Cursor and answered
+	// opencode in Claude's nested shape, which opencode's plugin does not read:
+	// the hook fired, the reply was discarded, and nothing reported it. The bug
+	// survived a test that checked emitContext directly, because this function
+	// does not call it.
+	if req.Client == ClientCursor || req.Client == ClientOpencode {
 		return write(out, map[string]any{"additional_context": text})
 	}
 
@@ -397,6 +432,14 @@ func sessionContext(req Request) string {
 				"  %s at node %s (%s, iteration %d/%d). Do not infer or manually advance workflow state; ask the runtime.",
 				run.Slug, orDash(run.CurrentNode), run.Status, run.Iteration, run.MaxTransitions))
 		}
+	} else {
+		// Name the state rather than leave it to be inferred from silence.
+		// Silence is what this looked like before: hooks fired, said nothing,
+		// and the reasonable reading was that the control plane was broken
+		// rather than that nothing had asked it to track anything.
+		lines = append(lines,
+			"No active run. Tool use is journalled to the workspace, and gates that need a run "+
+				"(stop, the pre-tool refusals) stay off until one starts. `vibe-agent run start` begins one.")
 	}
 
 	// Retrieval happens here rather than behind a tool call, so what the
@@ -472,8 +515,15 @@ func stop(req Request, body payload, out io.Writer, extra string) error {
 	// has had its extra turn. Blocking again is how this becomes a loop.
 	if len(runs) > 0 && !body.StopHookActive {
 		if reason := blockReason(runs); reason != "" {
-			if req.Client == ClientCursor {
+			switch req.Client {
+			case ClientCursor:
 				return write(out, map[string]any{"followup_message": reason})
+			case ClientOpencode:
+				// opencode exposes no end-of-turn hook, so nothing here can
+				// refuse a turn. Emitting Claude's shape would be a reply no
+				// reader parses, which is the silent divergence this package
+				// keeps finding; saying nothing is the honest answer.
+				return nil
 			}
 			return write(out, map[string]any{"decision": "block", "reason": reason})
 		}
@@ -600,7 +650,10 @@ func emitContext(out io.Writer, client Client, event, text string) error {
 	if text == "" {
 		return nil
 	}
-	if client == ClientCursor {
+	// Cursor and opencode both read a flat additional_context, for different
+	// reasons: Cursor because its vendor documents that field, opencode because
+	// the plugin reading it is in this repository and was written to this shape.
+	if client == ClientCursor || client == ClientOpencode {
 		return write(out, map[string]any{"additional_context": text})
 	}
 	return write(out, map[string]any{

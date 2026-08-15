@@ -69,6 +69,29 @@ func events(t *testing.T, root string) []state.Event {
 	return log
 }
 
+// ambientEvents reads the workspace-level log, the one written when no run is
+// active. Same decoding as events, a different file, and the pair is what lets
+// a test say which log an entry landed in rather than only that it exists.
+func ambientEvents(t *testing.T, root string) []state.Event {
+	t.Helper()
+	raw, err := os.ReadFile(ambientJournalPath(root))
+	if err != nil {
+		return nil
+	}
+	var log []state.Event
+	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+		if line == "" {
+			continue
+		}
+		var event state.Event
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			t.Fatalf("ambient journal holds a line that is not an event: %s", line)
+		}
+		log = append(log, event)
+	}
+	return log
+}
+
 func memories(t *testing.T, root string) []memory.Record {
 	t.Helper()
 	if _, err := os.Stat(memory.DBPath(root)); err != nil {
@@ -324,9 +347,19 @@ func TestSucceedingCommandIsJournalledButNotRemembered(t *testing.T) {
 	}
 }
 
-// The quiet path stays quiet. Without a run there is nothing to journal against,
-// and seeding a database in a workspace nobody started a run in would litter.
-func TestFailureWithoutARunWritesNothing(t *testing.T) {
+// Without a run there is still something to record.
+//
+// This test used to assert the opposite, that a workspace with no run got
+// nothing, on the reasoning that seeding a database where nobody started a run
+// would litter. Measurement showed what that cost: only /goal ever starts a
+// run, so for every other command the journal was inert, the memory store never
+// filled, and each session began as empty as the last. The tidiness was real
+// and it was buying nothing.
+//
+// So the entry goes to a workspace-level log instead of a run's event log. What
+// deliberately did not change is refusal: stop and the pre-tool gate still do
+// nothing without a run, so this adds a record and no new way to be blocked.
+func TestFailureWithoutARunIsJournalledAmbiently(t *testing.T) {
 	root := t.TempDir()
 
 	invoke(t, Request{
@@ -336,8 +369,106 @@ func TestFailureWithoutARunWritesNothing(t *testing.T) {
 		Stdin:         strings.NewReader(claudeFailurePayload),
 	})
 
-	if _, err := os.Stat(memory.DBPath(root)); err == nil {
-		t.Errorf("a workspace with no run got a memory database at %s", memory.DBPath(root))
+	log := ambientEvents(t, root)
+	if len(log) != 1 {
+		t.Fatalf("want one ambient journal entry, got %d", len(log))
+	}
+	if log[0].Node != "" {
+		t.Errorf("an entry outside a run claims node %q", log[0].Node)
+	}
+	if !strings.Contains(string(log[0].Payload), "go build") {
+		t.Errorf("ambient entry lost the command: %s", log[0].Payload)
+	}
+}
+
+// A failure outside a run is worth remembering for the same reason one inside a
+// run is: the host reported the exit code, so the evidence is an observation
+// either way. Requiring a person to confirm these instead would leave every one
+// of them unretrievable, because retrieval returns confirmed rows only.
+func TestAmbientFailureIsRemembered(t *testing.T) {
+	root := t.TempDir()
+
+	invoke(t, Request{
+		Event:         EventPostToolUseFailure,
+		Client:        ClientClaude,
+		WorkspaceRoot: root,
+		Stdin:         strings.NewReader(claudeFailurePayload),
+	})
+
+	stored := memories(t, root)
+	if len(stored) != 1 {
+		t.Fatalf("want one memory from an ambient failure, got %d", len(stored))
+	}
+	if !strings.Contains(stored[0].SourceRef, ambientJournalName) {
+		t.Errorf("memory cites %q, which is not the log it came from", stored[0].SourceRef)
+	}
+}
+
+// The success half lands in the same place. Without this the ambient log would
+// hold only failures, and "what ran here" would be answerable only for the
+// commands that broke.
+func TestSuccessWithoutARunIsJournalledAmbiently(t *testing.T) {
+	root := t.TempDir()
+
+	invoke(t, Request{
+		Event:         EventPostToolUse,
+		Client:        ClientClaude,
+		WorkspaceRoot: root,
+		Stdin:         strings.NewReader(claudeSuccessPayload),
+	})
+
+	if log := ambientEvents(t, root); len(log) != 1 {
+		t.Fatalf("want one ambient journal entry, got %d", len(log))
+	}
+	if stored := memories(t, root); len(stored) != 0 {
+		t.Errorf("a successful command produced %d memories", len(stored))
+	}
+}
+
+// Journalling without a run must not have brought refusal with it. The whole
+// safety argument for the change is that it adds a record and nothing else, and
+// an argument nothing checks is one that decays.
+func TestStopDoesNotBlockWithNoRunAtAll(t *testing.T) {
+	output := invoke(t, Request{
+		Event: EventStop, Client: ClientClaude, WorkspaceRoot: t.TempDir(),
+	})
+	if strings.Contains(output, `"block"`) {
+		t.Errorf("stop blocked a session with no run: %s", output)
+	}
+}
+
+// The no-run state is announced, not left to be inferred. Before this, a
+// session with no run got hooks that fired and returned nothing, which reads as
+// a broken control plane rather than an idle one.
+func TestSessionStartNamesTheNoRunState(t *testing.T) {
+	output := invoke(t, Request{
+		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: t.TempDir(),
+	})
+	if !strings.Contains(output, "No active run") {
+		t.Errorf("session start does not name the no-run state: %s", output)
+	}
+	if !strings.Contains(output, "run start") {
+		t.Errorf("session start does not say how to start one: %s", output)
+	}
+}
+
+// A run takes precedence. An entry written to both logs would be counted twice
+// by anything reading them together.
+func TestAnActiveRunKeepsTheAmbientLogEmpty(t *testing.T) {
+	root := workspaceWithRun(t)
+
+	invoke(t, Request{
+		Event:         EventPostToolUse,
+		Client:        ClientClaude,
+		WorkspaceRoot: root,
+		Stdin:         strings.NewReader(claudeSuccessPayload),
+	})
+
+	if log := events(t, root); len(log) != 1 {
+		t.Fatalf("want one run event, got %d", len(log))
+	}
+	if log := ambientEvents(t, root); len(log) != 0 {
+		t.Errorf("a run is active and the ambient log got %d entries too", len(log))
 	}
 }
 

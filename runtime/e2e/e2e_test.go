@@ -95,6 +95,9 @@ spec:
     e2e:
       command: go
       args: [version]
+    slop:
+      command: go
+      args: [version]
     pr_open:
       command: go
       args: [version]
@@ -197,7 +200,8 @@ func TestConsumerRepoRunsAGoalToCompletion(t *testing.T) {
 		{false, "plan_approved", "human_event", "--passed", "build"},
 		{false, "", "", "", "test"},
 		{true, "unit", "", "", "e2e"},
-		{true, "e2e", "", "", "review"},
+		{true, "e2e", "", "", "slop"},
+		{true, "slop", "", "", "review"},
 		{false, "", "", "", "open_pr"},
 		{true, "pr_open", "", "", "pr_checks"},
 		{true, "ci", "", "", "external_reviews"},
@@ -388,8 +392,20 @@ spec:
 	if !strings.Contains(out, "vibe-checks.yaml") {
 		t.Errorf("the skip does not say what caused it:\n%s", out)
 	}
-	if !strings.Contains(out, "-> review") {
+	if !strings.Contains(out, "-> slop") {
 		t.Errorf("the run did not proceed past the gate:\n%s", out)
+	}
+
+	// slop is the same property one node later, and worth asserting rather than
+	// walking past. It was added to a graph every workspace shares, so the
+	// question it raises is whether a workspace that has not declared it stalls.
+	// It must skip for the same reason and by the same route.
+	out = run.mustRun("verify", "--slug", "no-e2e")
+	if !strings.Contains(out, "slop skipped") {
+		t.Fatalf("an omitted slop check did not skip:\n%s", out)
+	}
+	if !strings.Contains(out, "-> review") {
+		t.Errorf("the run did not proceed past the slop gate:\n%s", out)
 	}
 
 	status := run.mustRun("run", "status", "--slug", "no-e2e", "--json")

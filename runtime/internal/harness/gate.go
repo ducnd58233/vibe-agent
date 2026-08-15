@@ -120,18 +120,59 @@ func afterPrefix(line, prefix string) string {
 // its JSON would wedge the session completely, while the thing actually being
 // guarded is also written down in the run manifest, which this cannot corrupt.
 func gate(req Request, body payload, out io.Writer) error {
-	blocked := verdict(req, body)
-	if blocked == nil {
-		return nil
+	// The safety gate first. The delegated cache can only make a call cheaper,
+	// and a call this package is about to refuse should not be made cheaper.
+	if blocked := verdict(req, body); blocked != nil {
+		return deliverBlock(req, blocked, out)
 	}
+	// The WebFetch cache refuses too, by serving a stored page instead of
+	// letting the fetch run. It is a refusal on the same event, so it leaves
+	// through the same door.
+	if blocked := sddCache(req, body, "sdd-cache-pre.py"); blocked != nil {
+		return deliverBlock(req, blocked, out)
+	}
+	return nil
+}
+
+// deliverBlock hands one refusal to the host in the form that host understands.
+//
+// Separate from gate because gate is no longer the only source of a refusal:
+// the delegated WebFetch cache also refuses, by serving cached content instead
+// of letting the fetch run. Leaving the translation inside gate meant that
+// refusal returned an error nobody rendered, so Cursor and Codex received exit
+// 0 and an empty reply while Claude got the cached page. That is the same class
+// of silent per-host divergence the contract table was added to catch, produced
+// while fixing another one.
+func deliverBlock(req Request, blocked *BlockError, out io.Writer) error {
 	switch req.Client {
 	case ClientCursor:
-		// Cursor's beforeShellExecution decides through JSON rather than exit
-		// codes, so the same verdict has to travel a different way.
+		// Cursor decides through JSON rather than exit codes, so the same
+		// verdict has to travel a different way.
+		//
+		// snake_case, and that was the defect. This wrote agentMessage and
+		// userMessage, which Cursor does not read: it honoured the deny and
+		// discarded both messages, so the agent was refused with no stated
+		// reason and retried. The same file spelled additional_context and
+		// followup_message correctly, so this was one field pair out of step
+		// rather than a convention anyone had chosen.
+		//
+		// "deny" and not "ask": beforeShellExecution accepts all three of allow,
+		// deny and ask, while preToolUse accepts only allow and deny. Emitting
+		// the value both events share is what lets one branch answer both, and
+		// TestCursorNeverAsks keeps it that way.
 		return write(out, map[string]any{
-			"permission":   "deny",
-			"agentMessage": blocked.Reason,
-			"userMessage":  "vibe-agent blocked a command that would bypass the delivery graph.",
+			"permission":    "deny",
+			"agent_message": blocked.Reason,
+			"user_message":  "vibe-agent blocked a command that would bypass the delivery graph.",
+		})
+	case ClientOpencode:
+		// The plugin turns this into permission.ask returning status "deny",
+		// which is opencode's only refusal path: tool.execute.before can throw,
+		// but a thrown error reads to the model as a broken tool rather than a
+		// decision about one.
+		return write(out, map[string]any{
+			"permission": "deny",
+			"reason":     blocked.Reason,
 		})
 	case ClientCodex:
 		// Codex ignores exit 2 outright. It was measured running the command

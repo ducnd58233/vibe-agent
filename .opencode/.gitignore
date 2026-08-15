@@ -1,0 +1,6 @@
+node_modules
+bun.lock
+
+# package.json and its lockfile are committed: the plugin at plugin/vibe-agent.js
+# is the only deterministic control plane opencode has, and a dependency nobody
+# can reinstall is a plugin that stops working on the next clone.

@@ -19,6 +19,7 @@ Lookup table for shared checklists and pattern docs under this folder. These fil
 | Skill/agent/command authoring quality | [`agent-authoring-patterns.md`](agent-authoring-patterns.md) | asset authors, `agent-systems-auditor` |
 | AI agent harness responsibilities, guides, sensors, verification | [`agent-harness-engineering.md`](agent-harness-engineering.md) | `agent-harness-engineering`, `agent-systems-auditor` |
 | Inner vs outer loop, when a workflow deserves a graph, guard design | [`loop-and-graph-engineering.md`](loop-and-graph-engineering.md) | `agent-harness-engineering`, graph authors |
+| Per-host hook contracts: event keys, output field casing, workspace root, what each host does not provide. **Generated; edit `runtime/internal/harness/contracts.go`** | [`host-hook-contracts.md`](host-hook-contracts.md) | `agent-harness-engineering`, `agent-systems-auditor`, hook authors |
 | Tool permissions, hooks, secret boundaries | [`tool-safety-and-permissions.md`](tool-safety-and-permissions.md) | `security-and-hardening`, `agent-systems-auditor` |
 | Agent/skill evaluation and forward testing | [`agent-evaluation-patterns.md`](agent-evaluation-patterns.md) | `agent-systems-auditor`, `test-driven-development` |
 | Context budgets and progressive disclosure | [`context-management-patterns.md`](context-management-patterns.md) | `context-engineering`, asset authors |

@@ -53,6 +53,13 @@ Where a check could not run, it must be reported as `UNVERIFIED: <reason>` - nev
 
 ## Phase C - Decision
 
+**Read the slop audit before deciding (MUST).** `vibe-agent slop audit <path>`.
+In a `/goal` run the `slop` node has already recorded it as a check with
+`exit_code` provenance; run it here for a change shipped outside a run. A score
+above the threshold in [`vibe-checks.yaml`](../../vibe-checks.yaml) is a
+blocker like any other, and waiving it means raising the threshold in that file,
+which is a reviewed diff rather than a decision taken once in a conversation.
+
 Emit **Ship Decision: GO | NO-GO** with blockers, recommended fixes, acknowledged risks, **rollback plan**, and appended specialist reports.
 
 ### Merge gate (MUST)

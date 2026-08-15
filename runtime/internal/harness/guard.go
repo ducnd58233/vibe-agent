@@ -165,11 +165,18 @@ func postToolUse(req Request, body payload, out io.Writer, failed bool) error {
 	_ = journal(req, body, failed)
 
 	text := adviseAll(req, body)
+	if req.Client == ClientCursor {
+		// The one place a Cursor session can be told which node its run is at.
+		// Appended rather than sent separately, because Cursor reads a single
+		// additional_context field and a second write would replace the first.
+		text = joinNonEmpty(text, cursorNodeReminder(req))
+		if text == "" {
+			return nil
+		}
+		return write(out, map[string]any{"additional_context": text})
+	}
 	if text == "" {
 		return nil
-	}
-	if req.Client == ClientCursor {
-		return write(out, map[string]any{"additional_context": text})
 	}
 	// Both fields on purpose. systemMessage reaches the person; additionalContext
 	// reaches the model, which is the one that has to fix the file. Whichever the
@@ -210,6 +217,13 @@ func adviseAll(req Request, body payload) string {
 		if text := safeAdvise(set, file); text != "" {
 			said = append(said, text)
 		}
+	}
+
+	// Last, because the rule guards above are about correctness and disclosure
+	// and this one is about craft. When both have something to say, the one that
+	// can leak a credential should be read first.
+	if text := slopAdvice(req, file); text != "" {
+		said = append(said, text)
 	}
 	return strings.Join(said, "\n\n")
 }

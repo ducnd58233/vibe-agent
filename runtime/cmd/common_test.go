@@ -40,6 +40,164 @@ func withAssets(t *testing.T, dir string) string {
 	return dir
 }
 
+// chdir moves into dir for one test. Discovery reads the process's working
+// directory, which is the thing under test, so it has to actually change.
+func chdir(t *testing.T, dir string) {
+	t.Helper()
+	previous, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir(%s): %v", dir, err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(previous) })
+}
+
+// resolved returns what a command with no --workspace would use.
+func resolved(t *testing.T) string {
+	t.Helper()
+	root, err := discoverWorkspace()
+	if err != nil {
+		t.Fatalf("discoverWorkspace: %v", err)
+	}
+	actual, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return root
+	}
+	return actual
+}
+
+func expectRoot(t *testing.T, want, got string) {
+	t.Helper()
+	resolvedWant, err := filepath.EvalSymlinks(want)
+	if err != nil {
+		resolvedWant = want
+	}
+	if got != resolvedWant {
+		t.Errorf("discovered %s, want %s", got, resolvedWant)
+	}
+}
+
+// Discovery exists because three hosts out of four publish no project-directory
+// variable and do not document the working directory a hook runs in. Trusting
+// cwd made the workspace a guess there, and a wrong guess is silent: the hook
+// runs, exits 0, and finds no runs and no memories in a directory that has
+// none.
+func TestDiscoverWorkspaceWalksUpToTheCheckout(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o750); err != nil {
+		t.Fatalf("create .git: %v", err)
+	}
+	deep := filepath.Join(root, "packages", "web", "src")
+	if err := os.MkdirAll(deep, 0o750); err != nil {
+		t.Fatalf("create subdirectory: %v", err)
+	}
+
+	chdir(t, deep)
+	expectRoot(t, root, resolved(t))
+}
+
+// The trap this test exists for: AGENTS.md, CLAUDE.md and CURSOR.md are all
+// allowed to nest, one per subdirectory. A single-pass search would stop at the
+// nearest one and call a package directory the workspace, putting run state and
+// memory two levels below where they belong.
+func TestANestedRulesFileDoesNotShadowTheCheckout(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o750); err != nil {
+		t.Fatalf("create .git: %v", err)
+	}
+	nested := filepath.Join(root, "packages", "web")
+	if err := os.MkdirAll(nested, 0o750); err != nil {
+		t.Fatalf("create subdirectory: %v", err)
+	}
+	for _, name := range []string{"CLAUDE.md", "AGENTS.md", "CURSOR.md"} {
+		if err := os.WriteFile(filepath.Join(nested, name), []byte("# local rules\n"), 0o600); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	chdir(t, nested)
+	expectRoot(t, root, resolved(t))
+}
+
+// The global toolkit install is not a workspace.
+//
+// scripts/install-global creates ~/.vibe-agent, and treating it as a workspace
+// marker made every directory under the home directory that is not inside a
+// checkout resolve to the home directory. That is worse than the guess it
+// replaced: the old default at least stayed where the hook ran.
+func TestTheGlobalToolkitInstallIsNotAWorkspace(t *testing.T) {
+	home := t.TempDir()
+	setHome(t, home)
+	if err := os.MkdirAll(filepath.Join(home, GlobalToolkitDir, ".ai-agents"), 0o750); err != nil {
+		t.Fatalf("create global toolkit: %v", err)
+	}
+	plain := filepath.Join(home, "scratch")
+	if err := os.MkdirAll(plain, 0o750); err != nil {
+		t.Fatalf("create subdirectory: %v", err)
+	}
+
+	chdir(t, plain)
+	if got := resolved(t); got == mustEval(t, home) {
+		t.Errorf("discovery treated the global toolkit install as a workspace: %s", got)
+	}
+}
+
+// A workspace that is not a git repository still has to be found. Test fixtures
+// usually are not one, and neither is a directory someone unzipped.
+//
+// This drives nearestAncestorWith rather than discoverWorkspace on purpose. A
+// temporary directory always has real ancestors, and one of them holding a .git
+// - a dotfiles repository in the home directory, say - would beat the fixture
+// legitimately and fail a test that is not about that. The pass being checked
+// here is the second one.
+func TestARulesFileIsEnoughWithoutAStructuralMarker(t *testing.T) {
+	for _, marker := range []string{"AGENTS.md", "CLAUDE.md", "CURSOR.md"} {
+		t.Run(marker, func(t *testing.T) {
+			root := t.TempDir()
+			if err := os.WriteFile(filepath.Join(root, marker), []byte("# rules\n"), 0o600); err != nil {
+				t.Fatalf("write %s: %v", marker, err)
+			}
+			deep := filepath.Join(root, "a", "b")
+			if err := os.MkdirAll(deep, 0o750); err != nil {
+				t.Fatalf("create subdirectory: %v", err)
+			}
+
+			found, ok := nearestAncestorWith(deep, rulesMarkers)
+			if !ok {
+				t.Fatalf("%s two levels up was not found from %s", marker, deep)
+			}
+			expectRoot(t, root, mustEval(t, found))
+		})
+	}
+}
+
+// An explicit --workspace is an instruction, not a hint. Discovery must not
+// second-guess it, or a consumer repository mounting the toolkit elsewhere
+// would silently get a different root than it asked for.
+func TestAnExplicitWorkspaceIsNotDiscoveredOver(t *testing.T) {
+	isolate(t)
+	root := t.TempDir()
+	given := root
+	flags := rootFlags{workspace: &given, toolkit: new(string)}
+
+	workspace, _, err := flags.resolve()
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	expectRoot(t, root, mustEval(t, workspace))
+}
+
+func mustEval(t *testing.T, path string) string {
+	t.Helper()
+	actual, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return path
+	}
+	return actual
+}
+
 // TestDiscoverToolkitOrder pins the resolution order rather than any single
 // case. The order is the contract: local before global, so a repository that
 // ships its own assets is never shadowed by a machine-wide install.

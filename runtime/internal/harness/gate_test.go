@@ -254,9 +254,37 @@ func TestCursorReceivesADenyDecisionRatherThanAnError(t *testing.T) {
 	if body["permission"] != "deny" {
 		t.Errorf("Cursor was not told to deny: %s", out.String())
 	}
-	if body["agentMessage"] == nil {
+	// This asserted body["agentMessage"] and passed for as long as the code
+	// wrote that key. Both were wrong in the same way, because the test was
+	// written from the same reading of the vendor page as the code, so it
+	// confirmed the defect rather than catching it: Cursor honoured the deny
+	// and discarded the message, leaving the agent refused with no reason.
+	//
+	// The key now comes from the contract table, so the test can only agree
+	// with the code when both agree with what the host was recorded as reading.
+	if body[cursorReasonKey(t)] == nil {
 		t.Error("the agent was given no reason for the denial")
 	}
+}
+
+// cursorReasonKey is the field Cursor was recorded as reading the refusal from.
+func cursorReasonKey(t *testing.T) string {
+	t.Helper()
+	contract, ok := HostContractFor(ClientCursor)
+	if !ok {
+		t.Fatal("no Cursor contract")
+	}
+	event, ok := contract.EventFor("beforeShellExecution")
+	if !ok {
+		t.Fatal("the contract records no beforeShellExecution row")
+	}
+	for _, key := range event.OutputKeys {
+		if strings.Contains(key, "agent") {
+			return key
+		}
+	}
+	t.Fatalf("the contract records no agent-facing key for beforeShellExecution: %v", event.OutputKeys)
+	return ""
 }
 
 func TestTheGateSurvivesGarbageAndEmptyInput(t *testing.T) {
