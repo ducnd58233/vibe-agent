@@ -56,53 +56,26 @@ bash .vibe-agent/scripts/link-ai-agents.sh --workspace "$PWD" --assets "$PWD/.vi
 
 Canonical command prompts live in `.ai-agents/commands/`.
 
-| Tool | How to use |
-|---|---|
-| Claude Code | Use `/vibe-<command>` after global install, or `/<command>` in a workspace after `link-ai-agents`. |
-| Cursor | Use `/vibe-<command>` after global install, or `/<command>` in a linked workspace if Cursor command discovery is enabled. |
-| opencode | Global install writes `~/.config/opencode/commands/vibe-*.md`; workspace install writes `.opencode/commands`. Use opencode's command picker or ask by command name if the picker is unavailable. |
-| Codex | Global install writes `$CODEX_HOME/prompts/vibe-*.md`. In Codex CLI or the Codex IDE extension, use `/prompts:vibe-<command>` where custom prompts are available. Codex 0.147.0 does not provide a file-based way to install top-level `/vibe-<command>` commands. If `/prompts:vibe-doctor` is unrecognized after restart, check that the surface is local Codex CLI or IDE and that `codex doctor` reports the same `CODEX_HOME`. |
+Global install writes commands with the `vibe-` prefix. Workspace install writes unprefixed project commands for tools that read workspace command folders. Codex custom prompts are global only in Codex 0.147.0 and use the `/prompts:` namespace.
 
-Available toolkit commands:
+| Command | What it is | Use case | Claude Code | Cursor | Codex | opencode |
+|---|---|---|---|---|---|---|
+| `goal` | End-to-end delivery loop | Drive one objective through clarify, spec, plan, build, review, and ship. Requires the runtime. | `/vibe-goal ...` or `/goal ...` | `/vibe-goal ...` or `/goal ...` | `/prompts:vibe-goal ...` | `/vibe-goal ...` or `/goal ...` |
+| `spec` | Spec-first prompt | Write objective, scope, acceptance criteria, risks, and open questions before coding. | `/vibe-spec ...` or `/spec ...` | `/vibe-spec ...` or `/spec ...` | `/prompts:vibe-spec ...` | `/vibe-spec ...` or `/spec ...` |
+| `plan` | Task breakdown prompt | Turn an approved spec into ordered tasks with checks and likely files. | `/vibe-plan ...` or `/plan ...` | `/vibe-plan ...` or `/plan ...` | `/prompts:vibe-plan ...` | `/vibe-plan ...` or `/plan ...` |
+| `build` | Implementation prompt | Implement the next planned task on the right branch with tests. Requires the runtime. | `/vibe-build ...` or `/build ...` | `/vibe-build ...` or `/build ...` | `/prompts:vibe-build ...` | `/vibe-build ...` or `/build ...` |
+| `test` | TDD and proof prompt | Start with a failing test, prove a bug, or run a focused validation loop. Requires the runtime. | `/vibe-test ...` or `/test ...` | `/vibe-test ...` or `/test ...` | `/prompts:vibe-test ...` | `/vibe-test ...` or `/test ...` |
+| `review` | Five-axis review prompt | Review a diff for correctness, readability, architecture, security, and performance. Requires the runtime. | `/vibe-review ...` or `/review ...` | `/vibe-review ...` or `/review ...` | `/prompts:vibe-review ...` | `/vibe-review ...` or `/review ...` |
+| `ship` | Pre-ship decision prompt | Fan out final review and return GO or NO-GO with blockers named. Requires the runtime. | `/vibe-ship ...` or `/ship ...` | `/vibe-ship ...` or `/ship ...` | `/prompts:vibe-ship ...` | `/vibe-ship ...` or `/ship ...` |
+| `research` | Citation-first research prompt | Gather source-backed evidence for one scoped question. | `/vibe-research ...` or `/research ...` | `/vibe-research ...` or `/research ...` | `/prompts:vibe-research ...` | `/vibe-research ...` or `/research ...` |
+| `analyze` | Evidence synthesis prompt | Turn collected evidence into a recommendation with tradeoffs and confidence. | `/vibe-analyze ...` or `/analyze ...` | `/vibe-analyze ...` or `/analyze ...` | `/prompts:vibe-analyze ...` | `/vibe-analyze ...` or `/analyze ...` |
+| `investigate` | Multi-lane investigation prompt | Run investigator, analyst, and source-auditor lanes, then merge the verdict. | `/vibe-investigate ...` or `/investigate ...` | `/vibe-investigate ...` or `/investigate ...` | `/prompts:vibe-investigate ...` | `/vibe-investigate ...` or `/investigate ...` |
+| `doctor` | AI asset health prompt | Check routers, generated views, hooks, permissions, runtime wiring, and drift. | `/vibe-doctor` or `/doctor` | `/vibe-doctor` or `/doctor` | `/prompts:vibe-doctor` | `/vibe-doctor` or `/doctor` |
+| `harden` | AI asset safety prompt | Audit permissions, hooks, tool boundaries, and secret-handling risks. | `/vibe-harden ...` or `/harden ...` | `/vibe-harden ...` or `/harden ...` | `/prompts:vibe-harden ...` | `/vibe-harden ...` or `/harden ...` |
+| `code-simplify` | Behavior-preserving cleanup prompt | Reduce complexity while keeping tests green and behavior unchanged. | `/vibe-code-simplify ...` or `/code-simplify ...` | `/vibe-code-simplify ...` or `/code-simplify ...` | `/prompts:vibe-code-simplify ...` | `/vibe-code-simplify ...` or `/code-simplify ...` |
+| `design` | UI build or audit prompt | Work registry-first, then check accessibility, design drift, and rendered evidence. | `/vibe-design ...` or `/design ...` | `/vibe-design ...` or `/design ...` | `/prompts:vibe-design ...` | `/vibe-design ...` or `/design ...` |
 
-| Command | Use it for |
-|---|---|
-| `goal` | Run the delivery loop from objective to ship decision. Requires the `vibe-agent` runtime. |
-| `spec` | Write an implementation spec before coding. |
-| `plan` | Break a spec into ordered tasks. |
-| `build` | Implement the next planned task with tests. Requires the runtime. |
-| `test` | Prove behavior with tests or a focused validation loop. Requires the runtime. |
-| `review` | Review code across correctness, readability, architecture, security, and performance. Requires the runtime. |
-| `ship` | Produce a GO or NO-GO ship decision. Requires the runtime. |
-| `research` | Gather citation-backed evidence for one research lane. |
-| `analyze` | Turn evidence into a recommendation with tradeoffs. |
-| `investigate` | Run multi-lane research, analysis, and source audit. |
-| `doctor` | Check AI asset health: routers, links, hooks, permissions, generated views. |
-| `harden` | Tighten AI asset safety: permissions, hooks, tool boundaries, secret paths. |
-| `code-simplify` | Reduce complexity without changing behavior. |
-| `design` | Build or audit UI with design-system and accessibility checks. |
-
-Claude, Cursor, and opencode examples:
-
-```text
-/vibe-doctor
-/vibe-research current React Router release notes
-/vibe-goal finish the payments retry work and open a PR
-```
-
-Codex custom prompt example:
-
-```text
-/prompts:vibe-doctor
-```
-
-In a linked workspace that exposes unprefixed project commands, use the same names without `vibe-`:
-
-```text
-/doctor
-/research current React Router release notes
-/goal finish the payments retry work and open a PR
-```
+If `/prompts:vibe-doctor` is unrecognized in Codex after restart, run `codex doctor` and confirm it reports the same `CODEX_HOME` where `vibe-*.md` files were installed. Top-level `/vibe-<command>` is not file-installable in Codex CLI 0.147.0.
 
 ## Folder structure
 
