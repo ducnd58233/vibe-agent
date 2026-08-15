@@ -2,7 +2,7 @@
 
 <context>
 
-This directory is the **single source of truth** for skills, subagents, commands, and hook scripts shared across AI coding tools. Link-based tool entrypoints (`.claude/`, `.cursor/`, `.opencode/`, `.agents/`) should **point here** - not copy - so changes stay in one place. Codex also reads skills via `.agents/skills` and project subagents via generated `.codex/agents/*.toml` after you run the link script. Prompt files under `$CODEX_HOME/prompts/vibe-*.md` are kept as best-effort custom prompts for ChatGPT desktop surfaces, but not every Codex environment loads them as slash commands.
+This directory is the **single source of truth** for skills, subagents, commands, and hook scripts shared across AI coding tools. Link-based tool entrypoints (`.claude/`, `.cursor/`, `.opencode/`, `.agents/`) should **point here** - not copy - so changes stay in one place. Codex also reads skills via `.agents/skills` and project subagents via generated `.codex/agents/*.toml` after you run the link script. Command prompts are generated as Codex skill adapters because current Codex CLI does not load custom slash prompts.
 It is intentionally **domain-agnostic** and should not contain product-domain logic.
 </context>
 
@@ -64,7 +64,7 @@ Root [`AGENTS.md`](../AGENTS.md) and [`.cursor/rules/000-project-standards.mdc`]
 |-------------|----------------|----------------------------------|
 | **Claude Code** | `.claude/skills/`, `.claude/agents/`, `.claude/commands/`, hooks in `settings.json` | Run `scripts/link-ai-agents.ps1` or `scripts/link-ai-agents.sh` to create directory links (see below). |
 | **Cursor**      | `.cursor/skills/`, `.cursor/commands/`, `.cursor/hooks.json` + hook scripts | Same link script for `skills` and `commands`; hook **commands** in `hooks.json` can point **directly** to `.ai-agents/hooks/...` when preferred. |
-| **Codex**       | `.agents/skills`, `.agents/commands`, `$CODEX_HOME/prompts/vibe-*.md`, `.codex/prompts/*.md`, `.codex/agents/*.toml`, `.codex/config.toml`, `AGENTS.md` | Run the link script: `.agents/skills` and `.agents/commands` junctions; command prompts mirrored into `.codex/prompts/` and copied to user-level prompt files for surfaces that support them; custom subagents generated into `.codex/agents/`. |
+| **Codex**       | `.agents/skills`, `.agents/commands`, `.codex/agents/*.toml`, `.codex/hooks.json`, `.codex/config.toml`, `AGENTS.md` | Run the link script: `.agents/skills` and `.agents/commands` junctions; command prompts generated as skill adapters; custom subagents generated into `.codex/agents/`; minimal hooks written when absent. |
 | **opencode**    | Project `opencode.json`, root `AGENTS.md` (native rules file), `.opencode/agents/`, `.opencode/commands/` | Same link script creates `.opencode/agents` and `.opencode/commands` junctions. Skills are surfaced via the `instructions` glob in `opencode.json`, which points at the routers. |
 
 ### Always-on baseline semantics
@@ -91,8 +91,6 @@ Claude Code and Cursor can discover **skills** and **commands** through `.claude
 - `.agents/skills` → `.ai-agents/skills` (Codex skill discovery)
 - `.agents/commands` → `.ai-agents/commands` (forward-compatible Codex command discovery; no effect until Codex supports `.agents/commands/`)
 - `.codex/agents/*.toml` - generated from `.ai-agents/agents/*.md` (Codex custom subagents; re-run link after agent edits)
-- `$CODEX_HOME/prompts/vibe-*.md` - copied from `.ai-agents/commands/*.md` for ChatGPT desktop custom-prompt surfaces. Current Codex CLI/session surfaces may reject `/prompts:vibe-<name>`.
-- `.codex/prompts/*.md` - workspace mirror of `.ai-agents/commands/*.md` (kept for inspection and future project-level discovery)
 
 Validate the generated Codex-facing paths with:
 
@@ -101,7 +99,7 @@ powershell -File scripts/check-codex-assets.ps1
 powershell -File scripts/check-codex-assets.ps1 -Global
 ```
 
-This check confirms `.agents/skills`, `.agents/commands`, `.codex/prompts/*.md`, and `.codex/agents/*.toml` are present and in sync with `.ai-agents`, and that generated TOML avoids stale relative links or UTF-8 mojibake. Add `-Global` to check the best-effort prompt files under `$CODEX_HOME/prompts`.
+This check confirms `.agents/skills`, `.agents/commands`, and `.codex/agents/*.toml` are present and in sync with `.ai-agents`, and that generated TOML avoids stale relative links or UTF-8 mojibake. Add `-Global` to check global Codex skill adapters under `$HOME/.agents/skills`.
 
 ### Parameters (toolkit dev vs consumer repo)
 
@@ -173,7 +171,7 @@ If you want another repository to reuse this setup without copying asset files:
 2. Use `<toolkit-root>/.ai-agents` as the canonical shared assets path.
 3. From the **consumer** workspace root, run [`scripts/link-ai-agents.ps1`](../scripts/link-ai-agents.ps1) or [`scripts/link-ai-agents.sh`](../scripts/link-ai-agents.sh) with `-WorkspaceRoot` / `--workspace` set to the consumer root and `-AssetsRoot` / `--assets` set to `<toolkit-root>/.ai-agents` (see examples above). You do not need a separate pasted copy of the junction logic.
 4. Keep a consumer-repo-specific `AGENTS.md` for product/domain constraints while shared workflows remain under `<toolkit-root>/.ai-agents`.
-5. Add or adapt tool config at the consumer root as needed (for example `.claude/settings.json`, `.cursor/hooks.json`, `.cursor/rules/`, `opencode.json`, `.codex/config.toml`) - the link script only wires `skills` / `agents` / `commands` discovery paths.
+5. Review the generated hook config when the consumer repo did not already have one. Existing `.claude/settings.json`, `.cursor/hooks.json`, `.codex/hooks.json`, `.cursor/rules/`, `opencode.json`, and `.codex/config.toml` remain repository-local policy and are not overwritten.
 6. Review the consumer repo `opencode.json` permission paths (`src/**`, `tests/**`, etc.) and adapt them to that repo layout.
 </procedure>
 
@@ -185,7 +183,7 @@ If you want another repository to reuse this setup without copying asset files:
 - Reference the same path from:
   - [`.cursor/hooks.json`](../.cursor/hooks.json) (`command` paths are relative to the project root), and/or
   - [`.claude/settings.json`](../.claude/settings.json) (per [Claude Code hooks](https://code.claude.com/docs/en/hooks)).
-- For toolchains without native project hook runtime wiring in this repo (currently `opencode` and `codex`), treat `.ai-agents/hooks/` as shared scripts and invoke them manually or from external automation.
+- Codex runtime hooks are wired through `.codex/hooks.json`. opencode has no shell hook runtime wired in this repo.
 
 Do not duplicate script bodies in `.cursor/hooks/` unless a tool requires that path; prefer one shared file under `.ai-agents/hooks/`.
 

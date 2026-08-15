@@ -310,14 +310,18 @@ func Run(req Request, out io.Writer) error {
 			return nil
 		}
 		return emitContext(out, req.Client, "UserPromptSubmit", text)
-	case EventStop, EventSubagentStop:
-		return stop(req, body, out)
+	case EventStop:
+		return stop(req, body, out, "")
+	case EventSubagentStop:
+		// A subagent's transcript is the one place the grounding rule can be
+		// checked rather than restated, and this is the only event that sees it.
+		return stop(req, body, out, groundingReport(body))
 	case EventPreToolUse:
 		return gate(req, body, out)
 	case EventPostToolUse:
-		return journal(req, body, false)
+		return postToolUse(req, body, out, false)
 	case EventPostToolUseFailure:
-		return journal(req, body, true)
+		return postToolUse(req, body, out, true)
 	default:
 		// Naming the events this build does handle turns the message into a
 		// diagnosis. The original text said only that the event was unknown, which
@@ -382,6 +386,10 @@ func sessionContext(req Request) string {
 	lines = append(lines,
 		"Source of truth, most authoritative first: repository code and config, git-backed project rules, current run state, retrieved memory, model assumptions.")
 
+	if line := metaSkillLine(req.ToolkitRoot); line != "" {
+		lines = append(lines, line)
+	}
+
 	if active := activeRuns(req.WorkspaceRoot); len(active) > 0 {
 		lines = append(lines, "Active runs:")
 		for _, run := range active {
@@ -435,6 +443,10 @@ func promptContext(req Request, prompt string) string {
 		lines = append(lines, "Follow the current node the runtime reports. Do not advance workflow state by inference.")
 	}
 
+	if reminder := authoringContext(prompt); reminder != "" {
+		lines = append(lines, reminder)
+	}
+
 	if recalled := recall(req.WorkspaceRoot, prompt); recalled != "" {
 		lines = append(lines, recalled)
 	}
@@ -446,15 +458,19 @@ func promptContext(req Request, prompt string) string {
 // A run mid-graph with nothing recorded is the failure this refuses: the work
 // happened, the evidence did not, and the next session starts from a manifest
 // that never learned about it.
-func stop(req Request, body payload, out io.Writer) error {
+// stop ends a turn, or refuses to.
+//
+// extra is an advisory the caller has already worked out, and it is why the
+// early return on "no active run" is gone: the subagent grounding check reads a
+// transcript, which is a fact about the turn rather than about run state, and a
+// workspace with no run in flight still deserves the answer. With extra empty
+// the behavior is what it was.
+func stop(req Request, body payload, out io.Writer, extra string) error {
 	runs := activeRuns(req.WorkspaceRoot)
-	if len(runs) == 0 {
-		return nil
-	}
 
 	// StopHookActive means a previous Stop hook already blocked and the model
 	// has had its extra turn. Blocking again is how this becomes a loop.
-	if !body.StopHookActive {
+	if len(runs) > 0 && !body.StopHookActive {
 		if reason := blockReason(runs); reason != "" {
 			if req.Client == ClientCursor {
 				return write(out, map[string]any{"followup_message": reason})
@@ -470,11 +486,20 @@ func stop(req Request, body payload, out io.Writer) error {
 	if req.Client != ClientClaude {
 		return nil
 	}
-	text := runReminder(runs)
-	if text == "" {
+
+	var parts []string
+	if len(runs) > 0 {
+		if text := runReminder(runs); text != "" {
+			parts = append(parts, text)
+		}
+	}
+	if extra != "" {
+		parts = append(parts, extra)
+	}
+	if len(parts) == 0 {
 		return nil
 	}
-	return emitMessage(out, text)
+	return emitMessage(out, strings.Join(parts, "\n\n"))
 }
 
 // blockReason returns why the turn may not end, or "" when every active run is

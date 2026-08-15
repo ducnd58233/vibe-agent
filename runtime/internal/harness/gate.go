@@ -165,7 +165,7 @@ func verdict(req Request, body payload) *BlockError {
 // credentialLiteral matches the credential shapes that have no honest reason to
 // be typed into a repository. They are deliberately the narrow set: a shape that
 // is sometimes legitimate belongs in the warn-only Python guard
-// (.ai-agents/hooks/sensitive-data-guard.py), not here, because a refusal that
+// (the runtime sensitive-data-guard), not here, because a refusal that
 // fires on honest work gets the whole gate disabled.
 //
 // The patterns come from internal/memory/policy.go, which already refuses these

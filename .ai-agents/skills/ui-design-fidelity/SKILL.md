@@ -79,8 +79,8 @@ Build to the revised plan. Apply [`frontend-ui-engineering`](../frontend-ui-engi
 
 Post-edit hooks run binary pattern checks - no model judgment involved:
 
-- `hooks/ui-slop-guard.py` - slop gradients, arbitrary scale-escaping values, default font stacks, radius and shadow monotony
-- `hooks/design-token-guard.py` - tokenizable raw colors
+- runtime `ui-slop-guard` - slop gradients, arbitrary scale-escaping values, default font stacks, radius and shadow monotony
+- runtime `design-token-guard` - tokenizable raw colors
 
 Fix what they flag, or mark a deliberate exception inline with `ui-slop-guard: allow` and say why. Do not silence a gate to move on.
 

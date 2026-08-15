@@ -80,7 +80,14 @@ The same plain-language rule applies to branch names, tags, and PR titles/descri
 
 ### No Agent Attribution
 
-Do **not** append AI/agent co-author trailers (`Co-Authored-By: …`) or "Generated with …" lines to commits or PR bodies. Every commit and PR is attributed only to the human contributor's git identity. For Claude Code this is enforced by the empty `attribution` block in [`.claude/settings.json`](../../../.claude/settings.json); other agents (Cursor, Codex, opencode) must honor the same rule by convention.
+Do **not** append AI/agent co-author trailers (`Co-Authored-By: …`), "Generated with …" lines, or robot-emoji attribution to commits or PR bodies. Every commit and PR is attributed only to the human contributor's git identity. This holds for every harness and for manual commits.
+
+Enforcement is layered, and this file owns the description of it:
+
+- The empty `attribution` block in [`.claude/settings.json`](../../../.claude/settings.json) stops Claude Code adding one.
+- A git `prepare-commit-msg` hook, installed by the link script from [`strip-ai-attribution.sh`](../../hooks/strip-ai-attribution.sh), strips the denylisted lines at the layer Cursor, Codex, opencode, and manual commits all share. Human co-authors are kept.
+
+Do not re-add attribution by hand, and do not remove either enforcement point.
 
 ### Keep Concerns Separate
 

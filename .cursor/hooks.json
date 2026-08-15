@@ -3,9 +3,6 @@
   "hooks": {
     "sessionStart": [
       {
-        "command": "python3 .ai-agents/hooks/session-start.py"
-      },
-      {
         "command": "vibe-agent hook session-start --client cursor"
       }
     ],
@@ -13,10 +10,6 @@
       {
         "matcher": "WebFetch",
         "command": "python3 .ai-agents/hooks/sdd-cache-pre.py"
-      },
-      {
-        "matcher": "Read",
-        "command": "python3 .ai-agents/hooks/simplify-ignore.py"
       },
       {
         "matcher": "Write|Delete",
@@ -34,10 +27,6 @@
         "command": "python3 .ai-agents/hooks/sdd-cache-post.py"
       },
       {
-        "matcher": "Edit|Write",
-        "command": "python3 .ai-agents/hooks/simplify-ignore.py"
-      },
-      {
         "matcher": "Shell|Write|Delete",
         "command": "vibe-agent hook post-tool-use --client cursor"
       }
@@ -48,32 +37,12 @@
         "command": "vibe-agent hook post-tool-use-failure --client cursor"
       }
     ],
-    "afterFileEdit": [
-      {
-        "command": "python3 .ai-agents/hooks/design-token-guard.py"
-      },
-      {
-        "command": "python3 .ai-agents/hooks/ui-slop-guard.py"
-      },
-      {
-        "command": "python3 .ai-agents/hooks/core-logic-test-guard.py"
-      },
-      {
-        "command": "python3 .ai-agents/hooks/sensitive-data-guard.py"
-      }
-    ],
     "subagentStop": [
-      {
-        "command": "python3 .ai-agents/hooks/subagent-grounding-guard.py"
-      },
       {
         "command": "vibe-agent hook subagent-stop --client cursor"
       }
     ],
     "stop": [
-      {
-        "command": "python3 .ai-agents/hooks/simplify-ignore.py"
-      },
       {
         "command": "vibe-agent hook stop --client cursor"
       }

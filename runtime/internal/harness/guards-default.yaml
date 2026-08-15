@@ -1,0 +1,173 @@
+# Built-in guard rules.
+#
+# Compiled into the binary with go:embed, so a fresh install guards something
+# and a malformed consumer file cannot empty the set. A repository extends,
+# retargets, or disables these through .ai-agents/guards.yaml, which is tracked
+# in that repository: weakening a guard is a diff someone reviews rather than an
+# argument nobody sees. vibe-checks.yaml already states that rule for check
+# commands; this applies it to guards.
+#
+# Targeting is by language *type* rather than by file extension. enry resolves
+# the language from the name and the content together, which is what makes a
+# guard reach a stack nobody listed here: Programming covers HCL, Dart, Ruby,
+# PHP, Swift, Objective-C, Rust, and Kotlin without any of them appearing below,
+# and Prose keeps design documents out of code rules entirely.
+#
+# Patterns are RE2. There is no lookahead or lookbehind; use `boundary` instead.
+
+apiVersion: vibe-agent/v1
+kind: GuardPlan
+
+spec:
+  # Shared fragments, referenced as {{name}} in any pattern. A consumer plan may
+  # add to these and use them in its own rules.
+  #
+  # Never upper-case a fragment when composing: it would turn \w into \W and
+  # invert the class. Each rule carries (?i) instead.
+  vocabulary:
+    secret: '(?:pass(?:wo?rd|wd)|secret|token|api[_-]?key|apikey|credential|private[_-]?key|auth(?:oriz\w*|entic\w*)?|jwt|bearer|session[_-]?id|access[_-]?key)'
+    personal: '(?:e[-_]?mail|phone[_-]?(?:number)?|ssn|social[_-]?security|date[_-]?of[_-]?birth|birth[_-]?date|\bdob\b|home[_-]?address|passport|national[_-]?id|credit[_-]?card|card[_-]?number|\bcvv\b|\biban\b|tax[_-]?id)'
+    bulkObject: '(?:user|account|profile|session|customer|member|patient|employee|payload|req(?:uest)?|body|params|claims|creds?)'
+    logCall: '(?:console\.(?:log|info|warn|error|debug|trace|dir|table)|log(?:ger|ging)?\.(?:log|info|warn|warning|error|debug|trace|fatal|critical|exception)|print(?:ln|f)?|fmt\.(?:Print|Sprint)\w*|System\.out\.print\w*|NSLog|os_log|Log\.[dviwe]|Logger\.\w+|slog\.\w+|debugPrint|dump)'
+    publicEnv: '(?:NEXT_PUBLIC_|VITE_|EXPO_PUBLIC_|REACT_APP_|NUXT_PUBLIC_|GATSBY_|PUBLIC_|VUE_APP_|NG_APP_)'
+    quote: '["''`]'
+
+  guards:
+    # Soft credential and privacy signals: shapes that are usually a leak but
+    # have honest uses, so a refusal here would block real work. The hard
+    # signals - a literal private-key block, a provider token with a known
+    # prefix - are refused in gate.go on pre-tool-use instead. Nothing here
+    # duplicates that set, and the split is what keeps the blocking half free of
+    # judgement calls.
+    sensitive-data-guard:
+      subject: possible disclosure(s)
+      appliesTo:
+        types: [Programming, Data]
+      # This file spells every shape it looks for, and so does any plan that
+      # extends it. Exact names, not a category: a credential in an ordinary
+      # test fixture is a real leak, and exempting anything shaped like a test
+      # would lose that.
+      exemptFiles: [guards-default.yaml, guards.yaml]
+      skipLines:
+        # A comment is discussing code rather than being it.
+        commentPrefixes: ['//', '#', '*', '/*', '--', ';', '<!--']
+        # A line that already hides the value is not a finding.
+        matching: '(?i)(redact|scrub|sanitiz|mask(?:ed|ing)?\b|\[REDACTED\]|\*{3,}|omit(?:ted)?\b)'
+      lineChecks:
+        - id: public-env-secret
+          pattern: '(?i){{publicEnv}}[A-Z0-9_]*{{secret}}'
+          message: >-
+            A build-time public env prefix inlines this value into the client bundle, where any
+            user can read it. If this is a server secret, drop the prefix and read it server-side.
+        - id: credential-in-log
+          pattern: '(?i){{logCall}}\s*\([^)]*{{secret}}'
+          message: >-
+            This log call receives authentication material. Log an identifier or a hash instead,
+            and redact in the logger so new callers inherit it.
+        - id: pii-in-log
+          pattern: '(?i){{logCall}}\s*\([^)]*{{personal}}'
+          message: >-
+            This log call receives personal data. Log an opaque user ID and correlate out of band.
+        - id: bulk-object-in-log
+          pattern: '(?i){{logCall}}\s*\(\s*{{bulkObject}}\s*[,)]'
+          message: >-
+            Logging a whole object publishes every field it has now and every field added later.
+            Name the fields you need.
+        - id: auth-in-web-storage
+          pattern: '(?i)(?:local|session)Storage\.setItem\s*\(\s*{{quote}}?[\w.\-]*{{secret}}'
+          message: >-
+            Web storage is readable by any script on the origin, so an XSS becomes a token theft.
+            Use an httpOnly cookie, or keep the token in memory.
+        - id: auth-in-mobile-plaintext
+          pattern: '(?i)(?:AsyncStorage\.setItem|SharedPreferences|getSharedPreferences|UserDefaults(?:\.standard)?\.set|SecurePreferences?\.putString)[^)\n]*{{secret}}'
+          message: >-
+            This store is plaintext on a rooted or jailbroken device and often lands in device
+            backups. Use Keychain, Keystore, or the platform secure store.
+        - id: sensitive-in-url
+          pattern: '(?i)[?&]{{secret}}\s*=|(?i)(?:searchParams\.(?:set|append)|URLSearchParams)\s*\([^)]*{{secret}}'
+          message: >-
+            Values in a URL land in server logs, proxy logs, browser history, and the referrer
+            header. Move it to a header or a request body.
+        - id: stack-trace-to-client
+          pattern: '(?i)(?:res|response|reply|ctx)\.(?:json|send|status\(\d+\)\.\w+)\s*\([^)]*(?:\.stack\b|\berr(?:or)?\.message\b|traceback|getStackTrace|printStackTrace|\bexc?\.__\w+__)'
+          message: >-
+            This returns internal error detail to the caller. Send a stable code plus a safe
+            message, and keep the detail server-side behind a request ID.
+        - id: hardcoded-credential
+          pattern: '(?i)\b\w*{{secret}}\w*\s*[:=]\s*{{quote}}([^"''`\n]{8,}){{quote}}'
+          # The noisiest rule, because tests and examples legitimately assign
+          # credential-shaped names. A literal that reads as an example is not a
+          # finding, and the capture group is what notPlaceholder inspects.
+          notPlaceholder: '(?i)(your[-_ ]|example|placeholder|changeme|change[-_]me|dummy|fake|sample|xxx+|\.\.\.|<[^>]+>|\{\{|\$\{|process\.env|os\.environ|getenv|import\.meta\.env|System\.getenv|ENV\[)'
+          message: >-
+            A credential-shaped literal belongs in the configured secret source, not in source
+            control. Anyone with repository access can read it, and rotating it means a commit.
+
+    # Raw colour literals in anything that renders.
+    design-token-guard:
+      subject: raw colour value(s)
+      appliesTo:
+        types: [Markup]
+        languages: [TSX, JSX, TypeScript, JavaScript]
+      # The message has always told people to put the marker near the file
+      # header, so the escape hatch covers the file rather than the line.
+      fileMarker: true
+      lineChecks:
+        - id: raw-color
+          pattern: '#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?(?:[0-9a-fA-F]{2})?'
+          # Both sides, so `#nav-1a2b3c` and a seven-digit run are not colours.
+          boundary: both
+          message: >-
+            Raw colour literal. Prefer a semantic design token or CSS variable, so a theme change
+            is one edit rather than a search.
+
+    # Shapes that read as an AI default rather than a design decision.
+    ui-slop-guard:
+      subject: AI-aesthetic signature(s)
+      appliesTo:
+        types: [Markup]
+        languages: [TSX, JSX, TypeScript, JavaScript]
+      lineChecks:
+        - id: slop-gradient
+          pattern: 'bg-(?:gradient|linear)-to-[a-z]+\b.*\b(?:from|via|to)-(?:indigo|purple|violet|fuchsia)-\d{2,3}'
+          message: >-
+            Indigo/purple gradient is the most recognisable AI-generated default. Use a brand hue
+            from the design system, or drop the gradient.
+        - id: slop-gradient-css
+          pattern: '(?i)linear-gradient\([^)]*(?:#6366f1|#818cf8|#8b5cf6|#a855f7|#c084fc)'
+          message: Hard-coded indigo/purple gradient stop. Reference a semantic token instead.
+        - id: arbitrary-value
+          pattern: '(?:[a-z]+-)+\[[^\]\s]+\]'
+          boundary: left
+          message: >-
+            Arbitrary Tailwind value escapes the spacing/colour scale. Use a scale step, or add a
+            token if the value is genuinely new.
+        - id: default-font-stack
+          pattern: '(?i)font-family:\s*["'']?(?:Inter|Roboto)\b'
+          message: >-
+            Inter/Roboto as the lead face is an AI-default type choice. Pick the project's face,
+            or a deliberate pairing.
+      densityChecks:
+        - id: radius-monotony
+          pattern: '\brounded-(?:2xl|3xl)\b'
+          threshold: 4
+          message: >-
+            Uniform large corner radius flattens hierarchy. Vary radius by surface level as the
+            design system defines.
+        - id: shadow-stacking
+          pattern: '\bshadow-(?:xl|2xl)\b'
+          threshold: 4
+          message: >-
+            Heavy layered shadows compete with content. Prefer one subtle elevation step, or none.
+
+    # Tests that cannot fail when behaviour changes.
+    #
+    # This one has no lineChecks: its question cannot be asked one line at a
+    # time, because it has to find a test block before it can count what is
+    # inside it. The engine routes it to built-in code instead. A plan may
+    # retarget or disable it, but not restate it.
+    core-logic-test-guard:
+      subject: low-value test(s)
+      builtin: test-blocks
+      appliesTo:
+        types: [Programming]
