@@ -178,17 +178,20 @@ var claudeContract = HostContract{
 		{
 			HostKey: "Stop", Event: EventStop,
 			OutputKeys: []string{"decision", "reason"},
-			CanRefuse:  true, Wired: true,
-			Verification: unverified("The vendor table now documents Stop reading hookSpecificOutput.decision with allow/deny, " +
-				"while this build emits the long-standing top-level {decision: block, reason}. Both forms cannot be " +
-				"true of one build, and nobody has watched which one this host honours. Measure before changing it: " +
-				"guessing from a documentation page is how the Cursor rows below got into their state."),
-			Note: "Blocks at most once per turn, guarded by stop_hook_active.",
+			CanRefuse:  true, Wired: true, Verification: observed(),
+			Note: "Blocks at most once per turn, guarded by stop_hook_active. The top-level {decision: block, reason} " +
+				"shape is honoured: measured on 2026-08-15 against Claude Code 2.1.229 with a run at node build, " +
+				"where the hook refused the turn and the reason arrived verbatim in the next one. Worth knowing " +
+				"because the vendor table documents this event as reading hookSpecificOutput.decision with " +
+				"allow/deny, and rewriting the working shape to match that page would have broken a hook that works.",
 		},
 		{
 			HostKey: "SubagentStop", Event: EventSubagentStop,
 			OutputKeys: []string{"decision", "reason"},
-			CanRefuse:  true, Wired: true, Verification: unverified("Same open question as Stop."),
+			CanRefuse:  true, Wired: true,
+			Verification: unverified("Stop was measured honouring the top-level shape and this event was not. " +
+				"They share an implementation, which is a reason to expect the same result and not a substitute " +
+				"for seeing it: the whole point of this column is that expectation and observation are different columns."),
 			Note: "The only event that sees a subagent transcript, so the grounding check runs here.",
 		},
 	},
