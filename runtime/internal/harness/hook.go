@@ -49,6 +49,21 @@ const (
 	// "block"} on Stop, and tool_name / tool_input.command / tool_response with
 	// Claude's spelling. It ignores exit 2.
 	ClientCodex Client = "codex"
+
+	// ClientOpencode names opencode so its contract can be recorded, and is
+	// deliberately absent from Clients until an envelope exists for it.
+	//
+	// The two are separable on purpose. What this host provides, and more
+	// usefully what it does not, is worth writing down now: opencode exposes no
+	// shell-command hook surface at all, so a workspace with only an MCP server
+	// registered has no deterministic control plane, and recording that stops
+	// someone wiring hooks.json for it a sixth time.
+	//
+	// Answering it is a different claim. Naming it in Clients would make
+	// KnownClient true, and an unrecognised host is answered in Claude's shape,
+	// which opencode would discard silently. Until a plugin lands, refusing
+	// `--client opencode` with a clear message is the honest behaviour.
+	ClientOpencode Client = "opencode"
 )
 
 // Clients is every host this build has an envelope for.
