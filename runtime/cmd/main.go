@@ -37,6 +37,7 @@ Usage:
   vibe-agent memory confirm --id <id>
   vibe-agent memory forget --id <id>
   vibe-agent doctor
+  vibe-agent eval routing [--trials N] [--jobs N] [--runner codex|claude|cursor|opencode|all] [--only <text>]
   vibe-agent version
 
 Run state is written to tmp/<slug>/manifest.json with an append-only log at
@@ -76,6 +77,22 @@ Hooks mostly inform. Two of them refuse:
 
 Only confirmed memories are retrieved into a session. Use "memory list" to see
 what is stored and "memory confirm" to vouch for one yourself.
+
+"eval routing" asks a model to route each intent in
+.ai-agents/references/routing-evals.md using only the router tables, then scores
+the answers against the asset each row names. It calls a model, so it is not
+part of "doctor" and not part of CI: run it locally or nightly. It reports
+pass^k, the rate of passing every trial, and exits non-zero only with --require.
+The default runner is "codex". Runner presets include:
+
+  codex     codex exec --ephemeral --sandbox read-only --json -
+  claude    claude -p
+  cursor    cursor-agent --print --mode ask --trust
+  opencode  opencode run
+  all       all presets above
+
+Pass --runner more than once, or comma-separate names, to compare hosts:
+  vibe-agent eval routing --runner codex --runner claude
 
 Global flags:
   --workspace <dir>   Workspace root (default: current directory)
@@ -129,6 +146,8 @@ func run(args []string) error {
 		return memoryCommand(args[1:])
 	case "doctor":
 		return doctorCommand(args[1:])
+	case "eval":
+		return evalCommand(args[1:])
 	case "version":
 		fmt.Println(version)
 		return nil

@@ -2,6 +2,7 @@ package harness
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -220,6 +221,86 @@ func TestADeniedCallIsNotRemembered(t *testing.T) {
 
 	if stored := memories(t, root); len(stored) != 0 {
 		t.Errorf("a denied call produced %d memories: %+v", len(stored), stored)
+	}
+}
+
+// The store this guard was written for held exactly one memory: a three-line
+// shell probe typed while debugging, promoted to "fails in this workspace" and
+// then read back into every prompt for a week. Debugging is mostly failing
+// commands by design, so the journal has to keep recording them while the
+// memory stops claiming each one is a fact about the repository.
+func TestAnAdHocProbeIsJournalledButNotRemembered(t *testing.T) {
+	root := workspaceWithRun(t)
+
+	invoke(t, Request{
+		Event:         EventPostToolUseFailure,
+		Client:        ClientClaude,
+		WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{
+			"tool_name": "Bash",
+			"tool_input": {"command": "V=\"/c/versions/2026.08.11\"\nF=$(grep -rl \"beforeShellExecution\" \"$V\" | head -3)\nfor f in $F; do echo \"--- $f\"; done"},
+			"error": "grep: no such file or directory"
+		}`),
+	})
+
+	if log := events(t, root); len(log) != 1 {
+		t.Fatalf("the log still has to record what ran; got %d entries", len(log))
+	}
+	if stored := memories(t, root); len(stored) != 0 {
+		t.Errorf("a multi-line probe produced %d memories: %+v", len(stored), stored)
+	}
+}
+
+// Length is the other half of the same signal. A command assembled to answer one
+// question runs once in that shape, so a memory of it can never match anything
+// that comes back.
+func TestAOneOffPipelineIsNotRemembered(t *testing.T) {
+	root := workspaceWithRun(t)
+
+	command := "docker compose -f docker-compose.test.yml run --rm api pytest -q " +
+		strings.Repeat("tests/integration/test_one_specific_case.py ", 2)
+	if len(command) <= memorableCommandLimit {
+		t.Fatalf("fixture is %d chars, too short to reach the guard", len(command))
+	}
+
+	invoke(t, Request{
+		Event:         EventPostToolUseFailure,
+		Client:        ClientClaude,
+		WorkspaceRoot: root,
+		Stdin: strings.NewReader(fmt.Sprintf(
+			`{"tool_name": "Bash", "tool_input": {"command": %q}, "error": "2 failed"}`, command)),
+	})
+
+	if log := events(t, root); len(log) != 1 {
+		t.Fatalf("the log still has to record what ran; got %d entries", len(log))
+	}
+	if stored := memories(t, root); len(stored) != 0 {
+		t.Errorf("a one-off pipeline produced %d memories: %+v", len(stored), stored)
+	}
+}
+
+// The guard has to leave real project commands alone. This one is long enough to
+// look unusual and short enough to run again tomorrow, which is the case a
+// tighter limit would break.
+func TestARealProjectCommandIsStillRemembered(t *testing.T) {
+	root := workspaceWithRun(t)
+
+	command := "go test ./internal/harness/... -run TestFailingCommand -count=1"
+
+	invoke(t, Request{
+		Event:         EventPostToolUseFailure,
+		Client:        ClientClaude,
+		WorkspaceRoot: root,
+		Stdin: strings.NewReader(fmt.Sprintf(
+			`{"tool_name": "Bash", "tool_input": {"command": %q}, "error": "FAIL"}`, command)),
+	})
+
+	stored := memories(t, root)
+	if len(stored) != 1 {
+		t.Fatalf("want one memory from a real command failure, got %d", len(stored))
+	}
+	if !strings.Contains(stored[0].Content, command) {
+		t.Errorf("memory does not name the command: %q", stored[0].Content)
 	}
 }
 

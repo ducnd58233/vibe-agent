@@ -36,8 +36,12 @@ When the output includes docs with diagrams or flows, follow [`diagram-authoring
 
 <routing>
 
-- Use when research depth is needed before analysis/implementation.
+- Use when the user invokes `/research` or asks for a command-style citation digest.
 - Do not use when evidence is already collected and only synthesis is needed.
+- Use [`research-with-citations`](../skills/research-with-citations/SKILL.md) when another
+  asset needs the reusable research workflow rather than this slash command.
+- Use [`investigate.md`](investigate.md) when the question needs parallel evidence,
+  analysis, and source-audit lanes.
 
 Invoke when current, verifiable evidence is required.
 </routing>

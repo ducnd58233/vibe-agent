@@ -13,14 +13,14 @@ Slash-style prompts live in this folder as `*.md`. **Claude Code** commonly reso
 | Build or audit UI registry-first | [`design.md`](design.md) | Modes: build / audit / registry; audit is read-only; needs browser or MCP for render evidence |
 | Ship decision, parallel personas | [`ship.md`](ship.md) | Non-trivial blast radius; only phase that may authorize merge to `main` after GO + human approval |
 | Write spec first | [`spec.md`](spec.md) | Agree spec path |
-| Research with citations | [`research.md`](research.md) | Topic + scope provided |
+| Citation-first research digest command | [`research.md`](research.md) | Topic + scope provided; reusable behavior is `research-with-citations`; multi-lane evidence questions use `investigate.md` |
 | Analyze evidence into recommendation | [`analyze.md`](analyze.md) | Digest/evidence available |
-| Parallel investigation with audit | [`investigate.md`](investigate.md) | Multi-faceted question; merge required |
+| Parallel evidence investigation with audit | [`investigate.md`](investigate.md) | Multi-faceted citation question; merge required; single-lane research uses `research.md` |
 | Plan tasks from spec | [`plan.md`](plan.md) | Spec exists |
 | Implement next task (TDD) | [`build.md`](build.md) | One branch/PR per planned task; same-task feedback on same branch; new task = new branch; never merge to `main` |
 | TDD / Prove-It | [`test.md`](test.md) | - |
 | Simplify safely | [`code-simplify.md`](code-simplify.md) | Tests protect behavior |
-| Audit AI asset health | [`doctor.md`](doctor.md) | Validate routers, hooks, links, permissions |
+| Audit AI asset health, deterministically | [`doctor.md`](doctor.md) | Validate routers, hooks, links, permissions; a judgment-level harness review is `agent-systems-auditor` |
 | Harden AI asset safety | [`harden.md`](harden.md) | Review permissions, hooks, tool boundaries |
 
 **Authoring:** [`TEMPLATE.md`](TEMPLATE.md).

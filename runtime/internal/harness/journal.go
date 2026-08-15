@@ -15,6 +15,16 @@ import (
 // heredoc or a generated script belongs in the transcript, not the event log.
 const commandLimit = 500
 
+// memorableCommandLimit is the longest command this package will remember.
+//
+// A journal entry records what ran. A memory goes further and says the command
+// is worth recognising when it comes back, which is a claim about the workspace
+// rather than about the moment somebody typed it. Length separates the two well
+// in practice: the commands a project runs again and again are short, and the
+// long ones are assembled to answer a single question and never appear in that
+// shape twice.
+const memorableCommandLimit = 120
+
 // toolUse is what a PostToolUse hook records: the tool, what it was aimed at,
 // and how it ended. Nothing here is interpreted; the log stores what happened.
 type toolUse struct {
@@ -145,6 +155,25 @@ func encodeToolUse(use toolUse) []byte {
 	return encoded
 }
 
+// memorable reports whether a failed command says something about the workspace
+// rather than about the session that happened to type it.
+//
+// Debugging is mostly failing commands by design, so without this guard the
+// store fills with a record of somebody probing rather than of anything that
+// broke, and retrieval spends its small budget replaying that. A command
+// spanning lines was composed for one moment - a loop, a heredoc, a pipeline
+// chained together to answer one question - and it will not arrive again in
+// that shape for a memory of it to match.
+//
+// The event log is unaffected. It records what ran either way; only the claim
+// that the command is worth carrying forward is withheld.
+func memorable(command string) bool {
+	if command == "" || len(command) > memorableCommandLimit {
+		return false
+	}
+	return !strings.ContainsAny(command, "\n\r")
+}
+
 // FailureMemoryLife is how long a recorded command failure stays retrievable.
 //
 // "go build ./... exits 2" is true about a moment, not about the repository.
@@ -168,8 +197,11 @@ const FailureMemoryLife = 7 * 24 * time.Hour
 // exit code it reported. Both are observations. What is still refused is reading
 // an outcome out of result text, which would be a guess wearing evidence's
 // clothes.
+//
+// A command that fails is not automatically one worth remembering; memorable
+// decides that part.
 func proposeFailure(workspaceRoot string, run *state.Run, command string, result response, ref string) {
-	if command == "" || result.Interrupted {
+	if !memorable(command) || result.Interrupted {
 		return
 	}
 

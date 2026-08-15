@@ -51,6 +51,9 @@ Return:
 - Use when one persona is insufficient for confidence on an **evidence/citation** question.
 - Do not use for small, single-lane tasks.
 - Do not use for repository/code investigation grounded in a single local tree - route to `Explore` or direct tools instead (see Phase 0).
+- Use [`research.md`](research.md) for one citation-first digest.
+- Use [`research-with-citations`](../skills/research-with-citations/SKILL.md) when another
+  asset needs reusable research rules rather than a slash command.
 
 Invoke for multi-faceted questions needing research, analysis, and source audit.
 </routing>

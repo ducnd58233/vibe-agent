@@ -6,6 +6,7 @@
 .DESCRIPTION
   Checks:
   - .agents/skills and .agents/commands discovery paths exist.
+  - every .ai-agents/commands/*.md command has a generated .codex/prompts/*.md prompt.
   - every .ai-agents/agents/*.md persona has a generated .codex/agents/*.toml.
   - generated TOML avoids stale relative links and common mojibake from non-UTF8 generation.
 #>
@@ -26,8 +27,47 @@ if (-not (Test-Path '.agents/skills' -PathType Container)) {
 if (-not (Test-Path '.agents/commands' -PathType Container)) {
   Fail 'Missing .agents/commands. Run scripts/link-ai-agents.ps1 or scripts/link-ai-agents.sh.'
 }
+if (-not (Test-Path '.codex/prompts' -PathType Container)) {
+  Fail 'Missing .codex/prompts. Run scripts/link-ai-agents.ps1 or scripts/link-ai-agents.sh.'
+}
 
 $exclude = @('README.md', 'ROUTER.md', 'TEMPLATE.md')
+$sourceCommands = Get-ChildItem '.ai-agents/commands' -Filter '*.md' -File |
+  Where-Object { $exclude -notcontains $_.Name } |
+  ForEach-Object { $_.Name } |
+  Sort-Object
+
+$generatedPrompts = @()
+if (Test-Path '.codex/prompts' -PathType Container) {
+  $generatedPrompts = Get-ChildItem '.codex/prompts' -Filter '*.md' -File |
+    ForEach-Object { $_.Name } |
+    Sort-Object
+}
+
+$missingPrompts = Compare-Object $sourceCommands $generatedPrompts |
+  Where-Object SideIndicator -eq '<=' |
+  ForEach-Object InputObject
+if ($missingPrompts) {
+  Fail ("Missing generated Codex prompts: " + ($missingPrompts -join ', '))
+}
+
+$stalePrompts = Compare-Object $sourceCommands $generatedPrompts |
+  Where-Object SideIndicator -eq '=>' |
+  ForEach-Object InputObject
+if ($stalePrompts) {
+  Fail ("Stale generated Codex prompts: " + ($stalePrompts -join ', '))
+}
+
+if (Test-Path '.codex/prompts' -PathType Container) {
+  foreach ($file in Get-ChildItem '.codex/prompts' -Filter '*.md' -File) {
+    $source = Join-Path '.ai-agents/commands' $file.Name
+    if ((Test-Path -LiteralPath $source) -and
+        ((Get-FileHash $source -Algorithm MD5).Hash -ne (Get-FileHash $file.FullName -Algorithm MD5).Hash)) {
+      Fail "$($file.Name) differs from .ai-agents/commands/$($file.Name)."
+    }
+  }
+}
+
 $sourceAgents = Get-ChildItem '.ai-agents/agents' -Filter '*.md' -File |
   Where-Object { $exclude -notcontains $_.Name } |
   ForEach-Object { $_.BaseName } |

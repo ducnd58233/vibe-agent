@@ -5,6 +5,10 @@
 # Deliberately dependency-free: bash only, so it runs on a fresh clone.
 # Structural validation of graph files (reachability, guards, termination) needs
 # a YAML and JSON Schema parser and lives in scripts/check-graphs.py instead.
+# The routing-eval fixtures moved to `vibe-agent doctor` for the same reason in
+# reverse: checking family, duplicate intents and coverage needs code worth
+# testing, and the runtime is where the test suite is. This script owns only
+# ROUTER-to-disk parity, so one file owns each contract.
 #
 # Usage: from toolkit repository root — bash scripts/check-ai-agents-routers.sh
 # Optional: set AI_AGENTS_ROOT to override the .ai-agents path.
@@ -308,25 +312,6 @@ check_graphs() {
   compare_sets ".ai-agents/graphs/ROUTER.md" "$graph_files" "$table" || fail=1
 }
 
-# Routing evals: every relative link target in references/routing-evals.md must exist.
-check_routing_evals() {
-  local f="$AI/references/routing-evals.md"
-  [[ -f "$f" ]] || return 0  # optional fixtures file
-  local missing=0 target
-  while IFS= read -r target; do
-    [[ "$target" == ../* ]] || continue
-    if [[ ! -e "$AI/references/$target" ]]; then
-      if [[ "$missing" -eq 0 ]]; then
-        echo "" >&2
-        echo "[.ai-agents/references/routing-evals.md]" >&2
-      fi
-      echo "  Routing eval target missing: $target" >&2
-      missing=1
-    fi
-  done < <(extract_link_targets "$(cat "$f")")
-  [[ "$missing" -eq 0 ]] || fail=1
-}
-
 main() {
   if [[ ! -d "$AI" ]]; then
     echo "Missing .ai-agents directory at $AI" >&2
@@ -340,7 +325,6 @@ main() {
   check_stack_profiles
   check_hooks
   check_graphs
-  check_routing_evals
 
   if [[ "$fail" -ne 0 ]]; then
     echo "" >&2

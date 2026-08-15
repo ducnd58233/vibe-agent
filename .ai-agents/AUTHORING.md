@@ -152,7 +152,7 @@ frontmatter, a tag nested inside itself, or nesting past one level.
 | Anything, before trusting a harness read | `bash scripts/check-generated-views.sh` - a canonical edit does not reach the harness until the link script re-runs |
 | `.ai-agents/graphs/*.yaml` or `schemas/*.json` | `python3 scripts/check-graphs.py` and `python3 scripts/check-schemas.py` |
 | [`runtime/`](../runtime) | `cd runtime && make check` |
-| `.ai-agents/agents/*.md` | re-run the link script, then `powershell -File scripts/check-codex-assets.ps1` so `.codex/agents/*.toml` stays loadable |
+| `.ai-agents/agents/*.md` or `.ai-agents/commands/*.md` | re-run the link script, then `powershell -File scripts/check-codex-assets.ps1` so Codex generated agents and prompts stay loadable |
 
 The python checks need `python3 -m pip install -r scripts/requirements.txt`. Full table:
 [`README.md`](README.md).
@@ -163,8 +163,9 @@ The python checks need `python3 -m pip install -r scripts/requirements.txt`. Ful
 <procedure>
 
 Run `scripts/link-ai-agents.ps1` (Windows) or `scripts/link-ai-agents.sh` (macOS, Linux) so
-`.claude`, `.cursor`, `.opencode`, `.agents`, and `.codex/agents` point at `.ai-agents`. The script
-also installs the git `prepare-commit-msg` attribution hook and refreshes the runtime binary.
+`.claude`, `.cursor`, `.opencode`, `.agents`, `.codex/agents`, and `.codex/prompts` point at or are
+generated from `.ai-agents`. The script also installs the git `prepare-commit-msg` attribution hook
+and refreshes the runtime binary.
 
 **Re-run it after every asset edit.** On Windows the script writes copies rather than symlinks, so
 until it runs again the harness serves the previous text while every other check reports green.

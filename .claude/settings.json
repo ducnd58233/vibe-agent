@@ -13,15 +13,10 @@
       "Grep(*)",
       "Glob(*)",
       "Edit(.ai-agents/**)",
-      "Write(.ai-agents/**)",
       "Edit(scripts/**)",
-      "Write(scripts/**)",
       "Edit(.cursor/**)",
-      "Write(.cursor/**)",
       "Edit(.claude/settings.json)",
-      "Write(.claude/settings.json)",
       "Edit(.codex/**)",
-      "Write(.codex/**)",
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",
@@ -46,9 +41,7 @@
       "Bash(vibe-agent *)",
       "Read(schemas/**)",
       "Edit(schemas/**)",
-      "Write(schemas/**)",
-      "Edit(runtime/**)",
-      "Write(runtime/**)"
+      "Edit(runtime/**)"
     ],
     "deny": [
       "Read(.env*)",
@@ -69,9 +62,7 @@
       "Read(**/*.key)",
       "Bash(git push --force*)",
       "Edit(tmp/**/manifest.json)",
-      "Write(tmp/**/manifest.json)",
-      "Edit(tmp/**/events.ndjson)",
-      "Write(tmp/**/events.ndjson)"
+      "Edit(tmp/**/events.ndjson)"
     ],
     "ask": [
       "Bash(*)",

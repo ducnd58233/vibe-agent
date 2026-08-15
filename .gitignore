@@ -16,6 +16,7 @@
 /.agents/commands/
 /.agents/sdd-cache/
 /.codex/agents/
+/.codex/prompts/
 /.codex/sdd-cache/
 /.codex/commands/
 # Goal verification artifacts from /goal (local only; see .ai-agents/references/goal-verification-records.md)
