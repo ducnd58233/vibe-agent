@@ -15,6 +15,7 @@
     .opencode/agents, .opencode/commands
     .agents/skills (Codex skills plus command adapters), .agents/commands (mirror of .ai-agents)
     .codex/agents/*.toml (Codex custom subagents, generated from .ai-agents/agents/*.md)
+    minimal .claude/settings.json, .cursor/hooks.json, .codex/hooks.json only when absent
 
   Examples:
     powershell -File scripts/link-ai-agents.ps1
@@ -366,18 +367,130 @@ Sync-CodexCommandSkills -AssetsFull $assetsFull -SkillRoot (Join-Path $workspace
 Remove-CodexPromptCopies -WorkspaceFull $workspaceFull
 Sync-CodexAgents -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
 
+function Get-ToolkitRoot {
+    param([Parameter(Mandatory = $true)][string] $AssetsFull)
+    return (Split-Path -Parent $AssetsFull)
+}
+
+function Join-HookCommand {
+    param(
+        [Parameter(Mandatory = $true)][string] $Event,
+        [Parameter(Mandatory = $true)][string] $Client
+    )
+    $toolkitForCommand = Get-ToolkitRoot -AssetsFull $assetsFull
+    return "vibe-agent hook $Event --workspace `"$workspaceFull`" --toolkit `"$toolkitForCommand`" --client $Client"
+}
+
+function Join-PythonHookCommand {
+    param([Parameter(Mandatory = $true)][string] $ScriptName)
+    $script = Join-Path $assetsFull "hooks\$ScriptName"
+    return "python3 `"$script`""
+}
+
+function Write-JsonFile {
+    param(
+        [Parameter(Mandatory = $true)][string] $Path,
+        [Parameter(Mandatory = $true)]$Value
+    )
+    $parent = Split-Path -Parent $Path
+    if (-not (Test-Path -LiteralPath $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+    $json = $Value | ConvertTo-Json -Depth 12
+    [System.IO.File]::WriteAllText($Path, $json + "`n", (New-Object System.Text.UTF8Encoding $false))
+}
+
+function CommandHook {
+    param([Parameter(Mandatory = $true)][string] $Command)
+    return [ordered]@{ type = 'command'; command = $Command }
+}
+
+function Install-WorkspaceHookConfigs {
+    <#
+      A consumer workspace usually has no .claude/settings.json, .cursor/hooks.json,
+      or .codex/hooks.json. Directory links alone make commands visible, but hooks
+      still have no entrypoint. Create minimal hook configs only when the file is
+      absent, so an existing repository policy is never overwritten by this script.
+    #>
+    $claudePath = Join-Path $workspaceFull '.claude\settings.json'
+    if (-not (Test-Path -LiteralPath $claudePath)) {
+        $claude = [ordered]@{
+            hooks = [ordered]@{
+                PreToolUse = @(
+                    [ordered]@{ matcher = 'WebFetch'; hooks = @((CommandHook (Join-PythonHookCommand 'sdd-cache-pre.py'))) },
+                    [ordered]@{ matcher = 'Bash|Edit|Write|NotebookEdit'; hooks = @((CommandHook (Join-HookCommand 'pre-tool-use' 'claude'))) }
+                )
+                PostToolUseFailure = @(
+                    [ordered]@{ matcher = 'Bash|Edit|Write|NotebookEdit'; hooks = @((CommandHook (Join-HookCommand 'post-tool-use-failure' 'claude'))) }
+                )
+                PostToolUse = @(
+                    [ordered]@{ matcher = 'Bash|Edit|Write|NotebookEdit'; hooks = @((CommandHook (Join-HookCommand 'post-tool-use' 'claude'))) },
+                    [ordered]@{ matcher = 'WebFetch'; hooks = @((CommandHook (Join-PythonHookCommand 'sdd-cache-post.py'))) }
+                )
+                Stop = @([ordered]@{ hooks = @((CommandHook (Join-HookCommand 'stop' 'claude'))) })
+                SessionStart = @([ordered]@{ hooks = @((CommandHook (Join-HookCommand 'session-start' 'claude'))) })
+                UserPromptSubmit = @([ordered]@{ hooks = @((CommandHook (Join-HookCommand 'user-prompt-submit' 'claude'))) })
+                SubagentStop = @([ordered]@{ hooks = @((CommandHook (Join-HookCommand 'subagent-stop' 'claude'))) })
+            }
+            disableAllHooks = $false
+        }
+        Write-JsonFile -Path $claudePath -Value $claude
+        Write-Host "Installed minimal Claude hook config at $claudePath"
+    }
+
+    $cursorPath = Join-Path $workspaceFull '.cursor\hooks.json'
+    if (-not (Test-Path -LiteralPath $cursorPath)) {
+        $cursor = [ordered]@{
+            version = 1
+            hooks = [ordered]@{
+                sessionStart = @([ordered]@{ command = (Join-HookCommand 'session-start' 'cursor') })
+                preToolUse = @(
+                    [ordered]@{ matcher = 'WebFetch'; command = (Join-PythonHookCommand 'sdd-cache-pre.py') },
+                    [ordered]@{ matcher = 'Write|Delete'; command = (Join-HookCommand 'pre-tool-use' 'cursor') }
+                )
+                beforeShellExecution = @([ordered]@{ command = (Join-HookCommand 'pre-tool-use' 'cursor') })
+                postToolUse = @(
+                    [ordered]@{ matcher = 'WebFetch'; command = (Join-PythonHookCommand 'sdd-cache-post.py') },
+                    [ordered]@{ matcher = 'Shell|Write|Delete'; command = (Join-HookCommand 'post-tool-use' 'cursor') }
+                )
+                postToolUseFailure = @([ordered]@{ matcher = 'Shell|Write|Delete'; command = (Join-HookCommand 'post-tool-use-failure' 'cursor') })
+                subagentStop = @([ordered]@{ command = (Join-HookCommand 'subagent-stop' 'cursor') })
+                stop = @([ordered]@{ command = (Join-HookCommand 'stop' 'cursor') })
+            }
+        }
+        Write-JsonFile -Path $cursorPath -Value $cursor
+        Write-Host "Installed minimal Cursor hook config at $cursorPath"
+    }
+
+    $codexPath = Join-Path $workspaceFull '.codex\hooks.json'
+    if (-not (Test-Path -LiteralPath $codexPath)) {
+        $codexHooks = [ordered]@{}
+        foreach ($pair in @(
+            @('SessionStart', 'session-start'),
+            @('UserPromptSubmit', 'user-prompt-submit'),
+            @('PreToolUse', 'pre-tool-use'),
+            @('PostToolUse', 'post-tool-use'),
+            @('Stop', 'stop'),
+            @('SubagentStop', 'subagent-stop')
+        )) {
+            $codexHooks[$pair[0]] = @([ordered]@{ hooks = @((CommandHook (Join-HookCommand $pair[1] 'codex'))) })
+        }
+        Write-JsonFile -Path $codexPath -Value ([ordered]@{ hooks = $codexHooks })
+        Write-Host "Installed minimal Codex hook config at $codexPath"
+    }
+}
+
 function Install-LocalGitExclude {
     param([Parameter(Mandatory = $true)][string] $WorkspaceFull)
-    $gitDir = Join-Path $WorkspaceFull ".git"
-    if (-not (Test-Path -LiteralPath $gitDir -PathType Container)) {
+    $excludePath = Resolve-GitPath -WorkspaceFull $WorkspaceFull -RelativePath "info/exclude"
+    if ([string]::IsNullOrWhiteSpace($excludePath)) {
         Write-Warning "No .git directory at $WorkspaceFull; skipped local git exclude rules."
         return
     }
-    $infoDir = Join-Path $gitDir "info"
+    $infoDir = Split-Path -Parent $excludePath
     if (-not (Test-Path -LiteralPath $infoDir)) {
         New-Item -ItemType Directory -Path $infoDir | Out-Null
     }
-    $excludePath = Join-Path $infoDir "exclude"
     if (-not (Test-Path -LiteralPath $excludePath)) {
         New-Item -ItemType File -Path $excludePath | Out-Null
     }
@@ -410,12 +523,11 @@ function Install-CommitAttributionHook {
         [Parameter(Mandatory = $true)][string] $AssetsFull,
         [Parameter(Mandatory = $true)][string] $WorkspaceFull
     )
-    $gitDir = Join-Path $WorkspaceFull ".git"
-    if (-not (Test-Path -LiteralPath $gitDir -PathType Container)) {
+    $hooksDir = Resolve-GitPath -WorkspaceFull $WorkspaceFull -RelativePath "hooks"
+    if ([string]::IsNullOrWhiteSpace($hooksDir)) {
         Write-Warning "No .git directory at $WorkspaceFull; skipped prepare-commit-msg attribution hook."
         return
     }
-    $hooksDir = Join-Path $gitDir "hooks"
     if (-not (Test-Path -LiteralPath $hooksDir)) {
         New-Item -ItemType Directory -Path $hooksDir | Out-Null
     }
@@ -431,6 +543,25 @@ function Install-CommitAttributionHook {
     $hookPath = Join-Path $hooksDir "prepare-commit-msg"
     [System.IO.File]::WriteAllText($hookPath, $shim + "`n", (New-Object System.Text.UTF8Encoding $false))
     Write-Host "Installed git prepare-commit-msg attribution hook at $hookPath"
+}
+
+function Resolve-GitPath {
+    param(
+        [Parameter(Mandatory = $true)][string] $WorkspaceFull,
+        [Parameter(Mandatory = $true)][string] $RelativePath
+    )
+    try {
+        $path = (& git -C $WorkspaceFull rev-parse --git-path $RelativePath 2>$null | Select-Object -First 1)
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($path)) {
+            return ''
+        }
+        if ([System.IO.Path]::IsPathRooted($path)) {
+            return $path
+        }
+        return (Join-Path $WorkspaceFull $path)
+    } catch {
+        return ''
+    }
 }
 
 function Get-RuntimeVersion {
@@ -505,6 +636,7 @@ function Install-Runtime {
 
 Install-LocalGitExclude -WorkspaceFull $workspaceFull
 Install-CommitAttributionHook -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
+Install-WorkspaceHookConfigs
 Install-Runtime
 
 Write-Host "Links created under $workspaceFull (.claude, .cursor, .opencode, .agents) -> $assetsFull"

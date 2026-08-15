@@ -30,11 +30,11 @@ Global install puts shared assets under your home directory with the `vibe-` pre
 | `--uninstall` | `-Uninstall` | Remove exactly what this script installed, tracked in its own manifest. Nothing else is touched. |
 | `--prefix P` | `-Prefix P` | Change the namespace prefix. Default `vibe-`. |
 
-Permissions and hooks are deliberately left out. Applying this repository's policy to every unrelated project on your machine is your decision, not a side effect of installing markdown; run the workspace install in a project to get those.
+Permissions and hooks are deliberately left out of the global install. Applying this repository's policy to every unrelated project on your machine is your decision, not a side effect of installing markdown; run the workspace install in a project to get hooks.
 
 ### Workspace install
 
-Workspace install wires one repository to `.ai-agents` and the tool-specific folders, including permissions and hooks.
+Workspace install wires one repository to `.ai-agents` and the tool-specific folders. It writes minimal hook configs when they are absent, and it leaves existing host configs alone.
 
 | Shell | Command |
 |---|---|

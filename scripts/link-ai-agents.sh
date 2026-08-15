@@ -13,12 +13,13 @@
 #
 # Short flags: -w / -a
 #
-# The script also adds generated discovery paths to <workspace>/.git/info/exclude
-# when the workspace is a Git repository. This keeps local links and generated
-# Codex agent files and generated command skills out of Git without root
-# .gitignore rules in consumer repos. Codex CLI removed custom /prompts
-# support in 0.117.0, so command prompts are generated as explicit skills:
-# $<name> in a linked workspace, or $vibe-<name> after global install.
+# The script also writes minimal hook configs when a host config is absent and
+# adds generated discovery paths to <workspace>/.git/info/exclude when the
+# workspace is a Git repository. This keeps local links and generated Codex
+# agent files and generated command skills out of Git without root .gitignore
+# rules in consumer repos. Codex CLI removed custom /prompts support in 0.117.0,
+# so command prompts are generated as explicit skills: $<name> in a linked
+# workspace, or $vibe-<name> after global install.
 
 set -euo pipefail
 
@@ -352,14 +353,165 @@ sync_codex_command_skills "$ASSETS" "$WORKSPACE/.agents/skills" "" ".ai-agents" 
 remove_codex_prompt_copies "$WORKSPACE"
 sync_codex_agents_from_md "$ASSETS" "$WORKSPACE"
 
+json_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+toolkit_root_for_hooks() {
+  dirname "$ASSETS"
+}
+
+hook_command() {
+  event="$1"
+  client="$2"
+  printf 'vibe-agent hook %s --workspace \\"%s\\" --toolkit \\"%s\\" --client %s' \
+    "$event" "$(json_escape "$WORKSPACE")" "$(json_escape "$(toolkit_root_for_hooks)")" "$client"
+}
+
+python_hook_command() {
+  script="$1"
+  printf 'python3 \\"%s/hooks/%s\\"' "$(json_escape "$ASSETS")" "$script"
+}
+
+install_workspace_hook_configs() {
+  # Directory links make commands visible, but hooks still need host config.
+  # Write minimal configs only when absent; an existing repository policy is
+  # local authority and is never overwritten by the link script.
+  if [ ! -f "$WORKSPACE/.claude/settings.json" ]; then
+    mkdir -p "$WORKSPACE/.claude"
+    cat > "$WORKSPACE/.claude/settings.json" <<EOF
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          { "type": "command", "command": "$(python_hook_command sdd-cache-pre.py)" }
+        ]
+      },
+      {
+        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "$(hook_command pre-tool-use claude)" }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "$(hook_command post-tool-use-failure claude)" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "$(hook_command post-tool-use claude)" }
+        ]
+      },
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          { "type": "command", "command": "$(python_hook_command sdd-cache-post.py)" }
+        ]
+      }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command stop claude)" } ] }
+    ],
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command session-start claude)" } ] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command user-prompt-submit claude)" } ] }
+    ],
+    "SubagentStop": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command subagent-stop claude)" } ] }
+    ]
+  },
+  "disableAllHooks": false
+}
+EOF
+    echo "Installed minimal Claude hook config at $WORKSPACE/.claude/settings.json"
+  fi
+
+  if [ ! -f "$WORKSPACE/.cursor/hooks.json" ]; then
+    mkdir -p "$WORKSPACE/.cursor"
+    cat > "$WORKSPACE/.cursor/hooks.json" <<EOF
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      { "command": "$(hook_command session-start cursor)" }
+    ],
+    "preToolUse": [
+      { "matcher": "WebFetch", "command": "$(python_hook_command sdd-cache-pre.py)" },
+      { "matcher": "Write|Delete", "command": "$(hook_command pre-tool-use cursor)" }
+    ],
+    "beforeShellExecution": [
+      { "command": "$(hook_command pre-tool-use cursor)" }
+    ],
+    "postToolUse": [
+      { "matcher": "WebFetch", "command": "$(python_hook_command sdd-cache-post.py)" },
+      { "matcher": "Shell|Write|Delete", "command": "$(hook_command post-tool-use cursor)" }
+    ],
+    "postToolUseFailure": [
+      { "matcher": "Shell|Write|Delete", "command": "$(hook_command post-tool-use-failure cursor)" }
+    ],
+    "subagentStop": [
+      { "command": "$(hook_command subagent-stop cursor)" }
+    ],
+    "stop": [
+      { "command": "$(hook_command stop cursor)" }
+    ]
+  }
+}
+EOF
+    echo "Installed minimal Cursor hook config at $WORKSPACE/.cursor/hooks.json"
+  fi
+
+  if [ ! -f "$WORKSPACE/.codex/hooks.json" ]; then
+    mkdir -p "$WORKSPACE/.codex"
+    cat > "$WORKSPACE/.codex/hooks.json" <<EOF
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command session-start codex)" } ] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command user-prompt-submit codex)" } ] }
+    ],
+    "PreToolUse": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command pre-tool-use codex)" } ] }
+    ],
+    "PostToolUse": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command post-tool-use codex)" } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command stop codex)" } ] }
+    ],
+    "SubagentStop": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command subagent-stop codex)" } ] }
+    ]
+  }
+}
+EOF
+    echo "Installed minimal Codex hook config at $WORKSPACE/.codex/hooks.json"
+  fi
+}
+
 install_local_git_exclude() {
   local workspace="$1"
-  if [[ ! -d "$workspace/.git" ]]; then
+  local exclude_path
+  exclude_path="$(git_path "$workspace" "info/exclude")"
+  if [[ -z "$exclude_path" ]]; then
     echo "No .git directory at $workspace; skipped local git exclude rules." >&2
     return 0
   fi
-  local info_dir="$workspace/.git/info"
-  local exclude_path="$info_dir/exclude"
+  local info_dir
+  info_dir="$(dirname "$exclude_path")"
   mkdir -p "$info_dir"
   touch "$exclude_path"
 
@@ -400,11 +552,12 @@ install_local_git_exclude() {
 install_commit_attribution_hook() {
   local assets="$1"
   local workspace="$2"
-  if [[ ! -d "$workspace/.git" ]]; then
+  local hooks_dir
+  hooks_dir="$(git_path "$workspace" "hooks")"
+  if [[ -z "$hooks_dir" ]]; then
     echo "No .git directory at $workspace; skipped prepare-commit-msg attribution hook." >&2
     return 0
   fi
-  local hooks_dir="$workspace/.git/hooks"
   mkdir -p "$hooks_dir"
   local hook_path="$hooks_dir/prepare-commit-msg"
   {
@@ -415,6 +568,19 @@ install_commit_attribution_hook() {
   } > "$hook_path"
   chmod +x "$hook_path"
   echo "Installed git prepare-commit-msg attribution hook at $hook_path"
+}
+
+git_path() {
+  local workspace="$1"
+  local rel="$2"
+  local path
+  path="$(git -C "$workspace" rev-parse --git-path "$rel" 2>/dev/null || true)"
+  [[ -n "$path" ]] || return 0
+  path="$(to_unix_path_if_needed "$path")"
+  case "$path" in
+    /*|[A-Za-z]:*) printf '%s\n' "$path" ;;
+    *) printf '%s\n' "$workspace/$path" ;;
+  esac
 }
 
 # Fetches the optional runtime binary that the wired hooks invoke by name.
@@ -475,6 +641,7 @@ install_runtime() {
 
 install_local_git_exclude "$WORKSPACE"
 install_commit_attribution_hook "$ASSETS" "$WORKSPACE"
+install_workspace_hook_configs
 install_runtime
 
 echo "Symlinks created under $WORKSPACE (.claude, .cursor, .opencode, .agents) -> $ASSETS"
