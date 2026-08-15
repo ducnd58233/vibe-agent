@@ -290,6 +290,16 @@ const cursorNeverObserved = "No Cursor hook has been observed firing in this wor
 	"cursor-agent 2026.08.11 failed a hook command of `true` before the hook process started, " +
 	"so this row is read from the vendor page, not measured."
 
+// opencodePluginUnmeasured is the reason every opencode row is unverified.
+//
+// The plugin is committed and the wiring is real; what has not happened is
+// someone watching a hook fire. Marking these verified because the code exists
+// would be the Cursor mistake with the authorship reversed: reading an
+// implementation instead of a vendor page, and calling either one an
+// observation.
+const opencodePluginUnmeasured = "The plugin is committed but no opencode hook has been observed firing. " +
+	"Written against the @opencode-ai/plugin type definitions, not measured against a running session."
+
 // codexContract is Codex.
 //
 // The envelopes here were established by experiment rather than inference,
@@ -360,40 +370,57 @@ var opencodeContract = HostContract{
 	WorkspaceRoot: WorkspaceRoot{
 		Variable: "directory",
 		Reliable: true,
-		Note:     "A plugin receives the project directory in its PluginInput, so it can pass --workspace without guessing.",
+		Note: "A plugin receives the project directory in its PluginInput, so it passes --workspace without guessing. " +
+			"The plugin itself lives at .opencode/plugin/, singular, which is loaded automatically; the `plugin` array " +
+			"in opencode.json is for npm packages and registering a local file there is not how it is picked up. " +
+			"The directory name was measured out of the opencode 1.14.39 binary, which contains \".opencode/plugin\", " +
+			"because the documentation page says \"plugins\" and a plugin in the wrong directory is never loaded at all.",
 	},
 	Events: []EventContract{
 		{
-			HostKey: "event", Event: EventSessionStart,
-			CanInject: false, Wired: false,
-			Verification: unverified("No opencode plugin is committed yet."),
-			Note:         "Session lifecycle arrives on the generic event stream rather than a named hook.",
+			HostKey: "experimental.chat.system.transform", Event: EventSessionStart,
+			OutputKeys: []string{"additional_context"},
+			CanInject:  true, Wired: true,
+			Verification: unverified(opencodePluginUnmeasured),
+			Note: "The injection point, and the only one that reaches every request. Named experimental " +
+				"by the vendor, so it is the part of this plugin most likely to need rewriting; the gate " +
+				"and the journal below use stable hooks and do not depend on it.",
 		},
 		{
 			HostKey: "chat.message", Event: EventUserPromptSubmit,
 			Wired:        false,
-			Verification: unverified("No opencode plugin is committed yet."),
+			Verification: unverified(opencodePluginUnmeasured),
+			Note: "Fires per prompt but its output is the message and its parts, so injecting means " +
+				"editing what the person typed. The system transform above says the same thing without that.",
 		},
 		{
 			HostKey: "tool.execute.before", Event: EventPreToolUse,
-			Wired: false, CanRefuse: true,
-			Verification: unverified("No opencode plugin is committed yet."),
+			Wired: false, CanRefuse: false,
+			Verification: unverified(opencodePluginUnmeasured),
+			Note: "Deliberately unwired. Refusing here means throwing, which the model reads as a broken " +
+				"tool rather than as a decision about one, and consulting the gate twice per call would " +
+				"double the cost to say the same thing. permission.ask carries the verdict.",
 		},
 		{
 			HostKey: "tool.execute.after", Event: EventPostToolUse,
-			Wired:        false,
-			Verification: unverified("No opencode plugin is committed yet."),
+			Wired:        true,
+			Verification: unverified(opencodePluginUnmeasured),
+			Note:         "The journal. Its output carries title, output and metadata, and no exit status.",
 		},
 		{
 			HostKey: "permission.ask", Event: EventPreToolUse,
-			OutputKeys: []string{"status"},
-			CanRefuse:  true, Wired: false,
-			Verification: unverified("No opencode plugin is committed yet."),
-			Note:         "status accepts ask, deny or allow. This is the refusal path.",
+			OutputKeys: []string{"permission", "reason"},
+			CanRefuse:  true, Wired: true,
+			Verification: unverified(opencodePluginUnmeasured),
+			Note: "The refusal path. opencode's own field is status, accepting ask, deny or allow; the " +
+				"plugin maps this envelope's permission onto it, so the runtime speaks one shape and the " +
+				"plugin owns the translation.",
 		},
 	},
 	Gaps: []string{
 		"No shell-command hook surface. Everything deterministic must go through a JS/TS plugin, so a workspace without one gets no journalling, no gate, and no injection.",
 		"Registering an MCP server is not a substitute: the model decides whether to call a tool, and a control plane the model may skip is not deterministic.",
+		"No failure event and no exit status on tool.execute.after, so a failed command cannot be told from a successful one. The same gap as Codex, reached by a different route.",
+		"No end-of-turn hook, so nothing can refuse to end a turn with a run mid-graph the way stop does on Claude and Cursor.",
 	},
 }

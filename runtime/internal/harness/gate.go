@@ -165,6 +165,15 @@ func deliverBlock(req Request, blocked *BlockError, out io.Writer) error {
 			"agent_message": blocked.Reason,
 			"user_message":  "vibe-agent blocked a command that would bypass the delivery graph.",
 		})
+	case ClientOpencode:
+		// The plugin turns this into permission.ask returning status "deny",
+		// which is opencode's only refusal path: tool.execute.before can throw,
+		// but a thrown error reads to the model as a broken tool rather than a
+		// decision about one.
+		return write(out, map[string]any{
+			"permission": "deny",
+			"reason":     blocked.Reason,
+		})
 	case ClientCodex:
 		// Codex ignores exit 2 outright. It was measured running the command
 		// anyway while the hook exited 2 and printed the refusal, and blocking

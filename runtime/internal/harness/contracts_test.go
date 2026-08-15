@@ -1,9 +1,12 @@
 package harness
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -99,14 +102,85 @@ func TestCursorIsRecordedAsUnverifiedUntilMeasured(t *testing.T) {
 	}
 }
 
-// opencode is named so its gaps are recorded, and withheld from Clients until
-// an envelope exists. Answering a host in another host's shape is the silent
-// failure this whole table is against.
-func TestOpencodeIsDescribedButNotYetAnswered(t *testing.T) {
-	if _, ok := HostContractFor(ClientOpencode); !ok {
-		t.Fatal("opencode has no contract, so its gaps are recorded nowhere")
+// Answering a host in another host's shape is the silent failure this whole
+// table is against, so every key a host is sent must be one it reads.
+//
+// This began as an assertion that opencode was described and deliberately not
+// answered, and it failed the moment the client joined Clients. That is the
+// guard working: it forced the envelope to exist before the name did, rather
+// than after someone noticed opencode discarding every reply.
+//
+// It was then rewritten, because the obvious next version was wrong. Comparing
+// envelopes for inequality would have failed Codex, which reads Claude's shape
+// deliberately and by measurement. "Has a reply of its own" is not "has a reply
+// unlike Claude's"; the property that matters is agreement with the contract.
+func TestEveryAnsweredClientIsSentKeysItReads(t *testing.T) {
+	for _, client := range Clients() {
+		contract, ok := HostContractFor(client)
+		if !ok {
+			t.Errorf("%s is answered and has no contract", client)
+			continue
+		}
+		event, ok := injectingEvent(contract)
+		if !ok {
+			continue // a host with no injection point sends nothing to check
+		}
+
+		// Through Run, not emitContext. sessionStart writes its own payload
+		// rather than calling emitContext, so an earlier version of this test
+		// checked a function the real session-start path never reaches, and
+		// missed opencode being answered in Claude's nested shape.
+		out := bytes.NewBufferString("")
+		if err := Run(Request{
+			Event: EventSessionStart, Client: client,
+			WorkspaceRoot: t.TempDir(), ToolkitRoot: toolkitRoot,
+			Stdin: strings.NewReader("{}"),
+		}, out); err != nil {
+			t.Fatalf("session start (%s): %v", client, err)
+		}
+		if out.Len() == 0 {
+			continue
+		}
+
+		var decoded map[string]any
+		if err := json.Unmarshal(out.Bytes(), &decoded); err != nil {
+			t.Fatalf("%s payload is not JSON: %v: %s", client, err, out.String())
+		}
+		for _, key := range flattenKeys(decoded, "") {
+			if !slices.Contains(event.OutputKeys, key) {
+				t.Errorf("%s is sent %q, which its contract does not record it reading; recorded: %v",
+					client, key, event.OutputKeys)
+			}
+		}
 	}
-	if KnownClient(ClientOpencode) {
-		t.Error("opencode is in Clients but has no envelope; it would be answered in Claude's shape and discard every reply")
+}
+
+// injectingEvent returns the host's session-start row, which is where context
+// injection is checked.
+func injectingEvent(contract HostContract) (EventContract, bool) {
+	for _, event := range contract.Events {
+		if event.Event == EventSessionStart && len(event.OutputKeys) > 0 {
+			return event, true
+		}
 	}
+	return EventContract{}, false
+}
+
+// flattenKeys renders nested keys as dotted paths, so a contract can record
+// hookSpecificOutput.additionalContext as the single fact it is rather than as
+// two levels a test has to reassemble.
+func flattenKeys(object map[string]any, prefix string) []string {
+	var keys []string
+	for key, value := range object {
+		path := key
+		if prefix != "" {
+			path = prefix + "." + key
+		}
+		if nested, ok := value.(map[string]any); ok {
+			keys = append(keys, flattenKeys(nested, path)...)
+			continue
+		}
+		keys = append(keys, path)
+	}
+	return keys
 }

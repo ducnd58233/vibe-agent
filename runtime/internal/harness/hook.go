@@ -50,19 +50,20 @@ const (
 	// Claude's spelling. It ignores exit 2.
 	ClientCodex Client = "codex"
 
-	// ClientOpencode names opencode so its contract can be recorded, and is
-	// deliberately absent from Clients until an envelope exists for it.
+	// ClientOpencode is opencode, answered through the plugin at
+	// .opencode/plugin/vibe-agent.js.
 	//
-	// The two are separable on purpose. What this host provides, and more
-	// usefully what it does not, is worth writing down now: opencode exposes no
-	// shell-command hook surface at all, so a workspace with only an MCP server
-	// registered has no deterministic control plane, and recording that stops
-	// someone wiring hooks.json for it a sixth time.
+	// opencode publishes no shell-command hook surface, so unlike the other
+	// three this host cannot be wired from a config file at all: its lifecycle
+	// is reachable only from a JS/TS plugin. Registering an MCP server is not a
+	// substitute, because the model decides whether to call a tool and a control
+	// plane the model may skip is not deterministic.
 	//
-	// Answering it is a different claim. Naming it in Clients would make
-	// KnownClient true, and an unrecognised host is answered in Claude's shape,
-	// which opencode would discard silently. Until a plugin lands, refusing
-	// `--client opencode` with a clear message is the honest behaviour.
+	// Its envelope is this package's choice rather than a vendor's, since the
+	// plugin on the other side is in this repository. Flat and snake_case, which
+	// is the shape a small JS reader wants; it is written down in the contract
+	// like every other host's so the two sides have one source rather than two
+	// habits.
 	ClientOpencode Client = "opencode"
 )
 
@@ -75,7 +76,7 @@ const (
 // which leaves a hook that is registered, fires on every tool call, and delivers
 // nothing. Silence is the one failure this control plane cannot see.
 func Clients() []Client {
-	return []Client{ClientClaude, ClientCursor, ClientCodex}
+	return []Client{ClientClaude, ClientCursor, ClientCodex, ClientOpencode}
 }
 
 // KnownClient reports whether this build can answer a host.
@@ -382,7 +383,12 @@ func readPayload(reader io.Reader) payload {
 // starting over.
 func sessionStart(req Request, body payload, out io.Writer) error {
 	text := sessionContext(req)
-	if req.Client == ClientCursor {
+	// The flat-envelope hosts. This branch named only Cursor and answered
+	// opencode in Claude's nested shape, which opencode's plugin does not read:
+	// the hook fired, the reply was discarded, and nothing reported it. The bug
+	// survived a test that checked emitContext directly, because this function
+	// does not call it.
+	if req.Client == ClientCursor || req.Client == ClientOpencode {
 		return write(out, map[string]any{"additional_context": text})
 	}
 
@@ -509,8 +515,15 @@ func stop(req Request, body payload, out io.Writer, extra string) error {
 	// has had its extra turn. Blocking again is how this becomes a loop.
 	if len(runs) > 0 && !body.StopHookActive {
 		if reason := blockReason(runs); reason != "" {
-			if req.Client == ClientCursor {
+			switch req.Client {
+			case ClientCursor:
 				return write(out, map[string]any{"followup_message": reason})
+			case ClientOpencode:
+				// opencode exposes no end-of-turn hook, so nothing here can
+				// refuse a turn. Emitting Claude's shape would be a reply no
+				// reader parses, which is the silent divergence this package
+				// keeps finding; saying nothing is the honest answer.
+				return nil
 			}
 			return write(out, map[string]any{"decision": "block", "reason": reason})
 		}
@@ -637,7 +650,10 @@ func emitContext(out io.Writer, client Client, event, text string) error {
 	if text == "" {
 		return nil
 	}
-	if client == ClientCursor {
+	// Cursor and opencode both read a flat additional_context, for different
+	// reasons: Cursor because its vendor documents that field, opencode because
+	// the plugin reading it is in this repository and was written to this shape.
+	if client == ClientCursor || client == ClientOpencode {
 		return write(out, map[string]any{"additional_context": text})
 	}
 	return write(out, map[string]any{
