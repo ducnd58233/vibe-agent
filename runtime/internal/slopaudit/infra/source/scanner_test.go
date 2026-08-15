@@ -45,6 +45,26 @@ def work():
   // TODO remove temporary style
 }
 `,
+		"service.php": `<?php
+function empty_service() {}
+`,
+		"worker.rs": `fn empty_worker() {}
+`,
+		"kernel.zig": `fn emptyKernel() void {}
+`,
+		"Panel.vue": `<template><div>ok</div></template>
+<script setup>
+console.log("debug temporary")
+</script>
+`,
+		"Dockerfile": `FROM scratch
+# TODO replace temporary image
+`,
+		"deploy.yaml": `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporary
+`,
 	}
 	for name, body := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
@@ -60,8 +80,8 @@ def work():
 	if result.Summary.FilesScanned != len(files) {
 		t.Fatalf("files scanned = %d, want %d", result.Summary.FilesScanned, len(files))
 	}
-	for _, language := range []string{"Go", "TypeScript", "Python", "Tsx", "Scss"} {
-		if result.Summary.Languages[language] != 1 {
+	for _, language := range []string{"Go", "TypeScript", "Python", "SCSS", "PHP", "Rust", "Zig", "Vue", "Dockerfile", "YAML"} {
+		if result.Summary.Languages[language] < 1 {
 			t.Fatalf("language %s missing in summary: %+v", language, result.Summary.Languages)
 		}
 	}
@@ -74,6 +94,28 @@ def work():
 		if !seen[rule] {
 			t.Fatalf("missing rule %s in findings: %+v", rule, result.Findings)
 		}
+	}
+}
+
+func TestScannerSkipsVendorDirectoryByEnryRules(t *testing.T) {
+	dir := t.TempDir()
+	vendorDir := filepath.Join(dir, "node_modules", "pkg")
+	if err := os.MkdirAll(vendorDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(vendorDir, "ignored.js"), []byte("console.log('debug temporary')"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "kept.js"), []byte("console.log('debug temporary')"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := NewScanner(1).Scan(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Summary.FilesScanned != 1 {
+		t.Fatalf("files scanned = %d, want 1: %+v", result.Summary.FilesScanned, result.Summary)
 	}
 }
 

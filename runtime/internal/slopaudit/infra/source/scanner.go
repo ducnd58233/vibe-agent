@@ -2,13 +2,14 @@ package source
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
+
+	enry "github.com/go-enry/go-enry/v2"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/slopaudit/domain"
 )
@@ -24,73 +25,11 @@ const (
 const (
 	LanguageUnknown = "Unknown"
 	LanguageText    = "Text"
-	ParserText      = "text-rules with optional tree-sitter adapters"
+	ParserText      = "go-enry language detection plus text rules with optional tree-sitter adapters"
 )
 
 var skippedDirectories = map[string]struct{}{
-	".git":         {},
-	".agent-state": {},
-	"node_modules": {},
-	"vendor":       {},
-	"dist":         {},
-	"tmp":          {},
-	"bin":          {},
-}
-
-var skippedFileNames = map[string]struct{}{
-	".env":                {},
-	".env.local":          {},
-	"settings.local.json": {},
-}
-
-var languageByName = map[string]string{
-	"Dockerfile":       "Dockerfile",
-	"Containerfile":    "Dockerfile",
-	"Makefile":         "Make",
-	"makefile":         "Make",
-	"Rakefile":         "Ruby",
-	"Gemfile":          "Ruby",
-	"Procfile":         "Procfile",
-	"docker-compose":   "Yaml",
-	"docker-compose.y": "Yaml",
-}
-
-var languageByExtension = map[string]string{
-	".bash": "Bash", ".bats": "Bash", ".sh": "Bash", ".zsh": "Bash",
-	".c": "C", ".h": "C",
-	".cc": "Cpp", ".cpp": "Cpp", ".cxx": "Cpp", ".hpp": "Cpp", ".hh": "Cpp",
-	".cs":  "CSharp",
-	".css": "Css", ".scss": "Scss", ".sass": "Sass", ".less": "Less",
-	".ex": "Elixir", ".exs": "Elixir",
-	".go":   "Go",
-	".hs":   "Haskell",
-	".html": "Html", ".htm": "Html", ".xhtml": "Html",
-	".java": "Java",
-	".js":   "JavaScript", ".jsx": "JavaScript", ".mjs": "JavaScript", ".cjs": "JavaScript",
-	".json": "Json",
-	".kt":   "Kotlin", ".kts": "Kotlin",
-	".lua": "Lua",
-	".nix": "Nix",
-	".php": "Php",
-	".py":  "Python", ".pyi": "Python",
-	".rb": "Ruby", ".gemspec": "Ruby",
-	".rs":    "Rust",
-	".scala": "Scala", ".sc": "Scala", ".sbt": "Scala",
-	".sol":   "Solidity",
-	".swift": "Swift",
-	".ts":    "TypeScript", ".tsx": "Tsx", ".cts": "TypeScript", ".mts": "TypeScript",
-	".vue": "Vue", ".svelte": "Svelte", ".astro": "Astro",
-	".mdx": "Mdx", ".graphql": "GraphQL", ".gql": "GraphQL",
-	".sql": "Sql", ".prisma": "Prisma", ".proto": "Proto",
-	".toml": "Toml", ".ini": "Ini",
-	".yaml": "Yaml", ".yml": "Yaml",
-}
-
-var binaryExtensions = map[string]struct{}{
-	".7z": {}, ".a": {}, ".avi": {}, ".bin": {}, ".bmp": {}, ".class": {}, ".dll": {},
-	".dmg": {}, ".exe": {}, ".gif": {}, ".gz": {}, ".ico": {}, ".jar": {}, ".jpeg": {},
-	".jpg": {}, ".mov": {}, ".mp3": {}, ".mp4": {}, ".o": {}, ".obj": {}, ".pdf": {},
-	".png": {}, ".so": {}, ".tar": {}, ".wasm": {}, ".webp": {}, ".zip": {},
+	".git": {},
 }
 
 var (
@@ -149,6 +88,9 @@ sendJobs:
 
 	result := domain.ScanResult{Summary: domain.ScanSummary{Languages: map[string]int{}, Parser: ParserText}}
 	for scanned := range out {
+		if scanned.skipped {
+			continue
+		}
 		result.Findings = append(result.Findings, scanned.findings...)
 		result.Summary.FilesScanned++
 		result.Summary.LinesScanned += scanned.lines
@@ -161,6 +103,7 @@ type fileResult struct {
 	findings []domain.Finding
 	language string
 	lines    int
+	skipped  bool
 }
 
 func sourceFiles(target string) ([]string, error) {
@@ -170,83 +113,71 @@ func sourceFiles(target string) ([]string, error) {
 		return nil, err
 	}
 	if !info.IsDir() {
-		if sourceCandidate(target) {
-			return []string{filepath.Clean(target)}, nil
-		}
-		return files, nil
+		return []string{filepath.Clean(target)}, nil
 	}
+	root := filepath.Clean(target)
 	err = filepath.WalkDir(target, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if entry.IsDir() {
-			if _, ok := skippedDirectories[entry.Name()]; ok {
-				return filepath.SkipDir
+			if filepath.Clean(path) != root {
+				if _, ok := skippedDirectories[entry.Name()]; ok {
+					return filepath.SkipDir
+				}
+				if enry.IsVendor(filepath.ToSlash(path)) {
+					return filepath.SkipDir
+				}
 			}
 			return nil
 		}
-		if sourceCandidate(path) {
-			files = append(files, filepath.Clean(path))
-		}
+		files = append(files, filepath.Clean(path))
 		return nil
 	})
 	return files, err
 }
 
-func sourceLanguage(path string) string {
-	name := filepath.Base(path)
-	if language, ok := languageByName[name]; ok {
-		return language
-	}
-	language, ok := languageByExtension[strings.ToLower(filepath.Ext(path))]
-	if !ok {
+func sourceLanguage(path string, data []byte) string {
+	language := enry.GetLanguage(filepath.ToSlash(path), data)
+	if language == "" {
 		return LanguageText
 	}
 	return language
 }
 
-func sourceCandidate(path string) bool {
-	if _, ok := skippedFileNames[filepath.Base(path)]; ok {
-		return false
-	}
-	if _, ok := binaryExtensions[strings.ToLower(filepath.Ext(path))]; ok {
-		return false
-	}
-	if sourceLanguage(path) != LanguageText {
-		return true
-	}
-	return looksLikeText(path)
-}
-
-func looksLikeText(path string) bool {
-	file, err := os.Open(path)
-	if err != nil {
-		return false
-	}
-	defer func() { _ = file.Close() }()
-
-	buffer := make([]byte, 512)
-	n, err := file.Read(buffer)
-	if err != nil && n == 0 {
-		return false
-	}
-	return !bytes.Contains(buffer[:n], []byte{0})
-}
-
 func (s *Scanner) scanFile(path string) fileResult {
-	language := sourceLanguage(path)
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return fileResult{language: language, lines: 1, findings: []domain.Finding{{Path: path, Line: 1, Rule: domain.RuleScanError, Severity: domain.SeverityHigh, Message: err.Error()}}}
+		return fileResult{language: LanguageUnknown, lines: 1, findings: []domain.Finding{{Path: path, Line: 1, Rule: domain.RuleScanError, Severity: domain.SeverityHigh, Message: err.Error()}}}
 	}
-	if len(data) > MaxFileBytes {
-		return fileResult{language: language, lines: 1}
+	if skipFile(path, data) {
+		return fileResult{skipped: true}
 	}
+	language := sourceLanguage(path, data)
 	text := string(data)
 	lines := strings.Split(text, "\n")
 	findings := s.lineFindings(path, language, lines)
 	findings = append(findings, fileFindings(path, text, lines)...)
 	return fileResult{findings: findings, language: language, lines: len(lines)}
+}
+
+func skipFile(path string, data []byte) bool {
+	slashPath := filepath.ToSlash(path)
+	if sensitiveFile(filepath.Base(path)) {
+		return true
+	}
+	return len(data) > MaxFileBytes ||
+		enry.IsBinary(data) ||
+		enry.IsImage(slashPath) ||
+		enry.IsGenerated(slashPath, data)
+}
+
+func sensitiveFile(name string) bool {
+	lower := strings.ToLower(name)
+	return lower == ".env" ||
+		strings.HasPrefix(lower, ".env.") ||
+		strings.HasSuffix(lower, ".local") ||
+		strings.HasSuffix(lower, ".local.json")
 }
 
 func (s *Scanner) lineFindings(path, language string, lines []string) []domain.Finding {

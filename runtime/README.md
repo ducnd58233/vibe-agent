@@ -119,7 +119,7 @@ vibe-agent slop audit . --json
 vibe-agent slop audit . --fail-on 49
 ```
 
-The built-in scanner runs without external tools and reports files, lines, languages, parser basis, and scoring basis. It labels common backend, frontend, config, and template files, including `ts`, `tsx`, `js`, `jsx`, `css`, `scss`, `sass`, `less`, `vue`, `svelte`, `astro`, and `mdx`. Unknown non-binary text files are still scanned as `Text`. The score is weighted finding density per KLOC, capped at 100, so a large repo is not marked worse only because it has more files.
+The built-in scanner runs without external tools and reports files, lines, languages, parser basis, and scoring basis. Language detection comes from [`go-enry`](https://pkg.go.dev/github.com/go-enry/go-enry/v2), the Go port of GitHub Linguist, instead of a local extension table. Unknown non-binary text files are still scanned as `Text`. Vendor, generated, binary, image, and sensitive local config files are skipped before scoring. The score is weighted finding density per KLOC, capped at 100, so a large repo is not marked worse only because it has more files.
 
 If `ast-grep` is on `PATH`, the audit runs `ast-grep outline --json=compact` as a Tree-sitter-backed parser coverage pass. If `semgrep` or `slop-detector` are on `PATH`, their adapters run too. The `semgrep` adapter only runs when the target or one of its parent directories has a matching config file, so a consumer repo keeps ownership of its own rules.
 
