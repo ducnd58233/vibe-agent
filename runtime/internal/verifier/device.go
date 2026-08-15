@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 )
 
 // Supported platform values for a screen check.
@@ -47,7 +48,7 @@ var AndroidSDKEnv = []string{"ANDROID_HOME", "ANDROID_SDK_ROOT"}
 // PATH comes first so an explicitly installed adb wins over whatever an SDK
 // happens to ship.
 func adbCommand() string {
-	if resolved, err := exec.LookPath("adb"); err == nil {
+	if resolved, err := safexec.LookPath("adb"); err == nil {
 		return resolved
 	}
 	var roots []string
@@ -88,7 +89,10 @@ func ToolInSDK(name string, roots []string) string {
 // capture runs a command and returns stdout, with stderr folded into the error
 // so a failure says what the tool actually printed.
 func capture(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, name, args...)
+	cmd, err := safexec.CommandContext(ctx, name, args...)
+	if err != nil {
+		return nil, err
+	}
 	cmd.Dir = dir
 	var out, errs bytes.Buffer
 	cmd.Stdout = &out

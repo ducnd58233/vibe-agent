@@ -64,29 +64,6 @@ linters:
       require-specific: true
       allow-unused: false
 
-  exclusions:
-    rules:
-      # G204 is the one rule in this set that this module cannot satisfy, and it
-      # is scoped here rather than silenced globally so it keeps enforcing
-      # everywhere else.
-      #
-      # The rule asks that no variable reach exec. These four places exist to run
-      # a command someone else chose: the check plan's command in
-      # internal/verifier/command.go, adb and simctl in device.go, git with the
-      # arguments a caller assembled in git.go, and in e2e the binary the suite
-      # has just built. There is no shape that makes those literals without
-      # deleting the feature, and every alternative considered was worse:
-      # inlining git.go's helper at each call site trades a real abstraction for
-      # a linter, and an allowlist would still read as a variable to the
-      # analysis.
-      #
-      # What actually bounds the risk is elsewhere and is checked: the command
-      # comes from vibe-checks.yaml, a tracked file that a human reviews, and
-      # `checkpoint` cannot forge the evidence a verifier produces.
-      - linters: [gosec]
-        text: G204
-        path: (internal/verifier/|_test\.go$)
-
 issues:
   # Every finding, not the first three per rule. A cap hides the second half of a
   # systematic problem and makes a clean run mean less than it looks.

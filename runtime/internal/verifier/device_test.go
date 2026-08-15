@@ -2,11 +2,12 @@ package verifier
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 )
 
 // Installing Android Studio sets ANDROID_HOME and leaves PATH alone, so calling
@@ -54,7 +55,11 @@ func TestAdbIsFoundUnderAnSDKRootWhenNotOnPath(t *testing.T) {
 // plumbing; adb's actual output shape is the part a fake cannot check.
 func attachedDevice(t *testing.T) string {
 	t.Helper()
-	out, err := exec.CommandContext(t.Context(), adbCommand(), "devices").Output()
+	cmd, err := safexec.CommandContext(t.Context(), adbCommand(), "devices")
+	if err != nil {
+		t.Skipf("no adb available: %v", err)
+	}
+	out, err := cmd.Output()
 	if err != nil {
 		t.Skipf("no adb available: %v", err)
 	}

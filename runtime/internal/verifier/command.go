@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 )
 
 // DefaultCommandTimeout bounds a verifier command that did not set its own.
@@ -38,23 +38,30 @@ func (c Command) Verify(ctx context.Context, req Request) (Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, req.Command, req.Args...)
-	cmd.Dir = req.WorkspaceRoot
-
 	var captured bytes.Buffer
-	cmd.Stdout = &captured
-	cmd.Stderr = &captured
+	cmd, startErr := safexec.CommandContext(ctx, req.Command, req.Args...)
+	if startErr == nil {
+		cmd.Dir = req.WorkspaceRoot
+		cmd.Stdout = &captured
+		cmd.Stderr = &captured
+	}
 
 	started := time.Now()
-	runErr := cmd.Run()
+	runErr := startErr
+	if cmd != nil {
+		runErr = cmd.Run()
+	}
 	elapsed := time.Since(started)
 
-	exitCode := cmd.ProcessState.ExitCode()
 	timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
 	// A command that could not start has no ProcessState. That is the case when
 	// the plan names a tool this machine does not have, which is common enough
 	// to deserve saying plainly rather than reporting as an exit code.
-	neverRan := cmd.ProcessState == nil
+	neverRan := cmd == nil || cmd.ProcessState == nil
+	exitCode := -1
+	if !neverRan {
+		exitCode = cmd.ProcessState.ExitCode()
+	}
 
 	// A process the runtime killed never produced a verdict. Reporting its exit
 	// code as a failure would be a lie about what happened.

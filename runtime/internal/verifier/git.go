@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os/exec"
 	"strings"
 	"time"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 )
 
 // GitExpectation is what a git verifier should assert. Zero values mean
@@ -95,7 +95,10 @@ func Observe(ctx context.Context, root string) (Observation, error) {
 }
 
 func git(ctx context.Context, root string, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd, err := safexec.CommandContext(ctx, "git", args...)
+	if err != nil {
+		return "", err
+	}
 	cmd.Dir = root
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out

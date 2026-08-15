@@ -2,7 +2,6 @@ package verifier
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 )
 
 func shell(script string) (string, []string) {
@@ -287,13 +287,16 @@ func write(t *testing.T, path, content string) {
 
 func initRepo(t *testing.T) string {
 	t.Helper()
-	if _, err := exec.LookPath("git"); err != nil {
+	if _, err := safexec.LookPath("git"); err != nil {
 		t.Skip("git not available")
 	}
 	root := t.TempDir()
 	run := func(args ...string) {
 		t.Helper()
-		cmd := exec.CommandContext(t.Context(), "git", args...)
+		cmd, err := safexec.CommandContext(t.Context(), "git", args...)
+		if err != nil {
+			t.Fatalf("git command: %v", err)
+		}
 		cmd.Dir = root
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %s: %v: %s", strings.Join(args, " "), err, out)

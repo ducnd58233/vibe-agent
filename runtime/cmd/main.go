@@ -30,7 +30,7 @@ Usage:
   vibe-agent checkpoint --slug <slug> --check <name> --source <source> [--passed|--failed|--skipped]
   vibe-agent graph validate [--graph <id>]
   vibe-agent fetch <url|path> [--budget <tokens>] [--json] [--refresh]
-  vibe-agent slop audit [path] [--json] [--workers N] [--fail-on score]
+  vibe-agent slop audit [path] [--format text|json] [--workers N] [--fail-on score]
   vibe-agent mcp serve
   vibe-agent guards <list|init> [--workspace <dir>] [--force]
   vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|post-tool-use-failure|stop|subagent-stop> [--client claude|cursor]

@@ -16,6 +16,8 @@ import (
 const (
 	slopAuditTimeout = 2 * time.Minute
 	unsetFailOn      = -1
+	slopFormatJSON   = "json"
+	slopFormatText   = "text"
 )
 
 func slopCommand(args []string) error {
@@ -32,29 +34,30 @@ func slopCommand(args []string) error {
 
 func slopAuditCommand(args []string) error {
 	flags := newFlagSet("slop audit")
-	workers := flags.Int("workers", app.DefaultWorkers, "number of Go source scan workers")
+	workers := flags.Int("workers", app.DefaultWorkers, "number of source scan workers")
 	failOn := flags.Int("fail-on", unsetFailOn, "exit non-zero when score is greater than this value")
 	asJSON := flags.Bool("json", false, "emit the report as JSON")
+	format := flags.String("format", slopFormatText, "output format: text or json")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	rest := flags.Args()
 	target := "."
 	if len(rest) > 0 {
-		target = rest[0]
-		if err := flags.Parse(rest[1:]); err != nil {
-			return err
-		}
-		if flags.NArg() != 0 {
+		if len(rest) > 1 {
 			return fmt.Errorf("slop audit takes one path, got %d: %s", len(rest), strings.Join(rest, " "))
 		}
+		target = rest[0]
+	}
+	if *format != slopFormatText && *format != slopFormatJSON {
+		return fmt.Errorf("unknown slop audit format %q; use text or json", *format)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), slopAuditTimeout)
 	defer cancel()
 
 	report := slopaudit.Audit(ctx, target, slopaudit.Options{Workers: *workers})
-	if *asJSON {
+	if *asJSON || *format == slopFormatJSON {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
 		if err := encoder.Encode(report); err != nil {
