@@ -96,6 +96,7 @@ jobs:
         run: make -C runtime check
 
       - name: Cross-compile every release target
+        if: github.event_name == 'pull_request'
         working-directory: runtime
         env:
           CGO_ENABLED: '0'
