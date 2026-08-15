@@ -9,11 +9,12 @@ import (
 	"errors"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 )
 
 // This exercises the consumer-repo shape from AGENTS.md: a workspace that keeps
@@ -43,7 +44,7 @@ func toolkitRoot(t *testing.T) string {
 
 func buildBinary(t *testing.T) string {
 	t.Helper()
-	if _, err := exec.LookPath("go"); err != nil {
+	if _, err := safexec.LookPath("go"); err != nil {
 		t.Skip("go toolchain not on PATH")
 	}
 	name := "vibe-agent"
@@ -52,7 +53,10 @@ func buildBinary(t *testing.T) string {
 	}
 	binary := filepath.Join(t.TempDir(), name)
 
-	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "./cmd")
+	build, err := safexec.CommandContext(t.Context(), "go", "build", "-o", binary, "./cmd")
+	if err != nil {
+		t.Fatalf("build command: %v", err)
+	}
 	build.Dir = moduleRoot(t)
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := build.CombinedOutput(); err != nil {
@@ -118,7 +122,10 @@ type cli struct {
 func (c cli) run(args ...string) (string, error) {
 	c.t.Helper()
 	full := append(args, "--workspace", c.root, "--toolkit", c.toolkit)
-	cmd := exec.CommandContext(c.t.Context(), c.binary, full...)
+	cmd, err := safexec.CommandContext(c.t.Context(), c.binary, full...)
+	if err != nil {
+		c.t.Fatalf("run command: %v", err)
+	}
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
@@ -128,11 +135,14 @@ func (c cli) run(args ...string) (string, error) {
 func (c cli) hook(stdin string, args ...string) (string, int) {
 	c.t.Helper()
 	full := append(args, "--workspace", c.root, "--toolkit", c.toolkit)
-	cmd := exec.CommandContext(c.t.Context(), c.binary, full...)
+	cmd, err := safexec.CommandContext(c.t.Context(), c.binary, full...)
+	if err != nil {
+		c.t.Fatalf("hook command: %v", err)
+	}
 	cmd.Stdin = strings.NewReader(stdin)
 	out, err := cmd.CombinedOutput()
 
-	var exit *exec.ExitError
+	var exit *safexec.ExitError
 	switch {
 	case err == nil:
 		return string(out), 0
@@ -612,7 +622,11 @@ func TestToolkitIsFoundWhenMountedAsASubmodule(t *testing.T) {
 	// No --toolkit anywhere below.
 	noToolkit := func(args ...string) (string, error) {
 		full := append(args, "--workspace", root)
-		out, err := exec.CommandContext(t.Context(), binary, full...).CombinedOutput()
+		cmd, cmdErr := safexec.CommandContext(t.Context(), binary, full...)
+		if cmdErr != nil {
+			return "", cmdErr
+		}
+		out, err := cmd.CombinedOutput()
 		return string(out), err
 	}
 
@@ -689,7 +703,10 @@ func copyTree(t *testing.T, src, dst string) {
 
 func TestGraphValidateRunsAgainstTheShippedGraph(t *testing.T) {
 	run := cli{t, buildBinary(t), t.TempDir(), toolkitRoot(t)}
-	cmd := exec.CommandContext(run.t.Context(), run.binary, "graph", "validate", "--toolkit", run.toolkit)
+	cmd, cmdErr := safexec.CommandContext(run.t.Context(), run.binary, "graph", "validate", "--toolkit", run.toolkit)
+	if cmdErr != nil {
+		t.Fatalf("graph validate command: %v", cmdErr)
+	}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("graph validate failed: %v\n%s", err, out)

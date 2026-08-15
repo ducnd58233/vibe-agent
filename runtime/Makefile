@@ -48,7 +48,7 @@ export CGO_ENABLED := 0
 # and a laptop run the same binary.
 TOOLS_DIR    := $(CURDIR)/bin
 GOLANGCI     := $(TOOLS_DIR)/golangci-lint$(EXE)
-GOLANGCI_REF ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+GOLANGCI_REF ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.1
 
 .PHONY: all build test vet fmt fmt-check lint golangci tools check release clean install help
 

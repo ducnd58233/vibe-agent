@@ -6,12 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 )
 
 // The routing fixtures name the asset each intent should reach. checkRoutingEvals
@@ -376,7 +377,10 @@ func commandAsker(runner runnerSpec, timeout time.Duration) asker {
 		if runner.PromptAsArg {
 			args = append(args, prompt)
 		}
-		cmd := exec.CommandContext(ctx, parts[0], args...) // #nosec G204 -- the runner is operator-supplied
+		cmd, err := safexec.CommandContext(ctx, parts[0], args...)
+		if err != nil {
+			return "", err
+		}
 		if !runner.PromptAsArg {
 			cmd.Stdin = strings.NewReader(prompt)
 		}

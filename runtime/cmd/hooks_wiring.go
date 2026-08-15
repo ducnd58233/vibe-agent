@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/harness"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 )
 
 // This file answers one question doctor could not: is the binary that will
@@ -196,7 +196,7 @@ var errNotInstalled = errors.New("vibe-agent is not on PATH")
 // An older binary predates --events and exits non-zero, which is itself the
 // answer: it is old enough to lack a flag added alongside this check.
 func pathBinaryEvents(ctx context.Context) (path string, events []string, err error) {
-	path, err = exec.LookPath("vibe-agent")
+	path, err = safexec.LookPath("vibe-agent")
 	if err != nil {
 		// Distinguish "absent" from "present but unresolvable", because the fixes
 		// differ and one of them is invisible. An extensionless file on Windows is
@@ -226,7 +226,11 @@ func pathBinaryEvents(ctx context.Context) (path string, events []string, err er
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	out, err := exec.CommandContext(ctx, path, "hook", "--events").Output()
+	cmd, err := safexec.CommandContext(ctx, path, "hook", "--events")
+	if err != nil {
+		return path, nil, err
+	}
+	out, err := cmd.Output()
 	if err != nil {
 		return path, nil, fmt.Errorf("%s does not understand `hook --events`, which means it predates this check: %w", path, err)
 	}
@@ -410,7 +414,11 @@ func buildVersion() string { return version }
 func binaryVersion(path string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, path, "version").Output()
+	cmd, err := safexec.CommandContext(ctx, path, "version")
+	if err != nil {
+		return ""
+	}
+	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
