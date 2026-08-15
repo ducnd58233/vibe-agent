@@ -15,6 +15,7 @@
     .opencode/agents, .opencode/commands
     .agents/skills, .agents/commands (Codex discovery when supported; mirrors .ai-agents)
     .codex/agents/*.toml (Codex custom subagents, generated from .ai-agents/agents/*.md)
+    .codex/prompts/*.md (Codex custom prompts, generated from .ai-agents/commands/*.md)
 
   Examples:
     powershell -File scripts/link-ai-agents.ps1
@@ -24,7 +25,7 @@
   Optional environment variables (when the matching parameter is omitted):
     LINK_WORKSPACE, LINK_ASSETS — same paths as -WorkspaceRoot / -AssetsRoot (useful from CI or wrappers).
   The script also adds generated discovery paths to <WorkspaceRoot>/.git/info/exclude when WorkspaceRoot is a
-  Git repository. This keeps local links and generated Codex agent files out of Git without requiring root
+  Git repository. This keeps local links and generated Codex agent and prompt files out of Git without requiring root
   .gitignore rules in consumer repositories.
 #>
 [CmdletBinding()]
@@ -194,6 +195,32 @@ $($sandboxLine)developer_instructions = """
     }
 }
 
+function Sync-CodexPrompts {
+    param(
+        [Parameter(Mandatory = $true)][string] $AssetsFull,
+        [Parameter(Mandatory = $true)][string] $WorkspaceFull
+    )
+    $commandsSrc = Join-Path $AssetsFull 'commands'
+    $promptsDest = Join-Path $WorkspaceFull '.codex\prompts'
+    $excludeNames = @('TEMPLATE.md', 'README.md', 'ROUTER.md')
+    if (-not (Test-Path -LiteralPath $promptsDest)) {
+        New-Item -ItemType Directory -Path $promptsDest -Force | Out-Null
+    }
+    $generatedNames = New-Object 'System.Collections.Generic.List[string]'
+    Get-ChildItem -LiteralPath $commandsSrc -Filter '*.md' -File | ForEach-Object {
+        if ($excludeNames -contains $_.Name) {
+            return
+        }
+        Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $promptsDest $_.Name) -Force
+        [void]$generatedNames.Add($_.Name)
+    }
+    Get-ChildItem -LiteralPath $promptsDest -Filter '*.md' -File | ForEach-Object {
+        if ($generatedNames -notcontains $_.Name) {
+            Remove-Item -LiteralPath $_.FullName -Force
+        }
+    }
+}
+
 function Ensure-Junction {
     param(
         [Parameter(Mandatory = $true)][string] $LinkFullPath,
@@ -228,6 +255,7 @@ Ensure-Junction (Join-Path $workspaceFull ".opencode\agents") (Join-Path $assets
 Ensure-Junction (Join-Path $workspaceFull ".opencode\commands") (Join-Path $assetsFull "commands")
 Ensure-Junction (Join-Path $workspaceFull ".agents\skills") (Join-Path $assetsFull "skills")
 Ensure-Junction (Join-Path $workspaceFull ".agents\commands") (Join-Path $assetsFull "commands")
+Sync-CodexPrompts -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
 Sync-CodexAgents -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
 
 function Install-LocalGitExclude {
@@ -255,7 +283,8 @@ function Install-LocalGitExclude {
         "/.opencode/commands/",
         "/.agents/skills/",
         "/.agents/commands/",
-        "/.codex/agents/"
+        "/.codex/agents/",
+        "/.codex/prompts/"
     )
     $existing = Get-Content -LiteralPath $excludePath -ErrorAction SilentlyContinue
     $toAdd = $rules | Where-Object { $existing -notcontains $_ }
@@ -373,3 +402,4 @@ Install-Runtime
 
 Write-Host "Links created under $workspaceFull (.claude, .cursor, .opencode, .agents) -> $assetsFull"
 Write-Host "Codex custom agents synced to $workspaceFull\.codex\agents"
+Write-Host "Codex custom prompts synced to $workspaceFull\.codex\prompts"

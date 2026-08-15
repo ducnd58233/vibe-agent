@@ -15,7 +15,8 @@
 #
 # The script also adds generated discovery paths to <workspace>/.git/info/exclude
 # when the workspace is a Git repository. This keeps local links and generated
-# Codex agent files out of Git without root .gitignore rules in consumer repos.
+# Codex agent and prompt files out of Git without root .gitignore rules in
+# consumer repos.
 
 set -euo pipefail
 
@@ -145,6 +146,39 @@ link_skill_tree "$WORKSPACE/.opencode/commands" "$ASSETS/commands"
 link_skill_tree "$WORKSPACE/.agents/skills" "$ASSETS/skills"
 link_skill_tree "$WORKSPACE/.agents/commands" "$ASSETS/commands"
 
+sync_codex_prompts_from_md() {
+  local assets="$1"
+  local workspace="$2"
+  local commands_src="$assets/commands"
+  local prompts_dest="$workspace/.codex/prompts"
+  mkdir -p "$prompts_dest"
+  local -a generated=()
+  local md base
+  for md in "$commands_src"/*.md; do
+    [[ -f "$md" ]] || continue
+    base="$(basename "$md")"
+    case "$base" in
+      TEMPLATE.md|README.md|ROUTER.md) continue ;;
+    esac
+    cp "$md" "$prompts_dest/$base"
+    generated+=("$base")
+  done
+  for existing in "$prompts_dest"/*.md; do
+    [[ -f "$existing" ]] || continue
+    base="$(basename "$existing")"
+    keep=0
+    for g in "${generated[@]}"; do
+      if [[ "$g" == "$base" ]]; then
+        keep=1
+        break
+      fi
+    done
+    if [[ $keep -eq 0 ]]; then
+      rm -f "$existing"
+    fi
+  done
+}
+
 sync_codex_agents_from_md() {
   local assets="$1"
   local workspace="$2"
@@ -226,6 +260,7 @@ sync_codex_agents_from_md() {
   done
 }
 
+sync_codex_prompts_from_md "$ASSETS" "$WORKSPACE"
 sync_codex_agents_from_md "$ASSETS" "$WORKSPACE"
 
 install_local_git_exclude() {
@@ -250,6 +285,7 @@ install_local_git_exclude() {
     "/.agents/skills/"
     "/.agents/commands/"
     "/.codex/agents/"
+    "/.codex/prompts/"
   )
   local -a missing=()
   local rule
@@ -355,3 +391,4 @@ install_runtime
 
 echo "Symlinks created under $WORKSPACE (.claude, .cursor, .opencode, .agents) -> $ASSETS"
 echo "Codex custom agents synced to $WORKSPACE/.codex/agents"
+echo "Codex custom prompts synced to $WORKSPACE/.codex/prompts"

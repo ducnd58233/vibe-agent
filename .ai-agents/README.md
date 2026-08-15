@@ -2,7 +2,7 @@
 
 <context>
 
-This directory is the **single source of truth** for skills, subagents, commands, and hook scripts shared across AI coding tools. Link-based tool entrypoints (`.claude/`, `.cursor/`, `.opencode/`, `.agents/`) should **point here** - not copy - so changes stay in one place. Codex also reads skills via `.agents/skills` and project subagents via generated `.codex/agents/*.toml` after you run the link script.
+This directory is the **single source of truth** for skills, subagents, commands, and hook scripts shared across AI coding tools. Link-based tool entrypoints (`.claude/`, `.cursor/`, `.opencode/`, `.agents/`) should **point here** - not copy - so changes stay in one place. Codex also reads skills via `.agents/skills`, prompts via `.codex/prompts/*.md`, and project subagents via generated `.codex/agents/*.toml` after you run the link script.
 It is intentionally **domain-agnostic** and should not contain product-domain logic.
 </context>
 
@@ -40,6 +40,7 @@ It is intentionally **domain-agnostic** and should not contain product-domain lo
 | Check | Command | Dependencies |
 |-------|---------|--------------|
 | Router tables match disk | `bash scripts/check-ai-agents-routers.sh` | none, bash only |
+| Routing-eval fixtures and intent coverage | `vibe-agent doctor` | the binary (also covered by `make check`) |
 | Codex generated agents | `powershell -File scripts/check-codex-assets.ps1` | PowerShell |
 | JSON Schema contracts under `schemas/` | `python3 scripts/check-schemas.py` | `scripts/requirements.txt` |
 | Workflow graphs under `graphs/` | `python3 scripts/check-graphs.py` | `scripts/requirements.txt` |
@@ -63,7 +64,7 @@ Root [`AGENTS.md`](../AGENTS.md) and [`.cursor/rules/000-project-standards.mdc`]
 |-------------|----------------|----------------------------------|
 | **Claude Code** | `.claude/skills/`, `.claude/agents/`, `.claude/commands/`, hooks in `settings.json` | Run `scripts/link-ai-agents.ps1` or `scripts/link-ai-agents.sh` to create directory links (see below). |
 | **Cursor**      | `.cursor/skills/`, `.cursor/commands/`, `.cursor/hooks.json` + hook scripts | Same link script for `skills` and `commands`; hook **commands** in `hooks.json` can point **directly** to `.ai-agents/hooks/...` when preferred. |
-| **Codex**       | `.agents/skills`, `.agents/commands`, `.codex/agents/*.toml`, `.codex/config.toml`, `AGENTS.md` | Run the link script: `.agents/skills` and `.agents/commands` junctions; custom subagents generated into `.codex/agents/`. Slash commands in `/` still use skills until Codex supports repo `commands/`. |
+| **Codex**       | `.agents/skills`, `.agents/commands`, `.codex/prompts/*.md`, `.codex/agents/*.toml`, `.codex/config.toml`, `AGENTS.md` | Run the link script: `.agents/skills` and `.agents/commands` junctions; command prompts copied into `.codex/prompts/`; custom subagents generated into `.codex/agents/`. |
 | **opencode**    | Project `opencode.json`, root `AGENTS.md` (native rules file), `.opencode/agents/`, `.opencode/commands/` | Same link script creates `.opencode/agents` and `.opencode/commands` junctions. Skills are surfaced via the `instructions` glob in `opencode.json`, which points at the routers. |
 
 ### Always-on baseline semantics
@@ -90,6 +91,7 @@ Claude Code and Cursor can discover **skills** and **commands** through `.claude
 - `.agents/skills` → `.ai-agents/skills` (Codex skill discovery)
 - `.agents/commands` → `.ai-agents/commands` (forward-compatible Codex command discovery; no effect until Codex supports `.agents/commands/`)
 - `.codex/agents/*.toml` - generated from `.ai-agents/agents/*.md` (Codex custom subagents; re-run link after agent edits)
+- `.codex/prompts/*.md` - copied from `.ai-agents/commands/*.md` (Codex custom prompts; re-run link after command edits)
 
 Validate the generated Codex-facing paths with:
 
@@ -97,7 +99,7 @@ Validate the generated Codex-facing paths with:
 powershell -File scripts/check-codex-assets.ps1
 ```
 
-This check confirms `.agents/skills`, `.agents/commands`, and `.codex/agents/*.toml` are present and in sync with `.ai-agents`, and that generated TOML avoids stale relative links or UTF-8 mojibake.
+This check confirms `.agents/skills`, `.agents/commands`, `.codex/prompts/*.md`, and `.codex/agents/*.toml` are present and in sync with `.ai-agents`, and that generated TOML avoids stale relative links or UTF-8 mojibake.
 
 ### Parameters (toolkit dev vs consumer repo)
 
