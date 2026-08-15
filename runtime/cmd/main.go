@@ -52,8 +52,9 @@ budget and says how many lines were left, rather than implying the page fit.
 
 
 "slop audit" scans local code for AI-generated code slop signals. The built-in
-Go scanner runs without external tools. When ast-grep, semgrep, or
-slop-detector are installed and configured, their adapters run too.
+scanner covers supported source extensions across the codebase. ast-grep adds a
+Tree-sitter-backed outline pass when installed; semgrep and slop-detector remain
+optional external adapters.
 
 Evidence sources: exit_code, file_assert, ci_api, human_event. There is no
 source for model assertion, so nothing can mark its own work complete.

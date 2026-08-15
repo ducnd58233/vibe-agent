@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/slopaudit/domain"
@@ -43,6 +44,17 @@ func TestAdapterReportsFailure(t *testing.T) {
 	result := adapter.Run(context.Background(), ".")
 	if result.Status != domain.AdapterFailed || result.ExitCode != 2 || result.Reason != "bad config" {
 		t.Fatalf("result = %+v", result)
+	}
+}
+
+func TestAstGrepUsesTreeSitterOutlineWithoutProjectConfig(t *testing.T) {
+	args, reason := astGrepArgs(".")
+	if reason != "" {
+		t.Fatalf("reason = %q", reason)
+	}
+	want := []string{"outline", "--json=compact", "."}
+	if strings.Join(args, " ") != strings.Join(want, " ") {
+		t.Fatalf("args = %v, want %v", args, want)
 	}
 }
 

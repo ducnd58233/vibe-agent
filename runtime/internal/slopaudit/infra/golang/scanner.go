@@ -40,10 +40,10 @@ func NewScanner(workers int) *Scanner {
 	return &Scanner{workers: workers, longFunctionLines: DefaultLongFunctionLines}
 }
 
-func (s *Scanner) Scan(ctx context.Context, target string) ([]domain.Finding, error) {
+func (s *Scanner) Scan(ctx context.Context, target string) (domain.ScanResult, error) {
 	files, err := goFiles(target)
 	if err != nil {
-		return nil, err
+		return domain.ScanResult{}, err
 	}
 
 	jobs := make(chan string)
@@ -78,10 +78,29 @@ sendJobs:
 	close(out)
 
 	var findings []domain.Finding
+	summary := domain.ScanSummary{
+		FilesScanned: len(files),
+		Languages:    map[string]int{"Go": len(files)},
+		Parser:       "go/ast",
+	}
 	for batch := range out {
 		findings = append(findings, batch...)
 	}
-	return findings, ctx.Err()
+	for _, path := range files {
+		lines, err := countLines(path)
+		if err == nil {
+			summary.LinesScanned += lines
+		}
+	}
+	return domain.ScanResult{Findings: findings, Summary: summary}, ctx.Err()
+}
+
+func countLines(path string) (int, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, err
+	}
+	return strings.Count(string(data), "\n") + 1, nil
 }
 
 func goFiles(target string) ([]string, error) {

@@ -89,6 +89,13 @@ linters:
         text: G204
         path: (internal/verifier/|internal/slopaudit/infra/tool/adapter\.go|_test\.go$)
 
+      # Slop audit scanners exist to read local source files named by the
+      # target path, then report rule ids and line numbers rather than file
+      # contents. Secret-like files are skipped in the scanner itself.
+      - linters: [gosec]
+        text: G304
+        path: internal/slopaudit/infra/(source|golang)/scanner\.go
+
 issues:
   # Every finding, not the first three per rule. A cap hides the second half of a
   # systematic problem and makes a clean run mean less than it looks.

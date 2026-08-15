@@ -31,19 +31,22 @@ func risky() error { return nil }
 		t.Fatal(err)
 	}
 
-	findings, err := NewScanner(2).Scan(context.Background(), dir)
+	result, err := NewScanner(2).Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	seen := map[string]bool{}
-	for _, finding := range findings {
+	for _, finding := range result.Findings {
 		seen[finding.Rule] = true
 	}
 	for _, rule := range []string{domain.RuleTodoComment, domain.RuleEmptyFunction, domain.RuleIgnoredResult, domain.RuleDebugPrint, domain.RulePanicPlaceholder} {
 		if !seen[rule] {
-			t.Fatalf("missing rule %s in findings: %+v", rule, findings)
+			t.Fatalf("missing rule %s in findings: %+v", rule, result.Findings)
 		}
+	}
+	if result.Summary.Languages["Go"] != 1 {
+		t.Fatalf("summary = %+v", result.Summary)
 	}
 }
 
@@ -52,7 +55,7 @@ func TestScoreIsCapped(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		findings = append(findings, domain.Finding{Severity: domain.SeverityHigh})
 	}
-	if got := domain.Score(findings); got != domain.MaxScore {
+	if got := domain.Score(findings, domain.MinimumScoredLines); got != domain.MaxScore {
 		t.Fatalf("score = %d, want %d", got, domain.MaxScore)
 	}
 }

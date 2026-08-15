@@ -10,8 +10,8 @@ import (
 
 type failingScanner struct{}
 
-func (failingScanner) Scan(ctx context.Context, target string) ([]domain.Finding, error) {
-	return nil, errors.New("target missing")
+func (failingScanner) Scan(ctx context.Context, target string) (domain.ScanResult, error) {
+	return domain.ScanResult{}, errors.New("target missing")
 }
 
 func TestAuditorReportsScannerFailure(t *testing.T) {

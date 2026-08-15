@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	ToolAstGrep      = "ast-grep"
+	ToolAstGrep      = "ast-grep-tree-sitter"
+	BinaryAstGrep    = "ast-grep"
 	ToolSemgrep      = "semgrep"
 	ToolSlopDetector = "slop-detector"
 
@@ -21,7 +22,6 @@ const (
 	ReasonNoConfig     = "project config not found"
 )
 
-var astGrepConfigs = []string{"sgconfig.yml", "sgconfig.yaml", ".ast-grep.yml", ".ast-grep.yaml"}
 var semgrepConfigs = []string{".semgrep.yml", ".semgrep.yaml", "semgrep.yml", "semgrep.yaml"}
 
 type Executor interface {
@@ -53,8 +53,8 @@ func (OSExecutor) Run(ctx context.Context, name string, args ...string) (int, st
 
 func command(ctx context.Context, name string, args ...string) (*exec.Cmd, error) {
 	switch name {
-	case ToolAstGrep:
-		return exec.CommandContext(ctx, ToolAstGrep, args...), nil
+	case BinaryAstGrep:
+		return exec.CommandContext(ctx, BinaryAstGrep, args...), nil
 	case ToolSemgrep:
 		return exec.CommandContext(ctx, ToolSemgrep, args...), nil
 	case ToolSlopDetector:
@@ -76,7 +76,7 @@ func NewAdapters(executor Executor) []Adapter {
 		executor = OSExecutor{}
 	}
 	return []Adapter{
-		{name: ToolAstGrep, binary: ToolAstGrep, args: astGrepArgs, executor: executor},
+		{name: ToolAstGrep, binary: BinaryAstGrep, args: astGrepArgs, executor: executor},
 		{name: ToolSemgrep, binary: ToolSemgrep, args: semgrepArgs, executor: executor},
 		{name: ToolSlopDetector, binary: ToolSlopDetector, args: slopDetectorArgs, executor: executor},
 	}
@@ -99,11 +99,7 @@ func (a Adapter) Run(ctx context.Context, target string) domain.AdapterResult {
 }
 
 func astGrepArgs(target string) ([]string, string) {
-	config := firstConfig(target, astGrepConfigs)
-	if config == "" {
-		return nil, ReasonNoConfig
-	}
-	return []string{"scan", "--json", "--config", config, target}, ""
+	return []string{"outline", "--json=compact", target}, ""
 }
 
 func semgrepArgs(target string) ([]string, string) {

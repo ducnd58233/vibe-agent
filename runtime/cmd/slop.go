@@ -75,6 +75,10 @@ func printSlopReport(report domain.Report) {
 	fmt.Printf("  status   %s\n", report.Status)
 	fmt.Printf("  score    %d/%d\n", report.Score, domain.MaxScore)
 	fmt.Printf("  findings %d\n", len(report.Findings))
+	fmt.Printf("  files    %d\n", report.Summary.FilesScanned)
+	fmt.Printf("  lines    %d\n", report.Summary.LinesScanned)
+	fmt.Printf("  parser   %s\n", report.Summary.Parser)
+	fmt.Printf("  scoring  %s\n", report.Summary.Scoring)
 	if len(report.Findings) > 0 {
 		fmt.Println()
 		for _, finding := range report.Findings {

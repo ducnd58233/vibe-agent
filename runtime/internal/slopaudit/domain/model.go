@@ -18,6 +18,8 @@ const (
 	RuleDebugPrint       = "debug_print"
 	RulePanicPlaceholder = "panic_placeholder"
 	RuleLongFunction     = "long_function"
+	RuleLongFile         = "long_file"
+	RuleDuplicateLine    = "duplicate_line"
 	RuleParseError       = "parse_error"
 	RuleScanError        = "scan_error"
 )
@@ -34,6 +36,9 @@ const (
 	SuspiciousThreshold = 50
 	InflatedThreshold   = 70
 	MaxScore            = 100
+	MinimumScoredLines  = 200
+	LinesPerKLOC        = 1000
+	ScoreDensityDivisor = 10
 )
 
 const (
@@ -49,6 +54,19 @@ type Finding struct {
 	Rule     string   `json:"rule"`
 	Severity Severity `json:"severity"`
 	Message  string   `json:"message"`
+}
+
+type ScanSummary struct {
+	FilesScanned int            `json:"files_scanned"`
+	LinesScanned int            `json:"lines_scanned"`
+	Languages    map[string]int `json:"languages"`
+	Parser       string         `json:"parser"`
+	Scoring      string         `json:"scoring"`
+}
+
+type ScanResult struct {
+	Findings []Finding
+	Summary  ScanSummary
 }
 
 type AdapterStatus string
@@ -71,11 +89,12 @@ type Report struct {
 	Target   string          `json:"target"`
 	Score    int             `json:"score"`
 	Status   string          `json:"status"`
+	Summary  ScanSummary     `json:"summary"`
 	Findings []Finding       `json:"findings"`
 	Adapters []AdapterResult `json:"adapters"`
 }
 
-func Score(findings []Finding) int {
+func Score(findings []Finding, linesScanned int) int {
 	total := 0
 	for _, finding := range findings {
 		switch finding.Severity {
@@ -89,10 +108,37 @@ func Score(findings []Finding) int {
 			total += InfoWeight
 		}
 	}
-	if total > MaxScore {
+	effectiveLines := linesScanned
+	if effectiveLines < MinimumScoredLines {
+		effectiveLines = MinimumScoredLines
+	}
+	score := total * LinesPerKLOC / effectiveLines / ScoreDensityDivisor
+	if score > MaxScore {
 		return MaxScore
 	}
-	return total
+	return score
+}
+
+func MergeSummary(summaries []ScanSummary) ScanSummary {
+	merged := ScanSummary{
+		Languages: map[string]int{},
+		Parser:    "text",
+		Scoring:   "weighted finding density per KLOC, capped at 100",
+	}
+	for _, summary := range summaries {
+		merged.FilesScanned += summary.FilesScanned
+		merged.LinesScanned += summary.LinesScanned
+		for language, count := range summary.Languages {
+			merged.Languages[language] += count
+		}
+		if summary.Parser != "" && merged.Parser == "text" {
+			merged.Parser = summary.Parser
+		}
+		if summary.Scoring != "" {
+			merged.Scoring = summary.Scoring
+		}
+	}
+	return merged
 }
 
 func Status(score int) string {

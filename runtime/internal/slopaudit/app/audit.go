@@ -10,7 +10,7 @@ import (
 const DefaultWorkers = 4
 
 type Scanner interface {
-	Scan(ctx context.Context, target string) ([]domain.Finding, error)
+	Scan(ctx context.Context, target string) (domain.ScanResult, error)
 }
 
 type Adapter interface {
@@ -27,43 +27,46 @@ func NewAuditor(scanners []Scanner, adapters []Adapter) *Auditor {
 }
 
 func (a *Auditor) Audit(ctx context.Context, target string) domain.Report {
-	findings := a.scan(ctx, target)
+	scanResult := a.scan(ctx, target)
 	adapters := a.runAdapters(ctx, target)
-	domain.SortFindings(findings)
+	domain.SortFindings(scanResult.Findings)
 	domain.SortAdapters(adapters)
-	score := domain.Score(findings)
+	score := domain.Score(scanResult.Findings, scanResult.Summary.LinesScanned)
 	return domain.Report{
 		Target:   target,
 		Score:    score,
 		Status:   domain.Status(score),
-		Findings: findings,
+		Summary:  scanResult.Summary,
+		Findings: scanResult.Findings,
 		Adapters: adapters,
 	}
 }
 
-func (a *Auditor) scan(ctx context.Context, target string) []domain.Finding {
+func (a *Auditor) scan(ctx context.Context, target string) domain.ScanResult {
 	var wg sync.WaitGroup
-	out := make(chan []domain.Finding, len(a.scanners))
+	out := make(chan domain.ScanResult, len(a.scanners))
 	for _, scanner := range a.scanners {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			findings, err := scanner.Scan(ctx, target)
+			result, err := scanner.Scan(ctx, target)
 			if err != nil {
-				out <- []domain.Finding{scanErrorFinding(target, err)}
+				out <- domain.ScanResult{Findings: []domain.Finding{scanErrorFinding(target, err)}}
 				return
 			}
-			out <- findings
+			out <- result
 		}()
 	}
 	wg.Wait()
 	close(out)
 
 	var findings []domain.Finding
-	for batch := range out {
-		findings = append(findings, batch...)
+	var summaries []domain.ScanSummary
+	for result := range out {
+		findings = append(findings, result.Findings...)
+		summaries = append(summaries, result.Summary)
 	}
-	return findings
+	return domain.ScanResult{Findings: findings, Summary: domain.MergeSummary(summaries)}
 }
 
 func scanErrorFinding(target string, err error) domain.Finding {
