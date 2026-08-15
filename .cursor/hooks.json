@@ -15,10 +15,6 @@
         "command": "python3 .ai-agents/hooks/sdd-cache-pre.py"
       },
       {
-        "matcher": "Read",
-        "command": "python3 .ai-agents/hooks/simplify-ignore.py"
-      },
-      {
         "matcher": "Write|Delete",
         "command": "vibe-agent hook pre-tool-use --client cursor"
       }
@@ -32,10 +28,6 @@
       {
         "matcher": "WebFetch",
         "command": "python3 .ai-agents/hooks/sdd-cache-post.py"
-      },
-      {
-        "matcher": "Edit|Write",
-        "command": "python3 .ai-agents/hooks/simplify-ignore.py"
       },
       {
         "matcher": "Shell|Write|Delete",
@@ -71,9 +63,6 @@
       }
     ],
     "stop": [
-      {
-        "command": "python3 .ai-agents/hooks/simplify-ignore.py"
-      },
       {
         "command": "vibe-agent hook stop --client cursor"
       }

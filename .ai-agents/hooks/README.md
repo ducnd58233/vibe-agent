@@ -61,5 +61,4 @@ Some policy is enforced below every harness, at the git layer. [`strip-ai-attrib
 
 - `python3 .ai-agents/hooks/session-start.py`
 - `echo '{"tool_input":{"url":"https://example.com"}}' | python3 .ai-agents/hooks/sdd-cache-pre.py`
-- `echo '{}' | python3 .ai-agents/hooks/simplify-ignore.py`
 </procedure>

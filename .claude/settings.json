@@ -116,18 +116,6 @@
         ]
       },
       {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
-            "timeout": 5000,
-            "statusMessage": "simplify-ignore-pre",
-            "async": false
-          }
-        ]
-      },
-      {
         "matcher": "Bash|Edit|Write|NotebookEdit",
         "hooks": [
           {
@@ -184,18 +172,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
-            "timeout": 5000,
-            "statusMessage": "simplify-ignore-post",
-            "async": false
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
             "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/design-token-guard.py",
             "timeout": 5000,
             "statusMessage": "design-token-guard",
@@ -238,13 +214,6 @@
     "Stop": [
       {
         "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ${CLAUDE_PROJECT_DIR}/.ai-agents/hooks/simplify-ignore.py",
-            "timeout": 5000,
-            "statusMessage": "simplify-ignore-stop",
-            "async": false
-          },
           {
             "type": "command",
             "command": "vibe-agent hook stop --workspace ${CLAUDE_PROJECT_DIR}",
