@@ -59,10 +59,9 @@ spec:
     - name: e2e_ok
       description: >-
         E2E check passed, or was skipped because vibe-checks.yaml declares no e2e
-        check for this workspace. This is the only guard in the graph that accepts
-        a skip, and it does so because a workspace with no browser, container, or
-        device surface has nothing to run here. The skip therefore has to come
-        from a tracked file rather than from an argument.
+        check for this workspace. slop_ok is the other guard that accepts a skip,
+        for the same reason: a workspace with no matching check must not stall.
+        The skip has to come from a tracked file rather than from an argument.
       source: check
       reads: e2e
       acceptsSkipped: true
