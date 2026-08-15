@@ -47,6 +47,16 @@ const slopAdviceLimit = 5
 
 // slopAdvice reports what the audit found in the file that was just written.
 func slopAdvice(req Request, file subject) string {
+	// Code only. resolveSubject has already classified the file, and skipping
+	// that classification here was a defect this advisory found in itself: it
+	// ran on a markdown review document and reported ignored_result against a
+	// sentence containing `_ = call()`. Prose that mentions code is not code,
+	// and a guard channel that says otherwise on every note someone writes is
+	// one people learn to skip.
+	if file.Type != typeProgramming {
+		return ""
+	}
+
 	path := file.Path
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(req.WorkspaceRoot, filepath.FromSlash(file.Path))

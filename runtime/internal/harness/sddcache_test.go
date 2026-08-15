@@ -15,16 +15,12 @@ import (
 // interpreter on every Bash call would put a process launch in the hot path of
 // the most frequent tool there is.
 func TestSDDCacheIgnoresEveryOtherTool(t *testing.T) {
-	var out bytes.Buffer
 	blocked := sddCache(Request{
 		WorkspaceRoot: t.TempDir(), ToolkitRoot: toolkitRoot, Client: ClientClaude,
-	}, payload{ToolName: "Bash"}, "sdd-cache-pre.py", &out)
+	}, payload{ToolName: "Bash"}, "sdd-cache-pre.py")
 
 	if blocked != nil {
 		t.Errorf("a Bash call was sent through the WebFetch cache: %v", blocked)
-	}
-	if out.Len() != 0 {
-		t.Errorf("a Bash call produced cache output: %s", out.String())
 	}
 }
 
@@ -32,10 +28,9 @@ func TestSDDCacheIgnoresEveryOtherTool(t *testing.T) {
 // hook that fails because an optional accelerator is absent is worse than one
 // that quietly does not accelerate.
 func TestSDDCacheIsSilentWhenTheScriptIsAbsent(t *testing.T) {
-	var out bytes.Buffer
 	blocked := sddCache(Request{
 		WorkspaceRoot: t.TempDir(), ToolkitRoot: t.TempDir(), Client: ClientClaude,
-	}, payload{ToolName: "WebFetch"}, "sdd-cache-pre.py", &out)
+	}, payload{ToolName: "WebFetch"}, "sdd-cache-pre.py")
 
 	if blocked != nil {
 		t.Errorf("an absent script refused a tool call: %v", blocked)

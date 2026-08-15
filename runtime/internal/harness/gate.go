@@ -128,7 +128,7 @@ func gate(req Request, body payload, out io.Writer) error {
 	// The WebFetch cache refuses too, by serving a stored page instead of
 	// letting the fetch run. It is a refusal on the same event, so it leaves
 	// through the same door.
-	if blocked := sddCache(req, body, "sdd-cache-pre.py", out); blocked != nil {
+	if blocked := sddCache(req, body, "sdd-cache-pre.py"); blocked != nil {
 		return deliverBlock(req, blocked, out)
 	}
 	return nil

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -64,7 +63,7 @@ var pythonCandidates = []string{"python3", "python"}
 // nil. The cache is an optimisation, and a hook that fails a session because an
 // optional accelerator is not installed is worse than one that quietly does not
 // accelerate.
-func sddCache(req Request, body payload, script string, out io.Writer) *BlockError {
+func sddCache(req Request, body payload, script string) *BlockError {
 	if body.ToolName != sddCacheTool {
 		return nil
 	}
@@ -83,6 +82,12 @@ func sddCache(req Request, body payload, script string, out io.Writer) *BlockErr
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdin = bytes.NewReader(body.raw)
+	// Captured and discarded, deliberately. The script's contract is stderr
+	// plus an exit status, and both scripts hold to it. Forwarding stdout as
+	// well looked harmless and was a corruption path: this writer is the one
+	// deliverBlock writes the host's JSON to, so anything the script printed
+	// would arrive glued to the front of it and every host would fail to parse
+	// the reply. Discarding it keeps one writer with one format.
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	// The script resolves the cache directory from this, and falls back to its
@@ -91,9 +96,6 @@ func sddCache(req Request, body payload, script string, out io.Writer) *BlockErr
 	cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+req.WorkspaceRoot)
 
 	runErr := cmd.Run()
-	if stdout.Len() > 0 {
-		_, _ = io.Copy(out, &stdout)
-	}
 
 	var exit *safexec.ExitError
 	if errors.As(runErr, &exit) && exit.ExitCode() == sddCacheBlockExit {

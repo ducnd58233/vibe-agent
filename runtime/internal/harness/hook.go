@@ -344,7 +344,7 @@ func Run(req Request, out io.Writer) error {
 		}
 		// The write half cannot refuse: the fetch already happened. Its exit
 		// status is the script's own business.
-		_ = sddCache(req, body, "sdd-cache-post.py", out)
+		_ = sddCache(req, body, "sdd-cache-post.py")
 		return nil
 	case EventPostToolUseFailure:
 		return postToolUse(req, body, out, true)

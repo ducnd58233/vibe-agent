@@ -18,7 +18,7 @@ func writeSubject(t *testing.T, name, body string) (Request, subject) {
 		t.Fatalf("write %s: %v", name, err)
 	}
 	return Request{WorkspaceRoot: root, Client: ClientClaude},
-		subject{Path: name, Text: body, Language: "Go", Type: "programming"}
+		subject{Path: name, Text: body, Language: "Go", Type: typeProgramming}
 }
 
 // A call whose result is assigned to the blank identifier is a medium finding,
@@ -101,7 +101,7 @@ func TestSlopAdviceCostsLittlePerEdit(t *testing.T) {
 // but a file can be removed between the write and the hook.
 func TestSlopAdviceSurvivesAMissingFile(t *testing.T) {
 	req := Request{WorkspaceRoot: t.TempDir(), Client: ClientClaude}
-	file := subject{Path: "gone.go", Text: "package demo\n", Language: "Go", Type: "programming"}
+	file := subject{Path: "gone.go", Text: "package demo\n", Language: "Go", Type: typeProgramming}
 
 	// The auditor reports an unreadable file as a high-severity scan_error
 	// finding on line 1, measured rather than assumed. That is a fact about the
@@ -109,5 +109,33 @@ func TestSlopAdviceSurvivesAMissingFile(t *testing.T) {
 	// is not there as a slop problem.
 	if advice := slopAdvice(req, file); advice != "" {
 		t.Errorf("a missing file produced advice: %s", advice)
+	}
+}
+
+// Prose that mentions code is not code.
+//
+// Found by this advisory reporting itself: it ran on a markdown review document
+// and flagged `ignored_result` against a sentence containing an example of the
+// pattern. resolveSubject already classifies the file, and this had skipped
+// that classification.
+func TestSlopAdviceIgnoresFilesThatAreNotCode(t *testing.T) {
+	for name, kind := range map[string]string{
+		"notes.md":  "Markup",
+		"data.json": "Data",
+		"mystery":   "Unknown",
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			body := "A note about `_ = compute()` and why it is discarded.\n"
+			if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o600); err != nil {
+				t.Fatalf("write %s: %v", name, err)
+			}
+			req := Request{WorkspaceRoot: root, Client: ClientClaude}
+			file := subject{Path: name, Text: body, Type: kind}
+
+			if advice := slopAdvice(req, file); advice != "" {
+				t.Errorf("%s was audited as code: %s", name, advice)
+			}
+		})
 	}
 }
