@@ -2,7 +2,7 @@
 
 <context>
 
-This directory is the **single source of truth** for skills, subagents, commands, and hook scripts shared across AI coding tools. Link-based tool entrypoints (`.claude/`, `.cursor/`, `.opencode/`, `.agents/`) should **point here** - not copy - so changes stay in one place. Codex also reads skills via `.agents/skills`, prompts via `$CODEX_HOME/prompts/vibe-*.md`, and project subagents via generated `.codex/agents/*.toml` after you run the link script.
+This directory is the **single source of truth** for skills, subagents, commands, and hook scripts shared across AI coding tools. Link-based tool entrypoints (`.claude/`, `.cursor/`, `.opencode/`, `.agents/`) should **point here** - not copy - so changes stay in one place. Codex also reads skills via `.agents/skills` and project subagents via generated `.codex/agents/*.toml` after you run the link script. Prompt files under `$CODEX_HOME/prompts/vibe-*.md` are kept as best-effort custom prompts for ChatGPT desktop surfaces, but not every Codex environment loads them as slash commands.
 It is intentionally **domain-agnostic** and should not contain product-domain logic.
 </context>
 
@@ -64,7 +64,7 @@ Root [`AGENTS.md`](../AGENTS.md) and [`.cursor/rules/000-project-standards.mdc`]
 |-------------|----------------|----------------------------------|
 | **Claude Code** | `.claude/skills/`, `.claude/agents/`, `.claude/commands/`, hooks in `settings.json` | Run `scripts/link-ai-agents.ps1` or `scripts/link-ai-agents.sh` to create directory links (see below). |
 | **Cursor**      | `.cursor/skills/`, `.cursor/commands/`, `.cursor/hooks.json` + hook scripts | Same link script for `skills` and `commands`; hook **commands** in `hooks.json` can point **directly** to `.ai-agents/hooks/...` when preferred. |
-| **Codex**       | `.agents/skills`, `.agents/commands`, `$CODEX_HOME/prompts/vibe-*.md`, `.codex/prompts/*.md`, `.codex/agents/*.toml`, `.codex/config.toml`, `AGENTS.md` | Run the link script: `.agents/skills` and `.agents/commands` junctions; command prompts copied into user-level Codex prompts as `/prompts:vibe-<name>` and mirrored into `.codex/prompts/`; custom subagents generated into `.codex/agents/`. |
+| **Codex**       | `.agents/skills`, `.agents/commands`, `$CODEX_HOME/prompts/vibe-*.md`, `.codex/prompts/*.md`, `.codex/agents/*.toml`, `.codex/config.toml`, `AGENTS.md` | Run the link script: `.agents/skills` and `.agents/commands` junctions; command prompts mirrored into `.codex/prompts/` and copied to user-level prompt files for surfaces that support them; custom subagents generated into `.codex/agents/`. |
 | **opencode**    | Project `opencode.json`, root `AGENTS.md` (native rules file), `.opencode/agents/`, `.opencode/commands/` | Same link script creates `.opencode/agents` and `.opencode/commands` junctions. Skills are surfaced via the `instructions` glob in `opencode.json`, which points at the routers. |
 
 ### Always-on baseline semantics
@@ -91,7 +91,7 @@ Claude Code and Cursor can discover **skills** and **commands** through `.claude
 - `.agents/skills` → `.ai-agents/skills` (Codex skill discovery)
 - `.agents/commands` → `.ai-agents/commands` (forward-compatible Codex command discovery; no effect until Codex supports `.agents/commands/`)
 - `.codex/agents/*.toml` - generated from `.ai-agents/agents/*.md` (Codex custom subagents; re-run link after agent edits)
-- `$CODEX_HOME/prompts/vibe-*.md` - copied from `.ai-agents/commands/*.md` (Codex custom prompts; invoke as `/prompts:vibe-<name>`)
+- `$CODEX_HOME/prompts/vibe-*.md` - copied from `.ai-agents/commands/*.md` for ChatGPT desktop custom-prompt surfaces. Current Codex CLI/session surfaces may reject `/prompts:vibe-<name>`.
 - `.codex/prompts/*.md` - workspace mirror of `.ai-agents/commands/*.md` (kept for inspection and future project-level discovery)
 
 Validate the generated Codex-facing paths with:
@@ -101,7 +101,7 @@ powershell -File scripts/check-codex-assets.ps1
 powershell -File scripts/check-codex-assets.ps1 -Global
 ```
 
-This check confirms `.agents/skills`, `.agents/commands`, `.codex/prompts/*.md`, and `.codex/agents/*.toml` are present and in sync with `.ai-agents`, and that generated TOML avoids stale relative links or UTF-8 mojibake. Add `-Global` to check the `/prompts:vibe-<name>` files under `$CODEX_HOME/prompts`.
+This check confirms `.agents/skills`, `.agents/commands`, `.codex/prompts/*.md`, and `.codex/agents/*.toml` are present and in sync with `.ai-agents`, and that generated TOML avoids stale relative links or UTF-8 mojibake. Add `-Global` to check the best-effort prompt files under `$CODEX_HOME/prompts`.
 
 ### Parameters (toolkit dev vs consumer repo)
 

@@ -13,9 +13,8 @@
     .claude/skills, .claude/agents, .claude/commands
     .cursor/skills, .cursor/commands
     .opencode/agents, .opencode/commands
-    .agents/skills, .agents/commands (Codex discovery when supported; mirrors .ai-agents)
+    .agents/skills (Codex skills plus command adapters), .agents/commands (mirror of .ai-agents)
     .codex/agents/*.toml (Codex custom subagents, generated from .ai-agents/agents/*.md)
-    .codex/prompts/*.md (Codex custom prompts, generated from .ai-agents/commands/*.md)
 
   Examples:
     powershell -File scripts/link-ai-agents.ps1
@@ -23,11 +22,11 @@
     powershell -File .vibe-agent/scripts/link-ai-agents.ps1 -WorkspaceRoot $PWD -AssetsRoot (Join-Path $PWD '.vibe-agent\.ai-agents')
 
   Optional environment variables (when the matching parameter is omitted):
-    LINK_WORKSPACE, LINK_ASSETS — same paths as -WorkspaceRoot / -AssetsRoot (useful from CI or wrappers).
+    LINK_WORKSPACE, LINK_ASSETS - same paths as -WorkspaceRoot / -AssetsRoot (useful from CI or wrappers).
   The script also adds generated discovery paths to <WorkspaceRoot>/.git/info/exclude when WorkspaceRoot is a
   Git repository. This keeps local links and generated Codex agent and prompt files out of Git without requiring root
-  .gitignore rules in consumer repositories. Codex custom prompts are also copied to $CODEX_HOME\prompts with the
-  vibe- prefix, because that is the path the Codex composer reads.
+  .gitignore rules in consumer repositories. Codex command prompts are generated as skills because Codex CLI
+  removed custom /prompts support in 0.117.0. Use $<name> in a linked workspace, or $vibe-<name> after global install.
 #>
 [CmdletBinding()]
 param(
@@ -196,31 +195,108 @@ $($sandboxLine)developer_instructions = """
     }
 }
 
-function Sync-CodexPrompts {
+function Remove-PathSafely {
+    param([Parameter(Mandatory = $true)][string] $Path)
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+    $attrs = [System.IO.File]::GetAttributes($Path)
+    if (($attrs -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        cmd.exe /c "rmdir `"$Path`"" | Out-Null
+    }
+    else {
+        Remove-Item -LiteralPath $Path -Force -Recurse
+    }
+}
+
+function Convert-CommandBodyForCodexSkill {
+    param(
+        [Parameter(Mandatory = $true)][string] $Body,
+        [Parameter(Mandatory = $true)][string] $AssetsReference
+    )
+    $converted = $Body
+    $converted = $converted.Replace('../skills/', "$AssetsReference/skills/")
+    $converted = $converted.Replace('../references/', "$AssetsReference/references/")
+    $converted = $converted.Replace('../stack-profiles/', "$AssetsReference/stack-profiles/")
+    $converted = $converted.Replace('../commands/', "$AssetsReference/commands/")
+    $converted = $converted.Replace('../agents/', "$AssetsReference/agents/")
+    return $converted
+}
+
+function Write-CodexCommandSkill {
+    param(
+        [Parameter(Mandatory = $true)][string] $CommandFile,
+        [Parameter(Mandatory = $true)][string] $SkillRoot,
+        [Parameter(Mandatory = $true)][string] $SkillName,
+        [Parameter(Mandatory = $true)][string] $AssetsReference
+    )
+    $content = Get-Content -LiteralPath $CommandFile -Raw -Encoding UTF8
+    if ($content -notmatch '(?s)\A---\r?\n(.*?)\r?\n---\r?\n(.*)\z') {
+        Write-Warning "Skipping $([System.IO.Path]::GetFileName($CommandFile)): missing YAML frontmatter."
+        return
+    }
+    $yamlBlock = $matches[1]
+    $description = Get-FrontmatterField -YamlBlock $yamlBlock -FieldName 'description'
+    if ([string]::IsNullOrWhiteSpace($description)) {
+        $description = "Run the vibe-agent $SkillName command"
+    }
+    $body = Convert-CommandBodyForCodexSkill -Body $matches[2].Trim() -AssetsReference $AssetsReference
+    $skillDir = Join-Path $SkillRoot $SkillName
+    if (-not (Test-Path -LiteralPath $skillDir)) {
+        New-Item -ItemType Directory -Path $skillDir -Force | Out-Null
+    }
+    $skillPath = Join-Path $skillDir 'SKILL.md'
+    $skillMention = '$' + $SkillName
+    $text = @"
+---
+name: $SkillName
+description: >-
+  Codex-compatible command adapter. Use only when the user explicitly mentions
+  $skillMention or asks to run this vibe-agent command: $description
+disable-model-invocation: true
+---
+
+# $SkillName
+
+This is the Codex-compatible form of $AssetsReference/commands/$([System.IO.Path]::GetFileName($CommandFile)).
+Codex CLI removed custom `/prompts` support in 0.117.0, so command prompts are exposed as explicit skills.
+
+Treat any text after $skillMention as the command arguments, then follow the command prompt below.
+
+<command_prompt>
+$body
+</command_prompt>
+"@
+    [System.IO.File]::WriteAllText($skillPath, $text, (New-Object System.Text.UTF8Encoding $false))
+}
+
+function Sync-CodexCommandSkills {
     param(
         [Parameter(Mandatory = $true)][string] $AssetsFull,
-        [Parameter(Mandatory = $true)][string] $WorkspaceFull
+        [Parameter(Mandatory = $true)][string] $SkillRoot,
+        [string] $NamePrefix = '',
+        [Parameter(Mandatory = $true)][string] $AssetsReference,
+        [switch] $IncludeCanonicalSkills
     )
-    $commandsSrc = Join-Path $AssetsFull 'commands'
-    $promptsDest = Join-Path $WorkspaceFull '.codex\prompts'
-    $excludeNames = @('TEMPLATE.md', 'README.md', 'ROUTER.md')
-    if (-not (Test-Path -LiteralPath $promptsDest)) {
-        New-Item -ItemType Directory -Path $promptsDest -Force | Out-Null
+    Remove-PathSafely -Path $SkillRoot
+    New-Item -ItemType Directory -Path $SkillRoot -Force | Out-Null
+
+    if ($IncludeCanonicalSkills) {
+        Get-ChildItem -LiteralPath (Join-Path $AssetsFull 'skills') -Directory | ForEach-Object {
+            Ensure-Junction (Join-Path $SkillRoot $_.Name) $_.FullName
+        }
     }
-    $generatedNames = New-Object 'System.Collections.Generic.List[string]'
-    Get-ChildItem -LiteralPath $commandsSrc -Filter '*.md' -File | ForEach-Object {
+
+    $excludeNames = @('TEMPLATE.md', 'README.md', 'ROUTER.md')
+    Get-ChildItem -LiteralPath (Join-Path $AssetsFull 'commands') -Filter '*.md' -File | ForEach-Object {
         if ($excludeNames -contains $_.Name) {
             return
         }
-        Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $promptsDest $_.Name) -Force
-        [void]$generatedNames.Add($_.Name)
-    }
-    Get-ChildItem -LiteralPath $promptsDest -Filter '*.md' -File | ForEach-Object {
-        if ($generatedNames -notcontains $_.Name) {
-            Remove-Item -LiteralPath $_.FullName -Force
-        }
+        $commandName = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
+        Write-CodexCommandSkill -CommandFile $_.FullName -SkillRoot $SkillRoot -SkillName ($NamePrefix + $commandName) -AssetsReference $AssetsReference
     }
 }
+
 
 function Get-CodexHome {
     if (-not [string]::IsNullOrWhiteSpace($env:CODEX_HOME)) {
@@ -233,44 +309,24 @@ function Get-CodexHome {
     return (Join-Path $homeDir '.codex')
 }
 
-function Sync-CodexGlobalPrompts {
+function Remove-CodexPromptCopies {
     param(
-        [Parameter(Mandatory = $true)][string] $AssetsFull
+        [Parameter(Mandatory = $true)][string] $WorkspaceFull
     )
-    $commandsSrc = Join-Path $AssetsFull 'commands'
+    $workspacePrompts = Join-Path $WorkspaceFull '.codex\prompts'
+    if (Test-Path -LiteralPath $workspacePrompts) {
+        Remove-PathSafely -Path $workspacePrompts
+    }
     $codexHome = Get-CodexHome
-    $promptsDest = Join-Path $codexHome 'prompts'
     $manifest = Join-Path $codexHome '.vibe-agent-prompts.manifest'
-    $prefix = if ($env:LINK_CODEX_PROMPT_PREFIX) { $env:LINK_CODEX_PROMPT_PREFIX } else { 'vibe-' }
-    $excludeNames = @('TEMPLATE.md', 'README.md', 'ROUTER.md')
-    if (-not (Test-Path -LiteralPath $promptsDest)) {
-        New-Item -ItemType Directory -Path $promptsDest -Force | Out-Null
-    }
-    $generatedPaths = New-Object 'System.Collections.Generic.List[string]'
-    Get-ChildItem -LiteralPath $commandsSrc -Filter '*.md' -File | ForEach-Object {
-        if ($excludeNames -contains $_.Name) {
-            return
-        }
-        $dest = Join-Path $promptsDest ($prefix + $_.Name)
-        Copy-Item -LiteralPath $_.FullName -Destination $dest -Force
-        [void]$generatedPaths.Add((Get-Item -LiteralPath $dest).FullName)
-    }
     if (Test-Path -LiteralPath $manifest) {
-        $promptsRoot = (Get-Item -LiteralPath $promptsDest).FullName.TrimEnd('\') + '\'
         Get-Content -LiteralPath $manifest -ErrorAction SilentlyContinue | ForEach-Object {
-            if ([string]::IsNullOrWhiteSpace($_)) {
-                return
-            }
-            $old = $_
-            if ((Test-Path -LiteralPath $old) -and
-                ($generatedPaths -notcontains (Get-Item -LiteralPath $old).FullName) -and
-                ((Get-Item -LiteralPath $old).FullName.StartsWith($promptsRoot, [System.StringComparison]::OrdinalIgnoreCase)) -and
-                ((Split-Path -Leaf $old).StartsWith($prefix))) {
-                Remove-Item -LiteralPath $old -Force
+            if (-not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_)) {
+                Remove-Item -LiteralPath $_ -Force
             }
         }
+        Remove-Item -LiteralPath $manifest -Force
     }
-    [System.IO.File]::WriteAllText($manifest, ($generatedPaths -join "`n") + "`n", (New-Object System.Text.UTF8Encoding $false))
 }
 
 function Ensure-Junction {
@@ -305,10 +361,9 @@ Ensure-Junction (Join-Path $workspaceFull ".cursor\skills") (Join-Path $assetsFu
 Ensure-Junction (Join-Path $workspaceFull ".cursor\commands") (Join-Path $assetsFull "commands")
 Ensure-Junction (Join-Path $workspaceFull ".opencode\agents") (Join-Path $assetsFull "agents")
 Ensure-Junction (Join-Path $workspaceFull ".opencode\commands") (Join-Path $assetsFull "commands")
-Ensure-Junction (Join-Path $workspaceFull ".agents\skills") (Join-Path $assetsFull "skills")
 Ensure-Junction (Join-Path $workspaceFull ".agents\commands") (Join-Path $assetsFull "commands")
-Sync-CodexPrompts -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
-Sync-CodexGlobalPrompts -AssetsFull $assetsFull
+Sync-CodexCommandSkills -AssetsFull $assetsFull -SkillRoot (Join-Path $workspaceFull ".agents\skills") -NamePrefix '' -AssetsReference '.ai-agents' -IncludeCanonicalSkills
+Remove-CodexPromptCopies -WorkspaceFull $workspaceFull
 Sync-CodexAgents -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
 
 function Install-LocalGitExclude {
@@ -336,8 +391,7 @@ function Install-LocalGitExclude {
         "/.opencode/commands/",
         "/.agents/skills/",
         "/.agents/commands/",
-        "/.codex/agents/",
-        "/.codex/prompts/"
+        "/.codex/agents/"
     )
     $existing = Get-Content -LiteralPath $excludePath -ErrorAction SilentlyContinue
     $toAdd = $rules | Where-Object { $existing -notcontains $_ }
@@ -455,6 +509,5 @@ Install-Runtime
 
 Write-Host "Links created under $workspaceFull (.claude, .cursor, .opencode, .agents) -> $assetsFull"
 Write-Host "Codex custom agents synced to $workspaceFull\.codex\agents"
-Write-Host "Codex custom prompts synced to $workspaceFull\.codex\prompts"
-$codexPromptPrefix = if ($env:LINK_CODEX_PROMPT_PREFIX) { $env:LINK_CODEX_PROMPT_PREFIX } else { 'vibe-' }
-Write-Host "Codex global prompts synced to $(Join-Path (Get-CodexHome) 'prompts') as /prompts:$codexPromptPrefix<name>"
+Write-Host "Codex command skills synced to $workspaceFull\.agents\skills as <name>"
+Write-Host "Codex command form in a linked workspace: `$<name> (custom /prompts and top-level /vibe-* are not available in Codex CLI 0.147.0)"

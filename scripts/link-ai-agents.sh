@@ -15,9 +15,10 @@
 #
 # The script also adds generated discovery paths to <workspace>/.git/info/exclude
 # when the workspace is a Git repository. This keeps local links and generated
-# Codex agent and prompt files out of Git without root .gitignore rules in
-# consumer repos. Codex custom prompts are also copied to $CODEX_HOME/prompts
-# with the vibe- prefix, because that is the path the Codex composer reads.
+# Codex agent files and generated command skills out of Git without root
+# .gitignore rules in consumer repos. Codex CLI removed custom /prompts
+# support in 0.117.0, so command prompts are generated as explicit skills:
+# $<name> in a linked workspace, or $vibe-<name> after global install.
 
 set -euo pipefail
 
@@ -144,39 +145,97 @@ link_skill_tree "$WORKSPACE/.cursor/skills" "$ASSETS/skills"
 link_skill_tree "$WORKSPACE/.cursor/commands" "$ASSETS/commands"
 link_skill_tree "$WORKSPACE/.opencode/agents" "$ASSETS/agents"
 link_skill_tree "$WORKSPACE/.opencode/commands" "$ASSETS/commands"
-link_skill_tree "$WORKSPACE/.agents/skills" "$ASSETS/skills"
 link_skill_tree "$WORKSPACE/.agents/commands" "$ASSETS/commands"
 
-sync_codex_prompts_from_md() {
+convert_command_body_for_codex_skill() {
+  local assets_ref="$1"
+  sed "s#../skills/#$assets_ref/skills/#g" \
+    | sed "s#../references/#$assets_ref/references/#g" \
+    | sed "s#../stack-profiles/#$assets_ref/stack-profiles/#g" \
+    | sed "s#../commands/#$assets_ref/commands/#g" \
+    | sed "s#../agents/#$assets_ref/agents/#g"
+}
+
+frontmatter_description() {
+  awk '
+    /^description:/ {
+      line=$0
+      sub(/^description:[[:space:]]*/, "", line)
+      if (line ~ /^>/) { fold=1; next }
+      gsub(/^["'\'']|["'\'']$/, "", line)
+      print line
+      exit
+    }
+    fold && /^[[:space:]]/ {
+      gsub(/^[[:space:]]+/, "")
+      print
+      next
+    }
+    fold && /^[^[:space:]]/ { exit }
+  ' "$1" | tr '\n' ' ' | sed 's/[[:space:]]*$//'
+}
+
+write_codex_command_skill() {
+  local command_file="$1"
+  local skill_root="$2"
+  local skill_name="$3"
+  local assets_ref="$4"
+  local command_base description body skill_dir
+  command_base="$(basename "$command_file")"
+  description="$(frontmatter_description "$command_file")"
+  if [[ -z "$description" ]]; then
+    description="Run the vibe-agent $skill_name command"
+  fi
+  body="$(awk 'BEGIN{n=0} /^---$/ { n++; next } n>=2 { print }' "$command_file" | convert_command_body_for_codex_skill "$assets_ref")"
+  skill_dir="$skill_root/$skill_name"
+  mkdir -p "$skill_dir"
+  cat > "$skill_dir/SKILL.md" <<EOF
+---
+name: $skill_name
+description: >-
+  Codex-compatible command adapter. Use only when the user explicitly mentions
+  \$$skill_name or asks to run this vibe-agent command: $description
+disable-model-invocation: true
+---
+
+# $skill_name
+
+This is the Codex-compatible form of \`$assets_ref/commands/$command_base\`.
+Codex CLI removed custom \`/prompts\` support in 0.117.0, so command prompts are exposed as explicit skills.
+
+Treat any text after \`\$$skill_name\` as the command arguments, then follow the command prompt below.
+
+<command_prompt>
+$body
+</command_prompt>
+EOF
+}
+
+sync_codex_command_skills() {
   local assets="$1"
-  local workspace="$2"
-  local commands_src="$assets/commands"
-  local prompts_dest="$workspace/.codex/prompts"
-  mkdir -p "$prompts_dest"
-  local -a generated=()
-  local md base
-  for md in "$commands_src"/*.md; do
+  local skill_root="$2"
+  local name_prefix="$3"
+  local assets_ref="$4"
+  local include_canonical="$5"
+  rm -rf "$skill_root"
+  mkdir -p "$skill_root"
+  if [[ "$include_canonical" == "1" ]]; then
+    local dir name
+    for dir in "$assets"/skills/*/; do
+      [[ -d "$dir" ]] || continue
+      name="$(basename "$dir")"
+      link_skill_tree "$skill_root/$name" "$dir"
+    done
+  fi
+  local md base command_name
+  for md in "$assets"/commands/*.md; do
     [[ -f "$md" ]] || continue
     base="$(basename "$md")"
     case "$base" in
       TEMPLATE.md|README.md|ROUTER.md) continue ;;
     esac
-    cp "$md" "$prompts_dest/$base"
-    generated+=("$base")
-  done
-  for existing in "$prompts_dest"/*.md; do
-    [[ -f "$existing" ]] || continue
-    base="$(basename "$existing")"
-    keep=0
-    for g in "${generated[@]}"; do
-      if [[ "$g" == "$base" ]]; then
-        keep=1
-        break
-      fi
-    done
-    if [[ $keep -eq 0 ]]; then
-      rm -f "$existing"
-    fi
+    command_name="$(basename "$md" .md)"
+    write_codex_command_skill "$md" "$skill_root" "$name_prefix$command_name" "$assets_ref"
   done
 }
 
@@ -190,48 +249,22 @@ codex_home_dir() {
   to_unix_path_if_needed "$home"
 }
 
-sync_codex_global_prompts_from_md() {
-  local assets="$1"
-  local commands_src="$assets/commands"
-  local codex_home
+remove_codex_prompt_copies() {
+  local workspace="$1"
+  rm -rf "$workspace/.codex/prompts"
+  local codex_home manifest old
   if ! codex_home="$(codex_home_dir)"; then
-    echo "Warning: cannot resolve CODEX_HOME; skipped global Codex prompts." >&2
     return 0
   fi
-  local prompts_dest="$codex_home/prompts"
-  local manifest="$codex_home/.vibe-agent-prompts.manifest"
-  local prefix="${LINK_CODEX_PROMPT_PREFIX:-vibe-}"
-  mkdir -p "$prompts_dest"
-  local -a generated=()
-  local md base dest
-  for md in "$commands_src"/*.md; do
-    [[ -f "$md" ]] || continue
-    base="$(basename "$md")"
-    case "$base" in
-      TEMPLATE.md|README.md|ROUTER.md) continue ;;
-    esac
-    dest="$prompts_dest/$prefix$base"
-    cp "$md" "$dest"
-    generated+=("$dest")
-  done
-
+  manifest="$codex_home/.vibe-agent-prompts.manifest"
   if [[ -f "$manifest" ]]; then
     while IFS= read -r old; do
       [[ -n "$old" ]] || continue
       old="$(to_unix_path_if_needed "$old")"
-      keep=0
-      for dest in "${generated[@]}"; do
-        if [[ "$old" == "$dest" ]]; then
-          keep=1
-          break
-        fi
-      done
-      if [[ $keep -eq 0 && "$old" == "$prompts_dest/$prefix"* ]]; then
-        rm -f "$old"
-      fi
+      rm -f "$old"
     done < "$manifest"
+    rm -f "$manifest"
   fi
-  printf '%s\n' "${generated[@]}" > "$manifest"
 }
 
 sync_codex_agents_from_md() {
@@ -315,8 +348,8 @@ sync_codex_agents_from_md() {
   done
 }
 
-sync_codex_prompts_from_md "$ASSETS" "$WORKSPACE"
-sync_codex_global_prompts_from_md "$ASSETS"
+sync_codex_command_skills "$ASSETS" "$WORKSPACE/.agents/skills" "" ".ai-agents" "1"
+remove_codex_prompt_copies "$WORKSPACE"
 sync_codex_agents_from_md "$ASSETS" "$WORKSPACE"
 
 install_local_git_exclude() {
@@ -341,7 +374,6 @@ install_local_git_exclude() {
     "/.agents/skills/"
     "/.agents/commands/"
     "/.codex/agents/"
-    "/.codex/prompts/"
   )
   local -a missing=()
   local rule
@@ -447,5 +479,5 @@ install_runtime
 
 echo "Symlinks created under $WORKSPACE (.claude, .cursor, .opencode, .agents) -> $ASSETS"
 echo "Codex custom agents synced to $WORKSPACE/.codex/agents"
-echo "Codex custom prompts synced to $WORKSPACE/.codex/prompts"
-echo "Codex global prompts synced to $(codex_home_dir 2>/dev/null || echo '<unknown>')/prompts as /prompts:${LINK_CODEX_PROMPT_PREFIX:-vibe-}<name>"
+echo "Codex command skills synced to $WORKSPACE/.agents/skills as <name>"
+echo "Codex command form in a linked workspace: \$<name> (custom /prompts and top-level /vibe-* are not available in Codex CLI 0.147.0)"
