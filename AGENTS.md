@@ -122,9 +122,9 @@ path. When a rule already has a home, link to it instead of restating it.
   See [`goal-verification-records`](.ai-agents/references/goal-verification-records.md).
 - **Commit attribution.** Never add AI or agent co-author trailers, "Generated with ..." lines, or
   robot-emoji attribution to commits or PR bodies. Commits belong to the human contributor's git
-  identity. This holds for every harness and for manual commits. Enforcement is layered: the empty
-  `attribution` block in [`.claude/settings.json`](.claude/settings.json), plus a git
-  `prepare-commit-msg` hook the link script installs. Do not re-add it by hand.
+  identity, on every harness and for manual commits. How that is enforced, and what not to remove:
+  [`git-workflow-and-versioning`](.ai-agents/skills/git-workflow-and-versioning/SKILL.md) section
+  "No Agent Attribution".
 - **Secrets.** Never commit credentials. Read secrets only through configured secure paths or
   environment variables.
 </delivery_gates>
