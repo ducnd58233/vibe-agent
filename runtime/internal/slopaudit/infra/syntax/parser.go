@@ -2,6 +2,8 @@ package syntax
 
 import (
 	"fmt"
+	"path/filepath"
+	"unicode"
 
 	gotreesitter "github.com/odvcencio/gotreesitter"
 	"github.com/odvcencio/gotreesitter/grammars"
@@ -17,12 +19,17 @@ type Parser struct{}
 
 func NewParser() *Parser { return &Parser{} }
 
-func (Parser) Parse(path string, source []byte) Result {
-	entry := grammars.DetectLanguage(path)
+func (Parser) Parse(path string, source []byte, language string) Result {
+	slashPath := filepath.ToSlash(path)
+	entry := grammars.DetectLanguage(slashPath)
 	if entry == nil {
 		return Result{}
 	}
-	tree, err := grammars.ParseFilePooled(path, source)
+	displayName := grammars.DisplayName(entry)
+	if !matchesLanguage(displayName, language) {
+		return Result{}
+	}
+	tree, err := grammars.ParseFilePooled(slashPath, source)
 	if err != nil {
 		return Result{Parsed: true, Line: 1, Error: err.Error()}
 	}
@@ -36,7 +43,31 @@ func (Parser) Parse(path string, source []byte) Result {
 		return Result{Parsed: true}
 	}
 	line := firstErrorLine(root)
-	return Result{Parsed: true, Line: line, Error: fmt.Sprintf("tree-sitter parse error in %s", grammars.DisplayName(entry))}
+	return Result{Parsed: true, Line: line, Error: fmt.Sprintf("tree-sitter parse error in %s", displayName)}
+}
+
+func matchesLanguage(grammarName, detectedLanguage string) bool {
+	if detectedLanguage == "" {
+		return true
+	}
+	grammar := normalizeLanguageName(grammarName)
+	detected := normalizeLanguageName(detectedLanguage)
+	return grammar == detected || languageHasPrefixOrSuffix(grammar, detected) || languageHasPrefixOrSuffix(detected, grammar)
+}
+
+func normalizeLanguageName(value string) string {
+	out := make([]rune, 0, len(value))
+	for _, char := range value {
+		if unicode.IsLetter(char) || unicode.IsDigit(char) {
+			out = append(out, unicode.ToLower(char))
+		}
+	}
+	return string(out)
+}
+
+func languageHasPrefixOrSuffix(value, token string) bool {
+	return len(token) > 2 && len(value) > len(token) &&
+		(value[:len(token)] == token || value[len(value)-len(token):] == token)
 }
 
 func firstErrorLine(node *gotreesitter.Node) int {

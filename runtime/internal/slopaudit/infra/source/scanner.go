@@ -42,7 +42,7 @@ var (
 )
 
 type SyntaxParser interface {
-	Parse(path string, source []byte) syntax.Result
+	Parse(path string, source []byte, language string) syntax.Result
 }
 
 type Scanner struct {
@@ -176,7 +176,7 @@ func (s *Scanner) scanFile(path string) fileResult {
 	findings = append(findings, fileFindings(path, text, lines)...)
 	treeParsed, treeFailures := 0, 0
 	if s.syntaxParser != nil {
-		parsed := s.syntaxParser.Parse(path, data)
+		parsed := s.syntaxParser.Parse(path, data, language)
 		if parsed.Parsed {
 			treeParsed = 1
 		}
