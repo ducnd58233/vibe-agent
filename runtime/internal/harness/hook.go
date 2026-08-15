@@ -382,6 +382,10 @@ func sessionContext(req Request) string {
 	lines = append(lines,
 		"Source of truth, most authoritative first: repository code and config, git-backed project rules, current run state, retrieved memory, model assumptions.")
 
+	if line := metaSkillLine(req.ToolkitRoot); line != "" {
+		lines = append(lines, line)
+	}
+
 	if active := activeRuns(req.WorkspaceRoot); len(active) > 0 {
 		lines = append(lines, "Active runs:")
 		for _, run := range active {
@@ -433,6 +437,10 @@ func promptContext(req Request, prompt string) string {
 			lines = append(lines, line)
 		}
 		lines = append(lines, "Follow the current node the runtime reports. Do not advance workflow state by inference.")
+	}
+
+	if reminder := authoringContext(prompt); reminder != "" {
+		lines = append(lines, reminder)
 	}
 
 	if recalled := recall(req.WorkspaceRoot, prompt); recalled != "" {
