@@ -109,6 +109,18 @@ vibe-agent run status --slug my-feature
 
 State lands in `tmp/my-feature/manifest.json` with the log at `tmp/my-feature/events.ndjson`, beside the human-readable `RECORD.md` described in [`goal-verification-records.md`](../.ai-agents/references/goal-verification-records.md). Both are gitignored.
 
+## Audit code slop
+
+`vibe-agent slop audit [path]` scans local code for signals that often show up in low-quality AI-generated patches: unfinished markers, empty functions, ignored call results, debug prints, placeholder panics, long functions, and parse errors.
+
+```sh
+vibe-agent slop audit .
+vibe-agent slop audit . --json
+vibe-agent slop audit . --fail-on 49
+```
+
+The built-in Go scanner runs without external tools. If `ast-grep`, `semgrep`, or `slop-detector` are on `PATH`, their adapters run too. The `ast-grep` and `semgrep` adapters only run when the target or one of its parent directories has the matching config file, so a consumer repo keeps ownership of its own rules.
+
 ## The rule this module enforces
 
 A check is `passed` only when real evidence produced it. `CheckSource` has four values: `exit_code`, `file_assert`, `ci_api`, `human_event`. There is deliberately no value for model assertion, so no code path lets model output mark its own work complete.
