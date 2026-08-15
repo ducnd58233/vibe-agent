@@ -92,10 +92,12 @@ Two rules govern this table:
 **Why the unverified rows are unverified**
 
 - `sessionStart`, `beforeSubmitPrompt`, `beforeShellExecution`, `preToolUse`, `postToolUse`, `postToolUseFailure`, `subagentStop`, `stop`
-  No Cursor hook has been observed firing in this workspace. cursor-agent 2026.08.11 failed a hook command of `true` before the hook process started, so this row is read from the vendor page, not measured.
+  No Cursor hook has been observed firing from this config. cursor-agent 2026.08.11 was measured running .claude/settings.json instead of .cursor/hooks.json, and failing before the hook process started because it wraps the command in PowerShell and executes it with bash. The Cursor editor was not tested and may differ. See tmp/control-plane-activation/runtime/host-measurements.md.
 
 **What this host does not provide**
 
+- cursor-agent 2026.08.11 does not read this file. Measured: it ran a hook out of .claude/settings.json, so --client cursor never reached the runtime and the reply would have been built in Claude's shape. Whether the Cursor editor reads it is untested.
+- cursor-agent wraps a hook command in PowerShell and executes it with a POSIX shell on Windows, so the hook process never starts. A defect in the host; nothing in this repository can wire around it.
 - No per-prompt context injection. beforeSubmitPrompt can only validate or block. The run's current node is delivered on postToolUse instead, which is a partial substitute: it arrives after a tool call rather than before a prompt, and a session that runs no tools never sees it.
 - No per-prompt memory retrieval. Memories reach a Cursor session at session start and not again, so one that runs for hours works from what was true when it opened.
 - No documented project-directory variable and no documented cwd for hook commands.
@@ -165,7 +167,7 @@ Two rules govern this table:
 **Why the unverified rows are unverified**
 
 - `experimental.chat.system.transform`, `chat.message`, `tool.execute.before`, `tool.execute.after`, `permission.ask`
-  The plugin is committed but no opencode hook has been observed firing. Written against the @opencode-ai/plugin type definitions, not measured against a running session.
+  The plugin is loaded and no hook in it has been observed firing. opencode 1.14.39 resolves it: `opencode debug config` reports plugin_origins with scope local from .opencode, which confirms both the directory and that no opencode.json entry is needed. Loading and firing are different claims, and only the first was watched.
 
 **What this host does not provide**
 

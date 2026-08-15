@@ -32,9 +32,16 @@ The runtime hook adapter accepts each host's payload shape. Keep host-specific e
 
 ### Known divergence
 
-Cursor's prompt hook cannot inject extra model context. Its documented output validates or blocks the submitted prompt instead. The runtime therefore returns no prompt-time context for Cursor rather than interrupting the user.
+Per-host event names, output field casing, workspace-root mechanisms, and what each host does **not** provide are recorded in [`host-hook-contracts.md`](../references/host-hook-contracts.md), generated from `runtime/internal/harness/contracts.go`. That table is the source; this section only carries what does not fit a row.
 
-The Cursor CLI was tried and could not confirm live editor behavior: `cursor-agent` 2026.08.11 failed even a hook command of `true` before the hook process started. Treat live Cursor editor validation as still pending.
+Cursor's prompt hook cannot inject extra model context. Its documented output validates or blocks the submitted prompt instead. The runtime therefore returns no prompt-time context for Cursor, and delivers the run's current node on `postToolUse` instead, once per node change.
+
+**Cursor, measured 2026-08-15.** `cursor-agent` 2026.08.11 now completes ordinary turns, so the earlier note that it failed before the hook process started no longer holds. Forcing a shell call showed two things instead:
+
+- It ran a hook out of [`.claude/settings.json`](../../.claude/settings.json), not [`.cursor/hooks.json`](../../.cursor/hooks.json). The command carried `--workspace ${CLAUDE_PROJECT_DIR}` and no `--client cursor`, and that string exists in exactly one config in this repository. So `--client cursor` never reaches the runtime, and the reply is built in Claude's shape, which Cursor discards.
+- It wraps the command in PowerShell (`$OutputEncoding`, `Get-Content -LiteralPath`, `| & { $input | ... }`) and executes it with a POSIX shell, which refuses it: ``eval: syntax error near unexpected token `&'``. The hook process never starts on Windows.
+
+The second is a defect in the host and cannot be wired around from here. The **Cursor editor** was not tested and may behave differently, so every Cursor row in the contract stays `UNVERIFIED`. Evidence: `tmp/<slug>/runtime/host-measurements.md`.
 </context>
 
 ## Git-level hooks (all tools + manual commits)
