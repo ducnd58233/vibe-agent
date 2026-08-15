@@ -51,6 +51,7 @@ fi
 if [ -n "$(staged '.ai-agents' '.claude' '.cursor' '.codex' '.opencode')" ]; then
     sh scripts/check-ai-agents-routers.sh
     sh scripts/check-generated-views.sh
+    sh scripts/check-workspace-install.sh
     sh scripts/check-xml-tags.sh
 fi
 

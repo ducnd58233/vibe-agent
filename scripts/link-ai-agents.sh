@@ -271,6 +271,7 @@ remove_codex_prompt_copies() {
 sync_codex_agents_from_md() {
   local assets="$1"
   local workspace="$2"
+  local assets_ref="$3"
   local agents_src="$assets/agents"
   local agents_dest="$workspace/.codex/agents"
   mkdir -p "$agents_dest"
@@ -311,11 +312,11 @@ sync_codex_agents_from_md() {
     fi
     body="$(awk 'BEGIN{n=0} /^---$/ { n++; next } n>=2 { print }' "$md")"
     body="$(printf '%s\n' "$body" \
-      | sed 's#../skills/#.ai-agents/skills/#g' \
-      | sed 's#../references/#.ai-agents/references/#g' \
-      | sed 's#../stack-profiles/#.ai-agents/stack-profiles/#g' \
-      | sed 's#../commands/#.ai-agents/commands/#g' \
-      | sed 's#../agents/#.ai-agents/agents/#g')"
+      | sed "s#../skills/#$assets_ref/skills/#g" \
+      | sed "s#../references/#$assets_ref/references/#g" \
+      | sed "s#../stack-profiles/#$assets_ref/stack-profiles/#g" \
+      | sed "s#../commands/#$assets_ref/commands/#g" \
+      | sed "s#../agents/#$assets_ref/agents/#g")"
     sandbox_line=""
     if awk '/^tools:/{f=1} f && /^[[:space:]]+(Bash|Edit|Write|NotebookEdit|Task):[[:space:]]*true/{bad=1} END{exit bad}' "$md"; then
       sandbox_line=$'sandbox_mode = "read-only"\n'
@@ -327,7 +328,7 @@ sync_codex_agents_from_md() {
       printf 'description = "%s"\n' "$description"
       printf '%s' "$sandbox_line"
       printf 'developer_instructions = """\n'
-      printf 'Codex note: this file is generated from `.ai-agents/agents`. Resolve shared asset links from the workspace root (for example `.ai-agents/skills/...`), not from `.codex/agents`.\n\n'
+      printf 'Codex note: this file is generated from `%s/agents`. Resolve shared asset links from that assets root, not from `.codex/agents`.\n\n' "$assets_ref"
       printf '%s\n' "$body"
       printf '"""\n'
     } > "$toml_path"
@@ -349,9 +350,9 @@ sync_codex_agents_from_md() {
   done
 }
 
-sync_codex_command_skills "$ASSETS" "$WORKSPACE/.agents/skills" "" ".ai-agents" "1"
+sync_codex_command_skills "$ASSETS" "$WORKSPACE/.agents/skills" "" "$ASSETS" "1"
 remove_codex_prompt_copies "$WORKSPACE"
-sync_codex_agents_from_md "$ASSETS" "$WORKSPACE"
+sync_codex_agents_from_md "$ASSETS" "$WORKSPACE" "$ASSETS"
 
 json_escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'

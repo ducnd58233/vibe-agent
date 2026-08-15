@@ -125,15 +125,18 @@ function Escape-TomlString {
 }
 
 function Convert-AgentBodyForCodex {
-    param([Parameter(Mandatory = $true)][string] $Body)
+    param(
+        [Parameter(Mandatory = $true)][string] $Body,
+        [Parameter(Mandatory = $true)][string] $AssetsReference
+    )
     $converted = $Body
-    $converted = $converted.Replace('../skills/', '.ai-agents/skills/')
-    $converted = $converted.Replace('../references/', '.ai-agents/references/')
-    $converted = $converted.Replace('../stack-profiles/', '.ai-agents/stack-profiles/')
-    $converted = $converted.Replace('../commands/', '.ai-agents/commands/')
-    $converted = $converted.Replace('../agents/', '.ai-agents/agents/')
+    $converted = $converted.Replace('../skills/', "$AssetsReference/skills/")
+    $converted = $converted.Replace('../references/', "$AssetsReference/references/")
+    $converted = $converted.Replace('../stack-profiles/', "$AssetsReference/stack-profiles/")
+    $converted = $converted.Replace('../commands/', "$AssetsReference/commands/")
+    $converted = $converted.Replace('../agents/', "$AssetsReference/agents/")
     return @"
-Codex note: this file is generated from `.ai-agents/agents`. Resolve shared asset links from the workspace root (for example `.ai-agents/skills/...`), not from `.codex/agents`.
+Codex note: this file is generated from $AssetsReference/agents. Resolve shared asset links from that assets root, not from `.codex/agents`.
 
 $converted
 "@
@@ -142,7 +145,8 @@ $converted
 function Sync-CodexAgents {
     param(
         [Parameter(Mandatory = $true)][string] $AssetsFull,
-        [Parameter(Mandatory = $true)][string] $WorkspaceFull
+        [Parameter(Mandatory = $true)][string] $WorkspaceFull,
+        [Parameter(Mandatory = $true)][string] $AssetsReference
     )
     $agentsSrc = Join-Path $AssetsFull 'agents'
     $agentsDest = Join-Path $WorkspaceFull '.codex\agents'
@@ -161,7 +165,7 @@ function Sync-CodexAgents {
             return
         }
         $yamlBlock = $matches[1]
-        $body = Convert-AgentBodyForCodex -Body $matches[2].Trim()
+        $body = Convert-AgentBodyForCodex -Body $matches[2].Trim() -AssetsReference $AssetsReference
         $name = Get-FrontmatterField -YamlBlock $yamlBlock -FieldName 'name'
         if ([string]::IsNullOrWhiteSpace($name)) {
             Write-Warning "Skipping $($_.Name): missing name in frontmatter."
@@ -363,9 +367,10 @@ Ensure-Junction (Join-Path $workspaceFull ".cursor\commands") (Join-Path $assets
 Ensure-Junction (Join-Path $workspaceFull ".opencode\agents") (Join-Path $assetsFull "agents")
 Ensure-Junction (Join-Path $workspaceFull ".opencode\commands") (Join-Path $assetsFull "commands")
 Ensure-Junction (Join-Path $workspaceFull ".agents\commands") (Join-Path $assetsFull "commands")
-Sync-CodexCommandSkills -AssetsFull $assetsFull -SkillRoot (Join-Path $workspaceFull ".agents\skills") -NamePrefix '' -AssetsReference '.ai-agents' -IncludeCanonicalSkills
+$workspaceAssetsReference = $assetsFull -replace '\\', '/'
+Sync-CodexCommandSkills -AssetsFull $assetsFull -SkillRoot (Join-Path $workspaceFull ".agents\skills") -NamePrefix '' -AssetsReference $workspaceAssetsReference -IncludeCanonicalSkills
 Remove-CodexPromptCopies -WorkspaceFull $workspaceFull
-Sync-CodexAgents -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
+Sync-CodexAgents -AssetsFull $assetsFull -WorkspaceFull $workspaceFull -AssetsReference $workspaceAssetsReference
 
 function Get-ToolkitRoot {
     param([Parameter(Mandatory = $true)][string] $AssetsFull)
