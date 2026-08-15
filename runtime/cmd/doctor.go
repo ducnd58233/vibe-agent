@@ -99,20 +99,56 @@ func checkCheckPlan(report *diagnostics, workspaceRoot, toolkitRoot string) {
 		return // already reported by checkGraphs
 	}
 	for id, loaded := range graphs {
-		var missing []string
+		var missing, optional []string
 		for name, node := range loaded.Spec.Nodes {
 			if node.Type != graph.NodeVerifier || node.Check == "" {
 				continue
 			}
-			if _, err := plan.Entry(node.Check); err != nil {
-				missing = append(missing, fmt.Sprintf("%s (node %s)", node.Check, name))
+			if _, err := plan.Entry(node.Check); err == nil {
+				continue
 			}
+			// An undeclared check is only a defect where the graph does not
+			// already treat "not declared here" as an answer.
+			//
+			// A guard with acceptsSkipped says the opposite: omitting the check
+			// is the tracked statement that this workspace has none, and the
+			// runner routes past it as skipped rather than passed. doctor used
+			// to fail those anyway, so it contradicted the runner about e2e -
+			// the graph documents omitting it as supported, the runtime skips
+			// it visibly, and this said the workspace was broken.
+			//
+			// The contradiction only became visible when a second such node was
+			// added. Every workspace shares this graph and keeps its own check
+			// plan, so without this a new verifier node breaks doctor in every
+			// consumer repository on the day it lands.
+			if acceptsSkipped(loaded, node.Check) {
+				optional = append(optional, fmt.Sprintf("%s (node %s)", node.Check, name))
+				continue
+			}
+			missing = append(missing, fmt.Sprintf("%s (node %s)", node.Check, name))
 		}
 		sort.Strings(missing)
 		report.check("graph "+id+": every verifier node has a planned check",
 			len(missing) == 0,
 			"undeclared in "+checkplan.FileName+": "+strings.Join(missing, ", "))
+
+		if len(optional) > 0 {
+			sort.Strings(optional)
+			fmt.Printf("  note  not declared in %s, so the run will skip it visibly: %s\n",
+				checkplan.FileName, strings.Join(optional, ", "))
+		}
 	}
+}
+
+// acceptsSkipped reports whether any guard reading this check treats a skip as
+// an answer.
+func acceptsSkipped(loaded *graph.Graph, check string) bool {
+	for _, guard := range loaded.Spec.Guards {
+		if guard.Key() == check && guard.AcceptsSkipped {
+			return true
+		}
+	}
+	return false
 }
 
 // checkMemory reports on the store without creating one.

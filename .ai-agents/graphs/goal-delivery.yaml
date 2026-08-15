@@ -42,11 +42,19 @@ spec:
     - name: slop_ok
       description: >-
         The code slop audit scored at or below the threshold vibe-checks.yaml
-        declares. It sits between e2e and review because it is the cheap
-        deterministic pass: a machine can say the score rose, and a reviewer
-        should be spending their attention on what a machine cannot say.
+        declares, or was skipped because the workspace declares no slop check.
+        It sits between e2e and review because it is the cheap deterministic
+        pass: a machine can say the score rose, and a reviewer should be
+        spending their attention on what a machine cannot say.
       source: check
       reads: slop
+      # acceptsSkipped for the reason e2e_ok has it, plus one this node created.
+      # Every workspace shares this graph and each keeps its own
+      # vibe-checks.yaml, so adding a verifier node here would otherwise stall
+      # every existing workspace at a gate it has no check for. Skipping is the
+      # tracked statement that this workspace has no slop threshold; it is
+      # recorded as skipped rather than passed, so nothing claims an audit ran.
+      acceptsSkipped: true
 
     - name: e2e_ok
       description: >-
