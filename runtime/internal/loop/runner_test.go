@@ -66,6 +66,37 @@ func TestEnterStartsAtTheGraphInitialNode(t *testing.T) {
 	}
 }
 
+func TestEnterParksAnInitialHumanGate(t *testing.T) {
+	runner := newRunner(t)
+	run, err := state.NewRun("demo", "goal", runner.Graph.Metadata.ID, runner.Graph.Spec.MaxTransitions, at())
+	if err != nil {
+		t.Fatalf("NewRun: %v", err)
+	}
+	if err := runner.Enter(run); err != nil {
+		t.Fatalf("Enter: %v", err)
+	}
+	if run.CurrentNode != "intake" {
+		t.Errorf("CurrentNode = %q, want intake", run.CurrentNode)
+	}
+	if run.Status != state.StatusAwaitingHuman {
+		t.Errorf("Status = %q, want %s", run.Status, state.StatusAwaitingHuman)
+	}
+}
+
+func TestEnterLeavesANonHumanGateRunning(t *testing.T) {
+	runner, run := skippableRunner(t)
+	if run.CurrentNode != "check" {
+		t.Errorf("CurrentNode = %q, want check", run.CurrentNode)
+	}
+	if run.Status != state.StatusRunning {
+		t.Errorf("Status = %q, want %s", run.Status, state.StatusRunning)
+	}
+	node, ok := runner.Graph.Node(run.CurrentNode)
+	if !ok || node.Type == graph.NodeHumanGate {
+		t.Fatalf("fixture initial node must not be a human_gate, got %+v", node)
+	}
+}
+
 // The transitions named in the spec. These are the contract between the
 // graph file and the runner.
 func TestSpecTransitions(t *testing.T) {

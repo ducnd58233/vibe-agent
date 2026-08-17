@@ -79,6 +79,9 @@ func (r *Runner) Enter(run *state.Run) error {
 	run.MaxTransitions = r.Graph.Spec.MaxTransitions
 	run.GraphID = r.Graph.Metadata.ID
 	run.UpdatedAt = r.now()
+	if node, ok := r.Graph.Node(run.CurrentNode); ok && node.Type == graph.NodeHumanGate {
+		run.Status = state.StatusAwaitingHuman
+	}
 	return nil
 }
 
