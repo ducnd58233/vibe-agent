@@ -225,6 +225,30 @@ func TestAdvanceRejectsACheckWithoutRealProvenance(t *testing.T) {
 	}
 }
 
+func TestABlockerParksAtTheNodeInsteadOfSkippingIt(t *testing.T) {
+	runner := newRunner(t)
+	run := newRun(t, runner)
+	run.CurrentNode = "build"
+
+	transition := advance(t, runner, run, Outcome{Blocker: "intake_confirmed requires source human_event"})
+
+	if transition.To != "build" {
+		t.Errorf("To = %q, want build; skipping would treat a blocked step as done", transition.To)
+	}
+	if run.CurrentNode != "build" {
+		t.Errorf("CurrentNode = %q, want build", run.CurrentNode)
+	}
+	if run.Status != state.StatusAwaitingHuman {
+		t.Errorf("Status = %q, want %s so stop does not spin", run.Status, state.StatusAwaitingHuman)
+	}
+	if transition.Terminal {
+		t.Error("a first blocker must not fail the run")
+	}
+	if transition.Via != "blocker" {
+		t.Errorf("Via = %q, want blocker", transition.Via)
+	}
+}
+
 func TestThreeFailuresOnTheSameBlockerStopTheRun(t *testing.T) {
 	runner := newRunner(t)
 	run := newRun(t, runner)
@@ -236,7 +260,9 @@ func TestThreeFailuresOnTheSameBlockerStopTheRun(t *testing.T) {
 			if transition.Terminal {
 				t.Fatalf("run stopped after %d attempts, want %d", attempt, MaxBlockerAttempts)
 			}
-			run.CurrentNode = "build"
+			if run.CurrentNode != "build" {
+				t.Fatalf("attempt %d left the node (%s); a blocked step stays put", attempt, run.CurrentNode)
+			}
 			continue
 		}
 		if !transition.Terminal || run.Status != state.StatusFailed {
@@ -257,14 +283,16 @@ func TestDifferentBlockersCountSeparately(t *testing.T) {
 	run.CurrentNode = "build"
 
 	advance(t, runner, run, Outcome{Blocker: "first problem"})
-	run.CurrentNode = "build"
 	advance(t, runner, run, Outcome{Blocker: "second problem"})
 
 	if len(run.Blockers) != 2 {
 		t.Fatalf("got %d blockers, want 2", len(run.Blockers))
 	}
-	if run.Status != state.StatusRunning {
-		t.Errorf("status = %q; two different blockers should not trip the stop rule", run.Status)
+	if run.Status != state.StatusAwaitingHuman {
+		t.Errorf("status = %q; two different blockers should park, not fail or skip", run.Status)
+	}
+	if run.CurrentNode != "build" {
+		t.Errorf("CurrentNode = %q, want build", run.CurrentNode)
 	}
 }
 

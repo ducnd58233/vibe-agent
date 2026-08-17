@@ -34,6 +34,18 @@ var skippedDirectories = map[string]struct{}{
 	".git": {},
 }
 
+var proseLanguages = map[string]struct{}{
+	"Markdown": {},
+	"Text":     {},
+	"AsciiDoc": {},
+	"Org":      {},
+}
+
+func isProseLanguage(language string) bool {
+	_, ok := proseLanguages[language]
+	return ok
+}
+
 var (
 	emptyBraceFunction = regexp.MustCompile(`(?i)\b(func|function|fn|def|class|interface|method)\b[^\n{}]*\{\s*\}`)
 	emptyPythonBody    = regexp.MustCompile(`(?i)^\s*(async\s+)?def\s+\w+\([^)]*\):\s*$`)
@@ -132,22 +144,43 @@ func sourceFiles(target string) ([]string, error) {
 		return []string{filepath.Clean(target)}, nil
 	}
 	root := filepath.Clean(target)
+	if absRoot, err := filepath.Abs(root); err == nil {
+		root = absRoot
+	}
+	ignore := loadGitignore(root)
 	err = filepath.WalkDir(target, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
-			return err
+			if filepath.Clean(path) == filepath.Clean(target) {
+				return err
+			}
+			if entry != nil && entry.IsDir() {
+				// Junctions and symlinked dirs on Windows can make ReadDir fail.
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		clean := filepath.Clean(path)
+		if abs, absErr := filepath.Abs(clean); absErr == nil {
+			clean = abs
 		}
 		if entry.IsDir() {
-			if filepath.Clean(path) != root {
+			if clean != root {
 				if _, ok := skippedDirectories[entry.Name()]; ok {
 					return filepath.SkipDir
 				}
 				if enry.IsVendor(filepath.ToSlash(path)) {
 					return filepath.SkipDir
 				}
+				if ignore.skipDir(clean) {
+					return filepath.SkipDir
+				}
 			}
 			return nil
 		}
-		files = append(files, filepath.Clean(path))
+		if ignore.skipFile(clean) {
+			return nil
+		}
+		files = append(files, clean)
 		return nil
 	})
 	return files, err
@@ -162,9 +195,13 @@ func sourceLanguage(path string, data []byte) string {
 }
 
 func (s *Scanner) scanFile(path string) fileResult {
+	info, statErr := os.Stat(path)
+	if statErr != nil || info.IsDir() {
+		return fileResult{skipped: true}
+	}
 	data, err := fs.ReadFile(os.DirFS(filepath.Dir(path)), filepath.Base(path))
 	if err != nil {
-		return fileResult{language: LanguageUnknown, lines: 1, findings: []domain.Finding{{Path: path, Line: 1, Rule: domain.RuleScanError, Severity: domain.SeverityHigh, Message: err.Error()}}}
+		return fileResult{skipped: true}
 	}
 	if skipFile(path, data) {
 		return fileResult{skipped: true}
@@ -209,6 +246,7 @@ func sensitiveFile(name string) bool {
 
 func (s *Scanner) lineFindings(path, language string, lines []string) []domain.Finding {
 	var findings []domain.Finding
+	prose := isProseLanguage(language)
 	duplicates := map[string]int{}
 	for index, line := range lines {
 		lineNumber := index + 1
@@ -220,13 +258,13 @@ func (s *Scanner) lineFindings(path, language string, lines []string) []domain.F
 		if ignoredCall.MatchString(line) {
 			findings = append(findings, finding(path, lineNumber, domain.RuleIgnoredResult, domain.SeverityMedium, "assignment discards a call result"))
 		}
-		if hasDebugOutput(language, lower) {
+		if !prose && hasDebugOutput(language, lower) {
 			findings = append(findings, finding(path, lineNumber, domain.RuleDebugPrint, domain.SeverityLow, "debug output call left in source"))
 		}
 		if hasPlaceholderAbort(lower) {
 			findings = append(findings, finding(path, lineNumber, domain.RulePanicPlaceholder, domain.SeverityHigh, "placeholder abort looks like unfinished code"))
 		}
-		if len(trimmed) >= DuplicateLineMinLength {
+		if !prose && len(trimmed) >= DuplicateLineMinLength {
 			duplicates[trimmed]++
 			if duplicates[trimmed] == DuplicateLineMinRepeats {
 				findings = append(findings, finding(path, lineNumber, domain.RuleDuplicateLine, domain.SeverityLow, "same non-trivial line appears repeatedly"))
