@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 )
 
@@ -80,25 +81,30 @@ type runnerSpec struct {
 	PromptAsArg bool
 }
 
-var runnerPresets = map[string]runnerSpec{
-	"codex": {
-		Name:    "codex",
-		Command: "codex exec --ephemeral --sandbox read-only --json -",
-	},
-	"claude": {
-		Name:    "claude",
-		Command: "claude -p",
-	},
-	"cursor": {
-		Name:        "cursor",
-		Command:     "cursor-agent --print --mode ask --trust",
-		PromptAsArg: true,
-	},
-	"opencode": {
-		Name:        "opencode",
-		Command:     "opencode run",
-		PromptAsArg: true,
-	},
+func runnerFromHost(host hosts.Host, evalName string) runnerSpec {
+	return runnerSpec{
+		Name:        evalName,
+		Command:     host.EvalCommand,
+		PromptAsArg: host.PromptAsArg,
+	}
+}
+
+func resolveRunner(value string) ([]runnerSpec, error) {
+	if value == "all" {
+		var out []runnerSpec
+		for _, name := range hosts.EvalRunnerNames() {
+			host, ok := hosts.EvalHost(name)
+			if !ok {
+				return nil, fmt.Errorf("unknown eval runner %q", name)
+			}
+			out = append(out, runnerFromHost(host, name))
+		}
+		return out, nil
+	}
+	if host, ok := hosts.EvalHost(value); ok {
+		return []runnerSpec{runnerFromHost(host, value)}, nil
+	}
+	return []runnerSpec{{Name: value, Command: value}}, nil
 }
 
 // routerFiles are what a session reads when deciding where to go: the hub, then
@@ -223,20 +229,6 @@ func resolveRunners(values []string) ([]runnerSpec, error) {
 		}
 	}
 	return out, nil
-}
-
-func resolveRunner(value string) ([]runnerSpec, error) {
-	if value == "all" {
-		var out []runnerSpec
-		for _, name := range []string{"codex", "claude", "cursor", "opencode"} {
-			out = append(out, runnerPresets[name])
-		}
-		return out, nil
-	}
-	if preset, ok := runnerPresets[value]; ok {
-		return []runnerSpec{preset}, nil
-	}
-	return []runnerSpec{{Name: value, Command: value}}, nil
 }
 
 func runnerNames(runners []runnerSpec) string {
