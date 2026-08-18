@@ -51,7 +51,7 @@ spec:
         go run keeps the check on the workspace source tree so a stale binary
         on PATH cannot shadow the slop walk under test.
       command: go
-      args: [-C, runtime, run, ./cmd, slop, audit, --fail-on, "3", .]
+      args: [-C, runtime, run, ./cmd, slop, audit, --fail-on, "3", ..]
       timeoutSeconds: 300
 
     pr_open:
