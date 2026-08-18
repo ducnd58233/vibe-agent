@@ -1,0 +1,24 @@
+{{define "chat-prompts"}}
+{{ if .HasChatPrompts }}
+<div class="chat-prompts" id="chat-prompts" data-testid="chat-prompts"{{ if ne $.View "chat" }} hidden{{ end }}>
+  {{ range .ChatPrompts }}
+  <article class="chat-prompt" data-testid="chat-prompt" data-prompt-type="{{ .Type }}">
+    <p class="chat-prompt-kicker">{{ .Type }} · {{ .NodeID }}</p>
+    <h3>{{ .Title }}</h3>
+    <p>{{ .Prompt }}</p>
+    {{ if .CanDecide }}
+    <form class="chat-prompt-actions" method="post" action="/session/{{ $.Slug }}/checkpoint">
+      <input type="hidden" name="check" value="{{ .Check }}">
+      <input type="hidden" name="node" value="{{ .NodeID }}">
+      <label class="chat-prompt-note"><span>Note</span><input name="note" type="text" maxlength="500" autocomplete="off"></label>
+      <button class="btn btn-accent" type="submit" name="verdict" value="passed">Approve</button>
+      <button class="btn btn-quiet" type="submit" name="verdict" value="failed">Send back</button>
+    </form>
+    {{ else }}
+    <p class="chat-prompt-hint">Reply in the composer below. This step waits on a verifier, so Chat cannot mark it passed.</p>
+    {{ end }}
+  </article>
+  {{ end }}
+</div>
+{{ end }}
+{{end}}

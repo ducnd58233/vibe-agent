@@ -27,9 +27,14 @@
 /.agent-state/
 
 # Compiled runtime binaries and release archives.
+# `make -C runtime build` writes to dist/. A bare `go build ./cmd` from
+# runtime/ on Windows writes cmd.exe next to the package. A nested
+# runtime/runtime/ appears when -o is a path relative to that module.
 /runtime/dist/
 # Linters installed on demand by `make tools`, pinned per module, never committed.
 /runtime/bin/
 /runtime/vibe-agent
 /runtime/vibe-agent.exe
+/runtime/cmd.exe
+/runtime/runtime/
 /docs/

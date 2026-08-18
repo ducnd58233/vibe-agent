@@ -1,0 +1,28 @@
+{{define "graph"}}
+{{ if .GraphNodes }}
+<div class="graph-view" id="graph-view" data-testid="graph-view"{{ if ne .View "graph" }} hidden inert{{ end }}>
+  <header class="graph-head">
+    <p><strong>{{ .GraphID }}</strong> · {{ len .GraphNodes }} nodes</p>
+    {{ if .CurrentNode }}
+    <p>Current <code>{{ .CurrentNode }}</code> <span class="mode-chip">{{ .RunStatus }}</span></p>
+    {{ end }}
+  </header>
+  <ol class="graph-rail">
+    {{ range .GraphNodes }}
+    <li>
+      <button class="graph-node{{ if eq .Status "failed" }} is-failed{{ else if eq .Status "awaiting" }} is-awaiting{{ else if eq .Status "passed" }} is-passed{{ else if eq .Status "skipped" }} is-skipped{{ end }}" type="button" data-node="{{ .ID }}" data-graph-type="{{ .Type }}" data-search="{{ .SearchText }}"{{ if .Current }} aria-current="true"{{ end }}>
+        <span class="graph-type node-{{ .Type }}">{{ .Type }}</span>
+        <span class="graph-copy">
+          <span class="graph-id">{{ .ID }}{{ if .Optional }} <span class="chip">optional</span>{{ end }}</span>
+          {{ if .Description }}<span class="graph-desc">{{ .Description }}</span>{{ end }}
+        </span>
+        <span class="graph-status {{ .Status }}">{{ .Status }}</span>
+      </button>
+    </li>
+    {{ end }}
+  </ol>
+</div>
+{{ else }}
+<div class="graph-view" id="graph-view" data-testid="graph-view"{{ if ne .View "graph" }} hidden inert{{ end }}></div>
+{{ end }}
+{{end}}

@@ -85,6 +85,9 @@ func TestReplayOrdersBySequenceAndSkipsUnknown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := Append(path, Record{Type: TypeTranscriptMessage, Source: SourcePrint, Client: "cursor-agent", Role: "assistant", Body: "ok"}); err != nil {
+		t.Fatalf("print source: %v", err)
+	}
 	f, err := os.OpenFile(filepath.Clean(path), os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		t.Fatal(err)
@@ -100,11 +103,54 @@ func TestReplayOrdersBySequenceAndSkipsUnknown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(events) != 2 {
-		t.Fatalf("events = %d, want 2", len(events))
+	if len(events) != 3 {
+		t.Fatalf("events = %d, want 3", len(events))
 	}
 	if events[0].Sequence != first.Sequence || events[1].Sequence != second.Sequence {
 		t.Fatalf("order = %+v", events)
+	}
+}
+
+func TestComposePrefixRedactsAndCaps(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, LogName)
+	secret := testSecret
+	if _, err := Append(path, Record{Type: TypePromptSubmit, Source: SourceHook, Client: "claude", Body: "deploy " + secret}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Append(path, Record{Type: TypeTranscriptMessage, Source: SourcePrint, Client: "claude", Role: "assistant", Body: "ok"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Append(path, Record{Type: TypePromptSubmit, Source: SourceHook, Client: "claude", Body: "second"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Append(path, Record{Type: TypeTranscriptMessage, Source: SourcePrint, Client: "claude", Role: "thinking", Body: "hidden"}); err != nil {
+		t.Fatal(err)
+	}
+	events, err := Replay(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefix := ComposePrefix(events, 8, DefaultReplayBytes)
+	if strings.Contains(prefix, secret) {
+		t.Fatal("secret leaked into prefix")
+	}
+	if !strings.Contains(prefix, "User:") || !strings.Contains(prefix, "Assistant: ok") {
+		t.Fatalf("prefix = %q", prefix)
+	}
+	if strings.Contains(prefix, "hidden") {
+		t.Fatal("thinking must not enter the replay prefix")
+	}
+	capped := ComposePrefix(events, 1, DefaultReplayBytes)
+	if strings.Contains(capped, "deploy") {
+		t.Fatalf("oldest turn should drop: %q", capped)
+	}
+	if !strings.Contains(capped, "second") {
+		t.Fatalf("newest turn missing: %q", capped)
+	}
+	tiny := ComposePrefix(events, 8, 8)
+	if tiny == prefix {
+		t.Fatal("byte cap should drop oldest lines")
 	}
 }
 

@@ -7,6 +7,7 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2
 	github.com/go-enry/go-enry/v2 v2.9.6
 	github.com/odvcencio/gotreesitter v0.47.0
+	github.com/yuin/goldmark v1.8.5
 	golang.org/x/net v0.58.0
 	golang.org/x/sys v0.47.0
 	gopkg.in/yaml.v3 v3.0.1

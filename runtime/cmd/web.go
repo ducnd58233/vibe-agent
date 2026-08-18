@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"runtime"
+	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
-	"github.com/ducnd58233/vibe-agent/runtime/web"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/app"
 )
 
 func webCommand(args []string) error {
@@ -13,19 +14,31 @@ func webCommand(args []string) error {
 	paths := addRootFlags(flags)
 	port := flags.Int("port", 3080, "listen port (loopback only)")
 	open := flags.Bool("open", false, "open the URL in a browser")
+	workspaces := flags.String("workspaces", "", "comma-separated extra workspace roots")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	workspaceRoot, _, err := paths.resolve()
+	workspaceRoot, toolkitRoot, err := paths.resolve()
 	if err != nil {
 		return err
 	}
-	if *open {
-		_ = openBrowser(context.Background(), web.Addr(*port))
+	var extra []string
+	if strings.TrimSpace(*workspaces) != "" {
+		for _, part := range strings.Split(*workspaces, ",") {
+			part = strings.TrimSpace(part)
+			if part != "" {
+				extra = append(extra, part)
+			}
+		}
 	}
-	return web.Run(web.Config{
-		WorkspaceRoot: workspaceRoot,
-		Port:          *port,
+	if *open {
+		_ = openBrowser(context.Background(), app.Addr(*port))
+	}
+	return app.Run(app.Config{
+		WorkspaceRoot:   workspaceRoot,
+		ToolkitRoot:     toolkitRoot,
+		Port:            *port,
+		ExtraWorkspaces: extra,
 	})
 }
 

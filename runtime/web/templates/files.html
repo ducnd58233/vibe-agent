@@ -1,0 +1,35 @@
+{{ define "file-browser" }}
+<div class="file-browser" data-testid="file-browser">
+  <header class="file-browser-head">
+    <span class="file-browser-dir">{{ if .Dir }}/{{ .Dir }}{{ else }}/{{ end }}</span>
+    <div class="file-browser-actions">
+      {{ if .Dir }}
+      <button type="button" class="file-browser-up" data-dir="{{ .Parent }}" aria-label="Parent folder">..</button>
+      {{ end }}
+      <button type="button" class="file-browser-close" data-testid="file-browser-close" aria-label="Close file picker">{{ template "icon-close" }}</button>
+    </div>
+  </header>
+  <ul class="file-browser-list" role="listbox">
+    {{ range .Rows }}
+    <li class="file-browser-row" role="option"
+        data-testid="file-row"
+        data-path="{{ .Path }}"
+        data-is-dir="{{ .IsDir }}"
+        {{ if .Attach }}data-insert="{{ .Attach }}"{{ end }}>
+      <span class="file-browser-name">{{ if .IsDir }}dir{{ else }}file{{ end }} {{ .Name }}</span>
+    </li>
+    {{ else }}
+    <li class="file-browser-empty">No files</li>
+    {{ end }}
+  </ul>
+</div>
+{{ end }}
+
+{{ define "file-preview" }}
+<div class="file-preview" data-testid="file-preview">
+  <p class="file-preview-path">{{ .Path }}</p>
+  <button type="button" class="file-preview-attach" data-testid="file-attach"
+          data-insert="{{ .Attach }}" data-excerpt="{{ .Excerpt }}">Attach {{ .Attach }}</button>
+  <pre class="file-preview-excerpt">{{ .Excerpt }}</pre>
+</div>
+{{ end }}

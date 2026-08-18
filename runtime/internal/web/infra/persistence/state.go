@@ -1,23 +1,16 @@
-package web
+package persistence
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 )
 
 const stateFileName = "web.json"
-
-// State is written beside other derived workspace files.
-type State struct {
-	URL       string    `json:"url"`
-	PID       int       `json:"pid"`
-	StartedAt time.Time `json:"startedAt"`
-}
 
 // StatePath is `.agent-state/web.json` for a workspace.
 func StatePath(workspaceRoot string) string {
@@ -25,7 +18,7 @@ func StatePath(workspaceRoot string) string {
 }
 
 // WriteState records the loopback URL for a running server.
-func WriteState(workspaceRoot string, state State) error {
+func WriteState(workspaceRoot string, state domain.State) error {
 	if err := os.MkdirAll(workspace.StateDir(workspaceRoot), 0o750); err != nil {
 		return fmt.Errorf("create state dir: %w", err)
 	}
