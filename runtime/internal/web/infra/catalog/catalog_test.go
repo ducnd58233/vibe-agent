@@ -58,6 +58,16 @@ func TestSearchCommandsBuild(t *testing.T) {
 	}
 }
 
+func TestSearchCommandsEmptyReturnsAll(t *testing.T) {
+	idx, err := Load(testToolkitRoot(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(idx.SearchCommands("")) == 0 {
+		t.Fatal("empty query should list commands")
+	}
+}
+
 func TestSearchUnknownReturnsEmpty(t *testing.T) {
 	idx, err := Load(testToolkitRoot(t))
 	if err != nil {

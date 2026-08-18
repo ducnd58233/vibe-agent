@@ -49,7 +49,7 @@
     if (!catalogPanel) return;
     const trig = triggerAtCursor();
     catalogTrigger = trig;
-    if (!trig || !trig.q) {
+    if (!trig) {
       catalogPanel.hidden = true;
       catalogPanel.innerHTML = "";
       return;

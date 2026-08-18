@@ -76,7 +76,7 @@ func (d httpDeps) handleSessionEventsStream(w http.ResponseWriter, r *http.Reque
 				if err := tmpl.ExecuteTemplate(&buf, "event-row", row); err != nil {
 					continue
 				}
-				if _, err := fmt.Fprintf(w, "data: %s\n\n", buf.String()); err != nil {
+				if err := writeSSEData(w, buf.String()); err != nil {
 					return
 				}
 				flusher.Flush()
@@ -84,4 +84,14 @@ func (d httpDeps) handleSessionEventsStream(w http.ResponseWriter, r *http.Reque
 			}
 		}
 	}
+}
+
+func writeSSEData(w http.ResponseWriter, html string) error {
+	for _, line := range strings.Split(strings.TrimRight(html, "\n"), "\n") {
+		if _, err := fmt.Fprintf(w, "data: %s\n", line); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprint(w, "\n")
+	return err
 }

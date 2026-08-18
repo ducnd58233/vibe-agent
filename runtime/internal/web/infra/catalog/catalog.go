@@ -44,7 +44,7 @@ func Load(toolkitRoot string) (Index, error) {
 }
 
 func loadRouter(path string, family Family) ([]Entry, error) {
-	raw, err := os.ReadFile(filepath.Clean(path)) //nolint:gosec // G304: path is a fixed ROUTER.md under toolkitRoot
+	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (idx Index) SearchSkills(q string) []Entry {
 func search(items []Entry, q string) []Entry {
 	q = strings.TrimSpace(strings.ToLower(q))
 	if q == "" {
-		return nil
+		return items
 	}
 	var out []Entry
 	for _, item := range items {
