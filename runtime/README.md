@@ -32,14 +32,16 @@ runtime/
     web.go                loopback web UI (127.0.0.1 only)
   web/                    embedded templates, static assets, view models
     render.go             embed + template funcs
-    static/               tokens.css, shell.css, htmx.min.js
+    static/               tokens.css, shell.css, htmx.min.js, composer.js
     templates/            html/template pages
     view/                 event projection, pages, inspector, usage
   internal/
     web/
       app/                HTTP server composition root (bootstrap, routes)
-      domain/             web.json state model
-      infra/persistence/  .agent-state/web.json writer
+      domain/             registry, workspace path rules
+      infra/
+        catalog/          ROUTER.md parsers for composer autocomplete
+        persistence/      web.json and workspace registry writer
     shared/workspace/     the directory names every module agrees on
     run/                  one delivery run: where it sits, what was recorded
       domain/             Run, Check, Event, the provenance enum, and its rules
@@ -109,6 +111,17 @@ Regenerate the golden manifest after an intentional shape change:
 ```sh
 UPDATE_GOLDEN=1 go test ./internal/run/infra/persistence -run TestFreshRunMatchesGolden
 ```
+
+## Web UI (loopback)
+
+`vibe-agent web` serves the control-plane viewer on `127.0.0.1` only. One process can register multiple workspace roots; the sidebar switches the active root without a restart.
+
+```sh
+vibe-agent web --workspace . --toolkit /path/to/vibe-agent --port 3080
+vibe-agent web --workspaces /path/other-repo,/path/another-repo
+```
+
+The session composer supports `/command` and `@skill` autocomplete from `.ai-agents` ROUTER tables, a loopback file attach browser with redacted previews, and live trajectory updates over SSE (HTMX poll remains the fallback).
 
 ## Try it
 
