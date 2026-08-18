@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>vibe-agent web</title>
+  <link rel="stylesheet" href="/static/tokens.css">
+  <link rel="stylesheet" href="/static/shell.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#stream">Skip to trajectory</a>
+  <div class="app is-inspector-closed" id="app" data-testid="app-shell">
+    <button class="backdrop backdrop-sidebar" type="button" id="sidebar-backdrop" aria-label="Close sessions"></button>
+    <nav class="sidebar" aria-label="Workspace and sessions" data-testid="rail">
+      <div class="brand">
+        <h1>vibe-agent</h1>
+        <span class="mark">WEB</span>
+      </div>
+      <button class="btn btn-block" type="button" disabled data-testid="new-session-disabled">New Session</button>
+      <div class="sidebar-scroll">
+        <div class="nav-block">
+          <p class="nav-label">Workspaces</p>
+          <p data-testid="workspace-list-empty">No other workspace recorded yet.</p>
+          <p class="host-missing" data-testid="workspace-path">{{ .Workspace }}</p>
+        </div>
+        <div class="nav-block">
+          <p class="nav-label">Sessions</p>
+          {{ if .HasSessions }}
+          <ul class="tree" data-testid="session-list">
+            {{ range .Sessions }}<li>{{ . }}</li>{{ end }}
+          </ul>
+          {{ else }}
+          <p data-testid="session-list-empty">No delivery run and no ambient journal in this workspace.</p>
+          {{ end }}
+        </div>
+        <div class="nav-block">
+          <p class="nav-label">Hosts on PATH</p>
+          <ul class="tree" data-testid="host-detector">
+            {{ range .Hosts }}
+            <li class="{{ if .OnPath }}host-ok{{ else }}host-missing{{ end }}">{{ .Binary }}: {{ .Reason }}</li>
+            {{ end }}
+          </ul>
+        </div>
+      </div>
+      <div class="sidebar-foot">
+        <button class="btn btn-ghost btn-block" type="button" id="settings-open" data-testid="settings-open">Settings</button>
+      </div>
+    </nav>
+    <section class="main">
+      <header class="topbar">
+        <button class="btn-icon menu-btn" type="button" id="sidebar-open" aria-label="Open sessions" data-testid="sidebar-open">Menu</button>
+        <div class="session-crumb">
+          <strong>No session</strong>
+          <span class="mode-chip" data-testid="run-status">idle</span>
+        </div>
+        <div class="tabs" role="tablist" aria-label="Session view">
+          <button class="tab" type="button" role="tab" aria-selected="false" disabled>Chat</button>
+          <button class="tab" type="button" role="tab" aria-selected="true" disabled>Trajectory</button>
+          <button class="tab" type="button" role="tab" aria-selected="false" disabled>Graph</button>
+        </div>
+      </header>
+      <div class="toolbar" data-testid="trajectory-toolbar">
+        <dl class="stat"><dt>Duration</dt><dd>--</dd></dl>
+        <dl class="stat"><dt>Turns</dt><dd>0</dd></dl>
+        <dl class="stat"><dt>Calls</dt><dd>0</dd></dl>
+        <dl class="stat"><dt>Tokens</dt><dd data-testid="token-usage">not reported</dd></dl>
+      </div>
+      <div class="stream" id="stream" data-testid="trajectory" tabindex="-1">
+        <div class="empty" data-testid="trajectory-empty">
+          <h2>Nothing to reconstruct yet</h2>
+          <p>
+            Use Claude Code, Codex, Cursor, or opencode in this workspace with vibe-agent hooks installed, then refresh.
+            Or run <code>vibe-agent doctor</code>. Chat stays empty until a host reports user or assistant text. Token counts stay <code>not reported</code> until a host writes usage fields.
+          </p>
+        </div>
+      </div>
+      <div class="dock">
+        <form class="composer" aria-disabled="true">
+          <button class="btn-icon" type="button" disabled aria-label="Attach context">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7 3h2v4h4v2H9v4H7V9H3V7h4z"/></svg>
+          </button>
+          <input class="composer-field" type="text" placeholder="Install a host, or wait for hooks to fire" disabled aria-label="Message">
+          <button class="btn-send" type="submit" disabled aria-label="Send">→</button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="settings-dialog" data-testid="settings-dialog" data-server-url="{{ .URL }}" aria-labelledby="settings-heading">
+    <div class="dialog-body settings-shell">
+      <div class="dialog-head">
+        <h2 id="settings-heading">Settings</h2>
+        <button class="btn" type="button" id="settings-close">Close</button>
+      </div>
+      <div class="settings-scroll">
+        <section class="settings-section" aria-labelledby="settings-appearance">
+          <h3 id="settings-appearance">Appearance</h3>
+          <fieldset class="choice-list" data-testid="settings-theme">
+            <legend class="visually-hidden">Theme</legend>
+            <label class="choice">
+              <input type="radio" name="theme" value="dark" checked>
+              <span>
+                <strong>Dark</strong>
+                <span class="choice-desc">Default. Dark surfaces, same layout as Light.</span>
+              </span>
+            </label>
+            <label class="choice">
+              <input type="radio" name="theme" value="light">
+              <span>
+                <strong>Light</strong>
+                <span class="choice-desc">Same layout and tokens, inverted surfaces.</span>
+              </span>
+            </label>
+          </fieldset>
+        </section>
+        <section class="settings-section" aria-labelledby="settings-server">
+          <h3 id="settings-server">Server</h3>
+          <dl class="kv">
+            <dt>URL</dt>
+            <dd>
+              <span class="bind-row">
+                <code data-testid="settings-bind">{{ .BindAddr }}</code>
+                <button class="btn btn-ghost" type="button" id="settings-copy-bind">Copy URL</button>
+              </span>
+            </dd>
+            <dt>Status</dt>
+            <dd><span class="live">listening</span></dd>
+          </dl>
+        </section>
+        <section class="settings-section" aria-labelledby="settings-hosts">
+          <h3 id="settings-hosts">Hosts on PATH</h3>
+          <ul class="host-status" data-testid="settings-hosts">
+            {{ range .Hosts }}
+            <li>
+              {{ if .OnPath }}<span class="host-ok">ready</span>{{ else }}<span class="host-missing">missing</span>{{ end }}
+              <span>{{ .Binary }} <span class="host-cmd">{{ .Reason }}</span></span>
+            </li>
+            {{ end }}
+          </ul>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    const app = document.getElementById("app");
+    const serverURL = document.getElementById("settings-dialog").dataset.serverUrl;
+    document.getElementById("sidebar-open").addEventListener("click", () => {
+      app.classList.add("is-sidebar-open");
+    });
+    document.getElementById("sidebar-backdrop").addEventListener("click", () => {
+      app.classList.remove("is-sidebar-open");
+    });
+    document.getElementById("settings-open").addEventListener("click", () => {
+      document.getElementById("settings-dialog").showModal();
+    });
+    document.getElementById("settings-close").addEventListener("click", () => {
+      document.getElementById("settings-dialog").close();
+    });
+    document.getElementById("settings-dialog").addEventListener("change", (e) => {
+      if (e.target.name === "theme") {
+        document.documentElement.setAttribute("data-theme", e.target.value);
+      }
+    });
+    document.getElementById("settings-copy-bind").addEventListener("click", () => {
+      const btn = document.getElementById("settings-copy-bind");
+      const done = (ok) => {
+        btn.textContent = ok ? "Copied" : "Copy failed";
+        setTimeout(() => { btn.textContent = "Copy URL"; }, 1200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(serverURL).then(() => done(true)).catch(() => done(false));
+        return;
+      }
+      done(false);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (document.querySelector("dialog[open]")) return;
+      if (e.key === "Escape") app.classList.remove("is-sidebar-open");
+    });
+  </script>
+</body>
+</html>
