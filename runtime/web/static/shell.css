@@ -986,6 +986,8 @@ button {
 .role-assistant { color: var(--color-role-assistant); }
 .role-question { color: var(--color-warn); }
 .role-tool { color: var(--color-role-tool); }
+.role-hook { color: var(--color-role-hook); }
+.role-graph { color: var(--color-role-graph); }
 .role-thinking { color: var(--color-text-caption); }
 
 .event-body {

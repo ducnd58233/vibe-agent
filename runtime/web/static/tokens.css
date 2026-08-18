@@ -64,7 +64,9 @@ html {
   --color-role-assistant: rgb(167, 139, 250);
   --color-role-tool: rgb(251, 146, 60);
   --color-kind-hook: var(--color-accent-soft);
+  --color-role-hook: var(--color-kind-hook);
   --color-kind-graph: rgb(34, 211, 238);
+  --color-role-graph: var(--color-kind-graph);
   --color-kind-transcript: var(--color-role-assistant);
   --color-kind-tool: var(--color-role-tool);
   --color-kind-skill: var(--color-role-context);
@@ -95,6 +97,7 @@ html[data-theme="light"] {
   --color-code-bg: rgb(244, 244, 245);
   --color-kind-hook: rgb(37, 99, 235);
   --color-kind-graph: rgb(14, 116, 144);
+  --color-role-graph: var(--color-kind-graph);
   --color-kind-transcript: rgb(109, 40, 217);
   --color-kind-tool: rgb(194, 65, 12);
   --color-kind-skill: rgb(22, 163, 74);
@@ -103,5 +106,6 @@ html[data-theme="light"] {
   --color-role-context: rgb(22, 163, 74);
   --color-role-assistant: rgb(109, 40, 217);
   --color-role-tool: rgb(194, 65, 12);
+  --color-role-hook: var(--color-kind-hook);
   --focus-ring: 0.125rem solid rgb(37, 99, 235);
 }

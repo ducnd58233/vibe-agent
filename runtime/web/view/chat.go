@@ -29,12 +29,12 @@ func AwaitingChatPrompts(rows []GraphNodeRow, slug string) []ChatPrompt {
 			continue
 		}
 		prompt := strings.ReplaceAll(row.Prompt, "${slug}", slug)
-		if strings.TrimSpace(prompt) == "" {
-			prompt = row.Description
-		}
 		title := row.Description
 		if strings.TrimSpace(title) == "" {
 			title = row.ID
+		}
+		if strings.TrimSpace(prompt) == strings.TrimSpace(title) {
+			prompt = ""
 		}
 		out = append(out, ChatPrompt{
 			NodeID:    row.ID,

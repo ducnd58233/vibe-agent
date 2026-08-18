@@ -147,7 +147,15 @@ func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug, selectedView s
 	if err != nil && !os.IsNotExist(err) {
 		return SessionPage{}, err
 	}
-	page.Events = ProjectEvents(events)
+	graphRows := []EventRow{}
+	if slug != "ambient" {
+		runEvents, readErr := state.ReadEvents(state.EventLogPath(workspaceRoot, slug))
+		if readErr != nil {
+			return SessionPage{}, readErr
+		}
+		graphRows = ProjectRunGraphEvents(runEvents)
+	}
+	page.Events = MergeTrajectory(ProjectEvents(events), graphRows)
 	page.KindCounts = KindCounts(page.Events)
 	page.Tokens = SumUsage(page.Events)
 	page.ToolbarTokens = FormatToolbarTokens(page.Tokens)

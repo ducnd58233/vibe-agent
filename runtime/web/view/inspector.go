@@ -123,7 +123,7 @@ func excerpt(value string, limit int) string {
 
 const eventSchema = `{
   "seq": "int",
-  "role": "system | user | context | assistant | tool",
+  "role": "system | user | context | assistant | tool | hook | graph",
   "kind": "hook | tool | skill | graph | transcript",
   "source": "hook | transcript | graph",
   "summary": "string",
