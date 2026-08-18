@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"os"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
@@ -60,21 +61,26 @@ func BuildShellPage(workspaceRoot, bindAddr string) (ShellPage, error) {
 // SessionPage is the trajectory shell for one slug.
 type SessionPage struct {
 	ShellPage
-	Slug          string
-	RunStatus     string
-	Events        []EventRow
-	KindCounts    map[session.FilterKind]int
-	Tokens        UsageTotals
-	ToolbarTokens string
-	ChatEmpty     bool
-	TurnCount     int
-	ToolCalls     int
-	EventDetails  []EventDetail
-	EventDataJSON template.JS
+	Slug            string
+	RunStatus       string
+	Events          []EventRow
+	KindCounts      map[session.FilterKind]int
+	Tokens          UsageTotals
+	ToolbarTokens   string
+	ChatEmpty       bool
+	TurnCount       int
+	ToolCalls       int
+	EventDetails    []EventDetail
+	EventDataJSON   template.JS
+	GraphID         string
+	CurrentNode     string
+	GraphNodes      []GraphNodeRow
+	GraphTypeCounts map[string]int
+	GraphNodeJSON   template.JS
 }
 
 // BuildSessionPage loads one session log for rendering.
-func BuildSessionPage(workspaceRoot, bindAddr, slug string) (SessionPage, error) {
+func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug string) (SessionPage, error) {
 	shell, err := BuildShellPage(workspaceRoot, bindAddr)
 	if err != nil {
 		return SessionPage{}, err
@@ -85,14 +91,25 @@ func BuildSessionPage(workspaceRoot, bindAddr, slug string) (SessionPage, error)
 		RunStatus: "idle",
 	}
 	var logPath string
+	var run *state.Run
 	switch slug {
 	case "ambient":
 		logPath = session.AmbientLogPath(workspaceRoot)
 	default:
 		logPath = session.LogPath(workspaceRoot, slug)
-		if run, loadErr := state.Load(state.ManifestPath(workspaceRoot, slug)); loadErr == nil && run != nil {
+		if loaded, loadErr := state.Load(state.ManifestPath(workspaceRoot, slug)); loadErr == nil && loaded != nil {
+			run = loaded
 			page.RunStatus = string(run.Status)
+			page.CurrentNode = run.CurrentNode
+			page.GraphID = run.GraphID
 		}
+	}
+	if page.GraphID == "" {
+		page.GraphID = "goal-delivery"
+	}
+	if g, err := graph.LoadByID(graph.DefaultDir(toolkitRoot), page.GraphID); err == nil && g != nil {
+		page.GraphNodes = ProjectGraph(g, run)
+		page.GraphTypeCounts = GraphTypeCounts(page.GraphNodes)
 	}
 	events, err := session.Replay(logPath)
 	if err != nil && !os.IsNotExist(err) {

@@ -1,0 +1,27 @@
+{{define "graph"}}
+{{ if .GraphNodes }}
+<div class="graph-view" id="graph-view" data-testid="graph-view" hidden>
+  <header class="graph-head">
+    <p><strong>{{ .GraphID }}</strong> · {{ len .GraphNodes }} nodes</p>
+    {{ if .CurrentNode }}
+    <p>Current <code>{{ .CurrentNode }}</code> <span class="mode-chip">{{ .RunStatus }}</span></p>
+    {{ end }}
+  </header>
+  <ol class="graph-rail">
+    {{ range .GraphNodes }}
+    <li>
+      <button class="graph-node{{ if eq .Status "failed" }} is-failed{{ else if eq .Status "awaiting" }} is-awaiting{{ end }}" type="button" data-node="{{ .ID }}" data-graph-type="{{ .Type }}" data-search="{{ .SearchText }}"{{ if .Current }} aria-current="true"{{ end }}>
+        <span class="graph-type node-{{ .Type }}">{{ .Type }}</span>
+        <span class="graph-id">{{ .ID }}{{ if .Optional }} <span class="chip">optional</span>{{ end }}</span>
+        <span class="graph-status {{ .Status }}">{{ .Status }}</span>
+      </button>
+    </li>
+    {{ end }}
+  </ol>
+</div>
+{{ else }}
+<div class="graph-view" id="graph-view" data-testid="graph-view" hidden>
+  <p class="empty">No delivery graph for this session.</p>
+</div>
+{{ end }}
+{{end}}

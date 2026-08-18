@@ -17,9 +17,18 @@ import (
 
 const testSecret = "sk-0123456789abcdef0123456789ab"
 
+func testToolkitRoot(t *testing.T) string {
+	t.Helper()
+	root, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
 func TestEmptyShellRendersRequiredTestIDs(t *testing.T) {
 	root := t.TempDir()
-	handler, err := NewHandlerWithPort(root, 3080)
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +55,7 @@ func TestEmptyShellRendersRequiredTestIDs(t *testing.T) {
 
 func TestSessionPageRendersEventList(t *testing.T) {
 	root, slug := writeFixtureSession(t)
-	handler, err := NewHandlerWithPort(root, 3080)
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,6 +69,7 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	for _, id := range []string{
 		"event-list", "event-pipeline", "kind-filter-open", "kind-filter",
 		"kind-filter-clear", "event-tokens", "token-usage", "inspector", "chat-empty",
+		"graph-view",
 	} {
 		if !strings.Contains(body, `data-testid="`+id+`"`) {
 			t.Fatalf("missing test id %q", id)
@@ -102,7 +112,7 @@ func TestSessionPageRedactedPromptAbsentFromHTML(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	handler, err := NewHandlerWithPort(root, 3080)
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}

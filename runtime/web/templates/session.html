@@ -54,7 +54,7 @@
         <div class="tabs" role="tablist" aria-label="Session view" data-testid="view-tabs">
           <button class="tab" type="button" role="tab" aria-selected="false" data-view="chat">Chat</button>
           <button class="tab" type="button" role="tab" aria-selected="true" data-view="trajectory">Trajectory</button>
-          <button class="tab" type="button" role="tab" aria-selected="false" data-view="graph" disabled>Graph</button>
+          <button class="tab" type="button" role="tab" aria-selected="false" data-view="graph">Graph</button>
         </div>
         <button class="btn btn-ghost" type="button" id="session-log" data-testid="session-log">Session log</button>
       </header>
@@ -79,11 +79,21 @@
               </label>
               {{ end }}
             </div>
+            <div class="kind-menu" id="graph-filter-menu" data-testid="graph-filter" role="group" aria-label="Graph node types" hidden>
+              {{ range $type := GraphTypeOrder }}
+              <label class="kind-check">
+                <input type="checkbox" data-graph-filter="{{ $type }}">
+                <span>{{ $type }}</span>
+                <span class="kind-count">{{ index $.GraphTypeCounts $type }}</span>
+              </label>
+              {{ end }}
+            </div>
           </div>
           <input class="search" type="search" id="search" data-testid="event-search" placeholder="Search events" aria-label="Search events">
         </div>
       </div>
       {{ template "pipeline" . }}
+      {{ template "graph" . }}
       <div class="stream" id="stream" data-testid="trajectory" tabindex="-1">
         {{ if .Events }}
         <ol class="event-list" id="event-list" data-testid="event-list" aria-live="polite">
@@ -137,15 +147,18 @@
     const empty = document.getElementById("stream-empty");
     const chatEmpty = document.getElementById("chat-empty");
     const pipeline = document.querySelector("[data-testid=event-pipeline]");
+    const graphView = document.getElementById("graph-view");
     const filterWrap = document.getElementById("kind-filter-wrap");
     const filterMenu = document.getElementById("kind-filter-menu");
-    const filterOpen = document.getElementById("kind-filter-open");
+    const graphFilterMenu = document.getElementById("graph-filter-menu");
+    const filterOpenBtn = document.getElementById("kind-filter-open");
     const filterClear = document.getElementById("kind-filter-clear");
     const search = document.getElementById("search");
     const inspector = document.getElementById("inspector");
     const inspectorBody = document.getElementById("inspector-body");
     const inspectorTitle = document.getElementById("inspector-title");
     let view = "trajectory";
+    let filterOpen = false;
     const payloads = {};
     {{ range .Events }}payloads[{{ .Seq }}] = {{ printf "%q" .PayloadJSON }};{{ end }}
     const chatEmptyDefault = {{ if .ChatEmpty }}true{{ else }}false{{ end }};
@@ -164,32 +177,65 @@
           tab.setAttribute("aria-selected", tab === btn ? "true" : "false");
         });
         filterWrap.hidden = view === "chat";
-        if (pipeline && pipeline.parentElement) pipeline.parentElement.hidden = view === "chat";
+        if (pipeline && pipeline.parentElement) pipeline.parentElement.hidden = view !== "trajectory";
+        if (graphView) graphView.hidden = view !== "graph";
+        if (eventList) eventList.hidden = view === "graph";
+        if (filterMenu) filterMenu.hidden = view === "graph" || !filterOpen;
+        if (graphFilterMenu) graphFilterMenu.hidden = view !== "graph" || !filterOpen;
+        search.placeholder = view === "graph" ? "Search graph nodes" : "Search events";
+        search.setAttribute("aria-label", view === "graph" ? "Search graph nodes" : "Search events");
         applyFilters();
       });
     });
 
-    filterOpen.addEventListener("click", () => {
-      const open = filterMenu.hidden;
-      filterMenu.hidden = !open;
-      filterOpen.setAttribute("aria-expanded", open ? "true" : "false");
+    filterOpenBtn.addEventListener("click", () => {
+      filterOpen = !filterOpen;
+      if (filterMenu) filterMenu.hidden = view === "graph" || !filterOpen;
+      if (graphFilterMenu) graphFilterMenu.hidden = view !== "graph" || !filterOpen;
+      filterOpenBtn.setAttribute("aria-expanded", filterOpen ? "true" : "false");
     });
     filterClear.addEventListener("click", () => {
-      filterMenu.querySelectorAll("input[type=checkbox]").forEach((box) => { box.checked = false; });
+      if (filterMenu) filterMenu.querySelectorAll("input[type=checkbox]").forEach((box) => { box.checked = false; });
+      if (graphFilterMenu) graphFilterMenu.querySelectorAll("input[type=checkbox]").forEach((box) => { box.checked = false; });
       applyFilters();
     });
-    filterMenu.addEventListener("change", applyFilters);
+    if (filterMenu) filterMenu.addEventListener("change", applyFilters);
+    if (graphFilterMenu) graphFilterMenu.addEventListener("change", applyFilters);
     search.addEventListener("input", applyFilters);
 
     function selectedKinds() {
+      if (!filterMenu) return [];
       return Array.from(filterMenu.querySelectorAll("input[type=checkbox]:checked")).map((box) => box.dataset.filter);
     }
 
+    function selectedGraphTypes() {
+      if (!graphFilterMenu) return [];
+      return Array.from(graphFilterMenu.querySelectorAll("input[type=checkbox]:checked")).map((box) => box.dataset.graphFilter);
+    }
+
     function applyFilters() {
-      const kinds = selectedKinds();
       const q = search.value.trim().toLowerCase();
-      filterClear.hidden = kinds.length === 0;
       let visible = 0;
+      if (view === "graph" && graphView) {
+        const types = selectedGraphTypes();
+        filterClear.hidden = types.length === 0;
+        graphView.querySelectorAll(".graph-node").forEach((btn) => {
+          const nodeType = btn.dataset.graphType || "";
+          let show = true;
+          if (types.length && types.indexOf(nodeType) === -1) show = false;
+          if (q && (btn.dataset.search || "").indexOf(q) === -1) show = false;
+          btn.closest("li").hidden = !show;
+          if (show) visible += 1;
+        });
+        if (empty) {
+          empty.hidden = visible > 0;
+          if (!empty.hidden) empty.textContent = "No graph nodes match this filter.";
+        }
+        if (chatEmpty) chatEmpty.hidden = true;
+        return;
+      }
+      const kinds = selectedKinds();
+      filterClear.hidden = kinds.length === 0;
       if (eventList) {
         eventList.querySelectorAll("li").forEach((li) => {
           const kind = li.dataset.kind;

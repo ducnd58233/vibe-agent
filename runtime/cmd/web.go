@@ -16,7 +16,7 @@ func webCommand(args []string) error {
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	workspaceRoot, _, err := paths.resolve()
+	workspaceRoot, toolkitRoot, err := paths.resolve()
 	if err != nil {
 		return err
 	}
@@ -25,6 +25,7 @@ func webCommand(args []string) error {
 	}
 	return app.Run(app.Config{
 		WorkspaceRoot: workspaceRoot,
+		ToolkitRoot:   toolkitRoot,
 		Port:          *port,
 	})
 }

@@ -11,20 +11,22 @@ import (
 )
 
 // NewHandler builds routes for the empty shell.
-func NewHandler(workspaceRoot string) (http.Handler, error) {
-	return NewHandlerWithPort(workspaceRoot, defaultPort)
+func NewHandler(workspaceRoot, toolkitRoot string) (http.Handler, error) {
+	return NewHandlerWithPort(workspaceRoot, toolkitRoot, defaultPort)
 }
 
 // NewHandlerWithPort builds routes using the given port for bind metadata.
-func NewHandlerWithPort(workspaceRoot string, port int) (http.Handler, error) {
+func NewHandlerWithPort(workspaceRoot, toolkitRoot string, port int) (http.Handler, error) {
 	return mountHTTP(httpDeps{
 		workspaceRoot: filepath.Clean(workspaceRoot),
+		toolkitRoot:   filepath.Clean(toolkitRoot),
 		bindAddr:      Addr(port),
 	})
 }
 
 type httpDeps struct {
 	workspaceRoot string
+	toolkitRoot   string
 	bindAddr      string
 }
 
@@ -46,7 +48,7 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 			http.NotFound(w, r)
 			return
 		}
-		page, err := view.BuildSessionPage(d.workspaceRoot, d.bindAddr, slug)
+		page, err := view.BuildSessionPage(d.workspaceRoot, d.toolkitRoot, d.bindAddr, slug)
 		if err != nil {
 			if os.IsNotExist(err) {
 				http.NotFound(w, r)

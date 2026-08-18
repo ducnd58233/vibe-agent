@@ -20,6 +20,7 @@ const ListenHost = "127.0.0.1"
 // Config holds loopback server settings.
 type Config struct {
 	WorkspaceRoot string
+	ToolkitRoot   string
 	Port          int
 }
 
@@ -55,7 +56,7 @@ func Run(cfg Config) error {
 	if err := ValidateListenHost(ListenHost); err != nil {
 		return err
 	}
-	handler, err := NewHandlerWithPort(cfg.WorkspaceRoot, cfg.Port)
+	handler, err := NewHandlerWithPort(cfg.WorkspaceRoot, cfg.ToolkitRoot, cfg.Port)
 	if err != nil {
 		return err
 	}

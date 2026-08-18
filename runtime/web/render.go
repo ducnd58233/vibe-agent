@@ -22,8 +22,9 @@ var templateFiles embed.FS
 // Templates parses embedded HTML with view helpers registered.
 func Templates() (*template.Template, error) {
 	return template.New("").Funcs(template.FuncMap{
-		"KindOrder": func() []session.FilterKind { return view.KindOrder },
-		"upper":     strings.ToUpper,
+		"KindOrder":      func() []session.FilterKind { return view.KindOrder },
+		"GraphTypeOrder": func() []string { return view.GraphTypeLabels() },
+		"upper":          strings.ToUpper,
 	}).ParseFS(templateFiles, "templates/*.html")
 }
 
