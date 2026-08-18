@@ -40,6 +40,7 @@ Usage:
   vibe-agent memory forget --id <id>
   vibe-agent session list
   vibe-agent session show --slug <slug|ambient>
+  vibe-agent web [--port 3080] [--open]
   vibe-agent doctor
   vibe-agent eval routing [--trials N] [--jobs N] [--runner codex|claude|cursor|opencode|all] [--only <text>]
   vibe-agent version
@@ -159,6 +160,8 @@ func run(args []string) error {
 		return memoryCommand(args[1:])
 	case "session":
 		return sessionCommand(args[1:])
+	case "web":
+		return webCommand(args[1:])
 	case "doctor":
 		return doctorCommand(args[1:])
 	case "eval":
