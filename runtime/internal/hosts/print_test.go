@@ -102,6 +102,16 @@ func TestModelSuggestionsClaudeFromHelp(t *testing.T) {
 	if hints := ModelSuggestions(codex); len(hints) != 0 {
 		t.Fatalf("codex suggestions = %v", hints)
 	}
+	cursor, ok := EvalHost("cursor-agent")
+	if !ok {
+		t.Fatal("cursor-agent")
+	}
+	gotCursor := ModelSuggestions(cursor)
+	for _, want := range []string{"gpt-5", "sonnet-4-thinking"} {
+		if !slices.Contains(gotCursor, want) {
+			t.Fatalf("cursor-agent suggestions %v missing %q", gotCursor, want)
+		}
+	}
 }
 
 func hasFlagValue(args []string, flag, value string) bool {

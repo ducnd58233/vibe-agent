@@ -135,7 +135,13 @@
             </datalist>
             {{ end }}
             {{ end }}
-            <input class="composer-model" type="text" name="model" id="composer-model" list="" data-testid="composer-model" placeholder="Model" aria-label="Model" autocomplete="off"{{ if not .CanCompose }} disabled{{ end }}>
+            <div class="model-picker">
+              <input class="composer-model" type="text" name="model" id="composer-model" data-testid="composer-model" placeholder="Model" aria-label="Model" autocomplete="off"{{ if not .CanCompose }} disabled{{ end }}>
+              <button class="model-picker-open" type="button" id="composer-model-open" data-testid="composer-model-open" aria-label="Suggested models" aria-haspopup="listbox" aria-expanded="false" aria-controls="composer-model-menu" hidden{{ if not .CanCompose }} disabled{{ end }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3 5.5h10L8 12z"/></svg>
+              </button>
+              <ul class="host-menu" id="composer-model-menu" data-testid="composer-model-menu" role="listbox" hidden></ul>
+            </div>
             <label class="composer-mode" data-tip="Ask is the default: the host answers without tools. Tick Agent to let the host call tools." title="Ask is the default: the host answers without tools. Tick Agent to let the host call tools.">
               <input type="checkbox" name="mode" value="agent" id="composer-mode-agent" data-testid="composer-mode-agent" aria-describedby="composer-mode-tip"{{ if not .CanCompose }} disabled{{ end }}>
               <span>Agent</span>
@@ -219,7 +225,7 @@
     const inspectorBody = document.getElementById("inspector-body");
     const inspectorTitle = document.getElementById("inspector-title");
     const inspectorPane = document.getElementById("inspector-pane");
-    let view = {{ printf "%q" .View }};
+    let view = {{ .View }};
     let filterOpen = false;
     let selectedSeq = "";
     const eventDetailsList = {{ if .EventDataJSON }}{{ .EventDataJSON }}{{ else }}[]{{ end }};
@@ -230,7 +236,7 @@
 
     document.getElementById("sidebar-open").addEventListener("click", () => app.classList.add("is-sidebar-open"));
     document.getElementById("sidebar-backdrop").addEventListener("click", () => app.classList.remove("is-sidebar-open"));
-    const serverURL = {{ printf "%q" .URL }};
+    const serverURL = {{ .URL }};
     document.getElementById("settings-open").addEventListener("click", () => document.getElementById("settings-dialog").showModal());
     document.getElementById("settings-close").addEventListener("click", () => document.getElementById("settings-dialog").close());
     document.getElementById("settings-copy-bind").addEventListener("click", () => {

@@ -118,6 +118,43 @@
     if (!hostMenu || !hostOpen) return;
     hostMenu.hidden = !on;
     hostOpen.setAttribute("aria-expanded", on ? "true" : "false");
+    if (on) setModelMenu(false);
+  }
+
+  const modelInput = document.getElementById("composer-model");
+  const modelOpen = document.getElementById("composer-model-open");
+  const modelMenu = document.getElementById("composer-model-menu");
+
+  function setModelMenu(on) {
+    if (!modelMenu || !modelOpen) return;
+    modelMenu.hidden = !on;
+    modelOpen.setAttribute("aria-expanded", on ? "true" : "false");
+  }
+
+  function fillModelMenu(list) {
+    if (!modelMenu || !modelOpen || !modelInput) return;
+    modelMenu.innerHTML = "";
+    const opts = list ? list.querySelectorAll("option") : [];
+    if (!opts.length) {
+      modelOpen.hidden = true;
+      setModelMenu(false);
+      modelInput.removeAttribute("list");
+      modelInput.placeholder = "Model";
+      return;
+    }
+    modelOpen.hidden = false;
+    opts.forEach((opt) => {
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "host-option";
+      btn.setAttribute("role", "option");
+      btn.textContent = opt.value;
+      btn.dataset.model = opt.value;
+      li.appendChild(btn);
+      modelMenu.appendChild(li);
+    });
+    modelInput.placeholder = opts[0].value;
   }
 
   async function refreshCatalog() {
@@ -132,11 +169,13 @@
     if (trig.kind === "files") {
       closeCatalog();
       setHostMenu(false);
+      setModelMenu(false);
       loadFiles(trig.q);
       return;
     }
     closeFilePanel();
     setHostMenu(false);
+    setModelMenu(false);
     const url =
       trig.kind === "commands"
         ? "/catalog/commands?q=" + encodeURIComponent(trig.q)
@@ -275,22 +314,13 @@
     function applyHost(id, label) {
       hostInput.value = id;
       if (hostLabel) hostLabel.textContent = label || id;
-      const modelInput = document.getElementById("composer-model");
       if (modelInput) {
         const option = hostMenu.querySelector('[data-host-id="' + id + '"]');
         const accepts = option && option.getAttribute("data-accepts-model") === "true";
-        modelInput.hidden = !accepts;
         modelInput.disabled = !accepts;
-        const listId = "composer-models-" + id;
-        const list = document.getElementById(listId);
-        if (accepts && list) {
-          modelInput.setAttribute("list", listId);
-          const first = list.querySelector("option");
-          modelInput.placeholder = first ? first.value : "Model";
-        } else {
-          modelInput.removeAttribute("list");
-          modelInput.placeholder = "Model";
-        }
+        const picker = modelInput.closest(".model-picker");
+        if (picker) picker.hidden = !accepts;
+        fillModelMenu(accepts ? document.getElementById("composer-models-" + id) : null);
       }
       try {
         localStorage.setItem(hostStorageKey, JSON.stringify({ id: id, label: label || id }));
@@ -317,6 +347,31 @@
       setHostMenu(false);
     });
     applyHost(hostInput.value, hostLabel ? hostLabel.textContent : hostInput.value);
+  }
+
+  if (modelOpen && modelMenu && modelInput) {
+    modelOpen.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeFilePanel();
+      closeCatalog();
+      setHostMenu(false);
+      setModelMenu(modelMenu.hidden);
+    });
+    modelInput.addEventListener("focus", () => {
+      if (!modelOpen.hidden) {
+        closeCatalog();
+        setHostMenu(false);
+        setModelMenu(true);
+      }
+    });
+    modelMenu.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const option = event.target.closest("[data-model]");
+      if (!option) return;
+      modelInput.value = option.dataset.model || "";
+      setModelMenu(false);
+    });
   }
 
   const form = input.closest("form");
@@ -368,6 +423,11 @@
         setHostMenu(false);
       }
     }
+    if (modelMenu && !modelMenu.hidden) {
+      if (!modelMenu.contains(event.target) && !(modelOpen && modelOpen.contains(event.target)) && event.target !== modelInput) {
+        setModelMenu(false);
+      }
+    }
   });
 
   document.addEventListener("keydown", (event) => {
@@ -375,6 +435,7 @@
     closeFilePanel();
     closeCatalog();
     setHostMenu(false);
+    setModelMenu(false);
   });
 
   highlightPreview(input.value);

@@ -18,13 +18,15 @@ func AcceptsModel(host Host) bool {
 	}
 }
 
-// ModelSuggestions are documented --model aliases for the composer datalist.
-// Claude values come from `claude --help` (`--model`). cursor-agent accepts
-// --model but this build has no local --help list, so the field stays free text.
+// ModelSuggestions are documented --model aliases for the composer picker.
+// Claude values come from `claude --help` (`--model`). cursor-agent values
+// are the examples on `cursor-agent --help` (`--model`).
 func ModelSuggestions(host Host) []string {
 	switch host.Binary {
 	case "claude":
 		return []string{"sonnet", "opus", "fable"}
+	case "cursor-agent":
+		return []string{"gpt-5", "sonnet-4-thinking"}
 	default:
 		return nil
 	}

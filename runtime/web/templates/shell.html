@@ -105,7 +105,7 @@
 
   <script>
     const app = document.getElementById("app");
-    const serverURL = {{ printf "%q" .URL }};
+    const serverURL = {{ .URL }};
     document.getElementById("sidebar-open").addEventListener("click", () => {
       app.classList.add("is-sidebar-open");
     });

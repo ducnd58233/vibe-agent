@@ -73,7 +73,7 @@ func TestSessionPageRendersEventList(t *testing.T) {
 		"chat-empty", "chat-prompts", "chat-prompt",
 		"graph-view", "settings-dialog", "composer", "new-session-form",
 		"composer-catalog", "composer-preview", "composer-description", "composer-file-panel",
-		"composer-host-open", "composer-host-menu", "composer-model", "composer-mode-agent", "host-busy", "thinking-bar",
+		"composer-host-open", "composer-host-menu", "composer-model", "composer-model-open", "composer-model-menu", "composer-mode-agent", "host-busy", "thinking-bar",
 	} {
 		if !strings.Contains(body, `data-testid="`+id+`"`) {
 			t.Fatalf("missing test id %q", id)
@@ -199,6 +199,9 @@ func TestSessionRendersMarkdownAndOmitsEmptyUserTokens(t *testing.T) {
 	chat := rec.Body.String()
 	if !strings.Contains(chat, "is-chat-view") {
 		t.Fatal("chat view class missing")
+	}
+	if strings.Contains(chat, `let view = "\"chat\""`) || !strings.Contains(chat, `let view = "chat"`) {
+		t.Fatal("Chat JS view must be the string chat, not a quoted leftover from printf q")
 	}
 	if !strings.Contains(chat, "<article class=\"event") {
 		t.Fatal("chat rows must be articles so inspector click is not a nested button")
@@ -521,8 +524,8 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 	if !strings.Contains(chatTokens, "margin-inline-start: 0") {
 		t.Fatalf("chat token chips must sit under the assistant body, not the far edge, got %q", chatTokens)
 	}
-	if !strings.Contains(css, `li[data-role="system"]`) || !strings.Contains(css, `li[data-role="tool"]`) {
-		t.Fatal("chat must hide system and tool rows so Composer start/stop stay on Trajectory")
+	if !strings.Contains(css, `.event-list > li[data-role="system"]`) || !strings.Contains(css, `.event-list > li[data-role="tool"]`) {
+		t.Fatal("chat must hide system and tool rows with a selector that beats event-list > li display flex")
 	}
 	graphNode := cssBlock(css, ".graph-node")
 	if !strings.Contains(graphNode, "--graph-tag-col") {
