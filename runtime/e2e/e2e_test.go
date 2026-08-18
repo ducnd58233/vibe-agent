@@ -5,6 +5,7 @@
 package e2e_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -19,6 +20,7 @@ import (
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 )
 
 // This exercises the consumer-repo shape from AGENTS.md: a workspace that keeps
@@ -783,6 +785,113 @@ func TestWebServesFixtureTrajectory(t *testing.T) {
 	if strings.Contains(body, e2eWebSecret) {
 		t.Fatal("fixture secret leaked into HTML")
 	}
+}
+
+func TestWebComposerWorkspaceAndCatalog(t *testing.T) {
+	root := consumerRepo(t)
+	other := t.TempDir()
+	write(t, filepath.Join(other, "AGENTS.md"), "# Other workspace\n\nMARKER_OTHER_WS\n")
+	otherID := domain.NewRegistry(root, []string{other}).ID(other)
+	run := cli{t, buildBinary(t), root, toolkitRoot(t)}
+	port := "13082"
+	cmd, err := safexec.CommandContext(run.t.Context(), run.binary, "web",
+		"--port", port, "--workspace", root, "--workspaces", other, "--toolkit", run.toolkit)
+	if err != nil {
+		t.Fatalf("web command: %v", err)
+	}
+	cmd.Dir = moduleRoot(t)
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start web: %v", err)
+	}
+	defer func() { _ = cmd.Process.Kill() }()
+
+	base := "http://127.0.0.1:" + port
+	waitForHTTPContains(t, run.t.Context(), base+"/", `data-testid="workspace-list"`)
+	waitForHTTPContains(t, run.t.Context(), base+"/catalog/commands?q=build", `data-testid="catalog-item"`)
+	waitForHTTPAbsent(t, run.t.Context(), base+"/catalog/commands?q=zzzz-not-a-command-xyzzy", `data-testid="catalog-item"`)
+
+	client := &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}
+	switchReq, err := http.NewRequestWithContext(run.t.Context(), http.MethodPost, base+"/workspace/switch",
+		strings.NewReader("workspace_id="+otherID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	switchReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	switchResp, err := client.Do(switchReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = switchResp.Body.Close()
+	if switchResp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("switch status = %d", switchResp.StatusCode)
+	}
+	shellReq, err := http.NewRequestWithContext(run.t.Context(), http.MethodGet, base+switchResp.Header.Get("Location"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cookie := range switchResp.Cookies() {
+		shellReq.AddCookie(cookie)
+	}
+	shellResp, err := client.Do(shellReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := io.ReadAll(shellResp.Body)
+	_ = shellResp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherBase := filepath.Base(other)
+	if !strings.Contains(string(raw), otherBase) {
+		t.Fatalf("active workspace label missing after switch:\n%s", raw)
+	}
+	if !strings.Contains(string(raw), "is-active") {
+		t.Fatalf("expected active workspace marker in shell:\n%s", raw)
+	}
+}
+
+func waitForHTTPContains(t *testing.T, ctx context.Context, url, want string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			body, readErr := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if readErr == nil && strings.Contains(string(body), want) {
+				return
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("timeout waiting for %q at %s", want, url)
+}
+
+func waitForHTTPAbsent(t *testing.T, ctx context.Context, url, absent string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			body, readErr := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if readErr == nil && !strings.Contains(string(body), absent) {
+				return
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("timeout waiting for absence of %q at %s", absent, url)
 }
 
 func writeWebFixtureSession(t *testing.T, root, slug string) {
