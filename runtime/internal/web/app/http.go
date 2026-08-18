@@ -66,6 +66,10 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 			handleComposerSend(w, r, d)
 			return
 		}
+		if strings.HasSuffix(strings.Trim(r.URL.Path, "/"), "/events/stream") {
+			d.handleSessionEventsStream(w, r)
+			return
+		}
 		if strings.HasSuffix(strings.Trim(r.URL.Path, "/"), "/events") {
 			handleSessionEvents(w, r, d)
 			return

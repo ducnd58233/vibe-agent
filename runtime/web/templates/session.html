@@ -111,7 +111,7 @@
       <div class="stream" id="stream" data-testid="trajectory" tabindex="-1">
         {{ if .Events }}
         <ol class="event-list" id="event-list" data-testid="event-list" aria-live="polite"
-            hx-get="/session/{{ .Slug }}/events?after={{ .LastEventSeq }}" hx-trigger="every 2s" hx-swap="beforeend" hx-target="#event-list">
+            hx-get="/session/{{ .Slug }}/events?after={{ .LastEventSeq }}" hx-trigger="sse:disconnected from:body every 2s" hx-swap="beforeend" hx-target="#event-list">
           {{ range .Events }}{{ template "event-row" . }}{{ end }}
         </ol>
         <p class="empty" id="stream-empty" hidden data-testid="trajectory-empty"></p>
@@ -348,6 +348,29 @@
         if (e.detail.target === eventList) refreshTailURL();
       });
       refreshTailURL();
+
+      function streamPath() {
+        return "/session/{{ .Slug }}/events/stream?after=" + lastEventSeq();
+      }
+      let source;
+      function connectSSE() {
+        if (source) source.close();
+        source = new EventSource(streamPath());
+        source.onmessage = (ev) => {
+          const wrap = document.createElement("div");
+          wrap.innerHTML = ev.data;
+          const row = wrap.firstElementChild;
+          if (row) eventList.appendChild(row);
+          refreshTailURL();
+          source.close();
+          connectSSE();
+        };
+        source.onerror = () => {
+          source.close();
+          document.body.dispatchEvent(new Event("sse:disconnected"));
+        };
+      }
+      connectSSE();
 
       eventList.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-seq]");
