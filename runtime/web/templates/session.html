@@ -93,7 +93,7 @@
         </ol>
         <p class="empty" id="stream-empty" data-testid="trajectory-empty"{{ if or .Events (eq .View "chat") }} hidden{{ end }}>No host turns yet. Open Graph for the delivery run.</p>
         <p class="empty chat-empty" id="chat-empty" data-testid="chat-empty"{{ if or (ne .View "chat") (not .ChatEmpty) }} hidden{{ end }}>
-          Chat is empty until a host reports user or assistant text. Open Graph for the delivery run.
+          Chat is empty until a host reports user, thinking, or assistant text. Open Graph for the delivery run.
         </p>
       </div>
       <div class="dock">
@@ -128,11 +128,19 @@
                 {{ end }}
               </ul>
             </div>
-            <input class="composer-model" type="text" name="model" id="composer-model" data-testid="composer-model" placeholder="Model" aria-label="Model" autocomplete="off"{{ if not .CanCompose }} disabled{{ end }}>
-            <label class="composer-mode">
-              <input type="checkbox" name="mode" value="agent" id="composer-mode-agent" data-testid="composer-mode-agent"{{ if not .CanCompose }} disabled{{ end }}>
+            {{ range .ComposeHosts }}
+            {{ if .ModelHints }}
+            <datalist id="composer-models-{{ .ID }}">
+              {{ range .ModelHints }}<option value="{{ . }}"></option>{{ end }}
+            </datalist>
+            {{ end }}
+            {{ end }}
+            <input class="composer-model" type="text" name="model" id="composer-model" list="" data-testid="composer-model" placeholder="Model" aria-label="Model" autocomplete="off"{{ if not .CanCompose }} disabled{{ end }}>
+            <label class="composer-mode" data-tip="Ask is the default: the host answers without tools. Tick Agent to let the host call tools." title="Ask is the default: the host answers without tools. Tick Agent to let the host call tools.">
+              <input type="checkbox" name="mode" value="agent" id="composer-mode-agent" data-testid="composer-mode-agent" aria-describedby="composer-mode-tip"{{ if not .CanCompose }} disabled{{ end }}>
               <span>Agent</span>
             </label>
+            <span class="visually-hidden" id="composer-mode-tip">Ask is the default: the host answers without tools. Tick Agent to let the host call tools.</span>
             <button class="btn-send" type="submit"{{ if not .CanCompose }} disabled{{ end }} aria-label="Send">{{ template "icon-send" }}</button>
           </div>
         </form>
@@ -289,7 +297,7 @@
     }
 
     function chatVisibleRole(role) {
-      return role === "user" || role === "assistant" || role === "question";
+      return role === "user" || role === "assistant" || role === "question" || role === "thinking";
     }
 
     function applyFilters() {
@@ -410,7 +418,7 @@
           refreshTailURL();
           applyFilters();
           if (hostBusy && !hostBusy.hidden) {
-            if (row && row.dataset && chatVisibleRole(row.dataset.role) && row.dataset.role !== "user") {
+            if (row && row.dataset && (row.dataset.role === "assistant" || row.dataset.role === "question")) {
               hostBusy.hidden = true;
             }
           }
@@ -431,7 +439,10 @@
           if (!li) return;
           const open = li.classList.toggle("is-expanded");
           expand.setAttribute("aria-expanded", open ? "true" : "false");
-          expand.textContent = open ? "Show less" : "Show more";
+          const thinking = li.dataset.role === "thinking";
+          expand.textContent = open
+            ? (thinking ? "Hide thinking" : "Show less")
+            : (thinking ? "Show thinking" : "Show more");
           return;
         }
         const btn = e.target.closest("[data-seq]");

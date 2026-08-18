@@ -281,6 +281,16 @@
         const accepts = option && option.getAttribute("data-accepts-model") === "true";
         modelInput.hidden = !accepts;
         modelInput.disabled = !accepts;
+        const listId = "composer-models-" + id;
+        const list = document.getElementById(listId);
+        if (accepts && list) {
+          modelInput.setAttribute("list", listId);
+          const first = list.querySelector("option");
+          modelInput.placeholder = first ? first.value : "Model";
+        } else {
+          modelInput.removeAttribute("list");
+          modelInput.placeholder = "Model";
+        }
       }
       try {
         localStorage.setItem(hostStorageKey, JSON.stringify({ id: id, label: label || id }));
@@ -293,18 +303,21 @@
       }
     } catch (_) {}
     hostOpen.addEventListener("click", (event) => {
+      event.preventDefault();
       event.stopPropagation();
       closeFilePanel();
       closeCatalog();
       setHostMenu(hostMenu.hidden);
     });
     hostMenu.addEventListener("click", (event) => {
+      event.stopPropagation();
       const option = event.target.closest("[data-host-id]");
       if (!option) return;
       applyHost(option.dataset.hostId || "", option.dataset.hostLabel || option.dataset.hostId || "");
       setHostMenu(false);
     });
     applyHost(hostInput.value, hostLabel ? hostLabel.textContent : hostInput.value);
+  }
 
   const form = input.closest("form");
   const hostBusy = document.getElementById("host-busy");
@@ -363,4 +376,6 @@
     closeCatalog();
     setHostMenu(false);
   });
+
+  highlightPreview(input.value);
 })();

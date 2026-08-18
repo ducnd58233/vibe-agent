@@ -152,18 +152,41 @@ func TestEventSummaryComposerStartAndSessionEnd(t *testing.T) {
 	}
 }
 
-func TestChatRowsExcludesThinking(t *testing.T) {
+func TestChatRowsIncludesThinkingBeforeAssistant(t *testing.T) {
 	rows := []EventRow{
 		{Role: "thinking", Body: "I will read the file"},
 		{Role: "assistant", Body: "done"},
 		{Role: "user", Body: "go"},
 	}
 	chat := ChatRows(rows)
-	if len(chat) != 2 || chat[0].Role != "assistant" || chat[1].Role != "user" {
+	if len(chat) != 3 || chat[0].Role != "thinking" || chat[1].Role != "assistant" || chat[2].Role != "user" {
 		t.Fatalf("chat = %+v", chat)
 	}
-	if ChatVisibleRole("thinking") {
-		t.Fatal("thinking belongs on Trajectory, not Chat")
+	if !ChatVisibleRole("thinking") {
+		t.Fatal("thinking belongs on Chat, collapsed above the assistant reply")
+	}
+}
+
+func TestThinkingChatRowStartsFolded(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, session.LogName)
+	rec := session.Record{
+		Type:   session.TypeTranscriptMessage,
+		Source: session.SourcePrint,
+		Role:   "thinking",
+		Body:   "planning the edit",
+		At:     time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC),
+	}
+	if _, err := session.Append(path, rec); err != nil {
+		t.Fatal(err)
+	}
+	events, err := session.Replay(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := ProjectEvents(events)
+	if len(rows) != 1 || rows[0].Role != "thinking" || !rows[0].FoldClosed {
+		t.Fatalf("rows = %+v", rows)
 	}
 }
 

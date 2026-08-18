@@ -230,10 +230,13 @@ func KindCounts(rows []EventRow) map[session.FilterKind]int {
 	return counts
 }
 
-// ChatRows returns user, assistant, and host-question rows.
+// ChatRows returns user, assistant, thinking, and host-question rows.
 func ChatRows(rows []EventRow) []EventRow {
 	out := make([]EventRow, 0, len(rows))
 	for _, row := range rows {
+		if row.Role == "thinking" && strings.TrimSpace(row.Body) == "" {
+			continue
+		}
 		if ChatVisibleRole(row.Role) {
 			out = append(out, row)
 		}
@@ -242,6 +245,9 @@ func ChatRows(rows []EventRow) []EventRow {
 }
 
 func chatFoldClosed(role, body string) bool {
+	if role == "thinking" {
+		return strings.TrimSpace(body) != ""
+	}
 	if role != "user" {
 		return false
 	}
@@ -252,10 +258,11 @@ func chatFoldClosed(role, body string) bool {
 }
 
 // ChatVisibleRole is the Chat tab allow-list. Questions from a host (approve,
-// ask user) belong here next to the thread, not only on Graph.
+// ask user) belong here next to the thread, not only on Graph. Thinking sits
+// above the assistant reply, collapsed until the operator expands it.
 func ChatVisibleRole(role string) bool {
 	switch role {
-	case "user", "assistant", "question":
+	case "user", "assistant", "question", "thinking":
 		return true
 	default:
 		return false

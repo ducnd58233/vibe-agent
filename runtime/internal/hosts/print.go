@@ -18,6 +18,18 @@ func AcceptsModel(host Host) bool {
 	}
 }
 
+// ModelSuggestions are documented --model aliases for the composer datalist.
+// Claude values come from `claude --help` (`--model`). cursor-agent accepts
+// --model but this build has no local --help list, so the field stays free text.
+func ModelSuggestions(host Host) []string {
+	switch host.Binary {
+	case "claude":
+		return []string{"sonnet", "opus", "fable"}
+	default:
+		return nil
+	}
+}
+
 // PrintArgv returns argv after the binary for a print-mode spawn.
 func PrintArgv(host Host, opts PrintOptions) []string {
 	parts := strings.Fields(host.EvalCommand)

@@ -20,6 +20,7 @@ type HostRow struct {
 	OnPath       bool
 	Reason       string
 	AcceptsModel bool
+	ModelHints   []string
 }
 
 // ShellPage is the empty-state template model.
@@ -62,6 +63,7 @@ func BuildShellPage(workspaceRoot, bindAddr string, reg domain.Registry, activeR
 			OnPath:       entry.OnPath,
 			Reason:       reason,
 			AcceptsModel: hosts.AcceptsModel(entry.Host),
+			ModelHints:   hosts.ModelSuggestions(entry.Host),
 		}
 		page.Hosts = append(page.Hosts, row)
 		if entry.OnPath {

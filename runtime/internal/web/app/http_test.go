@@ -113,6 +113,9 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	if !strings.Contains(body, `class="dock"`) || !strings.Contains(body, `data-testid="composer"`) {
 		t.Fatal("expected composer dock on the session page")
 	}
+	if !strings.Contains(body, `data-tip="Ask is the default`) {
+		t.Fatal("Agent checkbox needs a tooltip explaining ask vs agent")
+	}
 }
 
 func TestSettingsDialogPinsURLAndHostChips(t *testing.T) {
@@ -465,6 +468,12 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 	if !strings.Contains(field, "caret-color") {
 		t.Fatalf("composer field must keep a visible caret when text is painted on the preview, got %q", field)
 	}
+	if strings.Contains(field, "color: transparent") {
+		t.Fatalf("empty composer field must show typed text, got %q", field)
+	}
+	if !strings.Contains(css, ":has(.composer-preview:not(:empty)) .composer-field") {
+		t.Fatal("slash and @ highlight may hide input text only after the preview has content")
+	}
 	mark := cssBlock(css, ".composer-field-wrap .composer-ref")
 	if strings.Contains(mark, "color: transparent") {
 		t.Fatalf("slash and @ marks must stay visible on the preview, got %q", mark)
@@ -514,6 +523,14 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 	}
 	if !strings.Contains(css, `li[data-role="system"]`) || !strings.Contains(css, `li[data-role="tool"]`) {
 		t.Fatal("chat must hide system and tool rows so Composer start/stop stay on Trajectory")
+	}
+	graphNode := cssBlock(css, ".graph-node")
+	if !strings.Contains(graphNode, "--graph-tag-col") {
+		t.Fatalf("graph node must pin type tags left of the spine, got %q", graphNode)
+	}
+	graphType := cssBlock(css, ".graph-type")
+	if !strings.Contains(graphType, "justify-self: end") {
+		t.Fatalf("type tags must right-align toward the spine, got %q", graphType)
 	}
 	graphCurrent := cssBlock(css, `.graph-node[aria-current="true"]`)
 	if !strings.Contains(graphCurrent, "--color-accent") {

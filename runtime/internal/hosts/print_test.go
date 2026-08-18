@@ -84,6 +84,26 @@ func TestPrintArgvCursorAgentDropsModeAsk(t *testing.T) {
 	}
 }
 
+func TestModelSuggestionsClaudeFromHelp(t *testing.T) {
+	host, ok := EvalHost("claude")
+	if !ok {
+		t.Fatal("claude")
+	}
+	got := ModelSuggestions(host)
+	for _, want := range []string{"sonnet", "opus", "fable"} {
+		if !slices.Contains(got, want) {
+			t.Fatalf("claude suggestions %v missing %q", got, want)
+		}
+	}
+	codex, ok := EvalHost("codex")
+	if !ok {
+		t.Fatal("codex")
+	}
+	if hints := ModelSuggestions(codex); len(hints) != 0 {
+		t.Fatalf("codex suggestions = %v", hints)
+	}
+}
+
 func hasFlagValue(args []string, flag, value string) bool {
 	for i, arg := range args {
 		if arg == flag && i+1 < len(args) && args[i+1] == value {

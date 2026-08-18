@@ -33,7 +33,7 @@
     </span>
   </article>
   {{ if .FoldClosed }}
-  <button type="button" class="event-expand" data-expand data-testid="event-expand" aria-expanded="false">Show more</button>
+  <button type="button" class="event-expand" data-expand data-testid="event-expand" aria-expanded="false">{{ if eq .Role "thinking" }}Show thinking{{ else }}Show more{{ end }}</button>
   {{ end }}
 </li>
 {{end}}
