@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/static/tokens.css">
   <link rel="stylesheet" href="/static/shell.css">
   <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/composer.js" defer></script>
 </head>
 <body>
   <a class="skip" href="#stream">Skip to trajectory</a>
@@ -111,7 +112,7 @@
       <div class="stream" id="stream" data-testid="trajectory" tabindex="-1">
         {{ if .Events }}
         <ol class="event-list" id="event-list" data-testid="event-list" aria-live="polite"
-            hx-get="/session/{{ .Slug }}/events?after={{ .LastEventSeq }}" hx-trigger="every 2s" hx-swap="beforeend" hx-target="#event-list">
+            hx-get="/session/{{ .Slug }}/events?after={{ .LastEventSeq }}" hx-trigger="sse:disconnected from:body every 2s" hx-swap="beforeend" hx-target="#event-list">
           {{ range .Events }}{{ template "event-row" . }}{{ end }}
         </ol>
         <p class="empty" id="stream-empty" hidden data-testid="trajectory-empty"></p>
@@ -123,16 +124,23 @@
         </p>
       </div>
       <div class="dock">
+        <div class="composer-stack">
+          <div class="composer-preview" id="composer-preview" data-testid="composer-preview" aria-hidden="true"></div>
+          <div class="composer-description" id="composer-description" data-testid="composer-description" hidden></div>
+          <div class="composer-catalog-panel" id="composer-catalog-panel" data-testid="composer-catalog" hidden></div>
+          <div class="composer-file-panel" id="composer-file-panel" data-testid="composer-file-panel" hidden></div>
         <form class="composer" method="post" action="/session/{{ .Slug }}/send" data-testid="composer"{{ if not .CanCompose }} aria-disabled="true"{{ end }}>
+          <button class="btn-icon" type="button" id="composer-file-open" data-testid="composer-file-open" aria-label="Attach file"{{ if not .CanCompose }} disabled{{ end }}>+</button>
           <label class="visually-hidden" for="composer-host">Host</label>
           <select class="composer-host" id="composer-host" name="host"{{ if not .CanCompose }} disabled{{ end }} aria-label="Host">
             {{ range .ComposeHosts }}
             <option value="{{ .ID }}">{{ .Binary }}</option>
             {{ end }}
           </select>
-          <input class="composer-field" id="composer-message" name="message" type="text" placeholder="{{ if .CanCompose }}Send one print-mode turn{{ else }}Install a host on PATH to send{{ end }}"{{ if not .CanCompose }} disabled{{ end }} aria-label="Message">
+          <input class="composer-field" id="composer-message" name="message" type="text" placeholder="{{ if .CanCompose }}Type /command, @skill, or attach a file{{ else }}Install a host on PATH to send{{ end }}"{{ if not .CanCompose }} disabled{{ end }} aria-label="Message" autocomplete="off">
           <button class="btn-send" type="submit"{{ if not .CanCompose }} disabled{{ end }} aria-label="Send">→</button>
         </form>
+        </div>
       </div>
     </section>
     <aside class="inspector" id="inspector" data-testid="inspector" aria-label="Inspector">
@@ -348,6 +356,29 @@
         if (e.detail.target === eventList) refreshTailURL();
       });
       refreshTailURL();
+
+      function streamPath() {
+        return "/session/{{ .Slug }}/events/stream?after=" + lastEventSeq();
+      }
+      let source;
+      function connectSSE() {
+        if (source) source.close();
+        source = new EventSource(streamPath());
+        source.onmessage = (ev) => {
+          const wrap = document.createElement("div");
+          wrap.innerHTML = ev.data;
+          const row = wrap.firstElementChild;
+          if (row) eventList.appendChild(row);
+          refreshTailURL();
+          source.close();
+          connectSSE();
+        };
+        source.onerror = () => {
+          source.close();
+          document.body.dispatchEvent(new Event("sse:disconnected"));
+        };
+      }
+      connectSSE();
 
       eventList.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-seq]");

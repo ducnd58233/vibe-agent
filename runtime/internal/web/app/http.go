@@ -55,6 +55,18 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/static/", static)
+	mux.HandleFunc("/catalog/commands", func(w http.ResponseWriter, r *http.Request) {
+		d.handleCatalogCommands(w, r)
+	})
+	mux.HandleFunc("/catalog/skills", func(w http.ResponseWriter, r *http.Request) {
+		d.handleCatalogSkills(w, r)
+	})
+	mux.HandleFunc("/workspace/files/preview", func(w http.ResponseWriter, r *http.Request) {
+		d.handleWorkspaceFilePreview(w, r)
+	})
+	mux.HandleFunc("/workspace/files", func(w http.ResponseWriter, r *http.Request) {
+		d.handleWorkspaceFiles(w, r)
+	})
 	mux.HandleFunc("/workspace/switch", func(w http.ResponseWriter, r *http.Request) {
 		handleWorkspaceSwitch(w, r, d)
 	})
@@ -64,6 +76,10 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 	mux.HandleFunc("/session/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && strings.HasSuffix(strings.Trim(r.URL.Path, "/"), "/send") {
 			handleComposerSend(w, r, d)
+			return
+		}
+		if strings.HasSuffix(strings.Trim(r.URL.Path, "/"), "/events/stream") {
+			d.handleSessionEventsStream(w, r)
 			return
 		}
 		if strings.HasSuffix(strings.Trim(r.URL.Path, "/"), "/events") {
