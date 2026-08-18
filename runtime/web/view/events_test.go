@@ -3,6 +3,7 @@ package view
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -46,6 +47,18 @@ func TestProjectEventsMixedRoles(t *testing.T) {
 	if rows[2].Type != session.TypeToolUse || rows[2].At.IsZero() {
 		t.Fatalf("tool row type/at = %+v", rows[2])
 	}
+	if rows[1].HasUsage {
+		t.Fatal("user prompt must not inherit model usage")
+	}
+	if rows[1].BodyHTML == "" {
+		t.Fatal("user prose should render as markdown HTML")
+	}
+	if rows[2].BodyHTML != "" {
+		t.Fatal("tool command should stay plain pre, not markdown")
+	}
+	if !strings.Contains(string(rows[3].BodyHTML), "<p>") {
+		t.Fatalf("assistant prose should wrap as HTML, got %q", rows[3].BodyHTML)
+	}
 }
 
 func TestSumUsageAggregatesReportedRows(t *testing.T) {
@@ -67,6 +80,55 @@ func TestFormatToolbarTokensCombinedWhenOnlyTotal(t *testing.T) {
 	got := FormatToolbarTokens(UsageTotals{Reported: true, Total: 88})
 	if got != "tokens 88" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+func TestChatFoldClosedOnLongAssistantBody(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, session.LogName)
+	long := strings.Repeat("word ", 120)
+	short := "short reply"
+	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
+	for _, rec := range []session.Record{
+		{Type: session.TypePromptSubmit, Source: session.SourceHook, Body: short, At: stamp},
+		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: long, At: stamp},
+		{Type: session.TypeToolUse, Source: session.SourceHook, Tool: "Read", Command: strings.Repeat("x", 600), At: stamp},
+	} {
+		if _, err := session.Append(path, rec); err != nil {
+			t.Fatal(err)
+		}
+	}
+	events, err := session.Replay(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := ProjectEvents(events)
+	if len(rows) != 3 {
+		t.Fatalf("rows = %d", len(rows))
+	}
+	if rows[0].FoldClosed {
+		t.Fatal("short user prompt must stay expanded")
+	}
+	if !rows[1].FoldClosed {
+		t.Fatal("long assistant prose must fold on Chat")
+	}
+	if rows[2].FoldClosed {
+		t.Fatal("tool rows are Trajectory cards, not Chat folds")
+	}
+}
+
+func TestChatRowsExcludesThinking(t *testing.T) {
+	rows := []EventRow{
+		{Role: "thinking", Body: "I will read the file"},
+		{Role: "assistant", Body: "done"},
+		{Role: "user", Body: "go"},
+	}
+	chat := ChatRows(rows)
+	if len(chat) != 2 || chat[0].Role != "assistant" || chat[1].Role != "user" {
+		t.Fatalf("chat = %+v", chat)
+	}
+	if ChatVisibleRole("thinking") {
+		t.Fatal("thinking belongs on Trajectory, not Chat")
 	}
 }
 

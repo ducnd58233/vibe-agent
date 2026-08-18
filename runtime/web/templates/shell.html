@@ -78,61 +78,7 @@
     </section>
   </div>
 
-  <dialog id="settings-dialog" data-testid="settings-dialog" aria-labelledby="settings-heading">
-    <div class="dialog-body settings-shell">
-      <div class="dialog-head">
-        <h2 id="settings-heading">Settings</h2>
-        <button class="btn" type="button" id="settings-close">Close</button>
-      </div>
-      <div class="settings-scroll">
-        <section class="settings-section" aria-labelledby="settings-appearance">
-          <h3 id="settings-appearance">Appearance</h3>
-          <fieldset class="choice-list" data-testid="settings-theme">
-            <legend class="visually-hidden">Theme</legend>
-            <label class="choice">
-              <input type="radio" name="theme" value="dark" checked>
-              <span>
-                <strong>Dark</strong>
-                <span class="choice-desc">Default. Dark surfaces, same layout as Light.</span>
-              </span>
-            </label>
-            <label class="choice">
-              <input type="radio" name="theme" value="light">
-              <span>
-                <strong>Light</strong>
-                <span class="choice-desc">Same layout and tokens, inverted surfaces.</span>
-              </span>
-            </label>
-          </fieldset>
-        </section>
-        <section class="settings-section" aria-labelledby="settings-server">
-          <h3 id="settings-server">Server</h3>
-          <dl class="kv">
-            <dt>URL</dt>
-            <dd>
-              <span class="bind-row">
-                <code data-testid="settings-bind">{{ .BindAddr }}</code>
-                <button class="btn btn-ghost" type="button" id="settings-copy-bind">Copy URL</button>
-              </span>
-            </dd>
-            <dt>Status</dt>
-            <dd><span class="live">listening</span></dd>
-          </dl>
-        </section>
-        <section class="settings-section" aria-labelledby="settings-hosts">
-          <h3 id="settings-hosts">Hosts on PATH</h3>
-          <ul class="host-status" data-testid="settings-hosts">
-            {{ range .Hosts }}
-            <li>
-              {{ if .OnPath }}<span class="host-ok">ready</span>{{ else }}<span class="host-missing">missing</span>{{ end }}
-              <span>{{ .Binary }} <span class="host-cmd">{{ .Reason }}</span></span>
-            </li>
-            {{ end }}
-          </ul>
-        </section>
-      </div>
-    </div>
-  </dialog>
+  {{ template "settings-dialog" . }}
 
   <dialog id="new-session-dialog" data-testid="new-session-form" aria-labelledby="new-session-heading">
     <form class="dialog-body" method="post" action="/session/new">
@@ -187,7 +133,7 @@
       const btn = document.getElementById("settings-copy-bind");
       const done = (ok) => {
         btn.textContent = ok ? "Copied" : "Copy failed";
-        setTimeout(() => { btn.textContent = "Copy URL"; }, 1200);
+        setTimeout(() => { btn.textContent = "Copy"; }, 1200);
       };
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(serverURL).then(() => done(true)).catch(() => done(false));

@@ -73,7 +73,7 @@ func TestSessionPageRendersEventList(t *testing.T) {
 		"chat-empty", "chat-prompts", "chat-prompt",
 		"graph-view", "settings-dialog", "composer", "new-session-form",
 		"composer-catalog", "composer-preview", "composer-description", "composer-file-panel",
-		"composer-host-open", "composer-host-menu", "host-busy", "thinking-bar",
+		"composer-host-open", "composer-host-menu", "composer-model", "composer-mode-agent", "host-busy", "thinking-bar",
 	} {
 		if !strings.Contains(body, `data-testid="`+id+`"`) {
 			t.Fatalf("missing test id %q", id)
@@ -100,12 +100,145 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	if !strings.Contains(body, "docs/fixture-session/SPEC.md") {
 		t.Fatal("expected expanded human_gate prompt on chat")
 	}
+	if !strings.Contains(body, `class="graph-desc"`) {
+		t.Fatal("graph nodes must show the workflow description, not only the id")
+	}
+	if !strings.Contains(body, "<article class=\"event") {
+		t.Fatal("event rows must be articles")
+	}
 	if !strings.Contains(body, `data-testid="token-usage">in 100 · out 40`) {
 		t.Fatal("expected toolbar token totals from session usage")
 	}
 	assertNewSessionForm(t, body)
 	if !strings.Contains(body, `class="dock"`) || !strings.Contains(body, `data-testid="composer"`) {
 		t.Fatal("expected composer dock on the session page")
+	}
+}
+
+func TestSettingsDialogPinsURLAndHostChips(t *testing.T) {
+	root, slug := writeEmptySession(t)
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug, nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `class="settings-row"`) {
+		t.Fatal("expected settings-row so URL sits on the start edge and the bind on the end")
+	}
+	if !strings.Contains(body, `data-testid="settings-bind"`) {
+		t.Fatal("expected bind address")
+	}
+	if !strings.Contains(body, `class="chip chip-pass"`) && !strings.Contains(body, `class="chip chip-fail"`) {
+		t.Fatal("expected PATH status as a chip, not plain text")
+	}
+	if !strings.Contains(body, `class="host-name"`) {
+		t.Fatal("expected a host-name cell that can wrap independently of the chip")
+	}
+}
+
+func TestSessionRendersMarkdownAndOmitsEmptyUserTokens(t *testing.T) {
+	root := t.TempDir()
+	slug := "md-session"
+	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	path := session.LogPath(root, slug)
+	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
+	records := []session.Record{
+		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "cursor", Body: "say hello"},
+		{Type: session.TypeToolUse, Source: session.SourceHook, Client: "cursor", Tool: "Read", Command: "README.md"},
+		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "# Hello\n\n- one\n\nhi <script>alert(1)</script>", Usage: &session.Usage{Input: 12, Output: 4}},
+	}
+	for _, rec := range records {
+		rec.At = stamp
+		if _, err := session.Append(path, rec); err != nil {
+			t.Fatal(err)
+		}
+	}
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug, nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, `in -`) || strings.Contains(body, `out -`) {
+		t.Fatal("rows without usage must not paint empty in/out placeholders")
+	}
+	if !strings.Contains(body, `data-testid="event-md"`) {
+		t.Fatal("expected markdown body on transcript rows")
+	}
+	if strings.Contains(body, "<script>alert(1)</script>") {
+		t.Fatal("assistant HTML must not keep a raw script tag")
+	}
+	if !strings.Contains(body, "is-trajectory-view") {
+		t.Fatal("trajectory view class missing")
+	}
+	if !strings.Contains(body, `class="event-md"`) {
+		t.Fatal("expected event-md wrapper")
+	}
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug+"?view=chat", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("chat status = %d", rec.Code)
+	}
+	chat := rec.Body.String()
+	if !strings.Contains(chat, "is-chat-view") {
+		t.Fatal("chat view class missing")
+	}
+	if !strings.Contains(chat, "<article class=\"event") {
+		t.Fatal("chat rows must be articles so Show more is not nested in a button")
+	}
+	if !strings.Contains(chat, `data-testid="graph-view" hidden inert`) {
+		t.Fatal("graph must be hidden and inert on Chat so the 19-node list is not in the thread")
+	}
+}
+
+func TestLongAssistantRowExposesChatExpand(t *testing.T) {
+	root := t.TempDir()
+	slug := "fold-session"
+	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	path := session.LogPath(root, slug)
+	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
+	rec := session.Record{
+		Type:   session.TypeTranscriptMessage,
+		Source: session.SourceTranscript,
+		Role:   "assistant",
+		Body:   strings.Repeat("paragraph text. ", 40),
+		At:     stamp,
+	}
+	if _, err := session.Append(path, rec); err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recHTTP := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug+"?view=chat", nil)
+	handler.ServeHTTP(recHTTP, req)
+	if recHTTP.Code != http.StatusOK {
+		t.Fatalf("status = %d", recHTTP.Code)
+	}
+	body := recHTTP.Body.String()
+	if !strings.Contains(body, `data-testid="event-expand"`) {
+		t.Fatal("long chat prose needs a Show more control")
+	}
+	if !strings.Contains(body, `data-fold="1"`) {
+		t.Fatal("folded row must mark data-fold for CSS clamp")
 	}
 }
 
@@ -315,6 +448,21 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 	if !strings.Contains(preview, "pointer-events: none") {
 		t.Fatalf("composer preview must not steal clicks from the message field, got %q", preview)
 	}
+	graph := cssBlock(css, ".graph-view")
+	if !strings.Contains(graph, "overflow: auto") && !strings.Contains(graph, "overflow-y: auto") {
+		t.Fatalf("graph-view must scroll its own nodes, got %q", graph)
+	}
+	field := cssBlock(css, ".composer-field-wrap .composer-field")
+	if field == "" {
+		field = cssBlock(css, ".composer .composer-field")
+	}
+	if !strings.Contains(field, "caret-color") {
+		t.Fatalf("composer field must keep a visible caret when text is painted on the preview, got %q", field)
+	}
+	mark := cssBlock(css, ".composer-field-wrap .composer-ref")
+	if strings.Contains(mark, "color: transparent") {
+		t.Fatalf("slash and @ marks must stay visible on the preview, got %q", mark)
+	}
 	closed := cssBlock(css, "dialog:not([open])")
 	if !strings.Contains(closed, "display: none") {
 		t.Fatalf("closed dialogs must not remain in hit testing, got %q", closed)
@@ -322,6 +470,41 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 	hostMenu := cssBlock(css, ".host-menu")
 	if !strings.Contains(hostMenu, "bottom:") {
 		t.Fatalf("host menu must open above the composer, got %q", hostMenu)
+	}
+	row := cssBlock(css, ".settings-row")
+	if !strings.Contains(row, "space-between") {
+		t.Fatalf("settings URL row must pin the label and value to opposite edges, got %q", row)
+	}
+	hosts := cssBlock(css, ".host-status li")
+	if strings.Contains(hosts, "4.5rem") {
+		t.Fatalf("host rows must not use a 4.5rem status column that wraps binary names, got %q", hosts)
+	}
+	if !strings.Contains(hosts, "flex-wrap") {
+		t.Fatalf("host rows must wrap instead of clipping names, got %q", hosts)
+	}
+	pass := cssBlock(css, ".chip-pass")
+	if !strings.Contains(pass, "--color-success") {
+		t.Fatalf("ready tag must use the success token, got %q", pass)
+	}
+	md := cssBlock(css, ".event-md")
+	if !strings.Contains(md, "--font") && !strings.Contains(md, "overflow-wrap") && !strings.Contains(md, "margin") {
+		t.Fatalf("markdown body needs readable spacing, got %q", md)
+	}
+	chatSeq := cssBlock(css, ".is-chat-view .event-kicker .event-seq")
+	if !strings.Contains(chatSeq, "display: none") {
+		t.Fatalf("chat must hide trajectory seq labels, got %q", chatSeq)
+	}
+	chatList := cssBlock(css, ".is-chat-view .event-list")
+	if !strings.Contains(chatList, "border-inline-start: 0") {
+		t.Fatalf("chat must drop the trajectory gutter, got %q", chatList)
+	}
+	graphCurrent := cssBlock(css, `.graph-node[aria-current="true"]`)
+	if !strings.Contains(graphCurrent, "--color-accent") {
+		t.Fatalf("current graph node needs an accent rail, got %q", graphCurrent)
+	}
+	busyGraph := cssBlock(css, ".is-graph-view #host-busy")
+	if !strings.Contains(busyGraph, "display: none") {
+		t.Fatalf("thinking bar must not cover Graph, got %q", busyGraph)
 	}
 }
 
@@ -351,6 +534,14 @@ func TestEmptySessionCentersReconstructCopyAndKeepsGraphInStream(t *testing.T) {
 	}
 	if graphAt < streamAt {
 		t.Fatal("graph-view must live inside the stream so it cannot cover the canvas")
+	}
+	dockAt := strings.Index(body, `class="dock"`)
+	busyAt := strings.Index(body, `id="host-busy"`)
+	if dockAt < 0 || busyAt < 0 {
+		t.Fatal("expected dock and host-busy")
+	}
+	if busyAt < dockAt {
+		t.Fatal("thinking bar must sit in the dock, not over the graph stream")
 	}
 	if !strings.Contains(body, `data-testid="kind-filter"`) {
 		t.Fatal("expected kind filter menu")

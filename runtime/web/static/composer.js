@@ -1,6 +1,7 @@
 (function () {
   const input = document.getElementById("composer-message");
   const catalogPanel = document.getElementById("composer-catalog-panel");
+  const description = document.getElementById("composer-description");
   const preview = document.getElementById("composer-preview");
   const filePanel = document.getElementById("composer-file-panel");
   const fileOpen = document.getElementById("composer-file-open");
@@ -11,7 +12,9 @@
   if (!input) return;
 
   let catalogTrigger = null;
+  let catalogActive = -1;
   let debounceTimer;
+  let catalogAbort = null;
 
   function escapeHtml(text) {
     return text
@@ -30,8 +33,8 @@
   function highlightPreview(value) {
     if (!preview) return;
     let html = escapeHtml(value);
-    html = html.replace(/\/([a-z0-9-]+)/gi, '<mark class="composer-ref">/$1</mark>');
-    html = html.replace(/@([a-z0-9./_-]+)/gi, '<mark class="composer-ref">@$1</mark>');
+    html = html.replace(/(^|\s)(\/[a-z0-9-]+)/gi, '$1<mark class="composer-ref">$2</mark>');
+    html = html.replace(/(^|\s)(@[a-z0-9./_-]+)/gi, '$1<mark class="composer-ref">$2</mark>');
     preview.innerHTML = html;
     syncPreviewScroll();
   }
@@ -47,7 +50,13 @@
     }
     if (at >= 0 && (at === 0 || /\s/.test(before[at - 1]))) {
       const fragment = before.slice(at + 1);
-      if (fragment.includes(" ") || fragment.includes("/")) {
+      if (fragment.includes(" ")) {
+        return null;
+      }
+      if (fragment.endsWith("/")) {
+        return { kind: "files", q: fragment.replace(/\/$/, ""), start: at };
+      }
+      if (fragment.includes("/")) {
         return null;
       }
       return { kind: "skills", q: fragment, start: at };
@@ -55,11 +64,47 @@
     return null;
   }
 
+  function catalogItems() {
+    if (!catalogPanel) return [];
+    return Array.from(catalogPanel.querySelectorAll("[data-insert]"));
+  }
+
+  function setDescription(text) {
+    if (!description) return;
+    const copy = (text || "").trim();
+    description.textContent = copy;
+    description.hidden = copy === "";
+  }
+
+  function setCatalogActive(index) {
+    const items = catalogItems();
+    if (!items.length) {
+      catalogActive = -1;
+      setDescription("");
+      return;
+    }
+    catalogActive = ((index % items.length) + items.length) % items.length;
+    items.forEach((el, i) => {
+      el.setAttribute("aria-selected", i === catalogActive ? "true" : "false");
+    });
+    const active = items[catalogActive];
+    setDescription(active ? active.dataset.description || "" : "");
+    if (active && active.scrollIntoView) {
+      active.scrollIntoView({ block: "nearest" });
+    }
+  }
+
   function closeCatalog() {
+    if (catalogAbort) {
+      catalogAbort.abort();
+      catalogAbort = null;
+    }
     if (!catalogPanel) return;
     catalogPanel.hidden = true;
     catalogPanel.innerHTML = "";
     catalogTrigger = null;
+    catalogActive = -1;
+    setDescription("");
   }
 
   function closeFilePanel() {
@@ -81,6 +126,13 @@
     catalogTrigger = trig;
     if (!trig) {
       closeCatalog();
+      closeFilePanel();
+      return;
+    }
+    if (trig.kind === "files") {
+      closeCatalog();
+      setHostMenu(false);
+      loadFiles(trig.q);
       return;
     }
     closeFilePanel();
@@ -89,10 +141,22 @@
       trig.kind === "commands"
         ? "/catalog/commands?q=" + encodeURIComponent(trig.q)
         : "/catalog/skills?q=" + encodeURIComponent(trig.q);
-    const res = await fetch(url);
+    if (catalogAbort) catalogAbort.abort();
+    catalogAbort = new AbortController();
+    let res;
+    try {
+      res = await fetch(url, { signal: catalogAbort.signal });
+    } catch (err) {
+      if (err && err.name === "AbortError") return;
+      return;
+    }
     if (!res.ok) return;
+    if (triggerAtCursor() == null || triggerAtCursor().kind !== trig.kind) {
+      return;
+    }
     catalogPanel.innerHTML = await res.text();
     catalogPanel.hidden = false;
+    setCatalogActive(0);
   }
 
   function insertAtTrigger(text) {
@@ -108,6 +172,14 @@
     closeCatalog();
     highlightPreview(input.value);
     input.focus();
+  }
+
+  function insertActiveCatalogItem() {
+    const items = catalogItems();
+    if (!items.length || catalogPanel.hidden) return false;
+    const item = items[catalogActive] || items[0];
+    insertAtTrigger(item.dataset.insert || "");
+    return true;
   }
 
   function insertAtCursor(text) {
@@ -128,7 +200,7 @@
   input.addEventListener("input", () => {
     highlightPreview(input.value);
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(refreshCatalog, 120);
+    debounceTimer = setTimeout(refreshCatalog, 80);
   });
 
   input.addEventListener("scroll", () => {
@@ -140,6 +212,13 @@
       const item = event.target.closest("[data-insert]");
       if (!item) return;
       insertAtTrigger(item.dataset.insert || "");
+    });
+    catalogPanel.addEventListener("mousemove", (event) => {
+      const item = event.target.closest("[data-insert]");
+      if (!item) return;
+      const items = catalogItems();
+      const index = items.indexOf(item);
+      if (index >= 0) setCatalogActive(index);
     });
   }
 
@@ -196,6 +275,13 @@
     function applyHost(id, label) {
       hostInput.value = id;
       if (hostLabel) hostLabel.textContent = label || id;
+      const modelInput = document.getElementById("composer-model");
+      if (modelInput) {
+        const option = hostMenu.querySelector('[data-host-id="' + id + '"]');
+        const accepts = option && option.getAttribute("data-accepts-model") === "true";
+        modelInput.hidden = !accepts;
+        modelInput.disabled = !accepts;
+      }
       try {
         localStorage.setItem(hostStorageKey, JSON.stringify({ id: id, label: label || id }));
       } catch (_) {}
@@ -218,17 +304,47 @@
       applyHost(option.dataset.hostId || "", option.dataset.hostLabel || option.dataset.hostId || "");
       setHostMenu(false);
     });
-  }
+    applyHost(hostInput.value, hostLabel ? hostLabel.textContent : hostInput.value);
 
   const form = input.closest("form");
   const hostBusy = document.getElementById("host-busy");
-  if (form && hostBusy) {
-    form.addEventListener("submit", () => {
-      hostBusy.hidden = false;
+  if (form) {
+    form.addEventListener("submit", (event) => {
+      if (catalogPanel && !catalogPanel.hidden) {
+        event.preventDefault();
+        insertActiveCatalogItem();
+        return;
+      }
+      if (hostBusy) hostBusy.hidden = false;
     });
   }
 
+  input.addEventListener("keydown", (event) => {
+    if (catalogPanel && !catalogPanel.hidden) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setCatalogActive(catalogActive + 1);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setCatalogActive(catalogActive - 1);
+        return;
+      }
+      if (event.key === "Tab" || event.key === "Enter") {
+        event.preventDefault();
+        insertActiveCatalogItem();
+        return;
+      }
+    }
+  });
+
   document.addEventListener("click", (event) => {
+    if (catalogPanel && !catalogPanel.hidden) {
+      if (!catalogPanel.contains(event.target) && event.target !== input) {
+        closeCatalog();
+      }
+    }
     if (filePanel && !filePanel.hidden) {
       if (!filePanel.contains(event.target) && !(fileOpen && fileOpen.contains(event.target))) {
         closeFilePanel();

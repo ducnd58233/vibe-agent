@@ -3,10 +3,17 @@ package view
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+)
+
+const (
+	chatFoldRunes = 480
+	chatFoldLines = 8
 )
 
 // KindOrder is the pipeline and filter menu order.
@@ -32,6 +39,7 @@ type EventRow struct {
 	At          time.Time
 	Summary     string
 	Body        string
+	BodyHTML    template.HTML
 	PayloadJSON string
 	Usage       *session.Usage
 	HasUsage    bool
@@ -40,6 +48,7 @@ type EventRow struct {
 	HostGap     bool
 	Redacted    bool
 	SearchText  string
+	FoldClosed  bool
 }
 
 type payloadView struct {
@@ -90,6 +99,7 @@ func projectEvent(ev session.Event) EventRow {
 		At:        ev.At,
 		Summary:   summary,
 		Body:      displayBody,
+		BodyHTML:  markdownBody(role, displayBody),
 		Failed:    body.Failed,
 		Redacted: strings.Contains(displayBody, "[REDACTED]") ||
 			strings.Contains(displayBody, "<credential>"),
@@ -103,6 +113,7 @@ func projectEvent(ev session.Event) EventRow {
 		row.PayloadJSON = string(ev.Payload)
 	}
 	row.HostGap = body.HostGap
+	row.FoldClosed = chatFoldClosed(role, displayBody)
 	row.SearchText = strings.ToLower(strings.Join([]string{
 		summary,
 		displayBody,
@@ -161,6 +172,9 @@ func eventSummary(ev session.Event, body session.Payload) string {
 	case session.TypeSubagentStop:
 		return "SubagentStop"
 	case session.TypeTranscriptMessage:
+		if strings.ToLower(strings.TrimSpace(body.Role)) == "thinking" {
+			return "thinking"
+		}
 		if body.Role != "" {
 			return "projected " + strings.ToLower(body.Role) + " text"
 		}
@@ -210,6 +224,16 @@ func ChatRows(rows []EventRow) []EventRow {
 		}
 	}
 	return out
+}
+
+func chatFoldClosed(role, body string) bool {
+	if !ChatVisibleRole(role) {
+		return false
+	}
+	if strings.Count(body, "\n") >= chatFoldLines {
+		return true
+	}
+	return utf8.RuneCountInString(body) > chatFoldRunes
 }
 
 // ChatVisibleRole is the Chat tab allow-list. Questions from a host (approve,

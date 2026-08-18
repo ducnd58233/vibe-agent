@@ -1,6 +1,6 @@
 {{define "event-row"}}
-<li data-kind="{{ .Kind }}" data-role="{{ .Role }}" data-search="{{ .SearchText }}">
-  <button class="event{{ if .Failed }} is-failed{{ end }}" type="button" data-seq="{{ .Seq }}" aria-pressed="false" data-testid="event-row">
+<li data-kind="{{ .Kind }}" data-role="{{ .Role }}" data-search="{{ .SearchText }}"{{ if .FoldClosed }} data-fold="1"{{ end }}>
+  <article class="event{{ if .Failed }} is-failed{{ end }}" data-seq="{{ .Seq }}" aria-pressed="false" tabindex="0" role="button" aria-label="Inspect {{ .Role }} event {{ .Seq }}" data-testid="event-row">
     <span class="role role-{{ .Role }}">{{ .Role }}</span>
     <span class="event-body">
       <span class="event-kicker">
@@ -20,18 +20,20 @@
           {{ else }}
           <span class="tag">{{ .TokensText }}</span>
           {{ end }}
-          {{ else }}
-          <span class="tag tag-in">in -</span>
-          <span class="tag tag-out">out -</span>
           {{ end }}
         </span>
       </span>
-      {{ if or (eq .Kind "tool") (eq .Kind "skill") }}
+      {{ if .BodyHTML }}
+      <div class="event-md" data-testid="event-md">{{ .BodyHTML }}</div>
+      {{ else if or (eq .Kind "tool") (eq .Kind "skill") }}
       <pre>{{ .Body }}</pre>
       {{ else }}
       <p class="event-text">{{ .Body }}</p>
       {{ end }}
     </span>
-  </button>
+  </article>
+  {{ if .FoldClosed }}
+  <button type="button" class="event-expand" data-expand data-testid="event-expand" aria-expanded="false">Show more</button>
+  {{ end }}
 </li>
 {{end}}

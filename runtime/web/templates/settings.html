@@ -1,0 +1,64 @@
+{{ define "settings-dialog" }}
+  <dialog id="settings-dialog" data-testid="settings-dialog" aria-labelledby="settings-heading">
+    <div class="dialog-body settings-shell">
+      <div class="dialog-head">
+        <h2 id="settings-heading">Settings</h2>
+        <button class="btn" type="button" id="settings-close">Close</button>
+      </div>
+      <div class="settings-scroll">
+        <section class="settings-section" aria-labelledby="settings-appearance">
+          <h3 id="settings-appearance">Appearance</h3>
+          <fieldset class="choice-list" data-testid="settings-theme">
+            <legend class="visually-hidden">Theme</legend>
+            <label class="choice">
+              <input type="radio" name="theme" value="dark" checked>
+              <span>
+                <strong>Dark</strong>
+                <span class="choice-desc">Default. Dark surfaces, same layout as Light.</span>
+              </span>
+            </label>
+            <label class="choice">
+              <input type="radio" name="theme" value="light">
+              <span>
+                <strong>Light</strong>
+                <span class="choice-desc">Same layout and tokens, inverted surfaces.</span>
+              </span>
+            </label>
+          </fieldset>
+        </section>
+        <section class="settings-section" aria-labelledby="settings-server">
+          <h3 id="settings-server">Server</h3>
+          <dl class="settings-pairs">
+            <div class="settings-row">
+              <dt>URL</dt>
+              <dd>
+                <span class="bind-row">
+                  <code data-testid="settings-bind">{{ .BindAddr }}</code>
+                  <button class="btn btn-ghost" type="button" id="settings-copy-bind">Copy</button>
+                </span>
+              </dd>
+            </div>
+          </dl>
+        </section>
+        <section class="settings-section" aria-labelledby="settings-hosts-heading">
+          <h3 id="settings-hosts-heading">Hosts on PATH</h3>
+          <ul class="host-status" data-testid="settings-hosts">
+            {{ range .Hosts }}
+            <li>
+              {{ if .OnPath }}
+              <span class="chip chip-pass">ready</span>
+              {{ else }}
+              <span class="chip chip-fail">missing</span>
+              {{ end }}
+              <span class="host-name">{{ .Binary }}</span>
+              {{ if .Reason }}<span class="host-cmd">{{ .Reason }}</span>{{ end }}
+            </li>
+            {{ else }}
+            <li class="host-status-empty">No host binaries were probed.</li>
+            {{ end }}
+          </ul>
+        </section>
+      </div>
+    </div>
+  </dialog>
+{{ end }}

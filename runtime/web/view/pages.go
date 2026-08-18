@@ -15,10 +15,11 @@ import (
 
 // HostRow is one PATH inventory line for the shell sidebar.
 type HostRow struct {
-	Binary string
-	ID     string
-	OnPath bool
-	Reason string
+	Binary       string
+	ID           string
+	OnPath       bool
+	Reason       string
+	AcceptsModel bool
 }
 
 // ShellPage is the empty-state template model.
@@ -56,10 +57,11 @@ func BuildShellPage(workspaceRoot, bindAddr string, reg domain.Registry, activeR
 			reason = "on PATH"
 		}
 		row := HostRow{
-			Binary: entry.Binary,
-			ID:     entry.ID,
-			OnPath: entry.OnPath,
-			Reason: reason,
+			Binary:       entry.Binary,
+			ID:           entry.ID,
+			OnPath:       entry.OnPath,
+			Reason:       reason,
+			AcceptsModel: hosts.AcceptsModel(entry.Host),
 		}
 		page.Hosts = append(page.Hosts, row)
 		if entry.OnPath {

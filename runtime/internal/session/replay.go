@@ -4,8 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+)
+
+const (
+	DefaultReplayTurns = 8
+	DefaultReplayBytes = 16384
 )
 
 func decodePayload(raw json.RawMessage, out *Payload) error {
@@ -66,4 +72,68 @@ func MustReplay(logPath string) []Event {
 		panic(fmt.Sprintf("session.Replay: %v", err))
 	}
 	return events
+}
+
+func eventPayload(ev Event) Payload {
+	var body Payload
+	_ = json.Unmarshal(ev.Payload, &body)
+	return body
+}
+
+// ComposePrefixFromLog builds a redacted Chat prefix from prior turns.
+func ComposePrefixFromLog(logPath string) string {
+	events, err := Replay(logPath)
+	if err != nil {
+		return ""
+	}
+	return ComposePrefix(events, DefaultReplayTurns, DefaultReplayBytes)
+}
+
+// ComposePrefix keeps the last user/assistant/question turns, dropping oldest
+// when the turn or byte cap is exceeded.
+func ComposePrefix(events []Event, maxTurns, maxBytes int) string {
+	var lines []string
+	for _, ev := range events {
+		body := strings.TrimSpace(eventPayload(ev).Body)
+		if body == "" {
+			continue
+		}
+		switch ev.Type {
+		case TypePromptSubmit:
+			lines = append(lines, "User: "+body)
+		case TypeTranscriptMessage:
+			role := strings.ToLower(strings.TrimSpace(eventPayload(ev).Role))
+			if role == "" {
+				role = strings.ToLower(strings.TrimSpace(ev.Role))
+			}
+			switch role {
+			case "assistant":
+				lines = append(lines, "Assistant: "+body)
+			case "question":
+				lines = append(lines, "Question: "+body)
+			}
+		}
+	}
+	if maxTurns > 0 {
+		lines = lastUserTurns(lines, maxTurns)
+	}
+	text := strings.Join(lines, "\n")
+	for maxBytes > 0 && len(text) > maxBytes && len(lines) > 0 {
+		lines = lines[1:]
+		text = strings.Join(lines, "\n")
+	}
+	return text
+}
+
+func lastUserTurns(lines []string, n int) []string {
+	users := 0
+	for i := len(lines) - 1; i >= 0; i-- {
+		if strings.HasPrefix(lines[i], "User:") {
+			users++
+			if users == n {
+				return lines[i:]
+			}
+		}
+	}
+	return lines
 }

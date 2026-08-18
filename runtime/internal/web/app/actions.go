@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 )
 
 func handleNewSession(w http.ResponseWriter, r *http.Request, d httpDeps) {
@@ -44,7 +46,14 @@ func handleComposerSend(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	}
 	hostID := strings.TrimSpace(r.FormValue("host"))
 	message := strings.TrimSpace(r.FormValue("message"))
-	if err := SendComposerMessage(r.Context(), d.activeWorkspace(r), slug, hostID, message); err != nil {
+	opts := hosts.PrintOptions{
+		Model: strings.TrimSpace(r.FormValue("model")),
+		Mode:  strings.TrimSpace(r.FormValue("mode")),
+	}
+	if opts.Mode != "agent" {
+		opts.Mode = ""
+	}
+	if err := SendComposerMessage(r.Context(), d.activeWorkspace(r), slug, hostID, message, opts); err != nil {
 		http.Error(w, "send failed", http.StatusBadRequest)
 		return
 	}
