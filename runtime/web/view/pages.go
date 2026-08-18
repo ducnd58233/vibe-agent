@@ -9,6 +9,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 )
 
 // HostRow is one PATH inventory line for the shell sidebar.
@@ -21,23 +22,27 @@ type HostRow struct {
 
 // ShellPage is the empty-state template model.
 type ShellPage struct {
-	Workspace    string
-	BindAddr     string
-	URL          string
-	Hosts        []HostRow
-	Sessions     []string
-	HasSessions  bool
-	CanCompose   bool
-	ComposeHosts []HostRow
+	Workspace     string
+	BindAddr      string
+	URL           string
+	Hosts         []HostRow
+	Sessions      []string
+	HasSessions   bool
+	CanCompose    bool
+	ComposeHosts  []HostRow
+	Workspaces    []WorkspaceRow
+	HasWorkspaces bool
 }
 
 // BuildShellPage loads workspace metadata for the empty shell.
-func BuildShellPage(workspaceRoot, bindAddr string) (ShellPage, error) {
+func BuildShellPage(workspaceRoot, bindAddr string, reg domain.Registry, activeRoot string) (ShellPage, error) {
 	page := ShellPage{
 		Workspace: workspaceRoot,
 		BindAddr:  bindAddr,
 		URL:       "http://" + bindAddr + "/",
 	}
+	page.Workspaces = ProjectWorkspaces(reg, activeRoot)
+	page.HasWorkspaces = len(page.Workspaces) > 1
 	for _, entry := range hosts.Inventory() {
 		reason := entry.Reason
 		if entry.OnPath {
@@ -90,8 +95,8 @@ type SessionPage struct {
 }
 
 // BuildSessionPage loads one session log for rendering.
-func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug string) (SessionPage, error) {
-	shell, err := BuildShellPage(workspaceRoot, bindAddr)
+func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug string, reg domain.Registry, activeRoot string) (SessionPage, error) {
+	shell, err := BuildShellPage(workspaceRoot, bindAddr, reg, activeRoot)
 	if err != nil {
 		return SessionPage{}, err
 	}

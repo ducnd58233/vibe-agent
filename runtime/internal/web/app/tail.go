@@ -31,7 +31,7 @@ func handleSessionEvents(w http.ResponseWriter, r *http.Request, d httpDeps) {
 		}
 		after = n
 	}
-	rows, err := view.EventsAfter(d.workspaceRoot, slug, after)
+	rows, err := view.EventsAfter(d.activeWorkspace(r), slug, after)
 	if err != nil {
 		if isNotFoundErr(err) {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")

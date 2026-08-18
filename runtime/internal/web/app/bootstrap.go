@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
@@ -19,9 +20,10 @@ const ListenHost = "127.0.0.1"
 
 // Config holds loopback server settings.
 type Config struct {
-	WorkspaceRoot string
-	ToolkitRoot   string
-	Port          int
+	WorkspaceRoot   string
+	ToolkitRoot     string
+	Port            int
+	ExtraWorkspaces []string
 }
 
 // ValidateListenHost refuses non-loopback binds.
@@ -56,7 +58,15 @@ func Run(cfg Config) error {
 	if err := ValidateListenHost(ListenHost); err != nil {
 		return err
 	}
-	handler, err := NewHandlerWithPort(cfg.WorkspaceRoot, cfg.ToolkitRoot, cfg.Port)
+	reg, err := loadRegistry(filepath.Clean(cfg.WorkspaceRoot), cfg.ExtraWorkspaces)
+	if err != nil {
+		return err
+	}
+	handler, err := mountHTTP(httpDeps{
+		registry:    reg,
+		toolkitRoot: filepath.Clean(cfg.ToolkitRoot),
+		bindAddr:    Addr(cfg.Port),
+	})
 	if err != nil {
 		return err
 	}
