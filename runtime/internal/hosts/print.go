@@ -20,13 +20,14 @@ func AcceptsModel(host Host) bool {
 
 // ModelSuggestions are documented --model aliases for the composer picker.
 // Claude values come from `claude --help` (`--model`). cursor-agent values
-// are the examples on `cursor-agent --help` (`--model`).
+// are the examples on `cursor-agent --help` (`--model`), with `auto` first
+// because Cursor CLI pins Auto at the top of its model picker.
 func ModelSuggestions(host Host) []string {
 	switch host.Binary {
 	case "claude":
 		return []string{"sonnet", "opus", "fable"}
 	case "cursor-agent":
-		return []string{"gpt-5", "sonnet-4-thinking"}
+		return []string{"auto", "gpt-5", "sonnet-4-thinking"}
 	default:
 		return nil
 	}

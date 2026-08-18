@@ -106,8 +106,8 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	if !strings.Contains(body, "<article class=\"event") {
 		t.Fatal("event rows must be articles")
 	}
-	if !strings.Contains(body, `data-testid="token-usage">in 100 · out 40`) {
-		t.Fatal("expected toolbar token totals from session usage")
+	if !strings.Contains(body, `class="tag tag-in">in 100`) || !strings.Contains(body, `class="tag tag-out">out 40`) {
+		t.Fatal("expected toolbar token chips from session usage")
 	}
 	assertNewSessionForm(t, body)
 	if !strings.Contains(body, `class="dock"`) || !strings.Contains(body, `data-testid="composer"`) {
@@ -133,6 +133,9 @@ func TestSettingsDialogPinsURLAndHostChips(t *testing.T) {
 	body := rec.Body.String()
 	if !strings.Contains(body, `class="settings-row"`) {
 		t.Fatal("expected settings-row so URL sits on the start edge and the bind on the end")
+	}
+	if !strings.Contains(body, `localStorage.getItem("vibe-theme")`) {
+		t.Fatal("settings theme must boot from localStorage before CSS paint")
 	}
 	if !strings.Contains(body, `data-testid="settings-bind"`) {
 		t.Fatal("expected bind address")
@@ -211,6 +214,52 @@ func TestSessionRendersMarkdownAndOmitsEmptyUserTokens(t *testing.T) {
 	}
 	if !strings.Contains(chat, `tag-in`) || !strings.Contains(chat, "in 12") {
 		t.Fatal("assistant Chat must still show token in/out")
+	}
+	if !strings.Contains(chat, `localStorage.getItem("vibe-theme")`) {
+		t.Fatal("theme must apply from localStorage before first paint")
+	}
+}
+
+func TestChatRendersFoldedThinkingBeforeAssistant(t *testing.T) {
+	root := t.TempDir()
+	slug := "think-session"
+	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	path := session.LogPath(root, slug)
+	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
+	records := []session.Record{
+		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "cursor", Body: "read the file"},
+		{Type: session.TypeTranscriptMessage, Source: session.SourcePrint, Role: "thinking", Body: "I will open README first"},
+		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "Opened README."},
+	}
+	for _, rec := range records {
+		rec.At = stamp
+		if _, err := session.Append(path, rec); err != nil {
+			t.Fatal(err)
+		}
+	}
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug+"?view=chat", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	thinkAt := strings.Index(body, `data-role="thinking"`)
+	assistAt := strings.Index(body, `data-role="assistant"`)
+	if thinkAt < 0 || assistAt < 0 || thinkAt > assistAt {
+		t.Fatal("thinking row must sit in the DOM before the assistant reply")
+	}
+	if !strings.Contains(body, "Show thinking") {
+		t.Fatal("thinking must start collapsed with a Show thinking control")
+	}
+	if !strings.Contains(body, `data-fold="1"`) {
+		t.Fatal("thinking Chat rows start folded")
 	}
 }
 
@@ -477,6 +526,30 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 	if !strings.Contains(css, ":has(.composer-preview:not(:empty)) .composer-field") {
 		t.Fatal("slash and @ highlight may hide input text only after the preview has content")
 	}
+	wrapFocus := cssBlock(css, ".composer-field-wrap:focus-within")
+	if !strings.Contains(wrapFocus, "outline:") {
+		t.Fatalf("composer wrap must own the focus ring so chips are not clipped, got %q", wrapFocus)
+	}
+	fieldFocus := cssBlock(css, ".composer-field-wrap .composer-field:focus-visible")
+	if !strings.Contains(fieldFocus, "outline: none") {
+		t.Fatalf("inner field must not draw a second ring, got %q", fieldFocus)
+	}
+	previewAlign := cssBlock(css, ".composer-field-wrap .composer-preview")
+	if !strings.Contains(previewAlign, "align-items: center") {
+		t.Fatalf("slash and @ chips must sit on the field midline, got %q", previewAlign)
+	}
+	statTokens := cssBlock(css, ".stat .token-pair")
+	if !strings.Contains(statTokens, "margin-inline-start: 0") {
+		t.Fatalf("toolbar in/out/cache chips must stay in the Tokens cell, got %q", statTokens)
+	}
+	chatTokenShow := cssBlock(css, ".is-chat-view .token-pair")
+	if !strings.Contains(chatTokenShow, "display: inline-flex") {
+		t.Fatalf("chat must keep in/out/cache chips visible, got %q", chatTokenShow)
+	}
+	toolsRow := cssBlock(css, ".composer-tools")
+	if !strings.Contains(toolsRow, "grid-column: 1 / -1") {
+		t.Fatalf("host and model must sit under the message field so chips are not clipped, got %q", toolsRow)
+	}
 	mark := cssBlock(css, ".composer-field-wrap .composer-ref")
 	if strings.Contains(mark, "color: transparent") {
 		t.Fatalf("slash and @ marks must stay visible on the preview, got %q", mark)
@@ -516,6 +589,19 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 	if !strings.Contains(chatList, "border-inline-start: 0") {
 		t.Fatalf("chat must drop the trajectory gutter, got %q", chatList)
 	}
+	chatDefault := cssBlock(css, ".is-chat-view .event-list > li")
+	if !strings.Contains(chatDefault, "display: none") {
+		t.Fatalf("chat must hide every row until the allow-list shows it, got %q", chatDefault)
+	}
+	if !strings.Contains(css, `.is-chat-view .event-list > li[data-role="user"]`) ||
+		!strings.Contains(css, `.is-chat-view .event-list > li[data-role="assistant"]`) ||
+		!strings.Contains(css, `.is-chat-view .event-list > li[data-role="thinking"]`) {
+		t.Fatal("chat allow-list must paint user, assistant, and thinking before JS runs")
+	}
+	chatHidden := cssBlock(css, ".is-chat-view .event-list > li[hidden]")
+	if !strings.Contains(chatHidden, "display: none") {
+		t.Fatalf("chat search hide must beat the allow-list display flex, got %q", chatHidden)
+	}
 	chatUser := cssBlock(css, `.is-chat-view li[data-role="user"] .event`)
 	if !strings.Contains(chatUser, "--chat-user-max") {
 		t.Fatalf("user Chat bubble must stay on the end of the column, got %q", chatUser)
@@ -524,8 +610,9 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 	if !strings.Contains(chatTokens, "margin-inline-start: 0") {
 		t.Fatalf("chat token chips must sit under the assistant body, not the far edge, got %q", chatTokens)
 	}
-	if !strings.Contains(css, `.event-list > li[data-role="system"]`) || !strings.Contains(css, `.event-list > li[data-role="tool"]`) {
-		t.Fatal("chat must hide system and tool rows with a selector that beats event-list > li display flex")
+	thinkBody := cssBlock(css, `.is-chat-view li[data-role="thinking"] .event-body`)
+	if !strings.Contains(thinkBody, "--color-text-caption") || !strings.Contains(thinkBody, "--font-size-meta") {
+		t.Fatalf("thinking must use caption type, got %q", thinkBody)
 	}
 	graphNode := cssBlock(css, ".graph-node")
 	if !strings.Contains(graphNode, "--graph-tag-col") {
@@ -534,6 +621,10 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 	graphType := cssBlock(css, ".graph-type")
 	if !strings.Contains(graphType, "justify-self: end") {
 		t.Fatalf("type tags must right-align toward the spine, got %q", graphType)
+	}
+	graphCopy := cssBlock(css, ".graph-copy")
+	if !strings.Contains(graphCopy, "grid-column: 3") {
+		t.Fatalf("graph title and description must skip the spine gutter, got %q", graphCopy)
 	}
 	graphCurrent := cssBlock(css, `.graph-node[aria-current="true"]`)
 	if !strings.Contains(graphCurrent, "--color-accent") {

@@ -65,7 +65,34 @@ func ProjectEvents(events []session.Event) []EventRow {
 		row := projectEvent(ev)
 		rows = append(rows, row)
 	}
+	promoteUsageToAssistant(rows)
 	return rows
+}
+
+// promoteUsageToAssistant moves host usage off trace-only rows onto the
+// last assistant in that turn so Chat and Trajectory both paint in/out/cache.
+func promoteUsageToAssistant(rows []EventRow) {
+	assistant := -1
+	for i := range rows {
+		switch rows[i].Role {
+		case "user":
+			assistant = -1
+		case "assistant":
+			assistant = i
+		}
+		if !rows[i].HasUsage || ChatVisibleRole(rows[i].Role) {
+			continue
+		}
+		if assistant < 0 || rows[assistant].HasUsage {
+			continue
+		}
+		rows[assistant].Usage = rows[i].Usage
+		rows[assistant].HasUsage = true
+		rows[assistant].TokensText = rows[i].TokensText
+		rows[i].Usage = nil
+		rows[i].HasUsage = false
+		rows[i].TokensText = ""
+	}
 }
 
 func projectEvent(ev session.Event) EventRow {
@@ -230,7 +257,7 @@ func KindCounts(rows []EventRow) map[session.FilterKind]int {
 	return counts
 }
 
-// ChatRows returns user, assistant, thinking, and host-question rows.
+// ChatRows returns the operator thread: user, thinking, and assistant.
 func ChatRows(rows []EventRow) []EventRow {
 	out := make([]EventRow, 0, len(rows))
 	for _, row := range rows {
@@ -257,12 +284,12 @@ func chatFoldClosed(role, body string) bool {
 	return utf8.RuneCountInString(body) > chatFoldRunes
 }
 
-// ChatVisibleRole is the Chat tab allow-list. Questions from a host (approve,
-// ask user) belong here next to the thread, not only on Graph. Thinking sits
-// above the assistant reply, collapsed until the operator expands it.
+// ChatVisibleRole is the Chat tab allow-list. Trajectory keeps the full
+// trace (system, tool, question, context). Thinking sits above the assistant
+// reply and starts collapsed.
 func ChatVisibleRole(role string) bool {
 	switch role {
-	case "user", "assistant", "question", "thinking":
+	case "user", "assistant", "thinking":
 		return true
 	default:
 		return false

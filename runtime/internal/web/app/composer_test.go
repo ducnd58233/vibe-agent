@@ -302,7 +302,7 @@ func TestComposerPrintPersistsUsageOnPage(t *testing.T) {
 		pageRec := httptest.NewRecorder()
 		handler.ServeHTTP(pageRec, pageReq)
 		html = pageRec.Body.String()
-		if strings.Contains(html, `data-testid="token-usage">in 9 · out 2`) {
+		if strings.Contains(html, `class="tag tag-in">in 9`) && strings.Contains(html, `class="tag tag-out">out 2`) {
 			return
 		}
 		time.Sleep(20 * time.Millisecond)
@@ -463,7 +463,7 @@ func TestComposerPrintQuestionAppearsInChat(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	t.Fatalf("expected question row in chat:\n%s", html)
+	t.Fatalf("expected question row in the session HTML (Trajectory keeps it):\n%s", html)
 }
 
 func hostOnPath(binary string) bool {

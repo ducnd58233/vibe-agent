@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ .Slug }} · vibe-agent web</title>
+  {{ template "theme-boot" }}
   <link rel="stylesheet" href="/static/tokens.css">
   <link rel="stylesheet" href="/static/shell.css">
   <script src="/static/htmx.min.js" defer></script>
@@ -53,7 +54,7 @@
         <dl class="stat"><dt>Duration</dt><dd>--</dd></dl>
         <dl class="stat"><dt>Turns</dt><dd>{{ .TurnCount }}</dd></dl>
         <dl class="stat"><dt>Calls</dt><dd>{{ .ToolCalls }}</dd></dl>
-        <dl class="stat"><dt>Tokens</dt><dd data-testid="token-usage">{{ .ToolbarTokens }}</dd></dl>
+        <dl class="stat"><dt>Tokens</dt><dd data-testid="token-usage">{{ if .Tokens.Reported }}<span class="token-pair">{{ if or .Tokens.Input .Tokens.Output }}<span class="tag tag-in">in {{ .Tokens.Input }}</span><span class="tag tag-out">out {{ .Tokens.Output }}</span>{{ if .Tokens.CacheRead }}<span class="tag tag-cache">cache {{ .Tokens.CacheRead }}</span>{{ end }}{{ else }}<span class="tag">{{ .ToolbarTokens }}</span>{{ end }}</span>{{ else }}not reported{{ end }}</dd></dl>
         <div class="toolbar-end">
           <div class="kind-filter-ctl" id="kind-filter-wrap"{{ if eq .View "chat" }} hidden{{ end }}>
             <button class="filter-btn" type="button" id="kind-filter-open" data-testid="kind-filter-open" aria-haspopup="true" aria-expanded="false" aria-controls="kind-filter-menu">
@@ -303,7 +304,7 @@
     }
 
     function chatVisibleRole(role) {
-      return role === "user" || role === "assistant" || role === "question" || role === "thinking";
+      return role === "user" || role === "assistant" || role === "thinking";
     }
 
     function applyFilters() {

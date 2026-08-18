@@ -84,6 +84,17 @@ func TestPrintArgvCursorAgentDropsModeAsk(t *testing.T) {
 	}
 }
 
+func TestPrintArgvCursorAutoModel(t *testing.T) {
+	host, ok := EvalHost("cursor-agent")
+	if !ok {
+		t.Fatal("cursor-agent")
+	}
+	argv := PrintArgv(host, PrintOptions{Model: "auto"})
+	if !slices.Equal(argv[len(argv)-2:], []string{"--model", "auto"}) {
+		t.Fatalf("auto should pass through as --model auto, got %v", argv)
+	}
+}
+
 func TestModelSuggestionsClaudeFromHelp(t *testing.T) {
 	host, ok := EvalHost("claude")
 	if !ok {
@@ -107,10 +118,13 @@ func TestModelSuggestionsClaudeFromHelp(t *testing.T) {
 		t.Fatal("cursor-agent")
 	}
 	gotCursor := ModelSuggestions(cursor)
-	for _, want := range []string{"gpt-5", "sonnet-4-thinking"} {
+	for _, want := range []string{"auto", "gpt-5", "sonnet-4-thinking"} {
 		if !slices.Contains(gotCursor, want) {
 			t.Fatalf("cursor-agent suggestions %v missing %q", gotCursor, want)
 		}
+	}
+	if gotCursor[0] != "auto" {
+		t.Fatalf("auto should lead the cursor-agent picker, got %v", gotCursor)
 	}
 }
 

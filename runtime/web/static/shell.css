@@ -773,6 +773,10 @@ button {
   margin-inline-start: auto;
 }
 
+.stat .token-pair {
+  margin-inline-start: 0;
+}
+
 .tag {
   display: inline-flex;
   align-items: center;
@@ -1175,6 +1179,12 @@ button {
 }
 
 .is-chat-view .event-list > li {
+  display: none;
+}
+
+.is-chat-view .event-list > li[data-role="user"],
+.is-chat-view .event-list > li[data-role="assistant"],
+.is-chat-view .event-list > li[data-role="thinking"] {
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -1183,13 +1193,16 @@ button {
   gap: 0.25rem;
 }
 
-.is-chat-view .event-list > li[data-role="system"],
-.is-chat-view .event-list > li[data-role="tool"] {
+.is-chat-view .event-list > li[hidden] {
   display: none;
 }
 
 .is-chat-view .event-list > li[data-role="user"] {
   align-items: flex-end;
+}
+
+.is-chat-view #graph-view {
+  display: none;
 }
 
 .is-chat-view .event {
@@ -1225,9 +1238,20 @@ button {
   box-shadow: none;
 }
 
-.is-chat-view li[data-role="thinking"] .event {
+.is-chat-view li[data-role="thinking"] .event-body {
   color: var(--color-text-caption);
-  opacity: 0.7;
+  font-size: var(--font-size-meta);
+  opacity: 0.55;
+}
+
+html[data-theme="light"] .is-chat-view li[data-role="thinking"] .event-body {
+  opacity: 0.72;
+}
+
+.is-chat-view li[data-role="thinking"] .event-expand {
+  order: -1;
+  align-self: flex-start;
+  color: var(--color-text-caption);
 }
 
 .is-chat-view li[data-role="thinking"][data-fold]:not(.is-expanded) .event-md,
@@ -1268,7 +1292,13 @@ button {
 }
 
 .is-chat-view .token-pair {
+  display: inline-flex;
   margin-inline-start: 0;
+  align-self: flex-start;
+}
+
+.is-chat-view .token-pair.is-empty {
+  display: none;
 }
 
 .is-chat-view .event-kicker:not(:has(.token-pair:not(.is-empty), .chip)) {
@@ -1475,6 +1505,7 @@ button {
 }
 
 .graph-copy {
+  grid-column: 3;
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
@@ -1487,11 +1518,13 @@ button {
   font-size: var(--font-size-meta);
   font-weight: 400;
   line-height: 1.4;
+  overflow-wrap: break-word;
 }
 
 .graph-type {
   display: inline-flex;
   align-items: center;
+  grid-column: 1;
   justify-self: end;
   margin-inline-end: 0.5rem;
   height: 1.125rem;
@@ -1515,6 +1548,7 @@ button {
 }
 
 .graph-status {
+  grid-column: 4;
   font-size: var(--font-size-meta);
   text-transform: lowercase;
   padding-inline-start: 0.625rem;
@@ -1632,7 +1666,7 @@ button {
 }
 
 .composer:has(.btn-icon) {
-  grid-template-columns: var(--control-height) minmax(0, 1fr) auto;
+  grid-template-columns: var(--control-height) minmax(0, 1fr);
 }
 
 .composer-stack {
@@ -1659,6 +1693,13 @@ button {
   display: grid;
   align-items: center;
   height: var(--control-height);
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
+.composer-field-wrap:focus-within {
+  outline: var(--focus-ring);
+  outline-offset: 0.125rem;
 }
 
 .composer-field-wrap .composer-preview, .composer-field-wrap .composer-field {
@@ -1667,16 +1708,20 @@ button {
   width: 100%;
   height: var(--control-height);
   margin: 0;
-  padding: 0 0.5rem;
+  padding: 0 0.625rem;
   line-height: var(--control-height);
   font: inherit;
-  white-space: pre;
-  overflow: hidden;
+  white-space: nowrap;
 }
 
 .composer-field-wrap .composer-field {
   color: var(--color-text);
   caret-color: var(--color-text);
+  overflow: hidden;
+}
+
+.composer-field-wrap .composer-field:focus-visible {
+  outline: none;
 }
 
 .composer-field-wrap:has(.composer-preview:not(:empty)) .composer-field {
@@ -1684,18 +1729,26 @@ button {
 }
 
 .composer-field-wrap .composer-preview {
+  display: flex;
+  align-items: center;
+  line-height: 1.25rem;
   color: var(--color-text);
   z-index: 0;
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-width: none;
+  scrollbar-width: thin;
 }
 
-.composer-field-wrap .composer-preview::-webkit-scrollbar {
+.composer-field-wrap .composer-preview:empty {
   display: none;
 }
 
 .composer-field-wrap .composer-ref {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 1.25rem;
+  padding: 0 0.375rem;
   color: var(--color-accent);
 }
 
@@ -1840,9 +1893,15 @@ button {
   display: flex;
   gap: 0.5rem;
   align-items: center;
-  height: var(--control-height);
+  flex-wrap: wrap;
+  min-width: 0;
+  width: 100%;
+  height: auto;
+  min-height: var(--control-height);
   position: relative;
   overflow: visible;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
 }
 
 .host-picker {

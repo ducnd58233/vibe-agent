@@ -61,6 +61,35 @@ func TestProjectEventsMixedRoles(t *testing.T) {
 	}
 }
 
+func TestPromoteUsageMovesStopCountsOntoAssistant(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, session.LogName)
+	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
+	for _, rec := range []session.Record{
+		{Type: session.TypePromptSubmit, Source: session.SourceHook, Body: "hi", At: stamp},
+		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "done", At: stamp},
+		{Type: session.TypeStop, Source: session.SourcePrint, Event: "ComposerStop", Usage: &session.Usage{Input: 9, Output: 2, CacheRead: 4}, At: stamp},
+	} {
+		if _, err := session.Append(path, rec); err != nil {
+			t.Fatal(err)
+		}
+	}
+	events, err := session.Replay(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := ProjectEvents(events)
+	if len(rows) != 3 {
+		t.Fatalf("rows = %d", len(rows))
+	}
+	if !rows[1].HasUsage || rows[1].Usage == nil || rows[1].Usage.Input != 9 || rows[1].Usage.Output != 2 || rows[1].Usage.CacheRead != 4 {
+		t.Fatalf("assistant usage = %+v", rows[1])
+	}
+	if rows[2].HasUsage {
+		t.Fatal("ComposerStop must not keep usage after it moves to the assistant row")
+	}
+}
+
 func TestSumUsageAggregatesReportedRows(t *testing.T) {
 	rows := []EventRow{
 		{HasUsage: true, Usage: &session.Usage{Input: 100, Output: 40, CacheRead: 10}},
@@ -190,15 +219,19 @@ func TestThinkingChatRowStartsFolded(t *testing.T) {
 	}
 }
 
-func TestChatRowsIncludesHostQuestion(t *testing.T) {
+func TestChatRowsKeepsHostQuestionOnTrajectory(t *testing.T) {
 	rows := []EventRow{
 		{Role: "tool", Body: "Read"},
 		{Role: "question", Body: "Approve the spec?"},
 		{Role: "user", Body: "yes"},
+		{Role: "context", Body: "ComposerStart"},
 	}
 	chat := ChatRows(rows)
-	if len(chat) != 2 || chat[0].Role != "question" || chat[1].Role != "user" {
+	if len(chat) != 1 || chat[0].Role != "user" {
 		t.Fatalf("chat = %+v", chat)
+	}
+	if ChatVisibleRole("question") || ChatVisibleRole("context") || ChatVisibleRole("system") || ChatVisibleRole("tool") {
+		t.Fatal("host questions and trace roles belong on Trajectory, not Chat")
 	}
 }
 

@@ -1,4 +1,29 @@
 (function () {
+  const themeKey = "vibe-theme";
+  function applyTheme(theme) {
+    if (theme !== "light" && theme !== "dark") {
+      return;
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+    document.querySelectorAll('input[name="theme"]').forEach((el) => {
+      el.checked = el.value === theme;
+    });
+  }
+  try {
+    applyTheme(localStorage.getItem(themeKey));
+  } catch (e) {}
+  document.addEventListener("change", (e) => {
+    if (!e.target || e.target.name !== "theme") {
+      return;
+    }
+    applyTheme(e.target.value);
+    try {
+      localStorage.setItem(themeKey, e.target.value);
+    } catch (err) {}
+  });
+})();
+
+(function () {
   const menu = document.getElementById("workspace-menu");
   const openBtn = document.getElementById("workspace-menu-open");
   const browseOpen = document.getElementById("workspace-browse-open");

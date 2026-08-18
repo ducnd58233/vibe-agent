@@ -1,0 +1,10 @@
+{{ define "theme-boot" }}
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem("vibe-theme");
+    if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+})();
+</script>
+{{ end }}
