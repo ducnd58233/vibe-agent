@@ -45,11 +45,13 @@ spec:
         legitimately raises it raises this line too, which is a reviewed diff
         rather than an argument nobody sees.
         The flag comes before the path. Go's flag package stops parsing at the
-        first positional argument, so `slop audit . --fail-on 1` does not read
+        first positional argument, so `slop audit . --fail-on 3` does not read
         the flag at all: it reports three paths and exits 1, which looks exactly
         like a failing audit and is not one.
-      command: vibe-agent
-      args: [slop, audit, --fail-on, "3", .]
+        go run keeps the check on the workspace source tree so a stale binary
+        on PATH cannot shadow the slop walk under test.
+      command: go
+      args: [-C, runtime, run, ./cmd, slop, audit, --fail-on, "3", .]
       timeoutSeconds: 300
 
     pr_open:

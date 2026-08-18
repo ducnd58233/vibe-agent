@@ -209,6 +209,13 @@ func Verify(ctx context.Context, req VerifyRequest) (*VerifyResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	if applied.Duplicate {
+		if advanced, advErr := advanceStuckVerifier(req, resolved, applied.Run, applied.Graph); advErr != nil {
+			return nil, advErr
+		} else if advanced != nil {
+			applied = advanced
+		}
+	}
 
 	return &VerifyResult{
 		Check:    resolved.Check,
