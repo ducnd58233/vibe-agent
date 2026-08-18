@@ -944,15 +944,118 @@ button {
 
 .composer {
   display: grid;
-  grid-template-columns: var(--control-height) minmax(0, 1fr) auto;
+  grid-template-columns: var(--control-height) auto minmax(0, 1fr) var(--control-height);
   align-items: center;
   column-gap: 8px;
-  width: min(100%, var(--composer-max));
+  width: 100%;
   padding: 8px 10px;
   background: var(--color-surface-2);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-composer);
+}
+
+.composer-stack {
+  position: relative;
+  width: min(100%, var(--composer-max));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.composer-preview {
+  min-height: 1.25rem;
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.composer-preview:empty {
+  display: none;
+}
+
+.composer-ref {
+  padding: 0 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  color: var(--color-accent);
+}
+
+.composer-description {
+  padding: 6px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.composer-catalog-panel,
+.composer-file-panel {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: min(40vh, 280px);
+  overflow: auto;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-composer);
+}
+
+.catalog-list,
+.file-browser-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+}
+
+.catalog-item,
+.file-browser-row {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.catalog-item:hover,
+.file-browser-row:hover {
+  background: var(--color-surface);
+}
+
+.catalog-item-name {
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.catalog-item-desc,
+.file-preview-excerpt {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.file-browser-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
+}
+
+.file-preview {
+  padding: 10px;
+}
+
+.file-preview-attach {
+  margin: 8px 0;
 }
 
 .composer .btn-icon,

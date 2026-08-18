@@ -70,6 +70,7 @@ func TestSessionPageRendersEventList(t *testing.T) {
 		"event-list", "event-pipeline", "kind-filter-open", "kind-filter",
 		"kind-filter-clear", "event-tokens", "token-usage", "inspector", "chat-empty",
 		"graph-view", "settings-dialog", "composer", "new-session-form",
+		"composer-catalog", "composer-preview", "composer-description", "composer-file-panel",
 	} {
 		if !strings.Contains(body, `data-testid="`+id+`"`) {
 			t.Fatalf("missing test id %q", id)
