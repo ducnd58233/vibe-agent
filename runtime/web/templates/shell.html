@@ -21,7 +21,20 @@
       <div class="sidebar-scroll">
         <div class="nav-block">
           <p class="nav-label">Workspaces</p>
-          <p data-testid="workspace-list-empty">No other workspace recorded yet.</p>
+          {{ if .HasWorkspaces }}
+          <ul class="workspace-list" data-testid="workspace-list">
+            {{ range .Workspaces }}
+            <li>
+              <form method="post" action="/workspace/switch">
+                <input type="hidden" name="workspace_id" value="{{ .ID }}">
+                <button type="submit" class="btn btn-ghost btn-block workspace-switch{{ if .Active }} is-active{{ end }}" data-testid="workspace-switch"{{ if .Active }} aria-current="page"{{ end }}>{{ .Label }}</button>
+              </form>
+            </li>
+            {{ end }}
+          </ul>
+          {{ else }}
+          <p data-testid="workspace-list-empty">Single workspace.</p>
+          {{ end }}
           <p class="host-missing" data-testid="workspace-path">{{ .Workspace }}</p>
         </div>
         <div class="nav-block">

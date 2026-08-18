@@ -18,7 +18,7 @@ func handleNewSession(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	slug := strings.TrimSpace(r.FormValue("slug"))
 	goal := strings.TrimSpace(r.FormValue("goal"))
 	graphID := strings.TrimSpace(r.FormValue("graph"))
-	if err := StartDeliveryRun(d.workspaceRoot, d.toolkitRoot, slug, goal, graphID); err != nil {
+	if err := StartDeliveryRun(d.activeWorkspace(r), d.toolkitRoot, slug, goal, graphID); err != nil {
 		http.Error(w, "could not start session", http.StatusBadRequest)
 		return
 	}
@@ -44,7 +44,7 @@ func handleComposerSend(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	}
 	hostID := strings.TrimSpace(r.FormValue("host"))
 	message := strings.TrimSpace(r.FormValue("message"))
-	if err := SendComposerMessage(r.Context(), d.workspaceRoot, slug, hostID, message); err != nil {
+	if err := SendComposerMessage(r.Context(), d.activeWorkspace(r), slug, hostID, message); err != nil {
 		http.Error(w, "send failed", http.StatusBadRequest)
 		return
 	}
