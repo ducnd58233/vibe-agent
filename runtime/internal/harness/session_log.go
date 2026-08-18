@@ -69,6 +69,7 @@ func recordStop(req Request, body payload, subagent bool) {
 			Body: body.LastAssistantMessage,
 		})
 	}
+	projectTranscript(req, body, body.LastAssistantMessage)
 }
 
 func recordToolUse(req Request, body payload) {
