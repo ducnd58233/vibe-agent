@@ -85,6 +85,9 @@ func TestReplayOrdersBySequenceAndSkipsUnknown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := Append(path, Record{Type: TypeTranscriptMessage, Source: SourcePrint, Client: "cursor-agent", Role: "assistant", Body: "ok"}); err != nil {
+		t.Fatalf("print source: %v", err)
+	}
 	f, err := os.OpenFile(filepath.Clean(path), os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		t.Fatal(err)
@@ -100,8 +103,8 @@ func TestReplayOrdersBySequenceAndSkipsUnknown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(events) != 2 {
-		t.Fatalf("events = %d, want 2", len(events))
+	if len(events) != 3 {
+		t.Fatalf("events = %d, want 3", len(events))
 	}
 	if events[0].Sequence != first.Sequence || events[1].Sequence != second.Sequence {
 		t.Fatalf("order = %+v", events)

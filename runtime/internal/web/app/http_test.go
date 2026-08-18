@@ -51,6 +51,7 @@ func TestEmptyShellRendersRequiredTestIDs(t *testing.T) {
 	if !strings.Contains(text, root) {
 		t.Fatalf("workspace path missing from shell")
 	}
+	assertNewSessionForm(t, text)
 }
 
 func TestSessionPageRendersEventList(t *testing.T) {
@@ -68,7 +69,8 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	body := rec.Body.String()
 	for _, id := range []string{
 		"event-list", "event-pipeline", "kind-filter-open", "kind-filter",
-		"kind-filter-clear", "event-tokens", "token-usage", "inspector", "chat-empty",
+		"kind-filter-clear", "event-tokens", "token-usage", "inspector", "inspector-pane",
+		"chat-empty", "chat-prompts", "chat-prompt",
 		"graph-view", "settings-dialog", "composer", "new-session-form",
 		"composer-catalog", "composer-preview", "composer-description", "composer-file-panel",
 	} {
@@ -79,11 +81,106 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	if !strings.Contains(body, "<ol class=\"event-list\"") {
 		t.Fatal("expected ol event-list")
 	}
+	if !strings.Contains(body, `class="session-card"`) {
+		t.Fatal("expected session card, not a bare link")
+	}
+	if !strings.Contains(body, `class="session-title"`) {
+		t.Fatal("expected session title")
+	}
 	if strings.Contains(body, testSecret) {
 		t.Fatalf("secret leaked into HTML: %s", body)
 	}
 	if !strings.Contains(body, "host gap") {
 		t.Fatal("expected host gap chip in fixture")
+	}
+	if strings.Contains(body, `data-pane="summary"`) {
+		t.Fatal("inspector panes should be a select, not a tab row")
+	}
+	if !strings.Contains(body, "docs/fixture-session/SPEC.md") {
+		t.Fatal("expected expanded human_gate prompt on chat")
+	}
+	assertNewSessionForm(t, body)
+	if !strings.Contains(body, `class="dock"`) || !strings.Contains(body, `data-testid="composer"`) {
+		t.Fatal("expected composer dock on the session page")
+	}
+}
+
+func assertNewSessionForm(t *testing.T, body string) {
+	t.Helper()
+	for _, want := range []string{
+		`placeholder="kebab-case-slug"`,
+		`placeholder="What should this run accomplish?"`,
+		`class="dialog-actions"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("new session form missing %q", want)
+		}
+	}
+}
+
+func TestCheckpointAdvancesHumanGate(t *testing.T) {
+	root, slug := writeFixtureSession(t)
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	form := strings.NewReader("check=spec_approved&verdict=passed")
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/session/"+slug+"/checkpoint", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	loc := rec.Header().Get("Location")
+	if !strings.Contains(loc, "/session/"+slug) || !strings.Contains(loc, "view=chat") {
+		t.Fatalf("location = %q", loc)
+	}
+	run, err := state.Load(state.ManifestPath(root, slug))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.CurrentNode != "plan" {
+		t.Fatalf("current = %q", run.CurrentNode)
+	}
+	check, ok := run.Checks["spec_approved"]
+	if !ok || !check.Passed {
+		t.Fatalf("check = %+v ok=%v", check, ok)
+	}
+	if check.Source != state.SourceHumanEvent {
+		t.Fatalf("source = %q", check.Source)
+	}
+}
+
+func TestCheckpointRejectsVerifierNode(t *testing.T) {
+	root, slug := writeFixtureSession(t)
+	run, err := state.Load(state.ManifestPath(root, slug))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "test"
+	run.Status = state.StatusRunning
+	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	form := strings.NewReader("check=unit&verdict=passed")
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/session/"+slug+"/checkpoint", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	loaded, err := state.Load(state.ManifestPath(root, slug))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.CurrentNode != "test" {
+		t.Fatalf("current moved to %q", loaded.CurrentNode)
 	}
 }
 
@@ -131,6 +228,99 @@ func TestSessionPageRedactedPromptAbsentFromHTML(t *testing.T) {
 	if !strings.Contains(text, "redacted") {
 		t.Fatal("expected redacted chip")
 	}
+}
+
+func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
+	root := t.TempDir()
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/static/shell.css", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	css := rec.Body.String()
+	menu := cssBlock(css, ".kind-menu")
+	if !strings.Contains(menu, "left: 0") {
+		t.Fatalf("kind-menu must open from the filter left edge, got %q", menu)
+	}
+	if strings.Contains(menu, "right: 0") {
+		t.Fatal("kind-menu right: 0 clips kind labels when Filter wraps to the start of the toolbar")
+	}
+	empty := cssBlock(css, ".empty")
+	if !strings.Contains(empty, "text-align: center") {
+		t.Fatalf("empty copy must be centered, got %q", empty)
+	}
+	if !strings.Contains(empty, "margin: auto") {
+		t.Fatalf("empty copy must sit in the middle of the stream, got %q", empty)
+	}
+	stream := cssBlock(css, ".stream")
+	if !strings.Contains(stream, "display: flex") || !strings.Contains(stream, "flex-direction: column") {
+		t.Fatalf("stream must be a column so empty can center, got %q", stream)
+	}
+}
+
+func TestEmptySessionCentersReconstructCopyAndKeepsGraphInStream(t *testing.T) {
+	root, slug := writeEmptySession(t)
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug, nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Nothing to reconstruct yet") {
+		t.Fatal("expected empty trajectory copy")
+	}
+	streamAt := strings.Index(body, `id="stream"`)
+	graphAt := strings.Index(body, `id="graph-view"`)
+	if streamAt < 0 || graphAt < 0 {
+		t.Fatal("expected stream and graph-view")
+	}
+	if graphAt < streamAt {
+		t.Fatal("graph-view must live inside the stream so it cannot cover the canvas")
+	}
+	if !strings.Contains(body, `data-testid="kind-filter"`) {
+		t.Fatal("expected kind filter menu")
+	}
+}
+
+func cssBlock(src, selector string) string {
+	needle := "\n" + selector + " {"
+	i := strings.Index(src, needle)
+	if i < 0 {
+		return ""
+	}
+	rest := src[i:]
+	j := strings.Index(rest, "}")
+	if j < 0 {
+		return rest
+	}
+	return rest[:j]
+}
+
+func writeEmptySession(t *testing.T) (root, slug string) {
+	t.Helper()
+	root = t.TempDir()
+	slug = "empty-session"
+	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	run, err := state.NewRun(slug, "empty", "goal-delivery", 50, time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
+		t.Fatal(err)
+	}
+	return root, slug
 }
 
 func writeFixtureSession(t *testing.T) (root, slug string) {

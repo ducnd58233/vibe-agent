@@ -2,6 +2,8 @@ package app
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
@@ -11,12 +13,13 @@ import (
 const workspaceCookie = "vibe_ws"
 
 func (d httpDeps) activeWorkspace(r *http.Request) string {
+	reg := d.snapshotRegistry()
 	if cookie, err := r.Cookie(workspaceCookie); err == nil {
-		if root, ok := d.registry.Resolve(cookie.Value); ok {
+		if root, ok := reg.Resolve(cookie.Value); ok {
 			return root
 		}
 	}
-	return d.registry.Default
+	return reg.Default
 }
 
 func handleWorkspaceSwitch(w http.ResponseWriter, r *http.Request, d httpDeps) {
@@ -29,10 +32,50 @@ func handleWorkspaceSwitch(w http.ResponseWriter, r *http.Request, d httpDeps) {
 		return
 	}
 	id := strings.TrimSpace(r.FormValue("workspace_id"))
-	if _, ok := d.registry.Resolve(id); !ok {
+	if _, ok := d.snapshotRegistry().Resolve(id); !ok {
 		http.Error(w, "unknown workspace", http.StatusBadRequest)
 		return
 	}
+	setWorkspaceCookie(w, id)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func handleWorkspaceOpen(w http.ResponseWriter, r *http.Request, d httpDeps) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	raw := strings.TrimSpace(r.FormValue("path"))
+	if raw == "" {
+		http.Error(w, "path required", http.StatusBadRequest)
+		return
+	}
+	abs, err := filepath.Abs(filepath.Clean(raw))
+	if err != nil {
+		http.Error(w, "bad path", http.StatusBadRequest)
+		return
+	}
+	info, err := os.Stat(abs)
+	if err != nil || !info.IsDir() {
+		http.Error(w, "workspace directory not found", http.StatusBadRequest)
+		return
+	}
+	current := d.snapshotRegistry()
+	next := domain.NewRegistry(current.Default, append(append([]string{}, current.Roots...), abs))
+	if err := persistence.WriteWorkspaces(next.Default, next); err != nil {
+		http.Error(w, "could not save workspace", http.StatusInternalServerError)
+		return
+	}
+	d.storeRegistry(next)
+	setWorkspaceCookie(w, next.ID(abs))
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func setWorkspaceCookie(w http.ResponseWriter, id string) {
 	//nolint:gosec // G124 loopback server uses HTTP without TLS
 	http.SetCookie(w, &http.Cookie{
 		Name:     workspaceCookie,
@@ -43,7 +86,6 @@ func handleWorkspaceSwitch(w http.ResponseWriter, r *http.Request, d httpDeps) {
 		Secure:   false, // loopback HTTP only
 		MaxAge:   60 * 60 * 24 * 30,
 	})
-	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func loadRegistry(primary string, extra []string) (domain.Registry, error) {

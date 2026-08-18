@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"html/template"
 	"os"
+	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
@@ -22,16 +23,20 @@ type HostRow struct {
 
 // ShellPage is the empty-state template model.
 type ShellPage struct {
-	Workspace     string
-	BindAddr      string
-	URL           string
-	Hosts         []HostRow
-	Sessions      []string
-	HasSessions   bool
-	CanCompose    bool
-	ComposeHosts  []HostRow
-	Workspaces    []WorkspaceRow
-	HasWorkspaces bool
+	Workspace           string
+	BindAddr            string
+	URL                 string
+	Hosts               []HostRow
+	Sessions            []SessionRow
+	HasSessions         bool
+	CurrentSlug         string
+	CanCompose          bool
+	ComposeHosts        []HostRow
+	Workspaces          []WorkspaceRow
+	CurrentWorkspace    WorkspaceRow
+	RecentWorkspaces    []WorkspaceRow
+	HasWorkspaces       bool
+	HasRecentWorkspaces bool
 }
 
 // BuildShellPage loads workspace metadata for the empty shell.
@@ -42,7 +47,9 @@ func BuildShellPage(workspaceRoot, bindAddr string, reg domain.Registry, activeR
 		URL:       "http://" + bindAddr + "/",
 	}
 	page.Workspaces = ProjectWorkspaces(reg, activeRoot)
-	page.HasWorkspaces = len(page.Workspaces) > 1
+	page.CurrentWorkspace, page.RecentWorkspaces = SplitWorkspaces(page.Workspaces)
+	page.HasWorkspaces = len(page.Workspaces) > 0
+	page.HasRecentWorkspaces = len(page.RecentWorkspaces) > 0
 	for _, entry := range hosts.Inventory() {
 		reason := entry.Reason
 		if entry.OnPath {
@@ -64,10 +71,7 @@ func BuildShellPage(workspaceRoot, bindAddr string, reg domain.Registry, activeR
 	if err != nil {
 		return page, err
 	}
-	page.Sessions = slugs
-	if hasAmbientSession(workspaceRoot) {
-		page.Sessions = append(page.Sessions, "ambient")
-	}
+	page.Sessions = ProjectSessions(workspaceRoot, slugs, time.Now().UTC())
 	page.HasSessions = len(page.Sessions) > 0
 	return page, nil
 }
@@ -82,6 +86,8 @@ type SessionPage struct {
 	Tokens          UsageTotals
 	ToolbarTokens   string
 	ChatEmpty       bool
+	ChatPrompts     []ChatPrompt
+	HasChatPrompts  bool
 	TurnCount       int
 	ToolCalls       int
 	EventDetails    []EventDetail
@@ -105,6 +111,7 @@ func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug string, reg dom
 		Slug:      slug,
 		RunStatus: "idle",
 	}
+	page.CurrentSlug = slug
 	var logPath string
 	var run *state.Run
 	switch slug {
@@ -134,7 +141,9 @@ func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug string, reg dom
 	page.KindCounts = KindCounts(page.Events)
 	page.Tokens = SumUsage(page.Events)
 	page.ToolbarTokens = FormatToolbarTokens(page.Tokens)
-	page.ChatEmpty = !ChatHasProse(page.Events)
+	page.ChatPrompts = AwaitingChatPrompts(page.GraphNodes, slug)
+	page.HasChatPrompts = len(page.ChatPrompts) > 0
+	page.ChatEmpty = !ChatHasProse(page.Events) && !page.HasChatPrompts
 	page.TurnCount = countTurns(page.Events)
 	page.ToolCalls = countToolCalls(page.Events)
 	page.EventDetails = BuildEventDetails(page.Events)

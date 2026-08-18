@@ -14,6 +14,8 @@ import (
 
 const composerTimeout = 2 * time.Minute
 
+var hostPrint = runHostPrint
+
 // SendComposerMessage records a redacted user prompt and optional print output.
 func SendComposerMessage(ctx context.Context, workspaceRoot, slug, hostID, message string) error {
 	if message == "" {
@@ -37,35 +39,39 @@ func SendComposerMessage(ctx context.Context, workspaceRoot, slug, hostID, messa
 	}); err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(ctx, composerTimeout)
+	go appendHostPrint(ctx, workspaceRoot, slug, host, message)
+	return nil
+}
+
+func appendHostPrint(parent context.Context, workspaceRoot, slug string, host hosts.Host, message string) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), composerTimeout)
 	defer cancel()
-	out, err := runHostPrint(ctx, host, message)
+	out, err := hostPrint(ctx, host, message)
 	if err != nil || strings.TrimSpace(out) == "" {
-		return nil
+		return
 	}
+	logPath := session.LogPath(workspaceRoot, slug)
 	text := session.RedactText(strings.TrimSpace(out))
 	if text == "" {
-		return nil
+		return
 	}
 	if parsed := parsePrintLines(out); len(parsed) > 0 {
 		for _, line := range parsed {
 			if line == "" {
 				continue
 			}
-			if _, err := session.Append(logPath, session.Record{
+			_, _ = session.Append(logPath, session.Record{
 				Type:   session.TypeTranscriptMessage,
 				Source: session.SourcePrint,
 				Client: host.Binary,
 				Role:   "assistant",
 				Body:   session.RedactText(line),
 				At:     time.Now().UTC(),
-			}); err != nil {
-				return err
-			}
+			})
 		}
-		return nil
+		return
 	}
-	_, err = session.Append(logPath, session.Record{
+	_, _ = session.Append(logPath, session.Record{
 		Type:   session.TypeTranscriptMessage,
 		Source: session.SourcePrint,
 		Client: host.Binary,
@@ -73,7 +79,6 @@ func SendComposerMessage(ctx context.Context, workspaceRoot, slug, hostID, messa
 		Body:   text,
 		At:     time.Now().UTC(),
 	})
-	return err
 }
 
 func hostsInventoryEntry(host hosts.Host) hosts.Entry {
@@ -123,6 +128,10 @@ func parsePrintLines(raw string) []string {
 			Type    string `json:"type"`
 			Content string `json:"content"`
 			Text    string `json:"text"`
+			Item    *struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"item"`
 		}
 		if err := json.Unmarshal([]byte(line), &item); err != nil {
 			continue
@@ -135,6 +144,10 @@ func parsePrintLines(raw string) []string {
 			}
 			if body != "" {
 				texts = append(texts, body)
+			}
+		case "item.completed":
+			if item.Item != nil && item.Item.Type == "agent_message" && item.Item.Text != "" {
+				texts = append(texts, item.Item.Text)
 			}
 		}
 	}

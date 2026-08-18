@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 )
@@ -23,6 +24,12 @@ type EventRow struct {
 	Role        string
 	Kind        session.FilterKind
 	Source      session.Source
+	Type        session.Type
+	Client      string
+	Tool        string
+	Command     string
+	EventName   string
+	At          time.Time
 	Summary     string
 	Body        string
 	PayloadJSON string
@@ -70,13 +77,19 @@ func projectEvent(ev session.Event) EventRow {
 	summary := eventSummary(ev, body.Payload)
 	displayBody := eventBody(ev, body.Payload)
 	row := EventRow{
-		Seq:     ev.Sequence,
-		Role:    role,
-		Kind:    kind,
-		Source:  body.Source,
-		Summary: summary,
-		Body:    displayBody,
-		Failed:  body.Failed,
+		Seq:       ev.Sequence,
+		Role:      role,
+		Kind:      kind,
+		Source:    body.Source,
+		Type:      ev.Type,
+		Client:    body.Client,
+		Tool:      body.Tool,
+		Command:   body.Command,
+		EventName: body.Event,
+		At:        ev.At,
+		Summary:   summary,
+		Body:      displayBody,
+		Failed:    body.Failed,
 		Redacted: strings.Contains(displayBody, "[REDACTED]") ||
 			strings.Contains(displayBody, "<credential>"),
 	}

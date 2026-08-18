@@ -111,7 +111,7 @@ func (r Record) validate() error {
 		return fmt.Errorf("session: unknown type %q", r.Type)
 	}
 	switch r.Source {
-	case SourceHook, SourceTranscript, SourceGraph:
+	case SourceHook, SourceTranscript, SourceGraph, SourcePrint:
 	default:
 		return fmt.Errorf("session: unknown source %q", r.Source)
 	}

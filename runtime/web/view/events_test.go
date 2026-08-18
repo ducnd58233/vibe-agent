@@ -40,6 +40,12 @@ func TestProjectEventsMixedRoles(t *testing.T) {
 	if !rows[3].HasUsage {
 		t.Fatal("expected usage on assistant row")
 	}
+	if rows[2].Client != "cursor" || rows[2].Tool != "bash" || rows[2].Command != "echo hi" {
+		t.Fatalf("tool row = %+v", rows[2])
+	}
+	if rows[2].Type != session.TypeToolUse || rows[2].At.IsZero() {
+		t.Fatalf("tool row type/at = %+v", rows[2])
+	}
 }
 
 func TestSumUsageAggregatesReportedRows(t *testing.T) {

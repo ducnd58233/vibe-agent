@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/static/tokens.css">
   <link rel="stylesheet" href="/static/shell.css">
   <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/workspace.js" defer></script>
 </head>
 <body>
   <a class="skip" href="#stream">Skip to trajectory</a>
@@ -17,39 +18,15 @@
         <h1>vibe-agent</h1>
         <span class="mark">WEB</span>
       </div>
-      <button class="btn btn-block" type="button" id="new-session-open" data-testid="new-session-open">New Session</button>
+      <button class="btn btn-block btn-accent" type="button" id="new-session-open" data-testid="new-session-open">New Session</button>
+      <div class="nav-block workspace-block">
+        <p class="nav-label">Workspace</p>
+        {{ template "workspace-picker" . }}
+      </div>
       <div class="sidebar-scroll">
         <div class="nav-block">
-          <p class="nav-label">Workspaces</p>
-          {{ if .HasWorkspaces }}
-          <ul class="workspace-list" data-testid="workspace-list">
-            {{ range .Workspaces }}
-            <li>
-              <form method="post" action="/workspace/switch">
-                <input type="hidden" name="workspace_id" value="{{ .ID }}">
-                <button type="submit" class="btn btn-ghost btn-block workspace-switch{{ if .Active }} is-active{{ end }}" data-testid="workspace-switch"{{ if .Active }} aria-current="page"{{ end }}>{{ .Label }}</button>
-              </form>
-            </li>
-            {{ end }}
-          </ul>
-          {{ else }}
-          <p data-testid="workspace-list-empty">Single workspace.</p>
-          {{ end }}
-          <p class="host-missing" data-testid="workspace-path">{{ .Workspace }}</p>
-        </div>
-        <div class="nav-block">
           <p class="nav-label">Sessions</p>
-          {{ if .HasSessions }}
-          <ul class="session-list" data-testid="session-list">
-            {{ range .Sessions }}
-            <li>
-              <a href="/session/{{ . }}" data-testid="session-item">{{ . }}</a>
-            </li>
-            {{ end }}
-          </ul>
-          {{ else }}
-          <p data-testid="session-list-empty">No delivery run and no ambient journal in this workspace.</p>
-          {{ end }}
+          {{ template "session-list" . }}
         </div>
         <div class="nav-block">
           <p class="nav-label">Hosts on PATH</p>
@@ -61,7 +38,7 @@
         </div>
       </div>
       <div class="sidebar-foot">
-        <button class="btn btn-ghost btn-block" type="button" id="settings-open" data-testid="settings-open">Settings</button>
+        <button class="btn btn-quiet" type="button" id="settings-open" data-testid="settings-open">Settings</button>
       </div>
     </nav>
     <section class="main">
@@ -157,8 +134,6 @@
     </div>
   </dialog>
 
-  </dialog>
-
   <dialog id="new-session-dialog" data-testid="new-session-form" aria-labelledby="new-session-heading">
     <form class="dialog-body" method="post" action="/session/new">
       <div class="dialog-head">
@@ -167,16 +142,20 @@
       </div>
       <label class="field">
         <span>Slug</span>
-        <input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="kebab-case slug">
+        <input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="kebab-case-slug" autocomplete="off">
       </label>
       <label class="field">
         <span>Goal</span>
-        <input name="goal" required placeholder="One-line objective">
+        <input name="goal" required placeholder="What should this run accomplish?" autocomplete="off">
       </label>
       <input type="hidden" name="graph" value="goal-delivery">
-      <button class="btn btn-block" type="submit">Start delivery run</button>
+      <div class="dialog-actions">
+        <button class="btn btn-block btn-accent" type="submit">Start delivery run</button>
+      </div>
     </form>
   </dialog>
+
+  {{ template "workspace-browse-dialog" . }}
 
   <script>
     const app = document.getElementById("app");

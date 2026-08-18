@@ -1,0 +1,48 @@
+{{ define "workspace-picker" }}
+        <div class="workspace-picker">
+          <div class="workspace-current-row">
+            <div class="workspace-current is-active" data-testid="workspace-current">
+              <strong>{{ .CurrentWorkspace.Label }}</strong>
+              <span class="workspace-path" data-testid="workspace-path">{{ .CurrentWorkspace.Path }}</span>
+            </div>
+            <button class="btn-icon workspace-menu-btn" type="button" id="workspace-menu-open" data-testid="workspace-menu-open" aria-haspopup="true" aria-expanded="false" aria-controls="workspace-menu" aria-label="Switch workspace">
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3 5.5h10L8 12z"/></svg>
+            </button>
+          </div>
+          <div class="workspace-menu" id="workspace-menu" data-testid="workspace-menu" hidden>
+            <p class="workspace-menu-label">Recently opened</p>
+            <ul class="workspace-list" data-testid="workspace-list">
+              {{ range .RecentWorkspaces }}
+              <li>
+                <form method="post" action="/workspace/switch">
+                  <input type="hidden" name="workspace_id" value="{{ .ID }}">
+                  <button type="submit" class="workspace-switch" data-testid="workspace-switch">{{ .Label }}</button>
+                </form>
+              </li>
+              {{ end }}
+            </ul>
+            {{ if not .HasRecentWorkspaces }}
+            <p class="workspace-menu-empty" data-testid="workspace-list-empty">No other workspaces yet.</p>
+            {{ end }}
+            <button class="workspace-menu-browse" type="button" id="workspace-browse-open" data-testid="workspace-browse-open">Browse other workspace</button>
+          </div>
+        </div>
+{{ end }}
+
+{{ define "workspace-browse-dialog" }}
+  <dialog id="workspace-browse-dialog" data-testid="workspace-browse-dialog" aria-labelledby="workspace-browse-heading">
+    <form class="dialog-body" method="post" action="/workspace/open">
+      <div class="dialog-head">
+        <h2 id="workspace-browse-heading">Browse workspace</h2>
+        <button class="btn" type="button" id="workspace-browse-close">Close</button>
+      </div>
+      <label class="field">
+        <span>Folder path</span>
+        <input name="path" required placeholder="Absolute path to a project folder" autocomplete="off">
+      </label>
+      <div class="dialog-actions">
+        <button class="btn btn-accent" type="submit">Open</button>
+      </div>
+    </form>
+  </dialog>
+{{ end }}

@@ -66,7 +66,7 @@ func EvalHost(name string) (Host, bool) {
 		return catalog[0], true
 	case "claude":
 		return catalog[1], true
-	case "cursor":
+	case "cursor", "cursor-agent":
 		return catalog[2], true
 	case "opencode":
 		return catalog[3], true

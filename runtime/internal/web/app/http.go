@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 	ui "github.com/ducnd58233/vibe-agent/runtime/web"
@@ -22,26 +23,41 @@ func NewHandlerWithPort(workspaceRoot, toolkitRoot string, port int) (http.Handl
 	if err != nil {
 		return nil, err
 	}
-	return mountHTTP(httpDeps{
-		registry:    reg,
-		toolkitRoot: filepath.Clean(toolkitRoot),
-		bindAddr:    Addr(port),
-	})
+	return mountHTTP(newHTTPDeps(reg, toolkitRoot, port))
 }
 
 // NewHandlerWithRegistry builds routes with an explicit workspace registry (tests).
 func NewHandlerWithRegistry(reg domain.Registry, toolkitRoot string, port int) (http.Handler, error) {
-	return mountHTTP(httpDeps{
-		registry:    reg,
-		toolkitRoot: filepath.Clean(toolkitRoot),
-		bindAddr:    Addr(port),
-	})
+	return mountHTTP(newHTTPDeps(reg, toolkitRoot, port))
 }
 
 type httpDeps struct {
-	registry    domain.Registry
+	mu          *sync.Mutex
+	registry    *domain.Registry
 	toolkitRoot string
 	bindAddr    string
+}
+
+func newHTTPDeps(reg domain.Registry, toolkitRoot string, port int) httpDeps {
+	copyReg := reg
+	return httpDeps{
+		mu:          new(sync.Mutex),
+		registry:    &copyReg,
+		toolkitRoot: filepath.Clean(toolkitRoot),
+		bindAddr:    Addr(port),
+	}
+}
+
+func (d httpDeps) snapshotRegistry() domain.Registry {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return *d.registry
+}
+
+func (d httpDeps) storeRegistry(reg domain.Registry) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	*d.registry = reg
 }
 
 func mountHTTP(d httpDeps) (http.Handler, error) {
@@ -70,10 +86,17 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 	mux.HandleFunc("/workspace/switch", func(w http.ResponseWriter, r *http.Request) {
 		handleWorkspaceSwitch(w, r, d)
 	})
+	mux.HandleFunc("/workspace/open", func(w http.ResponseWriter, r *http.Request) {
+		handleWorkspaceOpen(w, r, d)
+	})
 	mux.HandleFunc("/session/new", func(w http.ResponseWriter, r *http.Request) {
 		handleNewSession(w, r, d)
 	})
 	mux.HandleFunc("/session/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && strings.HasSuffix(strings.Trim(r.URL.Path, "/"), "/checkpoint") {
+			handleSessionCheckpoint(w, r, d)
+			return
+		}
 		if r.Method == http.MethodPost && strings.HasSuffix(strings.Trim(r.URL.Path, "/"), "/send") {
 			handleComposerSend(w, r, d)
 			return
@@ -93,7 +116,7 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 			return
 		}
 		ws := d.activeWorkspace(r)
-		page, err := view.BuildSessionPage(ws, d.toolkitRoot, d.bindAddr, slug, d.registry, ws)
+		page, err := view.BuildSessionPage(ws, d.toolkitRoot, d.bindAddr, slug, d.snapshotRegistry(), ws)
 		if err != nil {
 			if os.IsNotExist(err) {
 				http.NotFound(w, r)
@@ -113,7 +136,7 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 			return
 		}
 		ws := d.activeWorkspace(r)
-		page, err := view.BuildShellPage(ws, d.bindAddr, d.registry, ws)
+		page, err := view.BuildShellPage(ws, d.bindAddr, d.snapshotRegistry(), ws)
 		if err != nil {
 			http.Error(w, "page error", http.StatusInternalServerError)
 			return
