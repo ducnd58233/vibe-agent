@@ -55,6 +55,12 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/static/", static)
+	mux.HandleFunc("/catalog/commands", func(w http.ResponseWriter, r *http.Request) {
+		d.handleCatalogCommands(w, r)
+	})
+	mux.HandleFunc("/catalog/skills", func(w http.ResponseWriter, r *http.Request) {
+		d.handleCatalogSkills(w, r)
+	})
 	mux.HandleFunc("/workspace/switch", func(w http.ResponseWriter, r *http.Request) {
 		handleWorkspaceSwitch(w, r, d)
 	})
