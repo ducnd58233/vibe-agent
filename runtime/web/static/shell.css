@@ -1151,7 +1151,9 @@ button {
   display: none;
 }
 
-.is-chat-view li[data-role="thinking"] {
+.is-chat-view li[data-role="thinking"],
+.is-chat-view li[data-role="system"],
+.is-chat-view li[data-role="tool"] {
   display: none;
 }
 
@@ -1168,19 +1170,21 @@ button {
 }
 
 .is-chat-view .event-list {
-  margin-inline-start: 0;
+  margin-inline: auto;
   padding: 0;
   border-inline-start: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1.25rem;
+  width: 100%;
   max-width: var(--composer-max);
 }
 
 .is-chat-view .event-list > li {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
+  width: 100%;
   margin: 0;
   gap: 0.25rem;
 }
@@ -1205,19 +1209,59 @@ button {
 }
 
 .is-chat-view li[data-role="user"] .event {
+  max-width: min(72%, var(--chat-user-max));
   background: var(--color-surface-2);
   border-color: var(--color-border-strong);
 }
 
+.is-chat-view li[data-role="assistant"] .event,
 .is-chat-view li[data-role="question"] .event {
-  border-inline-start: 0.1875rem solid var(--color-warn);
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.is-chat-view li[data-role="assistant"] .event:hover,
+.is-chat-view li[data-role="question"] .event:hover {
+  background: transparent;
+}
+
+.is-chat-view li[data-role="question"] .event {
+  padding-inline-start: 0.75rem;
+  box-shadow: inset 0.1875rem 0 0 var(--color-warn);
+}
+
+.is-chat-view li[data-role="user"] .event-body,
+.is-chat-view li[data-role="assistant"] .event-body,
+.is-chat-view li[data-role="question"] .event-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.is-chat-view li[data-role="user"] .event-md,
+.is-chat-view li[data-role="user"] .event-text,
+.is-chat-view li[data-role="assistant"] .event-md,
+.is-chat-view li[data-role="assistant"] .event-text,
+.is-chat-view li[data-role="question"] .event-md,
+.is-chat-view li[data-role="question"] .event-text {
+  order: -1;
 }
 
 .is-chat-view .role {
-  position: static;
-  width: auto;
-  text-align: start;
-  margin: 0 0 0.375rem;
+  display: none;
+}
+
+.is-chat-view .token-pair {
+  margin-inline-start: 0;
+}
+
+.is-chat-view .event-kicker:not(:has(.token-pair:not(.is-empty), .chip)) {
+  display: none;
 }
 
 .is-chat-view li[data-fold]:not(.is-expanded) .event-md,
@@ -2528,9 +2572,15 @@ form.dialog-body > .field {
     padding: 0.75rem 0.5rem;
   }
 
-  .is-chat-view .event {
-    width: auto;
-    max-width: 100%;
+  .is-chat-view li[data-role="user"] .event {
+    max-width: min(72%, 100%);
+  }
+
+  .is-chat-view li[data-role="assistant"] .event,
+  .is-chat-view li[data-role="question"] .event {
+    width: 100%;
+    max-width: none;
+    padding: 0;
   }
 
   .role {

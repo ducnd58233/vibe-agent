@@ -148,6 +148,12 @@ func eventRole(ev session.Event, body session.Payload) string {
 func eventSummary(ev session.Event, body session.Payload) string {
 	switch ev.Type {
 	case session.TypeSessionStart:
+		if body.Event == "ComposerStart" {
+			if body.Client != "" {
+				return "Composer start · client " + body.Client
+			}
+			return "Composer start"
+		}
 		if body.Client != "" {
 			return "SessionStart · client " + body.Client
 		}
@@ -168,6 +174,15 @@ func eventSummary(ev session.Event, body session.Payload) string {
 		}
 		return "ToolUse"
 	case session.TypeStop:
+		switch body.Event {
+		case "SessionEnd":
+			return "SessionEnd"
+		case "ComposerStop":
+			if body.Client != "" {
+				return "Composer stop · client " + body.Client
+			}
+			return "Composer stop"
+		}
 		return "Stop"
 	case session.TypeSubagentStop:
 		return "SubagentStop"
@@ -227,7 +242,7 @@ func ChatRows(rows []EventRow) []EventRow {
 }
 
 func chatFoldClosed(role, body string) bool {
-	if !ChatVisibleRole(role) {
+	if role != "user" {
 		return false
 	}
 	if strings.Count(body, "\n") >= chatFoldLines {

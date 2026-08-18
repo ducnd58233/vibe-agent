@@ -109,11 +109,46 @@ func TestChatFoldClosedOnLongAssistantBody(t *testing.T) {
 	if rows[0].FoldClosed {
 		t.Fatal("short user prompt must stay expanded")
 	}
-	if !rows[1].FoldClosed {
-		t.Fatal("long assistant prose must fold on Chat")
+	if rows[1].FoldClosed {
+		t.Fatal("assistant Chat rows stay full height, no Show more")
 	}
 	if rows[2].FoldClosed {
 		t.Fatal("tool rows are Trajectory cards, not Chat folds")
+	}
+}
+
+func TestEventSummaryComposerStartAndSessionEnd(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, session.LogName)
+	records := []session.Record{
+		{Type: session.TypeSessionStart, Source: session.SourcePrint, Client: "cursor-agent", Event: "ComposerStart"},
+		{Type: session.TypeStop, Source: session.SourcePrint, Client: "cursor-agent", Event: "SessionEnd"},
+		{Type: session.TypeStop, Source: session.SourcePrint, Client: "cursor-agent", Event: "ComposerStop"},
+	}
+	var events []session.Event
+	for _, rec := range records {
+		rec.At = time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
+		ev, err := session.Append(path, rec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		events = append(events, ev)
+	}
+	rows := ProjectEvents(events)
+	if len(rows) != 3 {
+		t.Fatalf("rows = %d", len(rows))
+	}
+	if !strings.HasPrefix(rows[0].Summary, "Composer start") {
+		t.Fatalf("start summary = %q", rows[0].Summary)
+	}
+	if rows[1].Summary != "SessionEnd" {
+		t.Fatalf("session end summary = %q", rows[1].Summary)
+	}
+	if !strings.HasPrefix(rows[2].Summary, "Composer stop") {
+		t.Fatalf("stop summary = %q", rows[2].Summary)
+	}
+	if ChatVisibleRole(rows[0].Role) || ChatVisibleRole(rows[1].Role) {
+		t.Fatal("lifecycle rows belong on Trajectory, not Chat")
 	}
 }
 

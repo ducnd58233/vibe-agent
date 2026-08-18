@@ -198,14 +198,17 @@ func TestSessionRendersMarkdownAndOmitsEmptyUserTokens(t *testing.T) {
 		t.Fatal("chat view class missing")
 	}
 	if !strings.Contains(chat, "<article class=\"event") {
-		t.Fatal("chat rows must be articles so Show more is not nested in a button")
+		t.Fatal("chat rows must be articles so inspector click is not a nested button")
 	}
 	if !strings.Contains(chat, `data-testid="graph-view" hidden inert`) {
 		t.Fatal("graph must be hidden and inert on Chat so the 19-node list is not in the thread")
 	}
+	if !strings.Contains(chat, `tag-in`) || !strings.Contains(chat, "in 12") {
+		t.Fatal("assistant Chat must still show token in/out")
+	}
 }
 
-func TestLongAssistantRowExposesChatExpand(t *testing.T) {
+func TestLongAssistantRowHasNoChatExpand(t *testing.T) {
 	root := t.TempDir()
 	slug := "fold-session"
 	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
@@ -234,11 +237,14 @@ func TestLongAssistantRowExposesChatExpand(t *testing.T) {
 		t.Fatalf("status = %d", recHTTP.Code)
 	}
 	body := recHTTP.Body.String()
-	if !strings.Contains(body, `data-testid="event-expand"`) {
-		t.Fatal("long chat prose needs a Show more control")
+	if strings.Contains(body, `data-testid="event-expand"`) {
+		t.Fatal("assistant Chat rows must not use Show more")
 	}
-	if !strings.Contains(body, `data-fold="1"`) {
-		t.Fatal("folded row must mark data-fold for CSS clamp")
+	if strings.Contains(body, `data-fold="1"`) {
+		t.Fatal("assistant Chat rows must not clamp")
+	}
+	if !strings.Contains(body, `data-testid="event-md"`) {
+		t.Fatal("assistant body still renders as markdown")
 	}
 }
 
@@ -497,6 +503,17 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 	chatList := cssBlock(css, ".is-chat-view .event-list")
 	if !strings.Contains(chatList, "border-inline-start: 0") {
 		t.Fatalf("chat must drop the trajectory gutter, got %q", chatList)
+	}
+	chatUser := cssBlock(css, `.is-chat-view li[data-role="user"] .event`)
+	if !strings.Contains(chatUser, "--chat-user-max") {
+		t.Fatalf("user Chat bubble must stay on the end of the column, got %q", chatUser)
+	}
+	chatTokens := cssBlock(css, ".is-chat-view .token-pair")
+	if !strings.Contains(chatTokens, "margin-inline-start: 0") {
+		t.Fatalf("chat token chips must sit under the assistant body, not the far edge, got %q", chatTokens)
+	}
+	if !strings.Contains(css, `li[data-role="system"]`) || !strings.Contains(css, `li[data-role="tool"]`) {
+		t.Fatal("chat must hide system and tool rows so Composer start/stop stay on Trajectory")
 	}
 	graphCurrent := cssBlock(css, `.graph-node[aria-current="true"]`)
 	if !strings.Contains(graphCurrent, "--color-accent") {
