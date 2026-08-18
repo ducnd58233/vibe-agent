@@ -61,6 +61,12 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 	mux.HandleFunc("/catalog/skills", func(w http.ResponseWriter, r *http.Request) {
 		d.handleCatalogSkills(w, r)
 	})
+	mux.HandleFunc("/workspace/files/preview", func(w http.ResponseWriter, r *http.Request) {
+		d.handleWorkspaceFilePreview(w, r)
+	})
+	mux.HandleFunc("/workspace/files", func(w http.ResponseWriter, r *http.Request) {
+		d.handleWorkspaceFiles(w, r)
+	})
 	mux.HandleFunc("/workspace/switch", func(w http.ResponseWriter, r *http.Request) {
 		handleWorkspaceSwitch(w, r, d)
 	})
