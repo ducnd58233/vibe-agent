@@ -57,4 +57,5 @@ var (
 	EventLogPath = persistence.EventLogPath
 	AppendEvent  = persistence.AppendEvent
 	ReadEvents   = persistence.ReadEvents
+	List         = persistence.List
 )
