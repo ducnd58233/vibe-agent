@@ -25,6 +25,9 @@ func PrintArgv(host Host, opts PrintOptions) []string {
 		return nil
 	}
 	args := append([]string{}, parts[1:]...)
+	if host.Binary == "claude" {
+		args = applyClaudePrintStream(args)
+	}
 	if host.Binary == "cursor-agent" {
 		args = applyCursorMode(args, opts.Mode)
 	}
@@ -33,6 +36,32 @@ func PrintArgv(host Host, opts PrintOptions) []string {
 		return args
 	}
 	return append(args, "--model", model)
+}
+
+func applyClaudePrintStream(args []string) []string {
+	stripped := dropFlagAndValue(args, "--output-format")
+	stripped = dropBareFlag(stripped, "--verbose")
+	stripped = dropBareFlag(stripped, "--include-hook-events")
+	flags := []string{"--output-format", "stream-json", "--verbose", "--include-hook-events"}
+	for i, arg := range stripped {
+		if arg == "--print" || arg == "-p" {
+			out := append([]string{}, stripped[:i+1]...)
+			out = append(out, flags...)
+			return append(out, stripped[i+1:]...)
+		}
+	}
+	return append(flags, stripped...)
+}
+
+func dropBareFlag(args []string, flag string) []string {
+	out := make([]string, 0, len(args))
+	for _, arg := range args {
+		if arg == flag {
+			continue
+		}
+		out = append(out, arg)
+	}
+	return out
 }
 
 func applyCursorMode(args []string, mode string) []string {

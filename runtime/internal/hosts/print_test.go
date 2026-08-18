@@ -24,6 +24,27 @@ func TestPrintArgvClaudeModelLeavesCatalogUnchanged(t *testing.T) {
 	}
 }
 
+func TestPrintArgvClaudeIncludesHookEvents(t *testing.T) {
+	host, ok := EvalHost("claude")
+	if !ok {
+		t.Fatal("claude")
+	}
+	orig := host.EvalCommand
+	argv := PrintArgv(host, PrintOptions{})
+	if host.EvalCommand != orig {
+		t.Fatalf("EvalCommand mutated: %q", orig)
+	}
+	if !hasFlagValue(argv, "--output-format", "stream-json") {
+		t.Fatalf("argv = %v, want stream-json", argv)
+	}
+	if !slices.Contains(argv, "--include-hook-events") {
+		t.Fatalf("argv = %v, want --include-hook-events", argv)
+	}
+	if !slices.Contains(argv, "--verbose") {
+		t.Fatalf("argv = %v, want --verbose", argv)
+	}
+}
+
 func TestPrintArgvIgnoresModelOnCodex(t *testing.T) {
 	host, ok := EvalHost("codex")
 	if !ok {

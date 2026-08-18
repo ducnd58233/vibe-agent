@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 )
 
 func TestComposerSendRecordsCursorPromptOnTrajectory(t *testing.T) {
@@ -155,6 +156,56 @@ func TestParsePrintOutputSystemResultIsNotRawJSON(t *testing.T) {
 	if len(fragments) != 0 {
 		t.Fatalf("expected no displayable fragments, got %+v", fragments)
 	}
+}
+
+func TestParsePrintOutputHookStartedSessionStartDropsOutput(t *testing.T) {
+	raw := `{"type":"system","subtype":"hook_started","hook_event":"SessionStart","output":"sk-secret-should-not-land"}`
+	fragments, _ := parsePrintOutput(raw)
+	if len(fragments) != 1 || fragments[0].Type != session.TypeSessionStart {
+		t.Fatalf("fragments = %+v", fragments)
+	}
+	if fragments[0].Body != "" {
+		t.Fatalf("hook body must be empty, got %q", fragments[0].Body)
+	}
+	joined := fmtFragments(fragments)
+	if strings.Contains(joined, "sk-") {
+		t.Fatal("hook output must not be stored")
+	}
+}
+
+func TestParsePrintOutputHookResponseSessionEndSkipsDuplicateStart(t *testing.T) {
+	raw := `{"type":"system","subtype":"hook_started","hook_event":"SessionStart"}` + "\n" +
+		`{"type":"system","subtype":"hook_response","hook_event":"SessionStart","output":"sk-dup"}` + "\n" +
+		`{"type":"system","subtype":"hook_response","hook_event":"SessionEnd"}`
+	fragments, _ := parsePrintOutput(raw)
+	if len(fragments) != 2 {
+		t.Fatalf("fragments = %+v", fragments)
+	}
+	if fragments[0].Type != session.TypeSessionStart {
+		t.Fatalf("first = %+v", fragments[0])
+	}
+	if fragments[1].Type != session.TypeStop || fragments[1].Event != "SessionEnd" {
+		t.Fatalf("session end = %+v", fragments[1])
+	}
+	if strings.Contains(fmtFragments(fragments), "sk-") {
+		t.Fatal("hook output must not be stored")
+	}
+}
+
+func fmtFragments(fragments []printFragment) string {
+	var b strings.Builder
+	for _, frag := range fragments {
+		b.WriteString(frag.Role)
+		b.WriteByte(' ')
+		b.WriteString(frag.Event)
+		b.WriteByte(' ')
+		b.WriteString(frag.Body)
+		b.WriteByte(' ')
+		b.WriteString(frag.Tool)
+		b.WriteByte(' ')
+		b.WriteString(frag.Command)
+	}
+	return b.String()
 }
 
 func TestParsePrintOutputTruncatedThenAssistant(t *testing.T) {
@@ -538,4 +589,118 @@ func TestComposerReplayPrefixesFollowUpAndRedacts(t *testing.T) {
 	if !strings.Contains(last, "follow-up") {
 		t.Fatalf("host switch lost prefix: %q", last)
 	}
+}
+
+func TestComposerFirstSendWritesStartAndStop(t *testing.T) {
+	if !hostOnPath("cursor-agent") && !hostOnPath("claude") {
+		t.Skip("no composer host on PATH")
+	}
+	hostID := "claude"
+	if hostOnPath("cursor-agent") {
+		hostID = "cursor-agent"
+	}
+	wait := make(chan struct{}, 8)
+	hostPrint = func(ctx context.Context, host hosts.Host, prompt string, opts hosts.PrintOptions) (string, error) {
+		wait <- struct{}{}
+		return `{"type":"assistant","message":{"content":[{"type":"text","text":"pong"}]}}`, nil
+	}
+	t.Cleanup(func() { hostPrint = runHostPrint })
+	root, slug := writeEmptySession(t)
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	send := func(message string) {
+		t.Helper()
+		form := strings.NewReader(url.Values{"host": {hostID}, "message": {message}}.Encode())
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/session/"+slug+"/send", form)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusSeeOther {
+			t.Fatalf("status = %d", rec.Code)
+		}
+		select {
+		case <-wait:
+		case <-time.After(2 * time.Second):
+			t.Fatal("print stub was not called")
+		}
+	}
+	send("first")
+	deadline := time.Now().Add(2 * time.Second)
+	var events []session.Event
+	for time.Now().Before(deadline) {
+		var err error
+		events, err = session.Replay(session.LogPath(root, slug))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if hasType(events, session.TypeStop) && hasType(events, session.TypeSessionStart) {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if !hasType(events, session.TypeSessionStart) {
+		t.Fatalf("missing session_start: %+v", eventTypes(events))
+	}
+	if events[0].Type != session.TypeSessionStart {
+		t.Fatalf("first event = %s, want session_start", events[0].Type)
+	}
+	if !hasType(events, session.TypePromptSubmit) {
+		t.Fatal("missing prompt_submit")
+	}
+	if !hasType(events, session.TypeStop) {
+		t.Fatalf("missing stop: %+v", eventTypes(events))
+	}
+	starts := 0
+	for _, ev := range events {
+		if ev.Type == session.TypeSessionStart {
+			starts++
+		}
+	}
+	send("second")
+	deadline = time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		var err error
+		events, err = session.Replay(session.LogPath(root, slug))
+		if err != nil {
+			t.Fatal(err)
+		}
+		stops := 0
+		for _, ev := range events {
+			if ev.Type == session.TypeStop {
+				stops++
+			}
+		}
+		if stops >= 2 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	startsAfter := 0
+	for _, ev := range events {
+		if ev.Type == session.TypeSessionStart {
+			startsAfter++
+		}
+	}
+	if startsAfter != starts || startsAfter != 1 {
+		t.Fatalf("session_start count = %d then %d, want 1", starts, startsAfter)
+	}
+}
+
+func hasType(events []session.Event, typ session.Type) bool {
+	for _, ev := range events {
+		if ev.Type == typ {
+			return true
+		}
+	}
+	return false
+}
+
+func eventTypes(events []session.Event) []session.Type {
+	out := make([]session.Type, 0, len(events))
+	for _, ev := range events {
+		out = append(out, ev.Type)
+	}
+	return out
 }

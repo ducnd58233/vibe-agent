@@ -36,6 +36,9 @@ func SendComposerMessage(ctx context.Context, workspaceRoot, slug, hostID, messa
 		prompt = prefix + "\n\n" + message
 	}
 	prompt = session.RedactText(prompt)
+	if err := appendComposerStart(logPath, host.Binary); err != nil {
+		return err
+	}
 	if _, err := session.Append(logPath, session.Record{
 		Type:   session.TypePromptSubmit,
 		Source: session.SourceHook,
@@ -52,13 +55,13 @@ func SendComposerMessage(ctx context.Context, workspaceRoot, slug, hostID, messa
 func appendHostPrint(parent context.Context, workspaceRoot, slug string, host hosts.Host, message string, opts hosts.PrintOptions) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), composerTimeout)
 	defer cancel()
+	logPath := session.LogPath(workspaceRoot, slug)
 	out, err := hostPrint(ctx, host, message, opts)
 	if err != nil || strings.TrimSpace(out) == "" {
 		body := "Host produced no output."
 		if err != nil && errors.Is(err, context.DeadlineExceeded) {
 			body = "Host timed out while generating output."
 		}
-		logPath := session.LogPath(workspaceRoot, slug)
 		_, _ = session.Append(logPath, session.Record{
 			Type:   session.TypeTranscriptMessage,
 			Source: session.SourcePrint,
@@ -67,11 +70,12 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 			Body:   session.RedactText(body),
 			At:     time.Now().UTC(),
 		})
+		_ = appendComposerStop(logPath, host.Binary)
 		return
 	}
-	logPath := session.LogPath(workspaceRoot, slug)
 	text := session.RedactText(strings.TrimSpace(out))
 	if text == "" {
+		_ = appendComposerStop(logPath, host.Binary)
 		return
 	}
 	fragments, usage := parsePrintOutput(out)
@@ -84,7 +88,23 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 	}
 	attachUsage(fragments, usage)
 	now := time.Now().UTC()
+	wroteStop := false
 	for _, frag := range fragments {
+		if isPrintLifecycle(frag.Type) {
+			rec := session.Record{
+				Type:   frag.Type,
+				Source: session.SourcePrint,
+				Client: host.Binary,
+				Event:  frag.Event,
+				Tool:   frag.Tool,
+				At:     now,
+			}
+			if frag.Type == session.TypeStop || frag.Type == session.TypeSubagentStop {
+				wroteStop = true
+			}
+			_, _ = session.Append(logPath, rec)
+			continue
+		}
 		if strings.TrimSpace(frag.Body) == "" && frag.Usage == nil {
 			continue
 		}
@@ -109,6 +129,56 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 		}
 		_, _ = session.Append(logPath, rec)
 	}
+	if !wroteStop {
+		_ = appendComposerStop(logPath, host.Binary)
+	}
+}
+
+func appendComposerStart(logPath, client string) error {
+	if logHasType(logPath, session.TypeSessionStart) {
+		return nil
+	}
+	_, err := session.Append(logPath, session.Record{
+		Type:   session.TypeSessionStart,
+		Source: session.SourcePrint,
+		Client: client,
+		Event:  "ComposerStart",
+		At:     time.Now().UTC(),
+	})
+	return err
+}
+
+func appendComposerStop(logPath, client string) error {
+	_, err := session.Append(logPath, session.Record{
+		Type:   session.TypeStop,
+		Source: session.SourcePrint,
+		Client: client,
+		Event:  "ComposerStop",
+		At:     time.Now().UTC(),
+	})
+	return err
+}
+
+func logHasType(logPath string, typ session.Type) bool {
+	events, err := session.Replay(logPath)
+	if err != nil {
+		return false
+	}
+	for _, ev := range events {
+		if ev.Type == typ {
+			return true
+		}
+	}
+	return false
+}
+
+func isPrintLifecycle(t session.Type) bool {
+	switch t {
+	case session.TypeSessionStart, session.TypeStop, session.TypeSubagentStop, session.TypePreTool:
+		return true
+	default:
+		return false
+	}
 }
 
 const emptyPrintCopy = "Host produced no displayable output."
@@ -120,6 +190,7 @@ func emptyDisplayFragment() printFragment {
 type printFragment struct {
 	Type    session.Type
 	Role    string
+	Event   string
 	Body    string
 	Tool    string
 	Command string
@@ -227,7 +298,13 @@ func parsePrintOutput(raw string) ([]printFragment, *session.Usage) {
 				thinking.WriteString(text)
 			}
 			continue
-		case "system", "result", "user", "turn.started", "turn.completed", "thread.started":
+		case "system":
+			if frags := fragmentsFromSystem(rawObj); len(frags) > 0 {
+				flushThinking()
+				fragments = append(fragments, frags...)
+			}
+			continue
+		case "result", "user", "turn.started", "turn.completed", "thread.started":
 			continue
 		}
 		flushThinking()
@@ -235,6 +312,70 @@ func parsePrintOutput(raw string) ([]printFragment, *session.Usage) {
 	}
 	flushThinking()
 	return fragments, usage
+}
+
+func fragmentsFromSystem(raw map[string]any) []printFragment {
+	subtype := firstString(raw, "subtype")
+	event := hookEventName(raw)
+	switch subtype {
+	case "hook_started":
+		return hookFragment(event, false)
+	case "hook_response":
+		return hookFragment(event, true)
+	default:
+		return nil
+	}
+}
+
+func hookEventName(raw map[string]any) string {
+	event := firstString(raw, "hook_event", "hookEvent")
+	if event != "" {
+		return event
+	}
+	name := firstString(raw, "hook_name", "hookName")
+	if i := strings.Index(name, ":"); i >= 0 {
+		return name[:i]
+	}
+	return name
+}
+
+func hookFragment(event string, response bool) []printFragment {
+	key := hookEventKey(event)
+	if response && key != "sessionend" {
+		return nil
+	}
+	if !response && key == "sessionend" {
+		return nil
+	}
+	frag, ok := mapPrintHook(key)
+	if !ok {
+		return nil
+	}
+	return []printFragment{frag}
+}
+
+func hookEventKey(event string) string {
+	key := strings.ToLower(strings.TrimSpace(event))
+	key = strings.ReplaceAll(key, "_", "")
+	key = strings.ReplaceAll(key, "-", "")
+	return key
+}
+
+func mapPrintHook(key string) (printFragment, bool) {
+	switch key {
+	case "sessionstart", "setup":
+		return printFragment{Type: session.TypeSessionStart, Role: "system", Event: "SessionStart"}, true
+	case "sessionend":
+		return printFragment{Type: session.TypeStop, Role: "system", Event: "SessionEnd"}, true
+	case "stop":
+		return printFragment{Type: session.TypeStop, Role: "system", Event: "Stop"}, true
+	case "subagentstop":
+		return printFragment{Type: session.TypeSubagentStop, Role: "system", Event: "SubagentStop"}, true
+	case "pretooluse", "beforeshellexecution":
+		return printFragment{Type: session.TypePreTool, Role: "tool", Event: "PreToolUse"}, true
+	default:
+		return printFragment{}, false
+	}
 }
 
 func fragmentsFromPrint(typ string, raw map[string]any) []printFragment {
