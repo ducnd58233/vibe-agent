@@ -4,14 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ .Slug }} · vibe-agent web</title>
+  {{ template "theme-boot" }}
   <link rel="stylesheet" href="/static/tokens.css">
   <link rel="stylesheet" href="/static/shell.css">
   <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/workspace.js" defer></script>
   <script src="/static/composer.js" defer></script>
 </head>
 <body>
-  <a class="skip" href="#stream">Skip to trajectory</a>
-  <div class="app is-inspector-closed" id="app" data-testid="app-shell">
+  <a class="skip" href="#stream">Skip to session</a>
+  <div class="app is-inspector-closed is-{{ .View }}-view" id="app" data-testid="app-shell">
     <button class="backdrop backdrop-sidebar" type="button" id="sidebar-backdrop" aria-label="Close sessions"></button>
     <button class="backdrop backdrop-inspector" type="button" id="inspector-backdrop" aria-label="Close inspector"></button>
     <nav class="sidebar" aria-label="Workspace and sessions" data-testid="rail">
@@ -19,66 +21,42 @@
         <h1>vibe-agent</h1>
         <span class="mark">WEB</span>
       </div>
-      <button class="btn btn-block" type="button" id="new-session-open" data-testid="new-session-open">New Session</button>
+      <button class="btn btn-block btn-accent" type="button" id="new-session-open" data-testid="new-session-open">New Session</button>
+      <div class="nav-block workspace-block">
+        <p class="nav-label">Workspace</p>
+        {{ template "workspace-picker" . }}
+      </div>
       <div class="sidebar-scroll">
         <div class="nav-block">
-          <p class="nav-label">Workspaces</p>
-          {{ if .HasWorkspaces }}
-          <ul class="workspace-list" data-testid="workspace-list">
-            {{ range .Workspaces }}
-            <li>
-              <form method="post" action="/workspace/switch">
-                <input type="hidden" name="workspace_id" value="{{ .ID }}">
-                <button type="submit" class="btn btn-ghost btn-block workspace-switch{{ if .Active }} is-active{{ end }}" data-testid="workspace-switch"{{ if .Active }} aria-current="page"{{ end }}>{{ .Label }}</button>
-              </form>
-            </li>
-            {{ end }}
-          </ul>
-          {{ else }}
-          <p data-testid="workspace-list-empty">Single workspace.</p>
-          {{ end }}
-          <p class="host-missing" data-testid="workspace-path">{{ .Workspace }}</p>
-        </div>
-        <div class="nav-block">
           <p class="nav-label">Sessions</p>
-          {{ if .HasSessions }}
-          <ul class="session-list" data-testid="session-list">
-            {{ range .Sessions }}
-            <li>
-              <a href="/session/{{ . }}"{{ if eq . $.Slug }} aria-current="page"{{ end }} data-testid="session-item">{{ . }}</a>
-            </li>
-            {{ end }}
-          </ul>
-          {{ else }}
-          <p data-testid="session-list-empty">No delivery run and no ambient journal in this workspace.</p>
-          {{ end }}
+          {{ template "session-list" . }}
         </div>
       </div>
       <div class="sidebar-foot">
-        <button class="btn btn-ghost btn-block" type="button" id="settings-open" data-testid="settings-open">Settings</button>
+        <button class="btn btn-quiet" type="button" id="settings-open" data-testid="settings-open">Settings</button>
       </div>
     </nav>
     <section class="main">
       <header class="topbar">
-        <button class="btn-icon menu-btn" type="button" id="sidebar-open" aria-label="Open sessions" data-testid="sidebar-open">Menu</button>
+        <button class="btn-icon menu-btn" type="button" id="sidebar-open" aria-label="Open sessions" data-testid="sidebar-open">{{ template "icon-menu" }}</button>
         <div class="session-crumb">
           <strong>{{ .Slug }}</strong>
           <span class="mode-chip" data-testid="run-status">{{ .RunStatus }}</span>
         </div>
         <div class="tabs" role="tablist" aria-label="Session view" data-testid="view-tabs">
-          <button class="tab" type="button" role="tab" aria-selected="false" data-view="chat">Chat</button>
-          <button class="tab" type="button" role="tab" aria-selected="true" data-view="trajectory">Trajectory</button>
-          <button class="tab" type="button" role="tab" aria-selected="false" data-view="graph">Graph</button>
+          <button class="tab" type="button" role="tab" aria-selected="{{ if eq .View "chat" }}true{{ else }}false{{ end }}" data-view="chat">Chat</button>
+          <button class="tab" type="button" role="tab" aria-selected="{{ if eq .View "trajectory" }}true{{ else }}false{{ end }}" data-view="trajectory">Trajectory</button>
+          <button class="tab" type="button" role="tab" aria-selected="{{ if eq .View "graph" }}true{{ else }}false{{ end }}" data-view="graph">Graph</button>
         </div>
-        <button class="btn btn-ghost" type="button" id="session-log" data-testid="session-log">Session log</button>
+        <button class="btn btn-log" type="button" id="session-log" data-testid="session-log">Session log</button>
       </header>
       <div class="toolbar" data-testid="trajectory-toolbar">
         <dl class="stat"><dt>Duration</dt><dd>--</dd></dl>
         <dl class="stat"><dt>Turns</dt><dd>{{ .TurnCount }}</dd></dl>
         <dl class="stat"><dt>Calls</dt><dd>{{ .ToolCalls }}</dd></dl>
-        <dl class="stat"><dt>Tokens</dt><dd data-testid="token-usage">{{ .ToolbarTokens }}</dd></dl>
+        <dl class="stat"><dt>Tokens</dt><dd data-testid="token-usage">{{ if .Tokens.Reported }}<span class="token-pair">{{ if or .Tokens.Input .Tokens.Output }}<span class="tag tag-in">in {{ .Tokens.Input }}</span><span class="tag tag-out">out {{ .Tokens.Output }}</span>{{ if .Tokens.CacheRead }}<span class="tag tag-cache">cache {{ .Tokens.CacheRead }}</span>{{ end }}{{ else }}<span class="tag">{{ .ToolbarTokens }}</span>{{ end }}</span>{{ else }}not reported{{ end }}</dd></dl>
         <div class="toolbar-end">
-          <div class="kind-filter-ctl" id="kind-filter-wrap">
+          <div class="kind-filter-ctl" id="kind-filter-wrap"{{ if eq .View "chat" }} hidden{{ end }}>
             <button class="filter-btn" type="button" id="kind-filter-open" data-testid="kind-filter-open" aria-haspopup="true" aria-expanded="false" aria-controls="kind-filter-menu">
               <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M2 3.5h12l-4.2 5.2V13L6.2 12V8.7z"/></svg>
               <span id="kind-filter-label">Filter</span>
@@ -107,37 +85,71 @@
         </div>
       </div>
       {{ template "pipeline" . }}
-      {{ template "graph" . }}
       <div class="stream" id="stream" data-testid="trajectory" tabindex="-1">
-        {{ if .Events }}
-        <ol class="event-list" id="event-list" data-testid="event-list" aria-live="polite"
+        {{ template "chat-prompts" . }}
+        {{ template "graph" . }}
+        <ol class="event-list" id="event-list" data-testid="event-list" aria-live="polite"{{ if eq .View "graph" }} hidden inert{{ end }}
             hx-get="/session/{{ .Slug }}/events?after={{ .LastEventSeq }}" hx-trigger="sse:disconnected from:body every 2s" hx-swap="beforeend" hx-target="#event-list">
           {{ range .Events }}{{ template "event-row" . }}{{ end }}
         </ol>
-        <p class="empty" id="stream-empty" hidden data-testid="trajectory-empty"></p>
-        {{ else }}
-        <p class="empty" id="stream-empty" data-testid="trajectory-empty">Nothing to reconstruct yet</p>
-        {{ end }}
-        <p class="empty chat-empty" id="chat-empty" hidden data-testid="chat-empty">
-          Chat is empty until a host reports user or assistant text. Trajectory still lists hook and tool rows.
+        <p class="empty" id="stream-empty" data-testid="trajectory-empty"{{ if or .Events (eq .View "chat") }} hidden{{ end }}>No host turns yet. Open Graph for the delivery run.</p>
+        <p class="empty chat-empty" id="chat-empty" data-testid="chat-empty"{{ if or (ne .View "chat") (not .ChatEmpty) }} hidden{{ end }}>
+          Chat is empty until a host reports user, thinking, or assistant text. Open Graph for the delivery run.
         </p>
       </div>
       <div class="dock">
+        <div class="thinking-bar" id="host-busy" data-testid="host-busy" role="status" aria-live="polite" data-after-seq="{{ .BusyAfterSeq }}"{{ if eq .BusyAfterSeq 0 }} hidden{{ end }}>
+          <div class="thinking-bar-track">
+            <span class="thinking-bar-fill" data-testid="thinking-bar"></span>
+          </div>
+          <p class="thinking-bar-label">Host is thinking{{ if .BusyHostLabel }} via <span class="composer-ref">{{ .BusyHostLabel }}</span>{{ end }}</p>
+        </div>
         <div class="composer-stack">
-          <div class="composer-preview" id="composer-preview" data-testid="composer-preview" aria-hidden="true"></div>
           <div class="composer-description" id="composer-description" data-testid="composer-description" hidden></div>
           <div class="composer-catalog-panel" id="composer-catalog-panel" data-testid="composer-catalog" hidden></div>
           <div class="composer-file-panel" id="composer-file-panel" data-testid="composer-file-panel" hidden></div>
         <form class="composer" method="post" action="/session/{{ .Slug }}/send" data-testid="composer"{{ if not .CanCompose }} aria-disabled="true"{{ end }}>
-          <button class="btn-icon" type="button" id="composer-file-open" data-testid="composer-file-open" aria-label="Attach file"{{ if not .CanCompose }} disabled{{ end }}>+</button>
-          <label class="visually-hidden" for="composer-host">Host</label>
-          <select class="composer-host" id="composer-host" name="host"{{ if not .CanCompose }} disabled{{ end }} aria-label="Host">
+          <button class="btn-icon" type="button" id="composer-file-open" data-testid="composer-file-open" aria-label="Attach file" aria-expanded="false" aria-controls="composer-file-panel"{{ if not .CanCompose }} disabled{{ end }}>{{ template "icon-attach" }}</button>
+          <div class="composer-field-wrap">
+            <div class="composer-preview" id="composer-preview" data-testid="composer-preview" aria-hidden="true"></div>
+            <input class="composer-field" id="composer-message" name="message" type="text" placeholder="{{ if .CanCompose }}Type / for commands, @ for skills, or attach a file{{ else }}Install a host on PATH to send{{ end }}"{{ if not .CanCompose }} disabled{{ end }} aria-label="Message" autocomplete="off">
+          </div>
+          <div class="composer-tools">
+            <div class="host-picker">
+              <input type="hidden" name="host" id="composer-host" value="{{ if .DefaultHostID }}{{ .DefaultHostID }}{{ else if .ComposeHosts }}{{ (index .ComposeHosts 0).ID }}{{ end }}">
+              <button class="host-picker-open" type="button" id="composer-host-open" data-testid="composer-host-open" aria-label="Host" aria-haspopup="listbox" aria-expanded="false" aria-controls="composer-host-menu"{{ if not .CanCompose }} disabled{{ end }}>
+                <span id="composer-host-label">{{ if .DefaultHostLabel }}{{ .DefaultHostLabel }}{{ else if .ComposeHosts }}{{ (index .ComposeHosts 0).Binary }}{{ else }}Host{{ end }}</span>
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3 5.5h10L8 12z"/></svg>
+              </button>
+              <ul class="host-menu" id="composer-host-menu" data-testid="composer-host-menu" role="listbox" hidden>
+                {{ range .ComposeHosts }}
+                <li>
+                  <button class="host-option" type="button" role="option" data-host-id="{{ .ID }}" data-host-label="{{ .Binary }}" data-accepts-model="{{ if .AcceptsModel }}true{{ else }}false{{ end }}" data-testid="composer-host-option">{{ .Binary }}</button>
+                </li>
+                {{ end }}
+              </ul>
+            </div>
             {{ range .ComposeHosts }}
-            <option value="{{ .ID }}">{{ .Binary }}</option>
+            {{ if .ModelHints }}
+            <datalist id="composer-models-{{ .ID }}">
+              {{ range .ModelHints }}<option value="{{ . }}"></option>{{ end }}
+            </datalist>
             {{ end }}
-          </select>
-          <input class="composer-field" id="composer-message" name="message" type="text" placeholder="{{ if .CanCompose }}Type /command, @skill, or attach a file{{ else }}Install a host on PATH to send{{ end }}"{{ if not .CanCompose }} disabled{{ end }} aria-label="Message" autocomplete="off">
-          <button class="btn-send" type="submit"{{ if not .CanCompose }} disabled{{ end }} aria-label="Send">→</button>
+            {{ end }}
+            <div class="model-picker">
+              <input class="composer-model" type="text" name="model" id="composer-model" data-testid="composer-model" placeholder="Model" aria-label="Model" autocomplete="off"{{ if not .CanCompose }} disabled{{ end }}>
+              <button class="model-picker-open" type="button" id="composer-model-open" data-testid="composer-model-open" aria-label="Suggested models" aria-haspopup="listbox" aria-expanded="false" aria-controls="composer-model-menu" hidden{{ if not .CanCompose }} disabled{{ end }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3 5.5h10L8 12z"/></svg>
+              </button>
+              <ul class="host-menu" id="composer-model-menu" data-testid="composer-model-menu" role="listbox" hidden></ul>
+            </div>
+            <label class="composer-mode" data-tip="Ask is the default: the host answers without tools. Tick Agent to let the host call tools." title="Ask is the default: the host answers without tools. Tick Agent to let the host call tools.">
+              <input type="checkbox" name="mode" value="agent" id="composer-mode-agent" data-testid="composer-mode-agent" aria-describedby="composer-mode-tip"{{ if not .CanCompose }} disabled{{ end }}>
+              <span>Agent</span>
+            </label>
+            <span class="visually-hidden" id="composer-mode-tip">Ask is the default: the host answers without tools. Tick Agent to let the host call tools.</span>
+            <button class="btn-send" type="submit"{{ if not .CanCompose }} disabled{{ end }} aria-label="Send">{{ template "icon-send" }}</button>
+          </div>
         </form>
         </div>
       </div>
@@ -145,14 +157,17 @@
     <aside class="inspector" id="inspector" data-testid="inspector" aria-label="Inspector">
       <div class="inspector-head">
         <h2 id="inspector-title">Select an event</h2>
-        <button class="btn-icon" type="button" id="inspector-close" aria-label="Close inspector">×</button>
+        <button class="btn-icon" type="button" id="inspector-close" aria-label="Close inspector">{{ template "icon-close" }}</button>
       </div>
-      <div class="inspector-tabs" role="tablist" aria-label="Inspector sections">
-        <button type="button" role="tab" aria-selected="true" data-pane="summary">Summary</button>
-        <button type="button" role="tab" aria-selected="false" data-pane="payload">Payload</button>
-        <button type="button" role="tab" aria-selected="false" data-pane="result">Result</button>
-        <button type="button" role="tab" aria-selected="false" data-pane="schema">Schema</button>
-        <button type="button" role="tab" aria-selected="false" data-pane="timing">Timing</button>
+      <div class="inspector-pane">
+        <label for="inspector-pane">Pane</label>
+        <select id="inspector-pane" data-testid="inspector-pane" aria-label="Inspector pane">
+          <option value="summary" selected>Summary</option>
+          <option value="payload">Payload</option>
+          <option value="result">Result</option>
+          <option value="schema">Schema</option>
+          <option value="timing">Timing</option>
+        </select>
       </div>
       <div class="inspector-body" id="inspector-body">
         <p>Select a trajectory row to inspect its already-redacted payload.</p>
@@ -170,59 +185,37 @@
 {{ end }}</pre>
     </div>
   </dialog>
-  </dialog>
-  <dialog id="settings-dialog" data-testid="settings-dialog" aria-labelledby="settings-heading">
-    <div class="dialog-body settings-shell">
-      <div class="dialog-head">
-        <h2 id="settings-heading">Settings</h2>
-        <button class="btn" type="button" id="settings-close">Close</button>
-      </div>
-      <div class="settings-scroll">
-        <section class="settings-section" aria-labelledby="settings-appearance">
-          <h3 id="settings-appearance">Appearance</h3>
-          <fieldset class="choice-list" data-testid="settings-theme">
-            <legend class="visually-hidden">Theme</legend>
-            <label class="choice"><input type="radio" name="theme" value="dark" checked><span><strong>Dark</strong></span></label>
-            <label class="choice"><input type="radio" name="theme" value="light"><span><strong>Light</strong></span></label>
-          </fieldset>
-        </section>
-        <section class="settings-section">
-          <h3>Server</h3>
-          <dl class="kv">
-            <dt>URL</dt>
-            <dd><code data-testid="settings-bind">{{ .BindAddr }}</code></dd>
-          </dl>
-        </section>
-        <section class="settings-section">
-          <h3>Hosts on PATH</h3>
-          <ul class="host-status" data-testid="settings-hosts">
-            {{ range .Hosts }}
-            <li>{{ if .OnPath }}ready{{ else }}missing{{ end }} {{ .Binary }} {{ .Reason }}</li>
-            {{ end }}
-          </ul>
-        </section>
-      </div>
-    </div>
-  </dialog>
+  {{ template "settings-dialog" . }}
   <dialog id="new-session-dialog" data-testid="new-session-form" aria-labelledby="new-session-heading">
     <form class="dialog-body" method="post" action="/session/new">
       <div class="dialog-head">
         <h2 id="new-session-heading">New Session</h2>
         <button class="btn" type="button" id="new-session-close">Close</button>
       </div>
-      <label class="field"><span>Slug</span><input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*"></label>
-      <label class="field"><span>Goal</span><input name="goal" required></label>
+      <label class="field">
+        <span>Slug</span>
+        <input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="kebab-case-slug" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>Goal</span>
+        <input name="goal" required placeholder="What should this run accomplish?" autocomplete="off">
+      </label>
       <input type="hidden" name="graph" value="goal-delivery">
-      <button class="btn btn-block" type="submit">Start delivery run</button>
+      <div class="dialog-actions">
+        <button class="btn btn-block btn-accent" type="submit">Start delivery run</button>
+      </div>
     </form>
   </dialog>
+  {{ template "workspace-browse-dialog" . }}
   <script>
     const app = document.getElementById("app");
     const eventList = document.getElementById("event-list");
     const empty = document.getElementById("stream-empty");
     const chatEmpty = document.getElementById("chat-empty");
+    const chatPrompts = document.getElementById("chat-prompts");
     const pipeline = document.querySelector("[data-testid=event-pipeline]");
     const graphView = document.getElementById("graph-view");
+    const hostBusy = document.getElementById("host-busy");
     const filterWrap = document.getElementById("kind-filter-wrap");
     const filterMenu = document.getElementById("kind-filter-menu");
     const graphFilterMenu = document.getElementById("graph-filter-menu");
@@ -232,16 +225,33 @@
     const inspector = document.getElementById("inspector");
     const inspectorBody = document.getElementById("inspector-body");
     const inspectorTitle = document.getElementById("inspector-title");
-    let view = "trajectory";
+    const inspectorPane = document.getElementById("inspector-pane");
+    let view = {{ .View }};
     let filterOpen = false;
-    const payloads = {};
-    {{ range .Events }}payloads[{{ .Seq }}] = {{ printf "%q" .PayloadJSON }};{{ end }}
-    const chatEmptyDefault = {{ if .ChatEmpty }}true{{ else }}false{{ end }};
+    let selectedSeq = "";
+    const eventDetailsList = {{ if .EventDataJSON }}{{ .EventDataJSON }}{{ else }}[]{{ end }};
+    const eventDetails = {};
+    if (Array.isArray(eventDetailsList)) {
+      eventDetailsList.forEach((detail) => { eventDetails[String(detail.seq)] = detail; });
+    }
 
     document.getElementById("sidebar-open").addEventListener("click", () => app.classList.add("is-sidebar-open"));
     document.getElementById("sidebar-backdrop").addEventListener("click", () => app.classList.remove("is-sidebar-open"));
+    const serverURL = {{ .URL }};
     document.getElementById("settings-open").addEventListener("click", () => document.getElementById("settings-dialog").showModal());
     document.getElementById("settings-close").addEventListener("click", () => document.getElementById("settings-dialog").close());
+    document.getElementById("settings-copy-bind").addEventListener("click", () => {
+      const btn = document.getElementById("settings-copy-bind");
+      const done = (ok) => {
+        btn.textContent = ok ? "Copied" : "Copy failed";
+        setTimeout(() => { btn.textContent = "Copy"; }, 1200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(serverURL).then(() => done(true)).catch(() => done(false));
+        return;
+      }
+      done(false);
+    });
     document.getElementById("new-session-open").addEventListener("click", () => document.getElementById("new-session-dialog").showModal());
     document.getElementById("new-session-close").addEventListener("click", () => document.getElementById("new-session-dialog").close());
     document.getElementById("settings-dialog").addEventListener("change", (e) => {
@@ -255,17 +265,15 @@
     document.querySelectorAll("[data-view]").forEach((btn) => {
       btn.addEventListener("click", () => {
         view = btn.dataset.view;
+        const url = new URL(location.href);
+        url.searchParams.set("view", view);
+        history.replaceState(null, "", url);
+        app.classList.remove("is-chat-view", "is-trajectory-view", "is-graph-view");
+        app.classList.add("is-" + view + "-view");
         document.querySelectorAll("[data-view]").forEach((tab) => {
           tab.setAttribute("aria-selected", tab === btn ? "true" : "false");
         });
-        filterWrap.hidden = view === "chat";
-        if (pipeline && pipeline.parentElement) pipeline.parentElement.hidden = view !== "trajectory";
-        if (graphView) graphView.hidden = view !== "graph";
-        if (eventList) eventList.hidden = view === "graph";
-        if (filterMenu) filterMenu.hidden = view === "graph" || !filterOpen;
-        if (graphFilterMenu) graphFilterMenu.hidden = view !== "graph" || !filterOpen;
-        search.placeholder = view === "graph" ? "Search graph nodes" : "Search events";
-        search.setAttribute("aria-label", view === "graph" ? "Search graph nodes" : "Search events");
+        if (view === "chat") app.classList.add("is-inspector-closed");
         applyFilters();
       });
     });
@@ -295,13 +303,40 @@
       return Array.from(graphFilterMenu.querySelectorAll("input[type=checkbox]:checked")).map((box) => box.dataset.graphFilter);
     }
 
+    function chatVisibleRole(role) {
+      return role === "user" || role === "assistant" || role === "thinking";
+    }
+
     function applyFilters() {
+      if (filterWrap) filterWrap.hidden = view === "chat";
+      if (pipeline && pipeline.parentElement) pipeline.parentElement.hidden = view !== "trajectory";
+      if (graphView) {
+        const graphEmpty = graphView.querySelectorAll(".graph-node").length === 0;
+        graphView.hidden = view !== "graph" || graphEmpty;
+        graphView.inert = view !== "graph";
+      }
+      if (eventList) {
+        eventList.hidden = view === "graph";
+        eventList.inert = view === "graph";
+      }
+      if (hostBusy) hostBusy.inert = view === "graph";
+      if (chatPrompts) {
+        chatPrompts.hidden = view !== "chat";
+        chatPrompts.inert = view !== "chat";
+      }
+      if (filterMenu) filterMenu.hidden = view === "graph" || !filterOpen;
+      if (graphFilterMenu) graphFilterMenu.hidden = view !== "graph" || !filterOpen;
+      search.placeholder = view === "graph" ? "Search graph nodes" : "Search events";
+      search.setAttribute("aria-label", view === "graph" ? "Search graph nodes" : "Search events");
       const q = search.value.trim().toLowerCase();
       let visible = 0;
       if (view === "graph" && graphView) {
         const types = selectedGraphTypes();
         filterClear.hidden = types.length === 0;
-        graphView.querySelectorAll(".graph-node").forEach((btn) => {
+        const nodes = graphView.querySelectorAll(".graph-node");
+        const total = nodes.length;
+        graphView.hidden = total === 0;
+        nodes.forEach((btn) => {
           const nodeType = btn.dataset.graphType || "";
           let show = true;
           if (types.length && types.indexOf(nodeType) === -1) show = false;
@@ -311,31 +346,46 @@
         });
         if (empty) {
           empty.hidden = visible > 0;
-          if (!empty.hidden) empty.textContent = "No graph nodes match this filter.";
+          if (!empty.hidden) {
+            empty.textContent = total === 0
+              ? "No delivery graph for this session."
+              : "No graph nodes match this filter.";
+          }
         }
         if (chatEmpty) chatEmpty.hidden = true;
+        if (chatPrompts) chatPrompts.hidden = true;
         return;
       }
       const kinds = selectedKinds();
       filterClear.hidden = kinds.length === 0;
+      if (chatPrompts) chatPrompts.hidden = view !== "chat";
       if (eventList) {
         eventList.querySelectorAll("li").forEach((li) => {
           const kind = li.dataset.kind;
           const role = li.dataset.role;
           const text = li.dataset.search || "";
           let show = true;
-          if (view === "chat" && role !== "user" && role !== "assistant") show = false;
+          if (view === "chat" && !chatVisibleRole(role)) show = false;
           if (view !== "chat" && kinds.length && kinds.indexOf(kind) === -1) show = false;
           if (q && text.indexOf(q) === -1) show = false;
           li.hidden = !show;
           if (show) visible += 1;
         });
       }
-      const chatNoProse = view === "chat" && chatEmptyDefault;
+      const promptVisible = view === "chat" && chatPrompts && !chatPrompts.hidden && chatPrompts.querySelector("[data-testid=chat-prompt]");
+      const chatHasProse = eventList && Array.from(eventList.querySelectorAll("li")).some((li) => {
+        return chatVisibleRole(li.dataset.role);
+      });
+      const chatNoProse = view === "chat" && !chatHasProse && !promptVisible;
       if (chatEmpty) chatEmpty.hidden = !chatNoProse;
       if (empty) {
-        empty.hidden = chatNoProse || visible > 0;
-        if (!empty.hidden && !chatNoProse) empty.textContent = "No events match this filter.";
+        empty.hidden = chatNoProse || promptVisible || visible > 0;
+        if (!empty.hidden && !chatNoProse) {
+          const totalRows = eventList ? eventList.querySelectorAll("li").length : 0;
+          empty.textContent = totalRows === 0
+            ? "No host turns yet. Open Graph for the delivery run."
+            : "No events match this filter.";
+        }
       }
     }
 
@@ -352,7 +402,10 @@
         eventList.setAttribute("hx-get", "/session/{{ .Slug }}/events?after=" + lastEventSeq());
       }
       document.body.addEventListener("htmx:afterSwap", (e) => {
-        if (e.detail.target === eventList) refreshTailURL();
+        if (e.detail.target === eventList) {
+          refreshTailURL();
+          applyFilters();
+        }
       });
       refreshTailURL();
 
@@ -363,12 +416,19 @@
       function connectSSE() {
         if (source) source.close();
         source = new EventSource(streamPath());
+        const hostBusy = document.getElementById("host-busy");
         source.onmessage = (ev) => {
           const wrap = document.createElement("div");
           wrap.innerHTML = ev.data;
           const row = wrap.firstElementChild;
           if (row) eventList.appendChild(row);
           refreshTailURL();
+          applyFilters();
+          if (hostBusy && !hostBusy.hidden) {
+            if (row && row.dataset && (row.dataset.role === "assistant" || row.dataset.role === "question")) {
+              hostBusy.hidden = true;
+            }
+          }
           source.close();
           connectSSE();
         };
@@ -380,18 +440,59 @@
       connectSSE();
 
       eventList.addEventListener("click", (e) => {
+        const expand = e.target.closest("[data-expand]");
+        if (expand) {
+          const li = expand.closest("li");
+          if (!li) return;
+          const open = li.classList.toggle("is-expanded");
+          expand.setAttribute("aria-expanded", open ? "true" : "false");
+          const thinking = li.dataset.role === "thinking";
+          expand.textContent = open
+            ? (thinking ? "Hide thinking" : "Show less")
+            : (thinking ? "Show thinking" : "Show more");
+          return;
+        }
         const btn = e.target.closest("[data-seq]");
         if (!btn) return;
+        selectEvent(btn);
+      });
+      eventList.addEventListener("keydown", (e) => {
+        if (e.target.closest("[data-expand]")) return;
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const row = e.target.closest("[data-seq]");
+        if (!row || e.target !== row) return;
+        e.preventDefault();
+        selectEvent(row);
+      });
+      function selectEvent(btn) {
         const seq = btn.dataset.seq;
         eventList.querySelectorAll("[data-seq]").forEach((el) => el.setAttribute("aria-pressed", el === btn ? "true" : "false"));
-        inspectorTitle.textContent = btn.querySelector(".event-title").textContent;
-        inspectorBody.innerHTML = "<pre data-testid=inspector-payload style=white-space:pre-wrap;overflow-wrap:anywhere>" +
-          (payloads[seq] || "") + "</pre><p data-testid=inspector-tokens>" +
-          (btn.querySelector("[data-testid=event-tokens]") ? btn.querySelector("[data-testid=event-tokens]").textContent : "") +
-          "</p>";
+        selectedSeq = String(seq);
+        renderInspector();
         app.classList.remove("is-inspector-closed");
-      });
+      }
     }
+
+    function paneHTML(detail, pane) {
+      if (!detail) return "";
+      if (pane === "summary") return detail.summary || "";
+      if (pane === "payload") return detail.payload || "";
+      if (pane === "result") return detail.result || "";
+      if (pane === "schema") return detail.schema || "";
+      if (pane === "timing") return detail.timing || "";
+      return "";
+    }
+
+    function renderInspector() {
+      const detail = eventDetails[selectedSeq];
+      if (!detail) return;
+      inspectorTitle.textContent = detail.title || "Select an event";
+      inspectorBody.innerHTML = paneHTML(detail, inspectorPane ? inspectorPane.value : "summary");
+    }
+
+    if (inspectorPane) inspectorPane.addEventListener("change", renderInspector);
+
+    applyFilters();
   </script>
 </body>
 </html>

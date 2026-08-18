@@ -3,9 +3,17 @@ package view
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+)
+
+const (
+	chatFoldRunes = 480
+	chatFoldLines = 8
 )
 
 // KindOrder is the pipeline and filter menu order.
@@ -23,15 +31,24 @@ type EventRow struct {
 	Role        string
 	Kind        session.FilterKind
 	Source      session.Source
+	Type        session.Type
+	Client      string
+	Tool        string
+	Command     string
+	EventName   string
+	At          time.Time
 	Summary     string
 	Body        string
+	BodyHTML    template.HTML
 	PayloadJSON string
 	Usage       *session.Usage
 	HasUsage    bool
+	TokensText  string
 	Failed      bool
 	HostGap     bool
 	Redacted    bool
 	SearchText  string
+	FoldClosed  bool
 }
 
 type payloadView struct {
@@ -48,7 +65,34 @@ func ProjectEvents(events []session.Event) []EventRow {
 		row := projectEvent(ev)
 		rows = append(rows, row)
 	}
+	promoteUsageToAssistant(rows)
 	return rows
+}
+
+// promoteUsageToAssistant moves host usage off trace-only rows onto the
+// last assistant in that turn so Chat and Trajectory both paint in/out/cache.
+func promoteUsageToAssistant(rows []EventRow) {
+	assistant := -1
+	for i := range rows {
+		switch rows[i].Role {
+		case "user":
+			assistant = -1
+		case "assistant":
+			assistant = i
+		}
+		if !rows[i].HasUsage || ChatVisibleRole(rows[i].Role) {
+			continue
+		}
+		if assistant < 0 || rows[assistant].HasUsage {
+			continue
+		}
+		rows[assistant].Usage = rows[i].Usage
+		rows[assistant].HasUsage = true
+		rows[assistant].TokensText = rows[i].TokensText
+		rows[i].Usage = nil
+		rows[i].HasUsage = false
+		rows[i].TokensText = ""
+	}
 }
 
 func projectEvent(ev session.Event) EventRow {
@@ -70,24 +114,33 @@ func projectEvent(ev session.Event) EventRow {
 	summary := eventSummary(ev, body.Payload)
 	displayBody := eventBody(ev, body.Payload)
 	row := EventRow{
-		Seq:     ev.Sequence,
-		Role:    role,
-		Kind:    kind,
-		Source:  body.Source,
-		Summary: summary,
-		Body:    displayBody,
-		Failed:  body.Failed,
+		Seq:       ev.Sequence,
+		Role:      role,
+		Kind:      kind,
+		Source:    body.Source,
+		Type:      ev.Type,
+		Client:    body.Client,
+		Tool:      body.Tool,
+		Command:   body.Command,
+		EventName: body.Event,
+		At:        ev.At,
+		Summary:   summary,
+		Body:      displayBody,
+		BodyHTML:  markdownBody(role, displayBody),
+		Failed:    body.Failed,
 		Redacted: strings.Contains(displayBody, "[REDACTED]") ||
 			strings.Contains(displayBody, "<credential>"),
 	}
-	if body.Usage != nil && (body.Usage.Input > 0 || body.Usage.Output > 0 || body.Usage.CacheRead > 0) {
+	if body.Usage.Reported() {
 		row.Usage = body.Usage
 		row.HasUsage = true
+		row.TokensText = formatUsage(*body.Usage)
 	}
 	if len(ev.Payload) > 0 {
 		row.PayloadJSON = string(ev.Payload)
 	}
 	row.HostGap = body.HostGap
+	row.FoldClosed = chatFoldClosed(role, displayBody)
 	row.SearchText = strings.ToLower(strings.Join([]string{
 		summary,
 		displayBody,
@@ -122,6 +175,12 @@ func eventRole(ev session.Event, body session.Payload) string {
 func eventSummary(ev session.Event, body session.Payload) string {
 	switch ev.Type {
 	case session.TypeSessionStart:
+		if body.Event == "ComposerStart" {
+			if body.Client != "" {
+				return "Composer start · client " + body.Client
+			}
+			return "Composer start"
+		}
 		if body.Client != "" {
 			return "SessionStart · client " + body.Client
 		}
@@ -142,10 +201,22 @@ func eventSummary(ev session.Event, body session.Payload) string {
 		}
 		return "ToolUse"
 	case session.TypeStop:
+		switch body.Event {
+		case "SessionEnd":
+			return "SessionEnd"
+		case "ComposerStop":
+			if body.Client != "" {
+				return "Composer stop · client " + body.Client
+			}
+			return "Composer stop"
+		}
 		return "Stop"
 	case session.TypeSubagentStop:
 		return "SubagentStop"
 	case session.TypeTranscriptMessage:
+		if strings.ToLower(strings.TrimSpace(body.Role)) == "thinking" {
+			return "thinking"
+		}
 		if body.Role != "" {
 			return "projected " + strings.ToLower(body.Role) + " text"
 		}
@@ -186,15 +257,43 @@ func KindCounts(rows []EventRow) map[session.FilterKind]int {
 	return counts
 }
 
-// ChatRows returns user and assistant rows only.
+// ChatRows returns the operator thread: user, thinking, and assistant.
 func ChatRows(rows []EventRow) []EventRow {
 	out := make([]EventRow, 0, len(rows))
 	for _, row := range rows {
-		if row.Role == "user" || row.Role == "assistant" {
+		if row.Role == "thinking" && strings.TrimSpace(row.Body) == "" {
+			continue
+		}
+		if ChatVisibleRole(row.Role) {
 			out = append(out, row)
 		}
 	}
 	return out
+}
+
+func chatFoldClosed(role, body string) bool {
+	if role == "thinking" {
+		return strings.TrimSpace(body) != ""
+	}
+	if role != "user" {
+		return false
+	}
+	if strings.Count(body, "\n") >= chatFoldLines {
+		return true
+	}
+	return utf8.RuneCountInString(body) > chatFoldRunes
+}
+
+// ChatVisibleRole is the Chat tab allow-list. Trajectory keeps the full
+// trace (system, tool, question, context). Thinking sits above the assistant
+// reply and starts collapsed.
+func ChatVisibleRole(role string) bool {
+	switch role {
+	case "user", "assistant", "thinking":
+		return true
+	default:
+		return false
+	}
 }
 
 // ChatHasProse reports whether Chat would show any rows.

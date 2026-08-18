@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -78,5 +79,37 @@ func TestSearchUnknownReturnsEmpty(t *testing.T) {
 	}
 	if len(idx.SearchSkills("zzzz-not-a-skill-xyzzy")) != 0 {
 		t.Fatal("expected empty for unknown query")
+	}
+}
+
+func TestLoadForWorkspaceMergesConsumerCommands(t *testing.T) {
+	ws := t.TempDir()
+	dir := filepath.Join(ws, ".cursor", "commands")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	body := "---\nname: vibe-unique-test-cmd\ndescription: Unique catalog fixture\n---\n\n# test\n"
+	if err := os.WriteFile(filepath.Join(dir, "vibe-unique-test-cmd.md"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	idx, err := LoadForWorkspace(ws, testToolkitRoot(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found *Entry
+	for i := range idx.Commands {
+		if idx.Commands[i].Slug == "vibe-unique-test-cmd" {
+			found = &idx.Commands[i]
+			break
+		}
+	}
+	if found == nil {
+		t.Fatal("expected consumer vibe-unique-test-cmd in catalog")
+	}
+	if found.Insert != "/vibe-unique-test-cmd" {
+		t.Fatalf("insert = %q", found.Insert)
+	}
+	if idx.SearchCommands("build") == nil {
+		t.Fatal("toolkit commands must still be present")
 	}
 }

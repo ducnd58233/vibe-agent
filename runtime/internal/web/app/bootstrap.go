@@ -62,11 +62,7 @@ func Run(cfg Config) error {
 	if err != nil {
 		return err
 	}
-	handler, err := mountHTTP(httpDeps{
-		registry:    reg,
-		toolkitRoot: filepath.Clean(cfg.ToolkitRoot),
-		bindAddr:    Addr(cfg.Port),
-	})
+	handler, err := mountHTTP(newHTTPDeps(reg, cfg.ToolkitRoot, cfg.Port))
 	if err != nil {
 		return err
 	}

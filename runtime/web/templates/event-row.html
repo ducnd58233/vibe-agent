@@ -1,6 +1,6 @@
 {{define "event-row"}}
-<li data-kind="{{ .Kind }}" data-role="{{ .Role }}" data-search="{{ .SearchText }}">
-  <button class="event{{ if .Failed }} is-failed{{ end }}" type="button" data-seq="{{ .Seq }}" aria-pressed="false" data-testid="event-row">
+<li data-kind="{{ .Kind }}" data-role="{{ .Role }}" data-search="{{ .SearchText }}"{{ if .FoldClosed }} data-fold="1"{{ end }}>
+  <article class="event{{ if .Failed }} is-failed{{ end }}" data-seq="{{ .Seq }}" aria-pressed="false" tabindex="0" role="button" aria-label="Inspect {{ .Role }} event {{ .Seq }}" data-testid="event-row">
     <span class="role role-{{ .Role }}">{{ .Role }}</span>
     <span class="event-body">
       <span class="event-kicker">
@@ -10,23 +10,30 @@
         {{ if .Redacted }}<span class="chip chip-warn" data-testid="redacted-chip">redacted</span>{{ end }}
         {{ if .Failed }}<span class="chip chip-fail">failed</span>{{ end }}
         {{ if .HostGap }}<span class="chip chip-warn">host gap</span>{{ end }}
+        {{ if eq .Role "question" }}<span class="chip chip-warn" data-testid="needs-reply">needs reply</span>{{ end }}
         <span class="token-pair{{ if not .HasUsage }} is-empty{{ end }}" data-testid="event-tokens">
           {{ if .HasUsage }}
+          {{ if or .Usage.Input .Usage.Output }}
           <span class="tag tag-in">in {{ .Usage.Input }}</span>
           <span class="tag tag-out">out {{ .Usage.Output }}</span>
           {{ if .Usage.CacheRead }}<span class="tag tag-cache">cache {{ .Usage.CacheRead }}</span>{{ end }}
           {{ else }}
-          <span class="tag tag-in">in —</span>
-          <span class="tag tag-out">out —</span>
+          <span class="tag">{{ .TokensText }}</span>
+          {{ end }}
           {{ end }}
         </span>
       </span>
-      {{ if or (eq .Kind "tool") (eq .Kind "skill") }}
+      {{ if .BodyHTML }}
+      <div class="event-md" data-testid="event-md">{{ .BodyHTML }}</div>
+      {{ else if or (eq .Kind "tool") (eq .Kind "skill") }}
       <pre>{{ .Body }}</pre>
       {{ else }}
       <p class="event-text">{{ .Body }}</p>
       {{ end }}
     </span>
-  </button>
+  </article>
+  {{ if .FoldClosed }}
+  <button type="button" class="event-expand" data-expand data-testid="event-expand" aria-expanded="false">{{ if eq .Role "thinking" }}Show thinking{{ else }}Show more{{ end }}</button>
+  {{ end }}
 </li>
 {{end}}

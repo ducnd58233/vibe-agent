@@ -1,0 +1,23 @@
+{{ define "session-list" }}
+          {{ if .HasSessions }}
+          <ul class="session-list" data-testid="session-list">
+            {{ range .Sessions }}
+            <li>
+              <a class="session-card" href="/session/{{ .Slug }}"{{ if eq .Slug $.CurrentSlug }} aria-current="page"{{ end }} data-testid="session-item">
+                <span class="session-meta">
+                  <span class="session-title">{{ .Title }}</span>
+                  <span class="session-sub">
+                    {{ if .Host }}<span class="session-host" data-testid="host-badge">{{ .Host }}</span>{{ end }}
+                    {{ if and .Host .Status }}<span class="session-dot"> · </span>{{ end }}
+                    {{ if .Status }}<span class="session-status {{ .StatusClass }}">{{ .Status }}</span>{{ end }}
+                  </span>
+                </span>
+                {{ if .Rel }}<span class="session-rel">{{ .Rel }}</span>{{ end }}
+              </a>
+            </li>
+            {{ end }}
+          </ul>
+          {{ else }}
+          <p data-testid="session-list-empty">No delivery run and no ambient journal in this workspace.</p>
+          {{ end }}
+{{ end }}

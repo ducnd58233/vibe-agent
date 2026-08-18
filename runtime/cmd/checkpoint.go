@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkpoint"
@@ -26,6 +27,8 @@ func checkpointCommand(args []string) error {
 	failed := flags.Bool("failed", false, "record a failure")
 	skipped := flags.Bool("skipped", false, "record that the check did not run")
 	blocker := flags.String("blocker", "", "record a blocker at this node")
+	results := resultFlags{}
+	flags.Var(&results, "result", "result guard as name or name=true|false; repeatable")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -41,7 +44,7 @@ func checkpointCommand(args []string) error {
 		return err
 	}
 
-	outcome := loop.Outcome{Blocker: *blocker}
+	outcome := loop.Outcome{Blocker: *blocker, Result: map[string]bool(results)}
 	if *checkName != "" {
 		if *source == "" {
 			return fmt.Errorf("a check needs --source; evidence without provenance is not evidence")
@@ -86,6 +89,30 @@ func checkpointCommand(args []string) error {
 		if result.Duplicate || !result.Transition.Terminal {
 			fmt.Printf("  next       [%s] %s\n", node.Type, node.Description)
 		}
+	}
+	return nil
+}
+
+type resultFlags map[string]bool
+
+func (r *resultFlags) String() string { return "" }
+
+func (r *resultFlags) Set(value string) error {
+	if *r == nil {
+		*r = resultFlags{}
+	}
+	name, val, cut := strings.Cut(value, "=")
+	if !cut {
+		(*r)[value] = true
+		return nil
+	}
+	switch val {
+	case "true", "1":
+		(*r)[name] = true
+	case "false", "0":
+		(*r)[name] = false
+	default:
+		return fmt.Errorf("--result %q needs true or false", value)
 	}
 	return nil
 }

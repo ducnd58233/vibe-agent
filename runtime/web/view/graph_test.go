@@ -2,6 +2,7 @@ package view
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -40,6 +41,12 @@ func TestProjectGraphCurrentNodeAwaiting(t *testing.T) {
 	}
 	if current.Status != string(GraphStatusAwaiting) || !current.Current {
 		t.Fatalf("current row = %+v", current)
+	}
+	if current.Check != "spec_approved" {
+		t.Fatalf("check = %q", current.Check)
+	}
+	if !strings.Contains(current.Prompt, "Review docs/") {
+		t.Fatalf("prompt = %q", current.Prompt)
 	}
 }
 

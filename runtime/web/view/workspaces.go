@@ -28,3 +28,20 @@ func ProjectWorkspaces(reg domain.Registry, activeRoot string) []WorkspaceRow {
 	}
 	return rows
 }
+
+// SplitWorkspaces returns the active row and every other registered root.
+func SplitWorkspaces(rows []WorkspaceRow) (WorkspaceRow, []WorkspaceRow) {
+	var current WorkspaceRow
+	recent := make([]WorkspaceRow, 0, len(rows))
+	for _, row := range rows {
+		if row.Active {
+			current = row
+			continue
+		}
+		recent = append(recent, row)
+	}
+	if current.Path == "" && len(rows) > 0 {
+		current = rows[0]
+	}
+	return current, recent
+}

@@ -42,6 +42,20 @@ func TestCatalogListsFourHosts(t *testing.T) {
 	}
 }
 
+func TestEvalHostAcceptsCursorAlias(t *testing.T) {
+	byCursor, ok := EvalHost("cursor")
+	if !ok {
+		t.Fatal("cursor")
+	}
+	byBinary, ok := EvalHost("cursor-agent")
+	if !ok {
+		t.Fatal("cursor-agent should resolve; the composer posts the catalog id")
+	}
+	if byCursor.Binary != "cursor-agent" || byBinary.Binary != "cursor-agent" {
+		t.Fatalf("cursor=%q cursor-agent=%q", byCursor.Binary, byBinary.Binary)
+	}
+}
+
 func errNotFound(name string) error {
 	return &pathError{name: name}
 }

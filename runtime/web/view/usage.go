@@ -11,6 +11,7 @@ type UsageTotals struct {
 	Input     int
 	Output    int
 	CacheRead int
+	Total     int
 	Reported  bool
 }
 
@@ -25,6 +26,7 @@ func SumUsage(rows []EventRow) UsageTotals {
 		totals.Input += row.Usage.Input
 		totals.Output += row.Usage.Output
 		totals.CacheRead += row.Usage.CacheRead
+		totals.Total += row.Usage.Total
 	}
 	return totals
 }
@@ -38,13 +40,27 @@ func FormatToolbarTokens(t UsageTotals) string {
 		Input:     t.Input,
 		Output:    t.Output,
 		CacheRead: t.CacheRead,
+		Total:     t.Total,
 	})
 }
 
 func formatUsage(u session.Usage) string {
-	text := "in " + strconv.Itoa(u.Input) + " · out " + strconv.Itoa(u.Output)
-	if u.CacheRead > 0 {
-		text += " · cache read " + strconv.Itoa(u.CacheRead)
+	if u.Input > 0 || u.Output > 0 {
+		text := "in " + strconv.Itoa(u.Input) + " · out " + strconv.Itoa(u.Output)
+		if u.CacheRead > 0 {
+			text += " · cache read " + strconv.Itoa(u.CacheRead)
+		}
+		return text
 	}
-	return text
+	if u.Total > 0 {
+		text := "tokens " + strconv.Itoa(u.Total)
+		if u.CacheRead > 0 {
+			text += " · cache read " + strconv.Itoa(u.CacheRead)
+		}
+		return text
+	}
+	if u.CacheRead > 0 {
+		return "cache read " + strconv.Itoa(u.CacheRead)
+	}
+	return "not reported"
 }

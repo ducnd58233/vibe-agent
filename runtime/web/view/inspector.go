@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"strings"
+	"time"
 )
 
 // EventDetail is client-side inspector data for one row.
@@ -37,31 +38,35 @@ func buildEventDetail(row EventRow) EventDetail {
 	}
 	model := extractModel(row.PayloadJSON)
 	tokens := formatRowTokens(row)
-	summary := fmt.Sprintf(`<dl class="kv">
-<dt>Hierarchy</dt><dd>%s message</dd>
-<dt>Status</dt><dd>%s</dd>
-<dt>Kind</dt><dd>%s</dd>
-<dt>Source</dt><dd>%s</dd>
-<dt>Seq</dt><dd>%d</dd>
-<dt>Model</dt><dd data-testid="model-name">%s</dd>
-<dt>Tokens</dt><dd data-testid="inspector-tokens">%s</dd>
-</dl>`,
-		template.HTMLEscapeString(strings.ToUpper(row.Role)),
-		template.HTMLEscapeString(status),
-		template.HTMLEscapeString(string(row.Kind)),
-		template.HTMLEscapeString(string(row.Source)),
-		row.Seq,
-		template.HTMLEscapeString(model),
-		tokens,
-	)
-	payload := `<h3 class="panel-title">Payload</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere">` +
+	duration := extractDuration(row.PayloadJSON)
+	summary := `<dl class="kv" data-testid="inspector-summary">` +
+		kvPair("Time", formatEventTime(row.At)) +
+		kvPair("Type", reported(string(row.Type))) +
+		kvPair("Role", reported(row.Role)) +
+		kvPair("Kind", reported(string(row.Kind))) +
+		kvPair("Source", reported(string(row.Source))) +
+		kvPair("Seq", fmt.Sprintf("%d", row.Seq)) +
+		kvPair("Client", reported(row.Client)) +
+		kvPair("Tool", reported(row.Tool)) +
+		kvPair("Command", reported(row.Command)) +
+		kvPair("Event", reported(row.EventName)) +
+		kvPair("Status", status) +
+		kvPair("Failed", yesNo(row.Failed)) +
+		kvPair("Host gap", yesNo(row.HostGap)) +
+		kvPair("Redacted", yesNo(row.Redacted)) +
+		fmt.Sprintf(`<dt>Model</dt><dd data-testid="model-name">%s</dd>`, template.HTMLEscapeString(model)) +
+		fmt.Sprintf(`<dt>Tokens</dt><dd data-testid="inspector-tokens">%s</dd>`, template.HTMLEscapeString(tokens)) +
+		kvPair("Duration", duration) +
+		kvPair("Body", excerpt(row.Body, 400)) +
+		`</dl>`
+	payload := `<h3 class="panel-title">Payload</h3><pre data-testid="inspector-payload" style="white-space:pre-wrap;overflow-wrap:anywhere">` +
 		template.HTMLEscapeString(prettyJSON(row.PayloadJSON)) + `</pre>`
 	resultText := extractResult(row.PayloadJSON)
 	result := `<h3 class="panel-title">Result</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere">` +
 		template.HTMLEscapeString(resultText) + `</pre>`
 	schema := `<h3 class="panel-title">Schema</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere">` + eventSchema + `</pre>`
-	duration := extractDuration(row.PayloadJSON)
-	timing := fmt.Sprintf(`<dl class="kv"><dt>Duration</dt><dd>%s</dd><dt>Source</dt><dd>%s</dd><dt>Tokens</dt><dd data-testid="inspector-tokens">%s</dd></dl>`,
+	timing := fmt.Sprintf(`<dl class="kv"><dt>Time</dt><dd>%s</dd><dt>Duration</dt><dd>%s</dd><dt>Source</dt><dd>%s</dd><dt>Tokens</dt><dd data-testid="inspector-tokens">%s</dd></dl>`,
+		template.HTMLEscapeString(formatEventTime(row.At)),
 		template.HTMLEscapeString(duration),
 		template.HTMLEscapeString(string(row.Source)),
 		tokens,
@@ -76,6 +81,44 @@ func buildEventDetail(row EventRow) EventDetail {
 		Timing:  timing,
 		Tokens:  tokens,
 	}
+}
+
+func kvPair(label, value string) string {
+	return "<dt>" + template.HTMLEscapeString(label) + "</dt><dd>" + template.HTMLEscapeString(value) + "</dd>"
+}
+
+func reported(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "not reported"
+	}
+	return value
+}
+
+func yesNo(value bool) string {
+	if value {
+		return "yes"
+	}
+	return "no"
+}
+
+func formatEventTime(at time.Time) string {
+	if at.IsZero() {
+		return "not reported"
+	}
+	return at.UTC().Format(time.RFC3339)
+}
+
+func excerpt(value string, limit int) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "not reported"
+	}
+	runes := []rune(value)
+	if len(runes) <= limit {
+		return value
+	}
+	return string(runes[:limit]) + "..."
 }
 
 const eventSchema = `{
@@ -151,12 +194,11 @@ func extractDuration(payload string) string {
 }
 
 func formatRowTokens(row EventRow) string {
+	if row.TokensText != "" {
+		return row.TokensText
+	}
 	if !row.HasUsage || row.Usage == nil {
-		return "in — · out —"
+		return "not reported"
 	}
-	text := fmt.Sprintf("in %d · out %d", row.Usage.Input, row.Usage.Output)
-	if row.Usage.CacheRead > 0 {
-		text += fmt.Sprintf(" · cache read %d", row.Usage.CacheRead)
-	}
-	return text
+	return formatUsage(*row.Usage)
 }

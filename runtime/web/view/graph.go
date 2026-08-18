@@ -30,6 +30,8 @@ type GraphNodeRow struct {
 	ID          string
 	Type        string
 	Description string
+	Prompt      string
+	Check       string
 	Status      string
 	Optional    bool
 	Current     bool
@@ -96,6 +98,8 @@ func ProjectGraph(g *graph.Graph, run *state.Run) []GraphNodeRow {
 			ID:          id,
 			Type:        string(node.Type),
 			Description: node.Description,
+			Prompt:      node.Prompt,
+			Check:       node.Check,
 			Status:      string(status),
 			Optional:    node.Optional,
 			Current:     id == cur,

@@ -24,7 +24,7 @@ func (d httpDeps) handleCatalogSkills(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d httpDeps) renderCatalog(w http.ResponseWriter, r *http.Request, family catalog.Family) {
-	idx, err := catalog.Load(d.toolkitRoot)
+	idx, err := catalog.LoadForWorkspace(d.activeWorkspace(r), d.toolkitRoot)
 	if err != nil {
 		http.Error(w, "catalog error", http.StatusInternalServerError)
 		return

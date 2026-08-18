@@ -67,6 +67,7 @@ type Usage struct {
 	Input     int `json:"input,omitempty"`
 	Output    int `json:"output,omitempty"`
 	CacheRead int `json:"cacheRead,omitempty"`
+	Total     int `json:"total,omitempty"`
 }
 
 // Record is one session gesture before it is written.
@@ -111,7 +112,7 @@ func (r Record) validate() error {
 		return fmt.Errorf("session: unknown type %q", r.Type)
 	}
 	switch r.Source {
-	case SourceHook, SourceTranscript, SourceGraph:
+	case SourceHook, SourceTranscript, SourceGraph, SourcePrint:
 	default:
 		return fmt.Errorf("session: unknown source %q", r.Source)
 	}

@@ -59,9 +59,10 @@ func RelWorkspacePath(workspaceRoot, abs string) (string, error) {
 
 // FileRow is one entry in the workspace file browser.
 type FileRow struct {
-	Name  string
-	Path  string
-	IsDir bool
+	Name   string
+	Path   string
+	IsDir  bool
+	Attach string
 }
 
 // FormatAttach inserts an @path reference for the composer.
