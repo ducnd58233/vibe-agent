@@ -163,6 +163,7 @@ func (r ruleSet) matches(file subject) bool {
 // that records nothing, and the guards have something to say either way.
 func postToolUse(req Request, body payload, out io.Writer, failed bool) error {
 	_ = journal(req, body, failed)
+	recordToolUse(req, body)
 
 	text := adviseAll(req, body)
 	if req.Client == ClientCursor {

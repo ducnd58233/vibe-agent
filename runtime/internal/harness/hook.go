@@ -247,6 +247,10 @@ type payload struct {
 	// IsInterrupt is Claude's top-level cancellation flag. Cursor puts the same
 	// meaning inside the response as "interrupted", so both are read.
 	IsInterrupt bool `json:"is_interrupt"`
+
+	// LastAssistantMessage is Claude Stop stdin when the host includes the last
+	// assistant turn. When present it is projected as one redacted assistant row.
+	LastAssistantMessage string `json:"last_assistant_message"`
 }
 
 // failurePermissionDenied is the failure_type Cursor reports when a tool call
@@ -316,8 +320,10 @@ func Run(req Request, out io.Writer) error {
 
 	switch req.Event {
 	case EventSessionStart:
+		recordSessionStart(req)
 		return sessionStart(req, body, out)
 	case EventUserPromptSubmit:
+		recordPromptSubmit(req, body)
 		// Cursor's beforeSubmitPrompt cannot inject context: its output is
 		// {continue, user_message} and only validates or blocks. Injecting
 		// nothing is correct there; blocking the user to deliver a reminder
@@ -331,12 +337,15 @@ func Run(req Request, out io.Writer) error {
 		}
 		return emitContext(out, req.Client, "UserPromptSubmit", text)
 	case EventStop:
+		recordStop(req, body, false)
 		return stop(req, body, out, "")
 	case EventSubagentStop:
+		recordStop(req, body, true)
 		// A subagent's transcript is the one place the grounding rule can be
 		// checked rather than restated, and this is the only event that sees it.
 		return stop(req, body, out, groundingReport(body))
 	case EventPreToolUse:
+		recordPreToolUse(req, body)
 		return gate(req, body, out)
 	case EventPostToolUse:
 		if err := postToolUse(req, body, out, false); err != nil {
