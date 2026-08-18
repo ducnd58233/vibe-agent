@@ -79,6 +79,9 @@ func (r *Runner) Enter(run *state.Run) error {
 	run.MaxTransitions = r.Graph.Spec.MaxTransitions
 	run.GraphID = r.Graph.Metadata.ID
 	run.UpdatedAt = r.now()
+	if node, ok := r.Graph.Node(run.CurrentNode); ok && node.Type == graph.NodeHumanGate {
+		run.Status = state.StatusAwaitingHuman
+	}
 	return nil
 }
 
@@ -118,6 +121,16 @@ func (r *Runner) Advance(run *state.Run, outcome Outcome) (*Transition, error) {
 				Terminal: true, Status: state.StatusFailed,
 			}, nil
 		}
+		// The step could not pass. Following the fallback edge would skip it
+		// and look like progress. Stay here: the model cannot move this, and
+		// stop must not keep asking for another checkpoint.
+		run.Status = state.StatusAwaitingHuman
+		run.UpdatedAt = now
+		return &Transition{
+			From: run.CurrentNode, To: run.CurrentNode,
+			Via:    "blocker",
+			Status: state.StatusAwaitingHuman,
+		}, nil
 	}
 
 	edge, guardName, err := r.resolve(run, outcome)

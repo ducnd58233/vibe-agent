@@ -66,6 +66,37 @@ func TestEnterStartsAtTheGraphInitialNode(t *testing.T) {
 	}
 }
 
+func TestEnterParksAnInitialHumanGate(t *testing.T) {
+	runner := newRunner(t)
+	run, err := state.NewRun("demo", "goal", runner.Graph.Metadata.ID, runner.Graph.Spec.MaxTransitions, at())
+	if err != nil {
+		t.Fatalf("NewRun: %v", err)
+	}
+	if err := runner.Enter(run); err != nil {
+		t.Fatalf("Enter: %v", err)
+	}
+	if run.CurrentNode != "intake" {
+		t.Errorf("CurrentNode = %q, want intake", run.CurrentNode)
+	}
+	if run.Status != state.StatusAwaitingHuman {
+		t.Errorf("Status = %q, want %s", run.Status, state.StatusAwaitingHuman)
+	}
+}
+
+func TestEnterLeavesANonHumanGateRunning(t *testing.T) {
+	runner, run := skippableRunner(t)
+	if run.CurrentNode != "check" {
+		t.Errorf("CurrentNode = %q, want check", run.CurrentNode)
+	}
+	if run.Status != state.StatusRunning {
+		t.Errorf("Status = %q, want %s", run.Status, state.StatusRunning)
+	}
+	node, ok := runner.Graph.Node(run.CurrentNode)
+	if !ok || node.Type == graph.NodeHumanGate {
+		t.Fatalf("fixture initial node must not be a human_gate, got %+v", node)
+	}
+}
+
 // The transitions named in the spec. These are the contract between the
 // graph file and the runner.
 func TestSpecTransitions(t *testing.T) {
@@ -194,6 +225,30 @@ func TestAdvanceRejectsACheckWithoutRealProvenance(t *testing.T) {
 	}
 }
 
+func TestABlockerParksAtTheNodeInsteadOfSkippingIt(t *testing.T) {
+	runner := newRunner(t)
+	run := newRun(t, runner)
+	run.CurrentNode = "build"
+
+	transition := advance(t, runner, run, Outcome{Blocker: "intake_confirmed requires source human_event"})
+
+	if transition.To != "build" {
+		t.Errorf("To = %q, want build; skipping would treat a blocked step as done", transition.To)
+	}
+	if run.CurrentNode != "build" {
+		t.Errorf("CurrentNode = %q, want build", run.CurrentNode)
+	}
+	if run.Status != state.StatusAwaitingHuman {
+		t.Errorf("Status = %q, want %s so stop does not spin", run.Status, state.StatusAwaitingHuman)
+	}
+	if transition.Terminal {
+		t.Error("a first blocker must not fail the run")
+	}
+	if transition.Via != "blocker" {
+		t.Errorf("Via = %q, want blocker", transition.Via)
+	}
+}
+
 func TestThreeFailuresOnTheSameBlockerStopTheRun(t *testing.T) {
 	runner := newRunner(t)
 	run := newRun(t, runner)
@@ -205,7 +260,9 @@ func TestThreeFailuresOnTheSameBlockerStopTheRun(t *testing.T) {
 			if transition.Terminal {
 				t.Fatalf("run stopped after %d attempts, want %d", attempt, MaxBlockerAttempts)
 			}
-			run.CurrentNode = "build"
+			if run.CurrentNode != "build" {
+				t.Fatalf("attempt %d left the node (%s); a blocked step stays put", attempt, run.CurrentNode)
+			}
 			continue
 		}
 		if !transition.Terminal || run.Status != state.StatusFailed {
@@ -226,14 +283,16 @@ func TestDifferentBlockersCountSeparately(t *testing.T) {
 	run.CurrentNode = "build"
 
 	advance(t, runner, run, Outcome{Blocker: "first problem"})
-	run.CurrentNode = "build"
 	advance(t, runner, run, Outcome{Blocker: "second problem"})
 
 	if len(run.Blockers) != 2 {
 		t.Fatalf("got %d blockers, want 2", len(run.Blockers))
 	}
-	if run.Status != state.StatusRunning {
-		t.Errorf("status = %q; two different blockers should not trip the stop rule", run.Status)
+	if run.Status != state.StatusAwaitingHuman {
+		t.Errorf("status = %q; two different blockers should park, not fail or skip", run.Status)
+	}
+	if run.CurrentNode != "build" {
+		t.Errorf("CurrentNode = %q, want build", run.CurrentNode)
 	}
 }
 

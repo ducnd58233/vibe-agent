@@ -160,6 +160,46 @@ func Apply(req Request) (*Result, error) {
 	return &Result{Run: run, Graph: loaded, Transition: transition}, nil
 }
 
+// advanceStuckVerifier moves past a verifier node when the check already passed
+// but a replay left the run sitting on the node anyway.
+func advanceStuckVerifier(req VerifyRequest, plan *Plan, run *state.Run, loaded *graph.Graph) (*Result, error) {
+	if run.CurrentNode != plan.Node {
+		return nil, nil
+	}
+	node, ok := loaded.Node(plan.Node)
+	if !ok || node.Type != graph.NodeVerifier || node.Check != plan.Check {
+		return nil, nil
+	}
+	existing, ok := run.Checks[plan.Check]
+	if !ok || !existing.Passed || existing.Skipped {
+		return nil, nil
+	}
+	manifest := state.ManifestPath(req.WorkspaceRoot, req.Slug)
+	logPath := state.EventLogPath(req.WorkspaceRoot, req.Slug)
+	now := req.now()
+	from := run.CurrentNode
+	outcome := loop.Outcome{Check: &loop.NamedCheck{Name: plan.Check, Check: existing}}
+	transition, err := loop.New(loaded).Advance(run, outcome)
+	if err != nil {
+		return nil, err
+	}
+	payload, err := json.Marshal(transitionEvent{
+		From: from, To: transition.To, Via: transition.Via, Key: "stuck-" + plan.Check,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("encode transition: %w", err)
+	}
+	if _, err := state.AppendEvent(logPath, state.Event{
+		Type: "transition", Node: transition.To, Payload: payload, At: now,
+	}); err != nil {
+		return nil, err
+	}
+	if err := state.Save(manifest, run); err != nil {
+		return nil, err
+	}
+	return &Result{Run: run, Graph: loaded, Transition: transition}, nil
+}
+
 // authorize decides whether this request may write the check at all.
 //
 // Verifier nodes are the only nodes with a rule, because they are the only nodes
