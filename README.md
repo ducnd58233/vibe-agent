@@ -1,142 +1,73 @@
 # vibe-agent
 
-vibe-agent is a shared toolkit of AI-agent assets: skills, subagents, commands, routers, hooks, runtime graphs, and validation scripts. It is meant to be mounted into other repositories, while each consumer repo keeps its own product rules in `AGENTS.md`.
+A shared kit of agent skills, slash commands, hooks, and a small Go program (`vibe-agent`) that other git repos can attach. Product rules stay in each repo's own `AGENTS.md`.
 
-## Before you install
+## Get started
 
-You need `git` and `curl`. **Go is not required** - the installer downloads a published runtime binary for your platform and only falls back to building from source when no release is reachable.
+You need `git` and `curl`. You only need Go if you build `vibe-agent` from source. Some hooks call `python3` (3.8+, stdlib). On Windows, turn off the Microsoft Store `python3` alias or those hooks fail with no useful error.
 
-Some hook scripts still run under `python3` (3.8 or newer). They use the standard library only, so there is nothing to `pip install`, but they need a real interpreter on `PATH`. On a bare Windows install `python3` resolves to an App Execution Alias that opens the Microsoft Store rather than running anything, and those hooks then fail without saying so.
-
-Windows users run the PowerShell installers below; the `sh` ones work under Git Bash or WSL.
-
-## Install
-
-Run these from the toolkit checkout unless the command says it is for a consumer repo.
-
-### Global install
-
-Global install puts shared assets under your home directory with the `vibe-` prefix, for example `vibe-doctor` and `vibe-research`, and installs the runtime binary.
-
-| Shell | Command |
-|---|---|
-| PowerShell | `powershell -ExecutionPolicy Bypass -File scripts/install-global.ps1` |
-| Bash, macOS, Linux, Git Bash, WSL | `sh scripts/install-global.sh` |
-
-| Flag | PowerShell | What it does |
+| What you want | PowerShell | Bash |
 |---|---|---|
-| `--dry-run` | `-DryRun` | Print what would change, write nothing. |
-| `--check` | `-Check` | Report drift between the installed copies and this checkout, then exit. |
-| `--uninstall` | `-Uninstall` | Remove exactly what this script installed, tracked in its own manifest. Nothing else is touched. |
-| `--prefix P` | `-Prefix P` | Change the namespace prefix. Default `vibe-`. |
+| Commands on your PATH (`vibe-goal`, `vibe-agent`, …) | `powershell -ExecutionPolicy Bypass -File scripts/install-global.ps1` | `sh scripts/install-global.sh` |
+| Wire this checkout (`.claude`, `.cursor`, `.opencode`) | `powershell -ExecutionPolicy Bypass -File scripts/link-ai-agents.ps1` | `bash scripts/link-ai-agents.sh` |
 
-Permissions and hooks are deliberately left out of the global install. Applying this repository's policy to every unrelated project on your machine is your decision, not a side effect of installing markdown; run the workspace install in a project to get hooks.
-
-### Workspace install
-
-Workspace install wires one repository to `.ai-agents` and the tool-specific folders. It writes minimal hook configs when they are absent, and it leaves existing host configs alone.
-
-| Shell | Command |
-|---|---|
-| PowerShell | `powershell -ExecutionPolicy Bypass -File scripts/link-ai-agents.ps1` |
-| Bash, macOS, Linux, Git Bash, WSL | `bash scripts/link-ai-agents.sh` |
-
-| Flag | PowerShell | What it does |
-|---|---|---|
-| `--workspace DIR`, `-w` | `-WorkspaceRoot DIR` | Where `.claude`, `.cursor`, `.opencode` are created. Defaults to the directory holding `scripts/`. |
-| `--assets DIR`, `-a` | `-AssetsRoot DIR` | The folder holding skills, agents, and commands. Defaults to `<toolkit>/.ai-agents`. |
-
-`LINK_WORKSPACE` and `LINK_ASSETS` set the same two values when the matching flag is omitted.
-
-### Consumer repo install
-
-If this toolkit is mounted in another repo as `.vibe-agent`, run from the consumer repo root:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .vibe-agent/scripts/link-ai-agents.ps1 -WorkspaceRoot $PWD -AssetsRoot (Join-Path $PWD '.vibe-agent\.ai-agents')
-```
+In a **consumer** repo that keeps this kit at `.vibe-agent`:
 
 ```bash
 bash .vibe-agent/scripts/link-ai-agents.sh --workspace "$PWD" --assets "$PWD/.vibe-agent/.ai-agents"
 ```
 
-### Runtime binary on its own
+Then run `vibe-agent doctor` until it says OK. Open the local UI with `vibe-agent web --open` (only `http://127.0.0.1:3080/`). Flags and install options: [`runtime/README.md`](runtime/README.md).
 
-The global installers call this for you. Run it directly to pin a version, to rebuild, or to install somewhere else.
+## How to type a command
 
-```bash
-bash scripts/install-runtime.sh            # latest release, else build from source
-bash scripts/install-runtime.sh v0.1.0     # a specific version
-```
+Claude Code, Cursor, and opencode use `/`. Codex CLI uses `$`. A **global** install adds the `vibe-` prefix; a **workspace** install does not.
 
-| Variable | What it does |
-|---|---|
-| `VIBE_FROM_SOURCE=1` | Always build from `runtime/` instead of downloading. Needs Go. |
-| `VIBE_INSTALL_DIR` | Where the binary lands. Default `$HOME/.local/bin`. |
-| `VIBE_SKIP_RUNTIME` | Set for the global installers to install assets only. |
-| `VIBE_REPO` | Release source. Default `ducnd58233/vibe-agent`. |
-
-The runtime is optional by design: without it every hook is a quiet no-op and the markdown assets work as before, so a failed download never leaves a half-installed toolkit.
-
-## How to type a command in each tool
-
-**Three of the four supported tools use `/`. Codex CLI uses `$`.** Getting this wrong is the most common first-run problem, so it is spelled out per tool rather than left to a footnote.
-
-Global install writes commands with the `vibe-` prefix. Workspace install writes them unprefixed, for that repo only. Both forms can exist at once.
-
-| Tool | After global install | After workspace install | Worked example |
-|---|---|---|---|
-| **Claude Code** | `/vibe-<command>` | `/<command>` | `/vibe-review src/api` |
-| **Cursor** | `/vibe-<command>` | `/<command>` | `/vibe-review src/api` |
-| **opencode** | `/vibe-<command>` | `/<command>` | `/vibe-review src/api` |
-| **Codex CLI** | `$vibe-<command>` | `$<command>` | `$vibe-review src/api` |
-
-Codex CLI 0.147.0 removed custom slash prompts, so its commands are installed as skills instead and the name is typed as ordinary prompt text beginning with `$`. Neither `/vibe-review` nor `/prompts:vibe-review` works there. Everything after the command name is passed through as its arguments, in every tool.
-
-## Commands
-
-| Command | What it does | Use case |
+| Tool | Global | Workspace |
 |---|---|---|
-| `goal` | Runs the full delivery loop. | Take one objective through clarify, spec, plan, build, review, and ship. Needs the runtime. |
-| `spec` | Writes the work spec first. | Capture scope, acceptance criteria, risks, and open questions before coding. |
-| `plan` | Breaks a spec into tasks. | Turn an approved spec into ordered tasks with checks and likely files. |
-| `build` | Implements the next task. | Build one planned task on its own branch with tests. Needs the runtime. |
-| `test` | Runs a TDD or proof loop. | Start with a failing test, prove a bug, or run focused validation. Needs the runtime. |
-| `review` | Reviews a diff from five angles. | Check correctness, readability, architecture, security, and performance. Needs the runtime. |
-| `ship` | Makes the pre-ship call. | Run the final review and return GO or NO-GO with blockers named. Needs the runtime. |
-| `research` | Gathers cited evidence. | Answer one scoped research question with sources. |
-| `analyze` | Turns evidence into a recommendation. | Compare options, tradeoffs, confidence, and likely next steps. |
-| `investigate` | Runs parallel evidence lanes. | Use investigator, analyst, and source-auditor lanes on a multi-part question. |
-| `doctor` | Checks AI asset health. | Check routers, generated views, hooks, permissions, runtime wiring, and drift. |
-| `harden` | Audits AI asset safety. | Review permissions, hooks, tool boundaries, and secret-handling risks. |
-| `code-simplify` | Cleans up code without behavior change. | Cut complexity while keeping tests green and behavior unchanged. |
-| `design` | Builds or audits UI. | Work registry-first, then check accessibility, design drift, and rendered evidence. |
+| Claude Code, Cursor, opencode | `/vibe-review` | `/review` |
+| Codex CLI | `$vibe-review` | `$review` |
 
-Preconditions for each command, and the file behind it, are in [`.ai-agents/commands/ROUTER.md`](.ai-agents/commands/ROUTER.md).
+Codex CLI does not load custom `/prompts`. This kit installs those as skills. See [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md).
 
-## Guards, and customising them
+## Work one step at a time
 
-After a workspace install, the runtime inspects each file an agent writes and reports what it finds: credentials heading somewhere readable, personal data in a log, raw colour literals, tests that cannot fail. The built-in rules travel inside the binary, so a fresh install guards something with no setup.
+Use these slash commands when you want to run each stage yourself.
 
-Targeting is by language category rather than by file extension, so a stack nobody listed is still covered - Terraform, Dart, Objective-C, Ruby, and PHP are all read without appearing in any list, and documentation is left alone because prose is a category of its own.
-
-See what is running here, then start a plan of your own:
-
-```bash
-vibe-agent guards list          # every guard, what it reads, and its checks
-vibe-agent guards init          # writes .ai-agents/guards.yaml
+```mermaid
+flowchart LR
+  spec["/spec"] --> research["/research"]
+  research --> plan["/plan"]
+  plan --> build["/build"]
+  build --> simplify["/code-simplify"]
+  simplify --> test["/test"]
+  test --> review["/review"]
+  review --> ship["/ship"]
 ```
 
-The file `init` writes is entirely commented out, so nothing changes until you edit it. Uncomment a block to add a rule for your stack, switch off a single check by id, retarget a guard at other languages, or disable one outright. Keep the file in git: weakening a guard should be a diff someone reviews.
+| Command | What it does |
+|---|---|
+| `/spec` | Write the work spec first. |
+| `/research` | Gather cited evidence. Skip if the repo already has the facts. |
+| `/plan` | Turn an approved spec into ordered tasks. |
+| `/build` | Implement one planned task on its own branch. Needs the runtime. Never merges to `main`. |
+| `/code-simplify` | Cut complexity with tests still green. |
+| `/test` | Start from a failing test, or run focused proof. Needs the runtime. |
+| `/review` | Check a diff from five angles. Needs the runtime. |
+| `/ship` | Return GO or NO-GO. You still approve the merge. Needs the runtime. |
 
-## The runtime
+`/design` is extra when the change is UI. `/analyze` and `/investigate` are extra when you need more than one research pass. Full list: [`.ai-agents/commands/ROUTER.md`](.ai-agents/commands/ROUTER.md).
 
-`vibe-agent` is a Go binary the delivery commands require and refuse to run without. It also holds run state, workflow graphs, memory, and the hook handlers.
+## One prompt for the whole sequence
 
-Check an install with `vibe-agent doctor`. The command surface, the evidence rules behind it, and what it stores where are in [`runtime/README.md`](runtime/README.md).
+`/goal` (global: `/vibe-goal`) is the same sequence, driven by the runtime graph. Use it when you have an outcome, not a one-file edit.
 
-## Where things live
+```text
+/goal Add host token counts to the Chat toolbar.
+```
 
-Edit assets under `.ai-agents/`. The `.claude/`, `.cursor/`, `.codex/`, `.opencode/`, and `.agents/` folders are generated views, not the source of truth.
+It will not merge to `main` unless you say so. Rules: [`.ai-agents/commands/goal.md`](.ai-agents/commands/goal.md).
 
-The full layout, the authoring rules, the checks table, and the clone and mounting steps are in [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md). Read it when you are creating an asset or wiring a repo.
+## Where to edit
+
+Edit [`.ai-agents/`](.ai-agents). `.claude/`, `.cursor/`, `.codex/`, `.opencode/`, and `.agents/` are generated. Clone and authoring: [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md).
