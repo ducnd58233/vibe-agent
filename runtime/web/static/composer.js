@@ -227,6 +227,8 @@
       hostBusy.hidden = false;
     });
   }
+
+  document.addEventListener("click", (event) => {
     if (filePanel && !filePanel.hidden) {
       if (!filePanel.contains(event.target) && !(fileOpen && fileOpen.contains(event.target))) {
         closeFilePanel();
