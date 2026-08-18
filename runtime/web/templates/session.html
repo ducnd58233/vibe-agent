@@ -18,7 +18,7 @@
         <h1>vibe-agent</h1>
         <span class="mark">WEB</span>
       </div>
-      <button class="btn btn-block" type="button" disabled data-testid="new-session-disabled">New Session</button>
+      <button class="btn btn-block" type="button" id="new-session-open" data-testid="new-session-open">New Session</button>
       <div class="sidebar-scroll">
         <div class="nav-block">
           <p class="nav-label">Workspaces</p>
@@ -96,7 +96,8 @@
       {{ template "graph" . }}
       <div class="stream" id="stream" data-testid="trajectory" tabindex="-1">
         {{ if .Events }}
-        <ol class="event-list" id="event-list" data-testid="event-list" aria-live="polite">
+        <ol class="event-list" id="event-list" data-testid="event-list" aria-live="polite"
+            hx-get="/session/{{ .Slug }}/events?after={{ .LastEventSeq }}" hx-trigger="every 2s" hx-swap="beforeend" hx-target="#event-list">
           {{ range .Events }}{{ template "event-row" . }}{{ end }}
         </ol>
         <p class="empty" id="stream-empty" hidden data-testid="trajectory-empty"></p>
@@ -108,8 +109,15 @@
         </p>
       </div>
       <div class="dock">
-        <form class="composer" aria-disabled="true">
-          <input class="composer-field" type="text" placeholder="Composer is Task 10" disabled aria-label="Message">
+        <form class="composer" method="post" action="/session/{{ .Slug }}/send" data-testid="composer"{{ if not .CanCompose }} aria-disabled="true"{{ end }}>
+          <label class="visually-hidden" for="composer-host">Host</label>
+          <select class="composer-host" id="composer-host" name="host"{{ if not .CanCompose }} disabled{{ end }} aria-label="Host">
+            {{ range .ComposeHosts }}
+            <option value="{{ .ID }}">{{ .Binary }}</option>
+            {{ end }}
+          </select>
+          <input class="composer-field" id="composer-message" name="message" type="text" placeholder="{{ if .CanCompose }}Send one print-mode turn{{ else }}Install a host on PATH to send{{ end }}"{{ if not .CanCompose }} disabled{{ end }} aria-label="Message">
+          <button class="btn-send" type="submit"{{ if not .CanCompose }} disabled{{ end }} aria-label="Send">→</button>
         </form>
       </div>
     </section>
@@ -141,6 +149,52 @@
 {{ end }}</pre>
     </div>
   </dialog>
+  </dialog>
+  <dialog id="settings-dialog" data-testid="settings-dialog" aria-labelledby="settings-heading">
+    <div class="dialog-body settings-shell">
+      <div class="dialog-head">
+        <h2 id="settings-heading">Settings</h2>
+        <button class="btn" type="button" id="settings-close">Close</button>
+      </div>
+      <div class="settings-scroll">
+        <section class="settings-section" aria-labelledby="settings-appearance">
+          <h3 id="settings-appearance">Appearance</h3>
+          <fieldset class="choice-list" data-testid="settings-theme">
+            <legend class="visually-hidden">Theme</legend>
+            <label class="choice"><input type="radio" name="theme" value="dark" checked><span><strong>Dark</strong></span></label>
+            <label class="choice"><input type="radio" name="theme" value="light"><span><strong>Light</strong></span></label>
+          </fieldset>
+        </section>
+        <section class="settings-section">
+          <h3>Server</h3>
+          <dl class="kv">
+            <dt>URL</dt>
+            <dd><code data-testid="settings-bind">{{ .BindAddr }}</code></dd>
+          </dl>
+        </section>
+        <section class="settings-section">
+          <h3>Hosts on PATH</h3>
+          <ul class="host-status" data-testid="settings-hosts">
+            {{ range .Hosts }}
+            <li>{{ if .OnPath }}ready{{ else }}missing{{ end }} {{ .Binary }} {{ .Reason }}</li>
+            {{ end }}
+          </ul>
+        </section>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="new-session-dialog" data-testid="new-session-form" aria-labelledby="new-session-heading">
+    <form class="dialog-body" method="post" action="/session/new">
+      <div class="dialog-head">
+        <h2 id="new-session-heading">New Session</h2>
+        <button class="btn" type="button" id="new-session-close">Close</button>
+      </div>
+      <label class="field"><span>Slug</span><input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*"></label>
+      <label class="field"><span>Goal</span><input name="goal" required></label>
+      <input type="hidden" name="graph" value="goal-delivery">
+      <button class="btn btn-block" type="submit">Start delivery run</button>
+    </form>
+  </dialog>
   <script>
     const app = document.getElementById("app");
     const eventList = document.getElementById("event-list");
@@ -165,6 +219,13 @@
 
     document.getElementById("sidebar-open").addEventListener("click", () => app.classList.add("is-sidebar-open"));
     document.getElementById("sidebar-backdrop").addEventListener("click", () => app.classList.remove("is-sidebar-open"));
+    document.getElementById("settings-open").addEventListener("click", () => document.getElementById("settings-dialog").showModal());
+    document.getElementById("settings-close").addEventListener("click", () => document.getElementById("settings-dialog").close());
+    document.getElementById("new-session-open").addEventListener("click", () => document.getElementById("new-session-dialog").showModal());
+    document.getElementById("new-session-close").addEventListener("click", () => document.getElementById("new-session-dialog").close());
+    document.getElementById("settings-dialog").addEventListener("change", (e) => {
+      if (e.target.name === "theme") document.documentElement.setAttribute("data-theme", e.target.value);
+    });
     document.getElementById("inspector-close").addEventListener("click", () => app.classList.add("is-inspector-closed"));
     document.getElementById("inspector-backdrop").addEventListener("click", () => app.classList.add("is-inspector-closed"));
     document.getElementById("session-log").addEventListener("click", () => document.getElementById("log-dialog").showModal());
@@ -258,6 +319,22 @@
     }
 
     if (eventList) {
+      function lastEventSeq() {
+        let max = 0;
+        eventList.querySelectorAll("[data-seq]").forEach((el) => {
+          const n = parseInt(el.dataset.seq, 10);
+          if (n > max) max = n;
+        });
+        return max;
+      }
+      function refreshTailURL() {
+        eventList.setAttribute("hx-get", "/session/{{ .Slug }}/events?after=" + lastEventSeq());
+      }
+      document.body.addEventListener("htmx:afterSwap", (e) => {
+        if (e.detail.target === eventList) refreshTailURL();
+      });
+      refreshTailURL();
+
       eventList.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-seq]");
         if (!btn) return;

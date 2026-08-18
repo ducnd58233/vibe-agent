@@ -14,18 +14,21 @@ import (
 // HostRow is one PATH inventory line for the shell sidebar.
 type HostRow struct {
 	Binary string
+	ID     string
 	OnPath bool
 	Reason string
 }
 
 // ShellPage is the empty-state template model.
 type ShellPage struct {
-	Workspace   string
-	BindAddr    string
-	URL         string
-	Hosts       []HostRow
-	Sessions    []string
-	HasSessions bool
+	Workspace    string
+	BindAddr     string
+	URL          string
+	Hosts        []HostRow
+	Sessions     []string
+	HasSessions  bool
+	CanCompose   bool
+	ComposeHosts []HostRow
 }
 
 // BuildShellPage loads workspace metadata for the empty shell.
@@ -40,11 +43,17 @@ func BuildShellPage(workspaceRoot, bindAddr string) (ShellPage, error) {
 		if entry.OnPath {
 			reason = "on PATH"
 		}
-		page.Hosts = append(page.Hosts, HostRow{
+		row := HostRow{
 			Binary: entry.Binary,
+			ID:     entry.ID,
 			OnPath: entry.OnPath,
 			Reason: reason,
-		})
+		}
+		page.Hosts = append(page.Hosts, row)
+		if entry.OnPath {
+			page.CanCompose = true
+			page.ComposeHosts = append(page.ComposeHosts, row)
+		}
 	}
 	slugs, err := state.List(workspaceRoot)
 	if err != nil {
@@ -77,6 +86,7 @@ type SessionPage struct {
 	GraphNodes      []GraphNodeRow
 	GraphTypeCounts map[string]int
 	GraphNodeJSON   template.JS
+	LastEventSeq    int
 }
 
 // BuildSessionPage loads one session log for rendering.
@@ -126,6 +136,7 @@ func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug string) (Sessio
 	if encoded, err := json.Marshal(page.EventDetails); err == nil {
 		page.EventDataJSON = template.JS(encoded) //nolint:gosec // G203 JSON script block from server-built rows
 	}
+	page.LastEventSeq = LastSequence(workspaceRoot, slug)
 	return page, nil
 }
 

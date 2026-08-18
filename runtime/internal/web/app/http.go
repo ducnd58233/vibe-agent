@@ -41,7 +41,18 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 	}
 	mux := http.NewServeMux()
 	mux.Handle("/static/", static)
+	mux.HandleFunc("/session/new", func(w http.ResponseWriter, r *http.Request) {
+		handleNewSession(w, r, d)
+	})
 	mux.HandleFunc("/session/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && strings.HasSuffix(strings.Trim(r.URL.Path, "/"), "/send") {
+			handleComposerSend(w, r, d)
+			return
+		}
+		if strings.HasSuffix(strings.Trim(r.URL.Path, "/"), "/events") {
+			handleSessionEvents(w, r, d)
+			return
+		}
 		slug := strings.TrimPrefix(r.URL.Path, "/session/")
 		slug = strings.Trim(slug, "/")
 		if slug == "" || strings.Contains(slug, "/") {
