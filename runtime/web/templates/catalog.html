@@ -1,0 +1,13 @@
+{{ define "catalog-items" }}
+<ul class="catalog-list" data-testid="composer-catalog" role="listbox">
+  {{ range . }}
+  <li class="catalog-item" data-testid="catalog-item" role="option"
+      data-insert="{{ .Insert }}" data-slug="{{ .Slug }}" data-description="{{ .Description }}">
+    <span class="catalog-item-name">{{ .Insert }}</span>
+    <span class="catalog-item-desc">{{ .Description }}</span>
+  </li>
+  {{ else }}
+  <li class="catalog-empty" aria-hidden="true">No matches</li>
+  {{ end }}
+</ul>
+{{ end }}
