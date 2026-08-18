@@ -5,6 +5,8 @@
   const preview = document.getElementById("composer-preview");
   const filePanel = document.getElementById("composer-file-panel");
   const fileOpen = document.getElementById("composer-file-open");
+  const fileDialog = document.getElementById("composer-file-dialog");
+  const fileClose = document.getElementById("composer-file-close");
   const hostOpen = document.getElementById("composer-host-open");
   const hostMenu = document.getElementById("composer-host-menu");
   const hostInput = document.getElementById("composer-host");
@@ -108,10 +110,9 @@
   }
 
   function closeFilePanel() {
-    if (!filePanel) return;
-    filePanel.hidden = true;
-    filePanel.innerHTML = "";
+    if (filePanel) filePanel.innerHTML = "";
     if (fileOpen) fileOpen.setAttribute("aria-expanded", "false");
+    if (fileDialog && fileDialog.open) fileDialog.close();
   }
 
   function setHostMenu(on) {
@@ -267,7 +268,7 @@
     const res = await fetch("/workspace/files" + q);
     if (!res.ok) return;
     filePanel.innerHTML = await res.text();
-    filePanel.hidden = false;
+    if (fileDialog && !fileDialog.open) fileDialog.showModal();
     if (fileOpen) fileOpen.setAttribute("aria-expanded", "true");
   }
 
@@ -275,7 +276,7 @@
     fileOpen.addEventListener("click", (event) => {
       event.stopPropagation();
       setHostMenu(false);
-      if (filePanel && !filePanel.hidden) {
+      if (fileDialog && fileDialog.open) {
         closeFilePanel();
         return;
       }
@@ -283,11 +284,31 @@
       loadFiles("");
     });
   }
+  if (fileClose) {
+    fileClose.addEventListener("click", () => closeFilePanel());
+  }
+  if (fileDialog) {
+    fileDialog.addEventListener("click", (event) => {
+      if (event.target === fileDialog) closeFilePanel();
+    });
+    fileDialog.addEventListener("close", () => {
+      if (filePanel) filePanel.innerHTML = "";
+      if (fileOpen) fileOpen.setAttribute("aria-expanded", "false");
+    });
+  }
 
   if (filePanel) {
     filePanel.addEventListener("click", (event) => {
       event.stopPropagation();
       if (event.target.closest("[data-testid=file-browser-close]")) {
+        closeFilePanel();
+        return;
+      }
+      const pick = event.target.closest("[data-testid=file-attach-row], [data-testid=file-attach-folder]");
+      if (pick) {
+        const insert = pick.dataset.insert || "";
+        if (!insert) return;
+        insertAtCursor(insert);
         closeFilePanel();
         return;
       }
@@ -413,8 +434,8 @@
         closeCatalog();
       }
     }
-    if (filePanel && !filePanel.hidden) {
-      if (!filePanel.contains(event.target) && !(fileOpen && fileOpen.contains(event.target))) {
+    if (fileDialog && fileDialog.open) {
+      if (!fileDialog.contains(event.target) && !(fileOpen && fileOpen.contains(event.target))) {
         closeFilePanel();
       }
     }

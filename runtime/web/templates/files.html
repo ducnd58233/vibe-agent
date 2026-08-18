@@ -1,12 +1,14 @@
 {{ define "file-browser" }}
-<div class="file-browser" data-testid="file-browser">
+<div class="file-browser" data-testid="file-browser" data-mode="{{ .Mode }}">
   <header class="file-browser-head">
-    <span class="file-browser-dir">{{ if .Dir }}/{{ .Dir }}{{ else }}/{{ end }}</span>
+    <span class="file-browser-dir">{{ if .Dir }}{{ .Dir }}{{ else }}/{{ end }}</span>
     <div class="file-browser-actions">
-      {{ if .Dir }}
+      {{ if or .Dir .Parent }}
       <button type="button" class="file-browser-up" data-dir="{{ .Parent }}" aria-label="Parent folder">..</button>
       {{ end }}
+      {{ if eq .Mode "attach" }}
       <button type="button" class="file-browser-close" data-testid="file-browser-close" aria-label="Close file picker">{{ template "icon-close" }}</button>
+      {{ end }}
     </div>
   </header>
   <ul class="file-browser-list" role="listbox">
@@ -17,11 +19,20 @@
         data-is-dir="{{ .IsDir }}"
         {{ if .Attach }}data-insert="{{ .Attach }}"{{ end }}>
       <span class="file-browser-name">{{ if .IsDir }}dir{{ else }}file{{ end }} {{ .Name }}</span>
+      {{ if .Attach }}
+      <button type="button" class="file-browser-pick" data-testid="file-attach-row" data-insert="{{ .Attach }}">Attach</button>
+      {{ end }}
     </li>
     {{ else }}
     <li class="file-browser-empty">No files</li>
     {{ end }}
   </ul>
+  {{ if eq .Mode "attach" }}
+  <button type="button" class="file-browser-footer" data-testid="file-attach-folder"{{ if .AttachDir }} data-insert="{{ .AttachDir }}"{{ end }}>Attach this folder</button>
+  {{ end }}
+  {{ if and (eq .Mode "open") .OpenPath }}
+  <button type="button" class="file-browser-footer" data-testid="file-open-folder" data-open-path="{{ .OpenPath }}">Open this folder</button>
+  {{ end }}
 </div>
 {{ end }}
 

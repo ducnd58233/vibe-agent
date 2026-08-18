@@ -73,6 +73,7 @@ func TestSessionPageRendersEventList(t *testing.T) {
 		"chat-empty", "chat-prompts", "chat-prompt",
 		"graph-view", "settings-dialog", "composer", "new-session-form",
 		"composer-catalog", "composer-preview", "composer-description", "composer-file-panel",
+		"composer-file-dialog",
 		"composer-host-open", "composer-host-menu", "composer-model", "composer-model-open", "composer-model-menu", "composer-mode-agent", "host-busy", "thinking-bar",
 	} {
 		if !strings.Contains(body, `data-testid="`+id+`"`) {

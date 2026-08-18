@@ -127,8 +127,11 @@ func TestShellShowsCurrentWorkspaceOnlyInRail(t *testing.T) {
 	if !strings.Contains(body, `data-testid="workspace-current"`) {
 		t.Fatal("expected current workspace chip")
 	}
-	if !strings.Contains(body, `data-testid="workspace-menu"`) {
-		t.Fatal("expected workspace menu")
+	if !strings.Contains(body, `data-testid="workspace-browse-dialog"`) {
+		t.Fatal("expected browse workspace dialog")
+	}
+	if !strings.Contains(body, `data-testid="workspace-browse-panel"`) {
+		t.Fatal("browse dialog must host the folder explorer")
 	}
 	labelA := filepath.Base(rootA)
 	labelB := filepath.Base(rootB)
