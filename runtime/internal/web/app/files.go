@@ -45,11 +45,15 @@ func (d httpDeps) handleWorkspaceFiles(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
-		rows = append(rows, domain.FileRow{
+		row := domain.FileRow{
 			Name:  entry.Name(),
 			Path:  rel,
 			IsDir: entry.IsDir(),
-		})
+		}
+		if !entry.IsDir() {
+			row.Attach = domain.FormatAttach(rel)
+		}
+		rows = append(rows, row)
 	}
 	model := struct {
 		Dir    string

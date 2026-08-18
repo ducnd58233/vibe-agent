@@ -43,7 +43,7 @@
     </nav>
     <section class="main">
       <header class="topbar">
-        <button class="btn-icon menu-btn" type="button" id="sidebar-open" aria-label="Open sessions" data-testid="sidebar-open">Menu</button>
+        <button class="btn-icon menu-btn" type="button" id="sidebar-open" aria-label="Open sessions" data-testid="sidebar-open">{{ template "icon-menu" }}</button>
         <div class="session-crumb">
           <strong>No session</strong>
           <span class="mode-chip" data-testid="run-status">idle</span>
@@ -72,7 +72,7 @@
       <div class="dock">
         <form class="composer" data-testid="composer" aria-disabled="true">
           <input class="composer-field" type="text" placeholder="{{ if .CanCompose }}Open a session to send{{ else }}Install a host on PATH to send{{ end }}" disabled aria-label="Message">
-          <button class="btn-send" type="submit" disabled aria-label="Send">→</button>
+          <button class="btn-send" type="submit" disabled aria-label="Send">{{ template "icon-send" }}</button>
         </form>
       </div>
     </section>

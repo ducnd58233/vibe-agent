@@ -79,29 +79,34 @@ func BuildShellPage(workspaceRoot, bindAddr string, reg domain.Registry, activeR
 // SessionPage is the trajectory shell for one slug.
 type SessionPage struct {
 	ShellPage
-	Slug            string
-	RunStatus       string
-	Events          []EventRow
-	KindCounts      map[session.FilterKind]int
-	Tokens          UsageTotals
-	ToolbarTokens   string
-	ChatEmpty       bool
-	ChatPrompts     []ChatPrompt
-	HasChatPrompts  bool
-	TurnCount       int
-	ToolCalls       int
-	EventDetails    []EventDetail
-	EventDataJSON   template.JS
-	GraphID         string
-	CurrentNode     string
-	GraphNodes      []GraphNodeRow
-	GraphTypeCounts map[string]int
-	GraphNodeJSON   template.JS
-	LastEventSeq    int
+	Slug             string
+	RunStatus        string
+	Events           []EventRow
+	KindCounts       map[session.FilterKind]int
+	Tokens           UsageTotals
+	ToolbarTokens    string
+	DefaultHostID    string
+	DefaultHostLabel string
+	BusyHostLabel    string
+	BusyAfterSeq     int
+	ChatEmpty        bool
+	ChatPrompts      []ChatPrompt
+	HasChatPrompts   bool
+	TurnCount        int
+	ToolCalls        int
+	EventDetails     []EventDetail
+	EventDataJSON    template.JS
+	GraphID          string
+	CurrentNode      string
+	GraphNodes       []GraphNodeRow
+	GraphTypeCounts  map[string]int
+	GraphNodeJSON    template.JS
+	LastEventSeq     int
+	View             string
 }
 
 // BuildSessionPage loads one session log for rendering.
-func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug string, reg domain.Registry, activeRoot string) (SessionPage, error) {
+func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug, selectedView string, reg domain.Registry, activeRoot string) (SessionPage, error) {
 	shell, err := BuildShellPage(workspaceRoot, bindAddr, reg, activeRoot)
 	if err != nil {
 		return SessionPage{}, err
@@ -110,6 +115,7 @@ func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug string, reg dom
 		ShellPage: shell,
 		Slug:      slug,
 		RunStatus: "idle",
+		View:      NormalizeSessionView(selectedView),
 	}
 	page.CurrentSlug = slug
 	var logPath string
@@ -141,6 +147,8 @@ func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug string, reg dom
 	page.KindCounts = KindCounts(page.Events)
 	page.Tokens = SumUsage(page.Events)
 	page.ToolbarTokens = FormatToolbarTokens(page.Tokens)
+	page.DefaultHostID, page.DefaultHostLabel = defaultComposeHost(page.ComposeHosts, events)
+	page.BusyHostLabel, page.BusyAfterSeq = busyComposeHost(events)
 	page.ChatPrompts = AwaitingChatPrompts(page.GraphNodes, slug)
 	page.HasChatPrompts = len(page.ChatPrompts) > 0
 	page.ChatEmpty = !ChatHasProse(page.Events) && !page.HasChatPrompts
@@ -152,6 +160,49 @@ func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug string, reg dom
 	}
 	page.LastEventSeq = LastSequence(workspaceRoot, slug)
 	return page, nil
+}
+
+func defaultComposeHost(composeHosts []HostRow, events []session.Event) (string, string) {
+	if len(composeHosts) == 0 {
+		return "", ""
+	}
+	lastClient := ""
+	for i := len(events) - 1; i >= 0; i-- {
+		ev := events[i]
+		if ev.Type == session.TypePromptSubmit && ev.Source == session.SourceHook && ev.Client != "" {
+			lastClient = ev.Client
+			break
+		}
+	}
+	if lastClient != "" {
+		for _, h := range composeHosts {
+			if h.ID == lastClient {
+				return h.ID, h.Binary
+			}
+		}
+	}
+	return composeHosts[0].ID, composeHosts[0].Binary
+}
+
+func busyComposeHost(events []session.Event) (string, int) {
+	if len(events) == 0 {
+		return "", 0
+	}
+	last := events[len(events)-1]
+	if last.Type != session.TypePromptSubmit || last.Source != session.SourceHook || last.Client == "" {
+		return "", 0
+	}
+	return last.Client, last.Sequence
+}
+
+// NormalizeSessionView maps a query value to chat, trajectory, or graph.
+func NormalizeSessionView(raw string) string {
+	switch raw {
+	case "chat", "graph":
+		return raw
+	default:
+		return "trajectory"
+	}
 }
 
 func countTurns(rows []EventRow) int {

@@ -116,7 +116,7 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 			return
 		}
 		ws := d.activeWorkspace(r)
-		page, err := view.BuildSessionPage(ws, d.toolkitRoot, d.bindAddr, slug, d.snapshotRegistry(), ws)
+		page, err := view.BuildSessionPage(ws, d.toolkitRoot, d.bindAddr, slug, r.URL.Query().Get("view"), d.snapshotRegistry(), ws)
 		if err != nil {
 			if os.IsNotExist(err) {
 				http.NotFound(w, r)

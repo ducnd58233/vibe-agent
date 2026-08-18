@@ -22,7 +22,7 @@ func handleNewSession(w http.ResponseWriter, r *http.Request, d httpDeps) {
 		http.Error(w, "could not start session", http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, "/session/"+url.PathEscape(slug), http.StatusSeeOther)
+	http.Redirect(w, r, "/session/"+url.PathEscape(slug)+"?view=chat", http.StatusSeeOther)
 }
 
 func handleComposerSend(w http.ResponseWriter, r *http.Request, d httpDeps) {
@@ -48,5 +48,5 @@ func handleComposerSend(w http.ResponseWriter, r *http.Request, d httpDeps) {
 		http.Error(w, "send failed", http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, "/session/"+url.PathEscape(slug), http.StatusSeeOther)
+	http.Redirect(w, r, "/session/"+url.PathEscape(slug)+"?view=chat", http.StatusSeeOther)
 }

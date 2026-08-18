@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -48,6 +49,19 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 	defer cancel()
 	out, err := hostPrint(ctx, host, message)
 	if err != nil || strings.TrimSpace(out) == "" {
+		body := "Host produced no output."
+		if err != nil && errors.Is(err, context.DeadlineExceeded) {
+			body = "Host timed out while generating output."
+		}
+		logPath := session.LogPath(workspaceRoot, slug)
+		_, _ = session.Append(logPath, session.Record{
+			Type:   session.TypeTranscriptMessage,
+			Source: session.SourcePrint,
+			Client: host.Binary,
+			Role:   "assistant",
+			Body:   session.RedactText(body),
+			At:     time.Now().UTC(),
+		})
 		return
 	}
 	logPath := session.LogPath(workspaceRoot, slug)
@@ -55,30 +69,49 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 	if text == "" {
 		return
 	}
-	if parsed := parsePrintLines(out); len(parsed) > 0 {
-		for _, line := range parsed {
-			if line == "" {
-				continue
-			}
-			_, _ = session.Append(logPath, session.Record{
-				Type:   session.TypeTranscriptMessage,
-				Source: session.SourcePrint,
-				Client: host.Binary,
-				Role:   "assistant",
-				Body:   session.RedactText(line),
-				At:     time.Now().UTC(),
-			})
+	fragments, usage := parsePrintOutput(out)
+	if len(fragments) == 0 {
+		fragments = []printFragment{{Role: "assistant", Body: text}}
+	}
+	attachUsage(fragments, usage)
+	now := time.Now().UTC()
+	for _, frag := range fragments {
+		if strings.TrimSpace(frag.Body) == "" && frag.Usage == nil {
+			continue
 		}
+		body := frag.Body
+		if body == "" {
+			body = "Host finished."
+		}
+		_, _ = session.Append(logPath, session.Record{
+			Type:   session.TypeTranscriptMessage,
+			Source: session.SourcePrint,
+			Client: host.Binary,
+			Role:   frag.Role,
+			Body:   session.RedactText(body),
+			Usage:  frag.Usage,
+			At:     now,
+		})
+	}
+}
+
+type printFragment struct {
+	Role  string
+	Body  string
+	Usage *session.Usage
+}
+
+func attachUsage(fragments []printFragment, usage *session.Usage) {
+	if usage == nil || len(fragments) == 0 {
 		return
 	}
-	_, _ = session.Append(logPath, session.Record{
-		Type:   session.TypeTranscriptMessage,
-		Source: session.SourcePrint,
-		Client: host.Binary,
-		Role:   "assistant",
-		Body:   text,
-		At:     time.Now().UTC(),
-	})
+	for i := len(fragments) - 1; i >= 0; i-- {
+		if fragments[i].Role == "assistant" {
+			fragments[i].Usage = usage
+			return
+		}
+	}
+	fragments[len(fragments)-1].Usage = usage
 }
 
 func hostsInventoryEntry(host hosts.Host) hosts.Entry {
@@ -114,42 +147,124 @@ func runHostPrint(ctx context.Context, host hosts.Host, prompt string) (string, 
 }
 
 func parsePrintLines(raw string) []string {
+	fragments, _ := parsePrintOutput(raw)
+	texts := make([]string, 0, len(fragments))
+	for _, frag := range fragments {
+		if frag.Body != "" {
+			texts = append(texts, frag.Body)
+		}
+	}
+	return texts
+}
+
+func parsePrintOutput(raw string) ([]printFragment, *session.Usage) {
 	lines := strings.Split(strings.TrimSpace(raw), "\n")
 	if len(lines) == 1 && !strings.HasPrefix(strings.TrimSpace(raw), "{") {
-		return nil
+		return nil, nil
 	}
-	var texts []string
+	var fragments []printFragment
+	var usage *session.Usage
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" || line[0] != '{' {
 			continue
 		}
-		var item struct {
-			Type    string `json:"type"`
-			Content string `json:"content"`
-			Text    string `json:"text"`
-			Item    *struct {
-				Type string `json:"type"`
-				Text string `json:"text"`
-			} `json:"item"`
-		}
-		if err := json.Unmarshal([]byte(line), &item); err != nil {
+		var rawObj map[string]any
+		if err := json.Unmarshal([]byte(line), &rawObj); err != nil {
 			continue
 		}
-		switch item.Type {
-		case "message", "assistant_message", "agent_message":
-			body := item.Content
-			if body == "" {
-				body = item.Text
-			}
-			if body != "" {
-				texts = append(texts, body)
-			}
-		case "item.completed":
-			if item.Item != nil && item.Item.Type == "agent_message" && item.Item.Text != "" {
-				texts = append(texts, item.Item.Text)
+		if parsed := session.ParseUsage(rawObj); parsed != nil {
+			usage = parsed
+		}
+		if nested, ok := rawObj["message"].(map[string]any); ok {
+			if parsed := session.ParseUsage(nested); parsed != nil {
+				usage = parsed
 			}
 		}
+		typ, _ := rawObj["type"].(string)
+		if frag, ok := fragmentFromPrint(typ, rawObj); ok {
+			fragments = append(fragments, frag)
+		}
 	}
-	return texts
+	return fragments, usage
+}
+
+func fragmentFromPrint(typ string, raw map[string]any) (printFragment, bool) {
+	switch typ {
+	case "question", "ask_user", "user_question", "permission_request", "elicitation":
+		body := firstString(raw, "text", "content", "prompt", "message")
+		if body == "" {
+			return printFragment{}, false
+		}
+		return printFragment{Role: "question", Body: body}, true
+	case "message", "assistant_message", "agent_message", "assistant":
+		body := firstString(raw, "content", "text")
+		if body == "" {
+			body = nestedAssistantText(raw)
+		}
+		if body == "" {
+			return printFragment{}, false
+		}
+		return printFragment{Role: "assistant", Body: body}, true
+	case "item.completed":
+		item, _ := raw["item"].(map[string]any)
+		if item == nil {
+			return printFragment{}, false
+		}
+		itemType, _ := item["type"].(string)
+		body := firstString(item, "text", "content", "prompt", "message")
+		if body == "" {
+			return printFragment{}, false
+		}
+		if isQuestionItem(itemType) {
+			return printFragment{Role: "question", Body: body}, true
+		}
+		if itemType == "agent_message" {
+			return printFragment{Role: "assistant", Body: body}, true
+		}
+	}
+	return printFragment{}, false
+}
+
+func isQuestionItem(itemType string) bool {
+	switch itemType {
+	case "user_input", "question", "ask", "permission", "elicitation":
+		return true
+	default:
+		return false
+	}
+}
+
+func firstString(raw map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if text, ok := raw[key].(string); ok && strings.TrimSpace(text) != "" {
+			return text
+		}
+	}
+	return ""
+}
+
+func nestedAssistantText(raw map[string]any) string {
+	msg, ok := raw["message"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	if body := firstString(msg, "text"); body != "" {
+		return body
+	}
+	content, ok := msg["content"].([]any)
+	if !ok {
+		return firstString(msg, "content")
+	}
+	var parts []string
+	for _, item := range content {
+		block, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		if text := firstString(block, "text"); text != "" {
+			parts = append(parts, text)
+		}
+	}
+	return strings.Join(parts, "\n")
 }

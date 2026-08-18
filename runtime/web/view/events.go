@@ -35,6 +35,7 @@ type EventRow struct {
 	PayloadJSON string
 	Usage       *session.Usage
 	HasUsage    bool
+	TokensText  string
 	Failed      bool
 	HostGap     bool
 	Redacted    bool
@@ -93,9 +94,10 @@ func projectEvent(ev session.Event) EventRow {
 		Redacted: strings.Contains(displayBody, "[REDACTED]") ||
 			strings.Contains(displayBody, "<credential>"),
 	}
-	if body.Usage != nil && (body.Usage.Input > 0 || body.Usage.Output > 0 || body.Usage.CacheRead > 0) {
+	if body.Usage.Reported() {
 		row.Usage = body.Usage
 		row.HasUsage = true
+		row.TokensText = formatUsage(*body.Usage)
 	}
 	if len(ev.Payload) > 0 {
 		row.PayloadJSON = string(ev.Payload)
@@ -199,15 +201,26 @@ func KindCounts(rows []EventRow) map[session.FilterKind]int {
 	return counts
 }
 
-// ChatRows returns user and assistant rows only.
+// ChatRows returns user, assistant, and host-question rows.
 func ChatRows(rows []EventRow) []EventRow {
 	out := make([]EventRow, 0, len(rows))
 	for _, row := range rows {
-		if row.Role == "user" || row.Role == "assistant" {
+		if ChatVisibleRole(row.Role) {
 			out = append(out, row)
 		}
 	}
 	return out
+}
+
+// ChatVisibleRole is the Chat tab allow-list. Questions from a host (approve,
+// ask user) belong here next to the thread, not only on Graph.
+func ChatVisibleRole(role string) bool {
+	switch role {
+	case "user", "assistant", "question":
+		return true
+	default:
+		return false
+	}
 }
 
 // ChatHasProse reports whether Chat would show any rows.

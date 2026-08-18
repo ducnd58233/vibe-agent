@@ -168,54 +168,13 @@ func extractContentArrayText(raw map[string]any) string {
 }
 
 func extractTranscriptUsage(raw map[string]any) *session.Usage {
-	usageObj := map[string]any(nil)
-	if u, ok := raw["usage"].(map[string]any); ok {
-		usageObj = u
-	} else if message, ok := raw["message"].(map[string]any); ok {
-		if u, ok := message["usage"].(map[string]any); ok {
-			usageObj = u
-		}
+	if u := session.ParseUsage(raw); u != nil {
+		return u
 	}
-	if usageObj == nil {
-		return nil
+	if message, ok := raw["message"].(map[string]any); ok {
+		return session.ParseUsage(message)
 	}
-
-	var usage session.Usage
-	has := false
-	if v, ok := usageInt(usageObj, "input", "input_tokens"); ok {
-		usage.Input = v
-		has = true
-	}
-	if v, ok := usageInt(usageObj, "output", "output_tokens"); ok {
-		usage.Output = v
-		has = true
-	}
-	if v, ok := usageInt(usageObj, "cacheRead", "cache_read", "cache_read_input_tokens"); ok {
-		usage.CacheRead = v
-		has = true
-	}
-	if !has {
-		return nil
-	}
-	return &usage
-}
-
-func usageInt(raw map[string]any, keys ...string) (int, bool) {
-	for _, key := range keys {
-		value, ok := raw[key]
-		if !ok {
-			continue
-		}
-		switch n := value.(type) {
-		case float64:
-			return int(n), true
-		case int:
-			return n, true
-		case int64:
-			return int(n), true
-		}
-	}
-	return 0, false
+	return nil
 }
 
 func stringField(raw map[string]any, keys ...string) string {

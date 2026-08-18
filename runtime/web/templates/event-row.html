@@ -10,14 +10,19 @@
         {{ if .Redacted }}<span class="chip chip-warn" data-testid="redacted-chip">redacted</span>{{ end }}
         {{ if .Failed }}<span class="chip chip-fail">failed</span>{{ end }}
         {{ if .HostGap }}<span class="chip chip-warn">host gap</span>{{ end }}
+        {{ if eq .Role "question" }}<span class="chip chip-warn" data-testid="needs-reply">needs reply</span>{{ end }}
         <span class="token-pair{{ if not .HasUsage }} is-empty{{ end }}" data-testid="event-tokens">
           {{ if .HasUsage }}
+          {{ if or .Usage.Input .Usage.Output }}
           <span class="tag tag-in">in {{ .Usage.Input }}</span>
           <span class="tag tag-out">out {{ .Usage.Output }}</span>
           {{ if .Usage.CacheRead }}<span class="tag tag-cache">cache {{ .Usage.CacheRead }}</span>{{ end }}
           {{ else }}
-          <span class="tag tag-in">in —</span>
-          <span class="tag tag-out">out —</span>
+          <span class="tag">{{ .TokensText }}</span>
+          {{ end }}
+          {{ else }}
+          <span class="tag tag-in">in -</span>
+          <span class="tag tag-out">out -</span>
           {{ end }}
         </span>
       </span>

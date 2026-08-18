@@ -26,7 +26,7 @@ type Entry struct {
 var catalog = []Host{
 	{ID: "codex", Binary: "codex", EvalCommand: "codex exec --ephemeral --sandbox read-only --json -"},
 	{ID: "claude", Binary: "claude", EvalCommand: "claude -p"},
-	{ID: "cursor-agent", Binary: "cursor-agent", EvalCommand: "cursor-agent --print --mode ask --trust", PromptAsArg: true},
+	{ID: "cursor-agent", Binary: "cursor-agent", EvalCommand: "cursor-agent --print --output-format stream-json --mode ask --trust", PromptAsArg: true},
 	{ID: "opencode", Binary: "opencode", EvalCommand: "opencode run", PromptAsArg: true},
 }
 

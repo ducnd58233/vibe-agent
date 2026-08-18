@@ -1,6 +1,6 @@
 {{define "graph"}}
 {{ if .GraphNodes }}
-<div class="graph-view" id="graph-view" data-testid="graph-view" hidden>
+<div class="graph-view" id="graph-view" data-testid="graph-view"{{ if ne .View "graph" }} hidden{{ end }}>
   <header class="graph-head">
     <p><strong>{{ .GraphID }}</strong> · {{ len .GraphNodes }} nodes</p>
     {{ if .CurrentNode }}
@@ -20,6 +20,6 @@
   </ol>
 </div>
 {{ else }}
-<div class="graph-view" id="graph-view" data-testid="graph-view" hidden></div>
+<div class="graph-view" id="graph-view" data-testid="graph-view"{{ if ne .View "graph" }} hidden{{ end }}></div>
 {{ end }}
 {{end}}

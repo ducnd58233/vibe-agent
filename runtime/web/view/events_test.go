@@ -63,6 +63,25 @@ func TestSumUsageAggregatesReportedRows(t *testing.T) {
 	}
 }
 
+func TestFormatToolbarTokensCombinedWhenOnlyTotal(t *testing.T) {
+	got := FormatToolbarTokens(UsageTotals{Reported: true, Total: 88})
+	if got != "tokens 88" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestChatRowsIncludesHostQuestion(t *testing.T) {
+	rows := []EventRow{
+		{Role: "tool", Body: "Read"},
+		{Role: "question", Body: "Approve the spec?"},
+		{Role: "user", Body: "yes"},
+	}
+	chat := ChatRows(rows)
+	if len(chat) != 2 || chat[0].Role != "question" || chat[1].Role != "user" {
+		t.Fatalf("chat = %+v", chat)
+	}
+}
+
 func TestChatHasProseFalseForHookOnly(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, session.LogName)

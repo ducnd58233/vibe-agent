@@ -97,7 +97,7 @@ The default runner is "codex". Runner presets include:
 
   codex     codex exec --ephemeral --sandbox read-only --json -
   claude    claude -p
-  cursor    cursor-agent --print --mode ask --trust
+	cursor    cursor-agent --print --output-format stream-json --mode ask --trust
   opencode  opencode run
   all       all presets above
 

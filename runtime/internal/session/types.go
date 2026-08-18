@@ -67,6 +67,7 @@ type Usage struct {
 	Input     int `json:"input,omitempty"`
 	Output    int `json:"output,omitempty"`
 	CacheRead int `json:"cacheRead,omitempty"`
+	Total     int `json:"total,omitempty"`
 }
 
 // Record is one session gesture before it is written.

@@ -194,12 +194,11 @@ func extractDuration(payload string) string {
 }
 
 func formatRowTokens(row EventRow) string {
+	if row.TokensText != "" {
+		return row.TokensText
+	}
 	if !row.HasUsage || row.Usage == nil {
-		return "in — · out —"
+		return "not reported"
 	}
-	text := fmt.Sprintf("in %d · out %d", row.Usage.Input, row.Usage.Output)
-	if row.Usage.CacheRead > 0 {
-		text += fmt.Sprintf(" · cache read %d", row.Usage.CacheRead)
-	}
-	return text
+	return formatUsage(*row.Usage)
 }

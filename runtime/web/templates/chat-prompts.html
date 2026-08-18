@@ -1,6 +1,6 @@
 {{define "chat-prompts"}}
 {{ if .HasChatPrompts }}
-<div class="chat-prompts" id="chat-prompts" data-testid="chat-prompts" hidden>
+<div class="chat-prompts" id="chat-prompts" data-testid="chat-prompts"{{ if ne $.View "chat" }} hidden{{ end }}>
   {{ range .ChatPrompts }}
   <article class="chat-prompt" data-testid="chat-prompt" data-prompt-type="{{ .Type }}">
     <p class="chat-prompt-kicker">{{ .Type }} · {{ .NodeID }}</p>

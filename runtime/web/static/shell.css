@@ -830,7 +830,7 @@ button {
 .dialog-body textarea:focus-visible,
 .dialog-body select:focus-visible,
 .inspector-pane select:focus-visible,
-.composer select:focus-visible,
+.host-picker-open:focus-visible,
 .chat-prompt-note input:focus-visible {
   outline: none;
   border-color: var(--color-accent-soft);
@@ -970,6 +970,7 @@ button {
 .role-user { color: var(--color-role-user); }
 .role-context { color: var(--color-role-context); }
 .role-assistant { color: var(--color-role-assistant); }
+.role-question { color: var(--color-warn); }
 .role-tool { color: var(--color-role-tool); }
 
 .event-body {
@@ -1191,6 +1192,40 @@ button {
   margin: 0.75rem 0;
 }
 
+.busy-indicator,
+.thinking-bar {
+  max-width: var(--composer-max);
+  width: 100%;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.thinking-bar-track {
+  height: 0.25rem;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-3);
+}
+
+.thinking-bar-fill {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent);
+  animation: thinking-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes thinking-slide {
+  from { transform: translateX(-120%); }
+  to { transform: translateX(280%); }
+}
+
+.thinking-bar-label {
+  margin: 0.375rem 0 0;
+  color: var(--color-text-caption);
+  font-size: var(--font-size-meta);
+}
+
 .chat-block.user {
   margin-inline-start: 12%;
 }
@@ -1262,15 +1297,49 @@ button {
 }
 
 .composer-preview {
-  min-height: 1.25rem;
-  padding: 0 0.25rem;
-  font-size: 0.75rem;
-  color: var(--color-text-caption);
-  overflow-wrap: anywhere;
+  pointer-events: none;
 }
 
 .composer-preview:empty {
   display: none;
+}
+
+.composer-field-wrap {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  align-items: center;
+  height: var(--control-height);
+}
+
+.composer-field-wrap .composer-preview,
+.composer-field-wrap .composer-field {
+  grid-area: 1 / 1;
+  min-width: 0;
+  width: 100%;
+  height: var(--control-height);
+  margin: 0;
+  padding: 0 0.5rem;
+  line-height: var(--control-height);
+  font: inherit;
+  white-space: pre;
+  overflow: hidden;
+}
+
+.composer-field-wrap .composer-preview {
+  color: transparent;
+  z-index: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.composer-field-wrap .composer-preview::-webkit-scrollbar {
+  display: none;
+}
+
+.composer-field-wrap .composer-ref {
+  color: transparent;
 }
 
 .composer-ref {
@@ -1343,9 +1412,35 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   padding: 0.5rem 0.625rem;
   border-bottom: 1px solid var(--color-border);
   font-size: 0.75rem;
+}
+
+.file-browser-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.file-browser-close,
+.file-browser-up {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+}
+
+.file-browser-close:hover,
+.file-browser-up:hover {
+  background: var(--color-hover);
 }
 
 .file-preview {
@@ -1372,10 +1467,8 @@ button {
   background: transparent;
   padding: 0 0.5rem;
   line-height: var(--control-height);
-}
-
-.composer .composer-field:focus {
-  outline: none;
+  position: relative;
+  z-index: 1;
 }
 
 .composer-tools {
@@ -1383,9 +1476,20 @@ button {
   gap: 0.5rem;
   align-items: center;
   height: var(--control-height);
+  position: relative;
+  overflow: visible;
 }
 
-.composer select {
+.host-picker {
+  position: relative;
+  min-width: 0;
+}
+
+.host-picker-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 11rem;
   height: var(--control-height);
   margin: 0;
   padding: 0 0.5rem;
@@ -1393,6 +1497,43 @@ button {
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
   box-shadow: var(--shadow-xs);
+  color: inherit;
+}
+
+.host-picker-open span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.host-menu {
+  position: absolute;
+  bottom: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 22;
+  min-width: 100%;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.host-option {
+  display: block;
+  width: 100%;
+  text-align: start;
+  padding: 0.5rem 0.625rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+}
+
+.host-option:hover {
+  background: var(--color-surface);
 }
 
 .metrics {
@@ -1566,6 +1707,10 @@ dialog {
   max-width: calc(100vw - 2rem);
   overflow: hidden;
   z-index: 40;
+}
+
+dialog:not([open]) {
+  display: none;
 }
 
 dialog::backdrop {
@@ -2033,6 +2178,16 @@ form.dialog-body > .field {
     line-height: var(--touch);
   }
 
+  .composer-field-wrap {
+    height: var(--touch);
+  }
+
+  .composer-field-wrap .composer-preview,
+  .composer-field-wrap .composer-field {
+    height: var(--touch);
+    line-height: var(--touch);
+  }
+
   .composer-tools {
     grid-column: 1 / -1;
     width: 100%;
@@ -2040,7 +2195,7 @@ form.dialog-body > .field {
     justify-content: space-between;
   }
 
-  .composer select,
+  .host-picker-open,
   .composer .btn-send {
     height: var(--touch);
   }
@@ -2085,5 +2240,10 @@ form.dialog-body > .field {
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
+  }
+
+  .thinking-bar-fill {
+    animation: none;
+    width: 100%;
   }
 }
