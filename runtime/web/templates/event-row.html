@@ -1,0 +1,32 @@
+{{define "event-row"}}
+<li data-kind="{{ .Kind }}" data-role="{{ .Role }}" data-search="{{ .SearchText }}">
+  <button class="event{{ if .Failed }} is-failed{{ end }}" type="button" data-seq="{{ .Seq }}" aria-pressed="false" data-testid="event-row">
+    <span class="role role-{{ .Role }}">{{ .Role }}</span>
+    <span class="event-body">
+      <span class="event-kicker">
+        <span class="event-seq">#{{ .Seq }}</span>
+        <span class="source source-{{ .Kind }}" data-testid="source-tag">{{ .Kind }}</span>
+        <span class="event-title">{{ .Summary }}</span>
+        {{ if .Redacted }}<span class="chip chip-warn" data-testid="redacted-chip">redacted</span>{{ end }}
+        {{ if .Failed }}<span class="chip chip-fail">failed</span>{{ end }}
+        {{ if .HostGap }}<span class="chip chip-warn">host gap</span>{{ end }}
+        <span class="token-pair{{ if not .HasUsage }} is-empty{{ end }}" data-testid="event-tokens">
+          {{ if .HasUsage }}
+          <span class="tag tag-in">in {{ .Usage.Input }}</span>
+          <span class="tag tag-out">out {{ .Usage.Output }}</span>
+          {{ if .Usage.CacheRead }}<span class="tag tag-cache">cache {{ .Usage.CacheRead }}</span>{{ end }}
+          {{ else }}
+          <span class="tag tag-in">in —</span>
+          <span class="tag tag-out">out —</span>
+          {{ end }}
+        </span>
+      </span>
+      {{ if or (eq .Kind "tool") (eq .Kind "skill") }}
+      <pre>{{ .Body }}</pre>
+      {{ else }}
+      <p class="event-text">{{ .Body }}</p>
+      {{ end }}
+    </span>
+  </button>
+</li>
+{{end}}

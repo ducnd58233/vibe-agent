@@ -1,0 +1,9 @@
+{{define "pipeline"}}
+<div class="pipeline-row" aria-label="Session pipeline">
+  <div class="pipeline" data-testid="event-pipeline" role="group" aria-label="Events in order">
+    {{ range .Events }}
+    <button type="button" class="pipeline-seg source-{{ .Kind }}{{ if .Failed }} is-failed{{ end }}" data-seq="{{ .Seq }}" aria-label="#{{ .Seq }} {{ .Kind }} {{ .Summary }}"></button>
+    {{ end }}
+  </div>
+</div>
+{{end}}

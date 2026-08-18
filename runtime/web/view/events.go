@@ -1,0 +1,203 @@
+package view
+
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+)
+
+// KindOrder is the pipeline and filter menu order.
+var KindOrder = []session.FilterKind{
+	session.FilterHook,
+	session.FilterTool,
+	session.FilterSkill,
+	session.FilterGraph,
+	session.FilterTranscript,
+}
+
+// EventRow is one rendered trajectory line.
+type EventRow struct {
+	Seq         int
+	Role        string
+	Kind        session.FilterKind
+	Source      session.Source
+	Summary     string
+	Body        string
+	PayloadJSON string
+	Usage       *session.Usage
+	HasUsage    bool
+	Failed      bool
+	HostGap     bool
+	Redacted    bool
+	SearchText  string
+}
+
+type payloadView struct {
+	session.Payload
+	Failed   bool `json:"failed,omitempty"`
+	ExitCode *int `json:"exitCode,omitempty"`
+	HostGap  bool `json:"hostGap,omitempty"`
+}
+
+// ProjectEvents maps stored session lines to UI rows.
+func ProjectEvents(events []session.Event) []EventRow {
+	rows := make([]EventRow, 0, len(events))
+	for _, ev := range events {
+		row := projectEvent(ev)
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+func projectEvent(ev session.Event) EventRow {
+	var body payloadView
+	if len(ev.Payload) > 0 {
+		_ = json.Unmarshal(ev.Payload, &body)
+	}
+	if body.Client == "" {
+		body.Client = ev.Client
+	}
+	if body.Role == "" {
+		body.Role = ev.Role
+	}
+	if body.Source == "" {
+		body.Source = ev.Source
+	}
+	kind := session.Kind(ev)
+	role := eventRole(ev, body.Payload)
+	summary := eventSummary(ev, body.Payload)
+	displayBody := eventBody(ev, body.Payload)
+	row := EventRow{
+		Seq:     ev.Sequence,
+		Role:    role,
+		Kind:    kind,
+		Source:  body.Source,
+		Summary: summary,
+		Body:    displayBody,
+		Failed:  body.Failed,
+		Redacted: strings.Contains(displayBody, "[REDACTED]") ||
+			strings.Contains(displayBody, "<credential>"),
+	}
+	if body.Usage != nil && (body.Usage.Input > 0 || body.Usage.Output > 0 || body.Usage.CacheRead > 0) {
+		row.Usage = body.Usage
+		row.HasUsage = true
+	}
+	if len(ev.Payload) > 0 {
+		row.PayloadJSON = string(ev.Payload)
+	}
+	row.HostGap = body.HostGap
+	row.SearchText = strings.ToLower(strings.Join([]string{
+		summary,
+		displayBody,
+		role,
+		string(kind),
+		fmt.Sprint(ev.Sequence),
+	}, " "))
+	return row
+}
+
+func eventRole(ev session.Event, body session.Payload) string {
+	if body.Source == session.SourceGraph {
+		return "context"
+	}
+	switch ev.Type {
+	case session.TypeSessionStart, session.TypeStop, session.TypeSubagentStop:
+		return "system"
+	case session.TypePromptSubmit:
+		return "user"
+	case session.TypeTranscriptMessage:
+		if role := strings.ToLower(strings.TrimSpace(body.Role)); role != "" {
+			return role
+		}
+		return "assistant"
+	case session.TypePreTool, session.TypeToolUse:
+		return "tool"
+	default:
+		return "system"
+	}
+}
+
+func eventSummary(ev session.Event, body session.Payload) string {
+	switch ev.Type {
+	case session.TypeSessionStart:
+		if body.Client != "" {
+			return "SessionStart · client " + body.Client
+		}
+		return "SessionStart"
+	case session.TypePromptSubmit:
+		return "UserPromptSubmit"
+	case session.TypePreTool:
+		if body.Event != "" {
+			return body.Event
+		}
+		if body.Tool != "" {
+			return body.Tool
+		}
+		return "PreToolUse"
+	case session.TypeToolUse:
+		if body.Tool != "" {
+			return body.Tool
+		}
+		return "ToolUse"
+	case session.TypeStop:
+		return "Stop"
+	case session.TypeSubagentStop:
+		return "SubagentStop"
+	case session.TypeTranscriptMessage:
+		if body.Role != "" {
+			return "projected " + strings.ToLower(body.Role) + " text"
+		}
+		return "transcript message"
+	default:
+		if body.Event != "" {
+			return body.Event
+		}
+		return string(ev.Type)
+	}
+}
+
+func eventBody(ev session.Event, body session.Payload) string {
+	switch ev.Type {
+	case session.TypeToolUse, session.TypePreTool:
+		if body.Command != "" {
+			return body.Command
+		}
+		if body.Tool != "" && body.Body == "" {
+			return body.Tool
+		}
+	}
+	if body.Body != "" {
+		return body.Body
+	}
+	if body.Command != "" {
+		return body.Command
+	}
+	return body.Event
+}
+
+// KindCounts tallies filter buckets for the menu.
+func KindCounts(rows []EventRow) map[session.FilterKind]int {
+	counts := make(map[session.FilterKind]int)
+	for _, row := range rows {
+		counts[row.Kind]++
+	}
+	return counts
+}
+
+// ChatRows returns user and assistant rows only.
+func ChatRows(rows []EventRow) []EventRow {
+	out := make([]EventRow, 0, len(rows))
+	for _, row := range rows {
+		if row.Role == "user" || row.Role == "assistant" {
+			out = append(out, row)
+		}
+	}
+	return out
+}
+
+// ChatHasProse reports whether Chat would show any rows.
+func ChatHasProse(rows []EventRow) bool {
+	return len(ChatRows(rows)) > 0
+}

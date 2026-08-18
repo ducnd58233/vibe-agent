@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ .Slug }} · vibe-agent web</title>
+  <link rel="stylesheet" href="/static/tokens.css">
+  <link rel="stylesheet" href="/static/shell.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#stream">Skip to trajectory</a>
+  <div class="app" id="app" data-testid="app-shell">
+    <button class="backdrop backdrop-sidebar" type="button" id="sidebar-backdrop" aria-label="Close sessions"></button>
+    <button class="backdrop backdrop-inspector" type="button" id="inspector-backdrop" aria-label="Close inspector"></button>
+    <nav class="sidebar" aria-label="Workspace and sessions" data-testid="rail">
+      <div class="brand">
+        <h1>vibe-agent</h1>
+        <span class="mark">WEB</span>
+      </div>
+      <button class="btn btn-block" type="button" disabled data-testid="new-session-disabled">New Session</button>
+      <div class="sidebar-scroll">
+        <div class="nav-block">
+          <p class="nav-label">Workspaces</p>
+          <p data-testid="workspace-list-empty">No other workspace recorded yet.</p>
+          <p class="host-missing" data-testid="workspace-path">{{ .Workspace }}</p>
+        </div>
+        <div class="nav-block">
+          <p class="nav-label">Sessions</p>
+          {{ if .HasSessions }}
+          <ul class="session-list" data-testid="session-list">
+            {{ range .Sessions }}
+            <li>
+              <a href="/session/{{ . }}"{{ if eq . $.Slug }} aria-current="page"{{ end }} data-testid="session-item">{{ . }}</a>
+            </li>
+            {{ end }}
+          </ul>
+          {{ else }}
+          <p data-testid="session-list-empty">No delivery run and no ambient journal in this workspace.</p>
+          {{ end }}
+        </div>
+      </div>
+      <div class="sidebar-foot">
+        <button class="btn btn-ghost btn-block" type="button" id="settings-open" data-testid="settings-open">Settings</button>
+      </div>
+    </nav>
+    <section class="main">
+      <header class="topbar">
+        <button class="btn-icon menu-btn" type="button" id="sidebar-open" aria-label="Open sessions" data-testid="sidebar-open">Menu</button>
+        <div class="session-crumb">
+          <strong>{{ .Slug }}</strong>
+          <span class="mode-chip" data-testid="run-status">{{ .RunStatus }}</span>
+        </div>
+        <div class="tabs" role="tablist" aria-label="Session view" data-testid="view-tabs">
+          <button class="tab" type="button" role="tab" aria-selected="false" data-view="chat">Chat</button>
+          <button class="tab" type="button" role="tab" aria-selected="true" data-view="trajectory">Trajectory</button>
+          <button class="tab" type="button" role="tab" aria-selected="false" data-view="graph" disabled>Graph</button>
+        </div>
+        <button class="btn btn-ghost" type="button" id="session-log" data-testid="session-log">Session log</button>
+      </header>
+      <div class="toolbar" data-testid="trajectory-toolbar">
+        <dl class="stat"><dt>Duration</dt><dd>--</dd></dl>
+        <dl class="stat"><dt>Turns</dt><dd>{{ .TurnCount }}</dd></dl>
+        <dl class="stat"><dt>Calls</dt><dd>{{ .ToolCalls }}</dd></dl>
+        <dl class="stat"><dt>Tokens</dt><dd data-testid="token-usage">{{ .ToolbarTokens }}</dd></dl>
+        <div class="toolbar-end">
+          <div class="kind-filter-ctl" id="kind-filter-wrap">
+            <button class="filter-btn" type="button" id="kind-filter-open" data-testid="kind-filter-open" aria-haspopup="true" aria-expanded="false" aria-controls="kind-filter-menu">
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M2 3.5h12l-4.2 5.2V13L6.2 12V8.7z"/></svg>
+              <span id="kind-filter-label">Filter</span>
+            </button>
+            <button class="filter-btn filter-clear" type="button" id="kind-filter-clear" data-testid="kind-filter-clear" hidden>Clear</button>
+            <div class="kind-menu" id="kind-filter-menu" data-testid="kind-filter" role="group" aria-label="Event kinds" hidden>
+              {{ range $kind := KindOrder }}
+              <label class="kind-check source-{{ $kind }}">
+                <input type="checkbox" data-filter="{{ $kind }}">
+                <span>{{ $kind }}</span>
+                <span class="kind-count">{{ index $.KindCounts $kind }}</span>
+              </label>
+              {{ end }}
+            </div>
+          </div>
+          <input class="search" type="search" id="search" data-testid="event-search" placeholder="Search events" aria-label="Search events">
+        </div>
+      </div>
+      {{ template "pipeline" . }}
+      <div class="stream" id="stream" data-testid="trajectory" tabindex="-1">
+        {{ if .Events }}
+        <ol class="event-list" id="event-list" data-testid="event-list" aria-live="polite">
+          {{ range .Events }}{{ template "event-row" . }}{{ end }}
+        </ol>
+        <p class="empty" id="stream-empty" hidden data-testid="trajectory-empty"></p>
+        {{ else }}
+        <p class="empty" id="stream-empty" data-testid="trajectory-empty">Nothing to reconstruct yet</p>
+        {{ end }}
+        <p class="empty chat-empty" id="chat-empty" hidden data-testid="chat-empty">
+          Chat is empty until a host reports user or assistant text. Trajectory still lists hook and tool rows.
+        </p>
+      </div>
+      <div class="dock">
+        <form class="composer" aria-disabled="true">
+          <input class="composer-field" type="text" placeholder="Composer is Task 10" disabled aria-label="Message">
+        </form>
+      </div>
+    </section>
+    <aside class="inspector" id="inspector" data-testid="inspector" aria-label="Inspector">
+      <div class="inspector-head">
+        <h2 id="inspector-title">Select an event</h2>
+        <button class="btn-icon" type="button" id="inspector-close" aria-label="Close inspector">×</button>
+      </div>
+      <div class="inspector-tabs" role="tablist" aria-label="Inspector sections">
+        <button type="button" role="tab" aria-selected="true" data-pane="summary">Summary</button>
+        <button type="button" role="tab" aria-selected="false" data-pane="payload">Payload</button>
+        <button type="button" role="tab" aria-selected="false" data-pane="result">Result</button>
+        <button type="button" role="tab" aria-selected="false" data-pane="schema">Schema</button>
+        <button type="button" role="tab" aria-selected="false" data-pane="timing">Timing</button>
+      </div>
+      <div class="inspector-body" id="inspector-body">
+        <p>Select a trajectory row to inspect its already-redacted payload.</p>
+        <p data-testid="inspector-tokens">{{ .ToolbarTokens }}</p>
+      </div>
+    </aside>
+  </div>
+  <dialog id="log-dialog" aria-labelledby="log-heading">
+    <div class="dialog-body dialog-log-shell">
+      <div class="dialog-head">
+        <h2 id="log-heading">Session log</h2>
+        <button class="btn" type="button" id="log-close">Close</button>
+      </div>
+      <pre id="log-pre" class="dialog-log" data-testid="session-log-pre">{{ range .Events }}{{ .PayloadJSON }}
+{{ end }}</pre>
+    </div>
+  </dialog>
+  <script>
+    const app = document.getElementById("app");
+    const eventList = document.getElementById("event-list");
+    const empty = document.getElementById("stream-empty");
+    const chatEmpty = document.getElementById("chat-empty");
+    const pipeline = document.querySelector("[data-testid=event-pipeline]");
+    const filterWrap = document.getElementById("kind-filter-wrap");
+    const filterMenu = document.getElementById("kind-filter-menu");
+    const filterOpen = document.getElementById("kind-filter-open");
+    const filterClear = document.getElementById("kind-filter-clear");
+    const search = document.getElementById("search");
+    const inspector = document.getElementById("inspector");
+    const inspectorBody = document.getElementById("inspector-body");
+    const inspectorTitle = document.getElementById("inspector-title");
+    let view = "trajectory";
+    const payloads = {};
+    {{ range .Events }}payloads[{{ .Seq }}] = {{ printf "%q" .PayloadJSON }};{{ end }}
+    const chatEmptyDefault = {{ if .ChatEmpty }}true{{ else }}false{{ end }};
+
+    document.getElementById("sidebar-open").addEventListener("click", () => app.classList.add("is-sidebar-open"));
+    document.getElementById("sidebar-backdrop").addEventListener("click", () => app.classList.remove("is-sidebar-open"));
+    document.getElementById("inspector-close").addEventListener("click", () => app.classList.add("is-inspector-closed"));
+    document.getElementById("inspector-backdrop").addEventListener("click", () => app.classList.add("is-inspector-closed"));
+    document.getElementById("session-log").addEventListener("click", () => document.getElementById("log-dialog").showModal());
+    document.getElementById("log-close").addEventListener("click", () => document.getElementById("log-dialog").close());
+
+    document.querySelectorAll("[data-view]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        view = btn.dataset.view;
+        document.querySelectorAll("[data-view]").forEach((tab) => {
+          tab.setAttribute("aria-selected", tab === btn ? "true" : "false");
+        });
+        filterWrap.hidden = view === "chat";
+        if (pipeline && pipeline.parentElement) pipeline.parentElement.hidden = view === "chat";
+        applyFilters();
+      });
+    });
+
+    filterOpen.addEventListener("click", () => {
+      const open = filterMenu.hidden;
+      filterMenu.hidden = !open;
+      filterOpen.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    filterClear.addEventListener("click", () => {
+      filterMenu.querySelectorAll("input[type=checkbox]").forEach((box) => { box.checked = false; });
+      applyFilters();
+    });
+    filterMenu.addEventListener("change", applyFilters);
+    search.addEventListener("input", applyFilters);
+
+    function selectedKinds() {
+      return Array.from(filterMenu.querySelectorAll("input[type=checkbox]:checked")).map((box) => box.dataset.filter);
+    }
+
+    function applyFilters() {
+      const kinds = selectedKinds();
+      const q = search.value.trim().toLowerCase();
+      filterClear.hidden = kinds.length === 0;
+      let visible = 0;
+      if (eventList) {
+        eventList.querySelectorAll("li").forEach((li) => {
+          const kind = li.dataset.kind;
+          const role = li.dataset.role;
+          const text = li.dataset.search || "";
+          let show = true;
+          if (view === "chat" && role !== "user" && role !== "assistant") show = false;
+          if (view !== "chat" && kinds.length && kinds.indexOf(kind) === -1) show = false;
+          if (q && text.indexOf(q) === -1) show = false;
+          li.hidden = !show;
+          if (show) visible += 1;
+        });
+      }
+      const chatNoProse = view === "chat" && chatEmptyDefault;
+      if (chatEmpty) chatEmpty.hidden = !chatNoProse;
+      if (empty) {
+        empty.hidden = chatNoProse || visible > 0;
+        if (!empty.hidden && !chatNoProse) empty.textContent = "No events match this filter.";
+      }
+    }
+
+    if (eventList) {
+      eventList.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-seq]");
+        if (!btn) return;
+        const seq = btn.dataset.seq;
+        eventList.querySelectorAll("[data-seq]").forEach((el) => el.setAttribute("aria-pressed", el === btn ? "true" : "false"));
+        inspectorTitle.textContent = btn.querySelector(".event-title").textContent;
+        inspectorBody.innerHTML = "<pre data-testid=inspector-payload style=white-space:pre-wrap;overflow-wrap:anywhere>" +
+          (payloads[seq] || "") + "</pre><p data-testid=inspector-tokens>" +
+          (btn.querySelector("[data-testid=event-tokens]") ? btn.querySelector("[data-testid=event-tokens]").textContent : "") +
+          "</p>";
+        app.classList.remove("is-inspector-closed");
+      });
+    }
+  </script>
+</body>
+</html>

@@ -29,7 +29,17 @@ runtime/
     memory.go             list, confirm, forget. The human side of the store
     fetch.go              a URL or file as text, cached by source
     doctor.go             workspace health checks
+    web.go                loopback web UI (127.0.0.1 only)
+  web/                    embedded templates, static assets, view models
+    render.go             embed + template funcs
+    static/               tokens.css, shell.css, htmx.min.js
+    templates/            html/template pages
+    view/                 event projection, pages, inspector, usage
   internal/
+    web/
+      app/                HTTP server composition root (bootstrap, routes)
+      domain/             web.json state model
+      infra/persistence/  .agent-state/web.json writer
     shared/workspace/     the directory names every module agrees on
     run/                  one delivery run: where it sits, what was recorded
       domain/             Run, Check, Event, the provenance enum, and its rules

@@ -5,7 +5,7 @@ import (
 	"runtime"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
-	"github.com/ducnd58233/vibe-agent/runtime/web"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/app"
 )
 
 func webCommand(args []string) error {
@@ -21,9 +21,9 @@ func webCommand(args []string) error {
 		return err
 	}
 	if *open {
-		_ = openBrowser(context.Background(), web.Addr(*port))
+		_ = openBrowser(context.Background(), app.Addr(*port))
 	}
-	return web.Run(web.Config{
+	return app.Run(app.Config{
 		WorkspaceRoot: workspaceRoot,
 		Port:          *port,
 	})

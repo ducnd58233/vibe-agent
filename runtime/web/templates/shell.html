@@ -87,7 +87,7 @@
     </section>
   </div>
 
-  <dialog id="settings-dialog" data-testid="settings-dialog" data-server-url="{{ .URL }}" aria-labelledby="settings-heading">
+  <dialog id="settings-dialog" data-testid="settings-dialog" aria-labelledby="settings-heading">
     <div class="dialog-body settings-shell">
       <div class="dialog-head">
         <h2 id="settings-heading">Settings</h2>
@@ -145,7 +145,7 @@
 
   <script>
     const app = document.getElementById("app");
-    const serverURL = document.getElementById("settings-dialog").dataset.serverUrl;
+    const serverURL = {{ printf "%q" .URL }};
     document.getElementById("sidebar-open").addEventListener("click", () => {
       app.classList.add("is-sidebar-open");
     });
