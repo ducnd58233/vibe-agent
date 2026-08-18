@@ -2,7 +2,6 @@ package app
 
 import (
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
@@ -44,11 +43,7 @@ func handleWorkspaceSwitch(w http.ResponseWriter, r *http.Request, d httpDeps) {
 		Secure:   false, // loopback HTTP only
 		MaxAge:   60 * 60 * 24 * 30,
 	})
-	target := "/"
-	if slug := strings.TrimSpace(r.FormValue("return_slug")); slug != "" {
-		target = "/session/" + url.PathEscape(slug)
-	}
-	http.Redirect(w, r, target, http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func loadRegistry(primary string, extra []string) (domain.Registry, error) {

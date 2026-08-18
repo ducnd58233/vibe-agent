@@ -40,8 +40,12 @@
         <div class="nav-block">
           <p class="nav-label">Sessions</p>
           {{ if .HasSessions }}
-          <ul class="tree" data-testid="session-list">
-            {{ range .Sessions }}<li>{{ . }}</li>{{ end }}
+          <ul class="session-list" data-testid="session-list">
+            {{ range .Sessions }}
+            <li>
+              <a href="/session/{{ . }}" data-testid="session-item">{{ . }}</a>
+            </li>
+            {{ end }}
           </ul>
           {{ else }}
           <p data-testid="session-list-empty">No delivery run and no ambient journal in this workspace.</p>

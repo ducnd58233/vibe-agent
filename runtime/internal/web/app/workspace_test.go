@@ -30,6 +30,9 @@ func TestWorkspaceSwitchSetsCookieAndRedirects(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d", rec.Code)
 	}
+	if loc := rec.Header().Get("Location"); loc != "/" {
+		t.Fatalf("location = %q", loc)
+	}
 	cookies := rec.Result().Cookies()
 	var found bool
 	for _, c := range cookies {
@@ -76,7 +79,31 @@ func TestActiveWorkspaceCookieChangesSessionList(t *testing.T) {
 	if !strings.Contains(body, slug) {
 		t.Fatalf("session from workspace B missing: %s", body)
 	}
+	if !strings.Contains(body, `href="/session/`+slug+`"`) {
+		t.Fatal("session list should link to the session page")
+	}
 	if !strings.Contains(body, `data-testid="workspace-list"`) {
 		t.Fatal("expected workspace list")
+	}
+}
+
+func TestWorkspaceSwitchIgnoresReturnSlug(t *testing.T) {
+	rootA := t.TempDir()
+	rootB := t.TempDir()
+	reg := domain.NewRegistry(rootA, []string{rootB})
+	handler, err := NewHandlerWithRegistry(reg, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	body := "workspace_id=" + reg.ID(rootB) + "&return_slug=missing-session"
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/workspace/switch", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/" {
+		t.Fatalf("location = %q, want /", loc)
 	}
 }

@@ -11,7 +11,7 @@
 </head>
 <body>
   <a class="skip" href="#stream">Skip to trajectory</a>
-  <div class="app" id="app" data-testid="app-shell">
+  <div class="app is-inspector-closed" id="app" data-testid="app-shell">
     <button class="backdrop backdrop-sidebar" type="button" id="sidebar-backdrop" aria-label="Close sessions"></button>
     <button class="backdrop backdrop-inspector" type="button" id="inspector-backdrop" aria-label="Close inspector"></button>
     <nav class="sidebar" aria-label="Workspace and sessions" data-testid="rail">
@@ -29,7 +29,6 @@
             <li>
               <form method="post" action="/workspace/switch">
                 <input type="hidden" name="workspace_id" value="{{ .ID }}">
-                <input type="hidden" name="return_slug" value="{{ $.Slug }}">
                 <button type="submit" class="btn btn-ghost btn-block workspace-switch{{ if .Active }} is-active{{ end }}" data-testid="workspace-switch"{{ if .Active }} aria-current="page"{{ end }}>{{ .Label }}</button>
               </form>
             </li>
