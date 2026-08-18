@@ -8,13 +8,17 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 )
 
 // This exercises the consumer-repo shape from AGENTS.md: a workspace that keeps
@@ -729,6 +733,82 @@ func TestGraphValidateRunsAgainstTheShippedGraph(t *testing.T) {
 	}
 	if !strings.Contains(string(out), "ok goal-delivery") {
 		t.Errorf("goal-delivery did not validate:\n%s", out)
+	}
+}
+
+const e2eWebSecret = "sk-0123456789abcdef0123456789ab"
+
+func TestWebServesFixtureTrajectory(t *testing.T) {
+	root := consumerRepo(t)
+	slug := "fixture-web"
+	writeWebFixtureSession(t, root, slug)
+	run := cli{t, buildBinary(t), root, toolkitRoot(t)}
+	port := "13081"
+	cmd, err := safexec.CommandContext(run.t.Context(), run.binary, "web", "--port", port, "--workspace", root, "--toolkit", run.toolkit)
+	if err != nil {
+		t.Fatalf("web command: %v", err)
+	}
+	cmd.Dir = moduleRoot(t)
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start web: %v", err)
+	}
+	defer func() {
+		_ = cmd.Process.Kill()
+	}()
+	url := "http://127.0.0.1:" + port + "/session/" + slug
+	var body string
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		req, reqErr := http.NewRequestWithContext(run.t.Context(), http.MethodGet, url, nil)
+		if reqErr != nil {
+			t.Fatalf("request: %v", reqErr)
+		}
+		resp, getErr := http.DefaultClient.Do(req)
+		if getErr == nil && resp.StatusCode == http.StatusOK {
+			raw, readErr := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if readErr == nil {
+				body = string(raw)
+				break
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if body == "" {
+		t.Fatal("web did not serve session page in time")
+	}
+	if !strings.Contains(body, `data-seq="2"`) || !strings.Contains(body, "user") {
+		t.Fatalf("fixture seq/role missing:\n%s", body)
+	}
+	if strings.Contains(body, e2eWebSecret) {
+		t.Fatal("fixture secret leaked into HTML")
+	}
+}
+
+func writeWebFixtureSession(t *testing.T, root, slug string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	path := session.LogPath(root, slug)
+	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
+	records := []session.Record{
+		{Type: session.TypeSessionStart, Source: session.SourceHook, Client: "cursor", Event: "SessionStart"},
+		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "cursor", Body: "plan with key " + e2eWebSecret},
+		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "ready"},
+	}
+	for _, rec := range records {
+		rec.At = stamp
+		if _, err := session.Append(path, rec); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run, err := state.NewRun(slug, "fixture", "goal-delivery", 50, stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
+		t.Fatal(err)
 	}
 }
 

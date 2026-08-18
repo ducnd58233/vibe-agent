@@ -43,7 +43,7 @@ func TestEmptyShellRendersRequiredTestIDs(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(body)
-	for _, id := range []string{"app-shell", "rail", "trajectory-empty", "workspace-path"} {
+	for _, id := range []string{"app-shell", "rail", "trajectory-empty", "workspace-path", "new-session-open", "composer"} {
 		if !strings.Contains(text, `data-testid="`+id+`"`) {
 			t.Fatalf("missing test id %q in %s", id, text)
 		}
@@ -69,7 +69,7 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	for _, id := range []string{
 		"event-list", "event-pipeline", "kind-filter-open", "kind-filter",
 		"kind-filter-clear", "event-tokens", "token-usage", "inspector", "chat-empty",
-		"graph-view",
+		"graph-view", "settings-dialog", "composer", "new-session-form",
 	} {
 		if !strings.Contains(body, `data-testid="`+id+`"`) {
 			t.Fatalf("missing test id %q", id)

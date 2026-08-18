@@ -48,6 +48,7 @@ const (
 	SourceHook       Source = "hook"
 	SourceTranscript Source = "transcript"
 	SourceGraph      Source = "graph"
+	SourcePrint      Source = "print"
 )
 
 // FilterKind is the UI filter bucket for a row.

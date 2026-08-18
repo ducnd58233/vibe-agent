@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -11,6 +12,8 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/app"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/persistence"
 )
 
 // doctorCommand checks that the control plane is wired correctly in this
@@ -41,6 +44,7 @@ func doctorCommand(args []string) error {
 	checkCheckPlan(report, workspaceRoot, toolkitRoot)
 	checkMemory(report, workspaceRoot)
 	checkRunState(report, workspaceRoot)
+	checkWebState(report, workspaceRoot)
 	checkGitignore(report, workspaceRoot)
 
 	fmt.Println()
@@ -194,6 +198,28 @@ func checkRunState(report *diagnostics, workspaceRoot string) {
 		}
 		report.check("run state "+entry.Name()+" is valid", true, "")
 	}
+}
+
+func checkWebState(report *diagnostics, workspaceRoot string) {
+	st, exists, err := persistence.LoadState(workspaceRoot)
+	if err != nil {
+		report.check("web.json is valid", false, err.Error())
+		return
+	}
+	if !exists {
+		fmt.Println("  note  no web.json yet; start `vibe-agent web` when you want the UI")
+		return
+	}
+	parsed, parseErr := url.Parse(st.URL)
+	if parseErr != nil {
+		report.check("web.json URL is loopback", false, parseErr.Error())
+		return
+	}
+	if err := app.ValidateListenHost(parsed.Hostname()); err != nil {
+		report.check("web.json URL is loopback", false, st.URL)
+		return
+	}
+	report.check("web.json URL is loopback", true, "")
 }
 
 // checkGitignore catches the mistake that would commit run evidence or a memory

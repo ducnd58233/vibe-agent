@@ -17,7 +17,7 @@
         <h1>vibe-agent</h1>
         <span class="mark">WEB</span>
       </div>
-      <button class="btn btn-block" type="button" disabled data-testid="new-session-disabled">New Session</button>
+      <button class="btn btn-block" type="button" id="new-session-open" data-testid="new-session-open">New Session</button>
       <div class="sidebar-scroll">
         <div class="nav-block">
           <p class="nav-label">Workspaces</p>
@@ -76,11 +76,8 @@
         </div>
       </div>
       <div class="dock">
-        <form class="composer" aria-disabled="true">
-          <button class="btn-icon" type="button" disabled aria-label="Attach context">
-            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7 3h2v4h4v2H9v4H7V9H3V7h4z"/></svg>
-          </button>
-          <input class="composer-field" type="text" placeholder="Install a host, or wait for hooks to fire" disabled aria-label="Message">
+        <form class="composer" data-testid="composer" aria-disabled="true">
+          <input class="composer-field" type="text" placeholder="{{ if .CanCompose }}Open a session to send{{ else }}Install a host on PATH to send{{ end }}" disabled aria-label="Message">
           <button class="btn-send" type="submit" disabled aria-label="Send">→</button>
         </form>
       </div>
@@ -143,6 +140,27 @@
     </div>
   </dialog>
 
+  </dialog>
+
+  <dialog id="new-session-dialog" data-testid="new-session-form" aria-labelledby="new-session-heading">
+    <form class="dialog-body" method="post" action="/session/new">
+      <div class="dialog-head">
+        <h2 id="new-session-heading">New Session</h2>
+        <button class="btn" type="button" id="new-session-close">Close</button>
+      </div>
+      <label class="field">
+        <span>Slug</span>
+        <input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="kebab-case slug">
+      </label>
+      <label class="field">
+        <span>Goal</span>
+        <input name="goal" required placeholder="One-line objective">
+      </label>
+      <input type="hidden" name="graph" value="goal-delivery">
+      <button class="btn btn-block" type="submit">Start delivery run</button>
+    </form>
+  </dialog>
+
   <script>
     const app = document.getElementById("app");
     const serverURL = {{ printf "%q" .URL }};
@@ -154,6 +172,12 @@
     });
     document.getElementById("settings-open").addEventListener("click", () => {
       document.getElementById("settings-dialog").showModal();
+    });
+    document.getElementById("new-session-open").addEventListener("click", () => {
+      document.getElementById("new-session-dialog").showModal();
+    });
+    document.getElementById("new-session-close").addEventListener("click", () => {
+      document.getElementById("new-session-dialog").close();
     });
     document.getElementById("settings-close").addEventListener("click", () => {
       document.getElementById("settings-dialog").close();
