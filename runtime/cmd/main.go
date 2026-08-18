@@ -38,6 +38,8 @@ Usage:
   vibe-agent memory list [--status <status>]
   vibe-agent memory confirm --id <id>
   vibe-agent memory forget --id <id>
+  vibe-agent session list
+  vibe-agent session show --slug <slug|ambient>
   vibe-agent doctor
   vibe-agent eval routing [--trials N] [--jobs N] [--runner codex|claude|cursor|opencode|all] [--only <text>]
   vibe-agent version
@@ -155,6 +157,8 @@ func run(args []string) error {
 		return hookCommand(args[1:])
 	case "memory":
 		return memoryCommand(args[1:])
+	case "session":
+		return sessionCommand(args[1:])
 	case "doctor":
 		return doctorCommand(args[1:])
 	case "eval":

@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/run/domain"
@@ -209,4 +210,28 @@ func countLines(path string) (int, error) {
 		return 0, fmt.Errorf("read event log: %w", err)
 	}
 	return count, nil
+}
+
+// List returns slugs that have a readable manifest under tmp/. A missing runs
+// directory is treated as empty rather than an error.
+func List(workspaceRoot string) ([]string, error) {
+	entries, err := os.ReadDir(RunsDir(workspaceRoot))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("list runs: %w", err)
+	}
+	slugs := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if _, err := Load(ManifestPath(workspaceRoot, entry.Name())); err != nil {
+			continue
+		}
+		slugs = append(slugs, entry.Name())
+	}
+	sort.Strings(slugs)
+	return slugs, nil
 }
