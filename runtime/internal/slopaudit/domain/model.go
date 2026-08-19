@@ -17,9 +17,10 @@ const (
 	RuleIgnoredResult    = "ignored_result"
 	RuleDebugPrint       = "debug_print"
 	RulePanicPlaceholder = "panic_placeholder"
-	RuleLongFunction     = "long_function"
 	RuleLongFile         = "long_file"
 	RuleDuplicateLine    = "duplicate_line"
+	RuleAITellComment    = "ai_tell_comment"
+	RuleSwallowedError   = "swallowed_error"
 	RuleParseError       = "parse_error"
 	RuleScanError        = "scan_error"
 )
@@ -145,7 +146,7 @@ func MergeSummary(summaries []ScanSummary) ScanSummary {
 	return merged
 }
 
-func Status(score int) string {
+func ScoreBand(score int) string {
 	switch {
 	case score >= InflatedThreshold:
 		return StatusCritical

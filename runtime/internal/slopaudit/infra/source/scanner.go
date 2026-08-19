@@ -17,7 +17,6 @@ import (
 )
 
 const (
-	DefaultWorkers          = 4
 	MaxFileBytes            = 1024 * 1024
 	DefaultLongFileLines    = 800
 	DuplicateLineMinLength  = 24
@@ -25,9 +24,8 @@ const (
 )
 
 const (
-	LanguageUnknown = "Unknown"
-	LanguageText    = "Text"
-	ParserText      = "go-enry language detection plus gotreesitter syntax parse plus text rules"
+	LanguageText = "Text"
+	ParserText   = "go-enry language detection plus gotreesitter syntax parse plus text rules"
 )
 
 var skippedDirectories = map[string]struct{}{
@@ -51,25 +49,36 @@ var (
 	emptyPythonBody    = regexp.MustCompile(`(?i)^\s*(async\s+)?def\s+\w+\([^)]*\):\s*$`)
 	ignoredCall        = regexp.MustCompile(`(^|[^[:alnum:]_])_\s*=\s*[[:alnum:]_\.]+\s*\(`)
 	unfinishedMarker   = regexp.MustCompile(`(?i)\b(todo|fixme|hack|placeholder)\b|not implemented|unimplemented`)
+	swallowedErrBlock  = regexp.MustCompile(`(?m)if\s+err\s*!=\s*nil\s*\{\s*\}`)
+	swallowedErrReturn = regexp.MustCompile(`(?m)if\s+err\s*!=\s*nil\s*\{\s*return\s*\}`)
+	aiTellInComment    = regexp.MustCompile(`(?i)\b(ensure|enhance|leverage|utilize|seamless|robust|comprehensive|delve)\b`)
 )
 
-type SyntaxParser interface {
+var swallowedErrChecks = []struct {
+	pattern *regexp.Regexp
+	message string
+}{
+	{swallowedErrBlock, "error branch is empty"},
+	{swallowedErrReturn, "error branch returns without handling"},
+}
+
+type syntaxParser interface {
 	Parse(path string, source []byte, language string) syntax.Result
 }
 
 type Scanner struct {
 	workers       int
 	longFileLines int
-	syntaxParser  SyntaxParser
+	syntaxParser  syntaxParser
 }
 
 func NewScanner(workers int) *Scanner {
-	return NewScannerWithSyntax(workers, syntax.NewParser())
+	return newScanner(workers, syntax.NewParser())
 }
 
-func NewScannerWithSyntax(workers int, syntaxParser SyntaxParser) *Scanner {
+func newScanner(workers int, syntaxParser syntaxParser) *Scanner {
 	if workers <= 0 {
-		workers = DefaultWorkers
+		workers = 1
 	}
 	return &Scanner{workers: workers, longFileLines: DefaultLongFileLines, syntaxParser: syntaxParser}
 }
@@ -264,6 +273,9 @@ func (s *Scanner) lineFindings(path, language string, lines []string) []domain.F
 		if hasPlaceholderAbort(lower) {
 			findings = append(findings, finding(path, lineNumber, domain.RulePanicPlaceholder, domain.SeverityHigh, "placeholder abort looks like unfinished code"))
 		}
+		if !prose && isSourceComment(trimmed) && aiTellInComment.MatchString(line) {
+			findings = append(findings, finding(path, lineNumber, domain.RuleAITellComment, domain.SeverityInfo, "comment uses common AI filler wording"))
+		}
 		if !prose && len(trimmed) >= DuplicateLineMinLength {
 			duplicates[trimmed]++
 			if duplicates[trimmed] == DuplicateLineMinRepeats {
@@ -283,6 +295,9 @@ func fileFindings(path, text string, lines []string) []domain.Finding {
 	if emptyBraceFunction.MatchString(searchText) {
 		findings = append(findings, finding(path, firstMatchLine(searchText, emptyBraceFunction), domain.RuleEmptyFunction, domain.SeverityHigh, "empty declaration body"))
 	}
+	if strings.HasSuffix(strings.ToLower(filepath.Base(path)), ".go") {
+		findings = append(findings, swallowedErrorFindings(path, searchText)...)
+	}
 	for index, line := range lines {
 		if !emptyPythonBody.MatchString(line) || index+1 >= len(lines) {
 			continue
@@ -293,6 +308,28 @@ func fileFindings(path, text string, lines []string) []domain.Finding {
 		}
 	}
 	return findings
+}
+
+func swallowedErrorFindings(path, text string) []domain.Finding {
+	var findings []domain.Finding
+	for _, check := range swallowedErrChecks {
+		if check.pattern.FindStringIndex(text) == nil {
+			continue
+		}
+		findings = append(findings, finding(path, firstMatchLine(text, check.pattern), domain.RuleSwallowedError, domain.SeverityMedium, check.message))
+	}
+	return findings
+}
+
+func isSourceComment(trimmed string) bool {
+	if trimmed == "" {
+		return false
+	}
+	return strings.HasPrefix(trimmed, "//") ||
+		strings.HasPrefix(trimmed, "#") ||
+		strings.HasPrefix(trimmed, "/*") ||
+		strings.HasPrefix(trimmed, "*") ||
+		strings.HasPrefix(trimmed, "<!--")
 }
 
 func hasUnfinishedComment(lower string) bool {

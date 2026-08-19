@@ -21,6 +21,12 @@ func Work() {
 }
 func Empty() {}
 func risky() error { return nil }
+func Swallow() error {
+	_, err := fmt.Println("x")
+	if err != nil {
+	}
+	return nil
+}
 `,
 		"app.ts": `export function run() {
   console.log("debug temporary")
@@ -93,7 +99,7 @@ metadata:
 	for _, finding := range result.Findings {
 		seen[finding.Rule] = true
 	}
-	for _, rule := range []string{domain.RuleEmptyFunction, domain.RuleIgnoredResult, domain.RuleDebugPrint, domain.RulePanicPlaceholder} {
+	for _, rule := range []string{domain.RuleEmptyFunction, domain.RuleIgnoredResult, domain.RuleDebugPrint, domain.RulePanicPlaceholder, domain.RuleSwallowedError} {
 		if !seen[rule] {
 			t.Fatalf("missing rule %s in findings: %+v", rule, result.Findings)
 		}
@@ -177,4 +183,38 @@ func TestScannerReportsTreeSitterParseErrors(t *testing.T) {
 		}
 	}
 	t.Fatalf("missing parse error finding: %+v", result.Findings)
+}
+
+func TestScannerFindsAITellCommentAndSwallowedError(t *testing.T) {
+	dir := t.TempDir()
+	body := `package main
+
+// Ensure robust seamless handling
+func Work() error {
+	err := run()
+	if err != nil {
+	}
+	return nil
+}
+func run() error { return nil }
+`
+	path := filepath.Join(dir, "main.go")
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := NewScanner(1).Scan(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, finding := range result.Findings {
+		seen[finding.Rule] = true
+	}
+	if !seen[domain.RuleAITellComment] {
+		t.Fatalf("missing ai_tell_comment: %+v", result.Findings)
+	}
+	if !seen[domain.RuleSwallowedError] {
+		t.Fatalf("missing swallowed_error: %+v", result.Findings)
+	}
 }

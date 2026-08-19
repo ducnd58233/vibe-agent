@@ -3,15 +3,13 @@ package source
 import (
 	"path/filepath"
 	"testing"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
-func TestSourceFilesFromBenchmarkRelativePath(t *testing.T) {
-	benchmarkDir, err := filepath.Abs(filepath.Join("..", "..", "benchmark"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Chdir(benchmarkDir)
-	files, err := sourceFiles("testdata/clean")
+func TestSourceFilesFromFixtureTree(t *testing.T) {
+	root := filepath.Join(testutil.RuntimeRoot(t), "internal", "slopaudit", "fixture", "testdata", "clean")
+	files, err := sourceFiles(root)
 	if err != nil {
 		t.Fatal(err)
 	}

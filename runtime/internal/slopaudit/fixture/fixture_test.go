@@ -1,4 +1,4 @@
-package benchmark
+package fixture
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/slopaudit"
 )
 
-func TestSeededFixtureBenchmarkSeparatesCleanAndSlop(t *testing.T) {
+func TestSeededFixturesSeparateCleanAndSlop(t *testing.T) {
 	root := filepath.Join("testdata")
 	clean := slopaudit.Audit(context.Background(), filepath.Join(root, "clean"), slopaudit.Options{Workers: 2})
 	slop := slopaudit.Audit(context.Background(), filepath.Join(root, "slop"), slopaudit.Options{Workers: 2})
