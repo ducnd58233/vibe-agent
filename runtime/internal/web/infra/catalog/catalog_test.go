@@ -4,19 +4,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
-func testToolkitRoot(t *testing.T) string {
-	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", "..", "..", "..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return root
-}
-
 func TestLoadBuildCommand(t *testing.T) {
-	idx, err := Load(testToolkitRoot(t))
+	idx, err := Load(testutil.ToolkitRoot(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +32,7 @@ func TestLoadBuildCommand(t *testing.T) {
 }
 
 func TestSearchCommandsBuild(t *testing.T) {
-	idx, err := Load(testToolkitRoot(t))
+	idx, err := Load(testutil.ToolkitRoot(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +53,7 @@ func TestSearchCommandsBuild(t *testing.T) {
 }
 
 func TestSearchCommandsEmptyReturnsAll(t *testing.T) {
-	idx, err := Load(testToolkitRoot(t))
+	idx, err := Load(testutil.ToolkitRoot(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +63,7 @@ func TestSearchCommandsEmptyReturnsAll(t *testing.T) {
 }
 
 func TestSearchUnknownReturnsEmpty(t *testing.T) {
-	idx, err := Load(testToolkitRoot(t))
+	idx, err := Load(testutil.ToolkitRoot(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +85,7 @@ func TestLoadForWorkspaceMergesConsumerCommands(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "vibe-unique-test-cmd.md"), []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	idx, err := LoadForWorkspace(ws, testToolkitRoot(t))
+	idx, err := LoadForWorkspace(ws, testutil.ToolkitRoot(t))
 	if err != nil {
 		t.Fatal(err)
 	}

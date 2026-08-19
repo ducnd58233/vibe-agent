@@ -13,22 +13,19 @@ import (
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 const testSecret = "sk-0123456789abcdef0123456789ab"
 
 func testToolkitRoot(t *testing.T) string {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", "..", "..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return root
+	return testutil.ToolkitRoot(t)
 }
 
 func TestEmptyShellRendersRequiredTestIDs(t *testing.T) {
 	root := t.TempDir()
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +53,7 @@ func TestEmptyShellRendersRequiredTestIDs(t *testing.T) {
 
 func TestSessionPageRendersEventList(t *testing.T) {
 	root, slug := writeFixtureSession(t)
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +124,7 @@ func TestSessionPageRendersEventList(t *testing.T) {
 
 func TestSettingsDialogPinsURLAndHostChips(t *testing.T) {
 	root, slug := writeEmptySession(t)
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +169,7 @@ func TestTrajectoryOmitsEmptyPreAndLabelsHook(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +231,7 @@ func TestTrajectoryShowsGraphTransitionsFromRunLog(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -305,7 +302,7 @@ func TestSessionRendersMarkdownAndOmitsEmptyUserTokens(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -377,7 +374,7 @@ func TestChatRendersFoldedThinkingBeforeAssistant(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -419,7 +416,7 @@ func TestLongAssistantRowHasNoChatExpand(t *testing.T) {
 	if _, err := session.Append(path, rec); err != nil {
 		t.Fatal(err)
 	}
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -443,7 +440,7 @@ func TestLongAssistantRowHasNoChatExpand(t *testing.T) {
 
 func TestChromeButtonsUseSvgNotGlyphs(t *testing.T) {
 	root, slug := writeEmptySession(t)
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -502,7 +499,7 @@ func assertNewSessionForm(t *testing.T, body string) {
 
 func TestCheckpointAdvancesHumanGate(t *testing.T) {
 	root, slug := writeFixtureSession(t)
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -545,7 +542,7 @@ func TestCheckpointRejectsVerifierNode(t *testing.T) {
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -596,7 +593,7 @@ func TestSessionPageRedactedPromptAbsentFromHTML(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -618,7 +615,7 @@ func TestSessionPageRedactedPromptAbsentFromHTML(t *testing.T) {
 
 func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 	root := t.TempDir()
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -807,7 +804,7 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 
 func TestEmptySessionCentersReconstructCopyAndKeepsGraphInStream(t *testing.T) {
 	root, slug := writeEmptySession(t)
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -878,7 +875,7 @@ func writeEmptySession(t *testing.T) (root, slug string) {
 
 func TestNewSessionRedirectsToChatView(t *testing.T) {
 	root := t.TempDir()
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -898,7 +895,7 @@ func TestNewSessionRedirectsToChatView(t *testing.T) {
 
 func TestChatQueryKeepsHumanGateVisible(t *testing.T) {
 	root, slug := writeFixtureSession(t)
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -939,7 +936,7 @@ func TestChatVerifierPromptOmitsDuplicateAndComposerHint(t *testing.T) {
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -989,7 +986,7 @@ func TestChatIntakePromptShowsRunGoal(t *testing.T) {
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1042,7 +1039,7 @@ func TestChatIntakePromptRedactsSecretInGoal(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1122,7 +1119,7 @@ func TestSessionPageKeepsLastComposerHost(t *testing.T) {
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1165,7 +1162,7 @@ func TestCatalogIncludesWorkspaceCommand(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "vibe-unique-http-cmd.md"), []byte(md), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1183,7 +1180,7 @@ func TestCatalogIncludesWorkspaceCommand(t *testing.T) {
 
 func TestComposerJSHighlightsAbsoluteAttachPaths(t *testing.T) {
 	root := t.TempDir()
-	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
 	}
