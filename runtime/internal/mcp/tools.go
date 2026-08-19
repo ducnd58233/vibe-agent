@@ -13,6 +13,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/observability"
 )
 
 // MemoryDisclaimer rides along with every retrieved memory.
@@ -31,6 +32,7 @@ type Deps struct {
 	// workspace it opens does not leave a database in each one.
 	Memory *memory.Lazy
 	Now    func() time.Time
+	Log    observability.Logger
 }
 
 // read returns the store for a retrieval, or nil where this workspace has none.
@@ -54,6 +56,7 @@ func NewServer(version string, deps Deps) *Server {
 		Name:    "vibe-agent",
 		Version: version,
 		Tools:   Tools(deps),
+		Log:     deps.Log,
 	}
 }
 

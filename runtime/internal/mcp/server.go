@@ -16,6 +16,8 @@ import (
 	"io"
 	"strings"
 	"sync"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/observability"
 )
 
 // ProtocolVersion is the MCP revision this server speaks.
@@ -35,6 +37,7 @@ type Server struct {
 	Name    string
 	Version string
 	Tools   []Tool
+	Log     observability.Logger
 
 	mu sync.Mutex
 	// initialized guards tool calls until the host has completed the handshake.
@@ -84,6 +87,7 @@ func (s *Server) Serve(in io.Reader, out io.Writer) error {
 
 		var req request
 		if err := json.Unmarshal([]byte(line), &req); err != nil {
+			observability.LogError(s.Log, "mcp parse request", err)
 			if writeErr := encoder.Encode(response{
 				JSONRPC: "2.0",
 				Error:   &rpcError{codeParse, "invalid JSON: " + err.Error()},
@@ -123,6 +127,9 @@ func (s *Server) dispatch(req request) response {
 	case "tools/list":
 		reply.Result = map[string]any{"tools": s.Tools}
 	case "tools/call":
+		if s.Log != nil {
+			s.Log.Debug("mcp tools/call")
+		}
 		reply = s.callTool(req, reply)
 	case "ping":
 		reply.Result = map[string]any{}
@@ -148,6 +155,7 @@ func (s *Server) callTool(req request, reply response) response {
 		}
 		result, err := tool.Handler(params.Arguments)
 		if err != nil {
+			observability.LogError(s.Log, "mcp tool failed", fmt.Errorf("%s: %w", params.Name, err))
 			// A tool failure is reported inside the result rather than as a
 			// protocol error, so the model can read and act on it.
 			reply.Result = toolResult(fmt.Sprintf("error: %v", err), true)
@@ -155,6 +163,7 @@ func (s *Server) callTool(req request, reply response) response {
 		}
 		encoded, err := json.MarshalIndent(result, "", "  ")
 		if err != nil {
+			observability.LogError(s.Log, "mcp encode result", err)
 			reply.Error = &rpcError{codeInternal, "encode result: " + err.Error()}
 			return reply
 		}

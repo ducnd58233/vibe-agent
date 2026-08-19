@@ -7,16 +7,14 @@ import (
 	"encoding/base32"
 	"errors"
 	"fmt"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/memory/domain"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	// Pure Go SQLite. No cgo, so the binary cross-compiles and users need
-	// neither a C toolchain nor a SQLite install.
-	_ "modernc.org/sqlite"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/memory/domain"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/database"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
 // dbFileName is this store's file inside the workspace state directory.
@@ -79,7 +77,7 @@ func Open(ctx context.Context, workspaceRoot string) (*Store, error) {
 
 // OpenAt opens a database at an explicit path. Use ":memory:" in tests.
 func OpenAt(ctx context.Context, path string) (*Store, error) {
-	db, err := sql.Open("sqlite", path)
+	db, err := database.Open(ctx, path)
 	if err != nil {
 		return nil, fmt.Errorf("open memory database: %w", err)
 	}

@@ -34,11 +34,17 @@ func webCommand(args []string) error {
 	if *open {
 		_ = openBrowser(context.Background(), app.Addr(*port))
 	}
+	log, closer, err := openServiceLogger("web")
+	if err != nil {
+		return err
+	}
+	defer closeLogger(closer)
 	return app.Run(app.Config{
 		WorkspaceRoot:   workspaceRoot,
 		ToolkitRoot:     toolkitRoot,
 		Port:            *port,
 		ExtraWorkspaces: extra,
+		Logger:          log,
 	})
 }
 

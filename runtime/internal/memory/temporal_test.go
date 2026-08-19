@@ -1,10 +1,12 @@
 package memory
 
 import (
-	"database/sql"
+	"context"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/database"
 )
 
 func day(n int) time.Time {
@@ -62,7 +64,7 @@ func contents(hits []Hit) []string {
 func TestADatabaseFromBeforeTheIntervalStillOpens(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "memory.db")
 
-	old, err := sql.Open("sqlite", path)
+	old, err := database.Open(context.Background(), path)
 	if err != nil {
 		t.Fatalf("open raw: %v", err)
 	}
