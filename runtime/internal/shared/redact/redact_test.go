@@ -54,6 +54,22 @@ func TestTextLeavesShortSkWord(t *testing.T) {
 	}
 }
 
+func TestTextReplacesGitleaksGitHubPAT(t *testing.T) {
+	secret := "gh" + "p_" + strings.Repeat("12", 20)
+	out := Text("pat=" + secret)
+	if strings.Contains(out, secret) {
+		t.Fatalf("github pat still present: %q", out)
+	}
+}
+
+func TestTextReplacesGitleaksSlackBotToken(t *testing.T) {
+	secret := "xox" + "b-" + strings.Repeat("12ab-", 4)
+	out := Text("slack " + secret)
+	if strings.Contains(out, secret) {
+		t.Fatalf("slack token still present: %q", out)
+	}
+}
+
 func TestLiteralPatternsMatchGateExpectations(t *testing.T) {
 	if len(LiteralPatterns()) != len(literalSpecs) {
 		t.Fatalf("literal pattern count = %d, want %d", len(LiteralPatterns()), len(literalSpecs))

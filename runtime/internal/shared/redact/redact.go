@@ -13,12 +13,18 @@ const (
 var credentialPlaceholder = "<" + "credential" + ">"
 
 // Text replaces credential-shaped substrings and marks the result.
+// Gitleaks default rules run first; hand-rolled patterns catch contextual
+// shapes and anything the detector misses.
 func Text(s string) string {
 	if s == "" {
 		return s
 	}
 	redacted := false
 	out := s
+	if gOut, ok := applyGitleaks(out); ok {
+		out = gOut
+		redacted = true
+	}
 	for _, pattern := range textPatterns {
 		if pattern.MatchString(out) {
 			out = pattern.ReplaceAllString(out, credentialPlaceholder)
