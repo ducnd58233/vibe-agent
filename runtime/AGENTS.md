@@ -91,6 +91,7 @@ runtime/
 
 - **`httpserver.Serve(ctx, addr, handler, logger)`** owns listen + graceful shutdown. Callers cancel `ctx` on SIGINT/SIGTERM; do not reimplement shutdown loops in feature code.
 - Wrap handlers with **`middleware.StandardStack(h, log)`** (RequestID, AccessLog, Recover). Do not duplicate middleware wiring.
+- Panic recovery uses **`httpserver.RespondError`**, which returns an HTMX HTML fragment when **`HX-Request`** is set and plain text otherwise. No separate panic HTML template; keep panic values out of logs via **`LogPanicRecovered`**.
 - JSON responses: **`httpserver.JSON`**. API errors: **`httpserver.RespondError`** (JSON when `Accept: application/json`; plain text for HTMX via `HX-Request`).
 - HTML browser errors: **`renderError`** in `web/app/http.go`, not `http.Error`.
 
