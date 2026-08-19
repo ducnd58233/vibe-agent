@@ -1,7 +1,6 @@
 package app
 
 import (
-	"encoding/json"
 	"errors"
 	"html/template"
 	"io"
@@ -11,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/httpserver"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 	ui "github.com/ducnd58233/vibe-agent/runtime/web"
 	"github.com/ducnd58233/vibe-agent/runtime/web/view"
@@ -321,8 +321,7 @@ func (d httpDeps) handleWorkspacePick(w http.ResponseWriter, r *http.Request) {
 	raw, err := d.picker.Pick(r.Context(), kind)
 	if err != nil {
 		if errors.Is(err, domain.ErrPickCancelled) {
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(pickJSON{Cancelled: true})
+			httpserver.JSON(w, http.StatusOK, pickJSON{Cancelled: true})
 			return
 		}
 		if errors.Is(err, domain.ErrPickUnavailable) {
@@ -337,6 +336,5 @@ func (d httpDeps) handleWorkspacePick(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad path", http.StatusBadRequest)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(pickJSON{Path: formatted})
+	httpserver.JSON(w, http.StatusOK, pickJSON{Path: formatted})
 }

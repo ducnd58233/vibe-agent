@@ -42,7 +42,9 @@ runtime/
       infra/
         database/         SQLite driver registration and open helper
         httpserver/
-          middleware/     recover, access log, chain
+          middleware/     recover, access log, chain, request id
+          response.go     JSON and error envelope helpers
+          server.go       graceful shutdown via context
     web/
       app/                HTTP server composition root (bootstrap, routes)
       domain/             registry, workspace path rules
