@@ -25,6 +25,19 @@ func EventsAfter(workspaceRoot, slug string, after int) ([]EventRow, error) {
 	return out, nil
 }
 
+// EventsAfterForView returns trajectory rows like EventsAfter, but applies
+// chat-only shaping (fold intermediate assistant progress under "thinking").
+func EventsAfterForView(workspaceRoot, slug string, after int, selectedView string) ([]EventRow, error) {
+	rows, err := EventsAfter(workspaceRoot, slug, after)
+	if err != nil {
+		return nil, err
+	}
+	if NormalizeSessionView(selectedView) == "chat" {
+		demoteIntermediateAssistants(rows)
+	}
+	return rows, nil
+}
+
 // TrajectoryRows is the Trajectory tab: session gestures plus graph transitions.
 func TrajectoryRows(workspaceRoot, slug string) ([]EventRow, error) {
 	var logPath string

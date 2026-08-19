@@ -248,7 +248,7 @@ func TestPromoteUsageSkipsEphemeralAssistant(t *testing.T) {
 func TestChatRowsIncludesThinkingBeforeAssistant(t *testing.T) {
 	rows := []EventRow{
 		{Role: "thinking", Body: "I will read the file"},
-		{Role: "assistant", Body: "done"},
+		{Role: "assistant", Body: "done", HasUsage: true, Usage: &session.Usage{Input: 10, Output: 5}},
 		{Role: "user", Body: "go"},
 	}
 	chat := ChatRows(rows)
@@ -257,6 +257,65 @@ func TestChatRowsIncludesThinkingBeforeAssistant(t *testing.T) {
 	}
 	if !ChatVisibleRole("thinking") {
 		t.Fatal("thinking belongs on Chat, collapsed above the assistant reply")
+	}
+}
+
+func TestChatRowsDemotesIntermediateAssistantsToThinking(t *testing.T) {
+	rows := []EventRow{
+		{Role: "user", Body: "start"},
+		{Role: "assistant", Body: "step 1"},
+		{Role: "assistant", Body: "step 2"},
+		{Role: "assistant", Body: "final result", HasUsage: true, Usage: &session.Usage{Input: 60, Output: 30000, CacheRead: 1640000}},
+	}
+	chat := ChatRows(rows)
+	if len(chat) < 3 {
+		t.Fatalf("chat rows = %d", len(chat))
+	}
+
+	var (
+		thinkingCount   int
+		thinkingBody    string
+		thinkingFold    bool
+		thinkingSummary string
+		finalUsageCount int
+	)
+	for _, row := range chat {
+		if row.Role == "thinking" {
+			thinkingCount++
+			thinkingBody = row.Body
+			thinkingFold = row.FoldClosed
+			thinkingSummary = row.Summary
+		}
+		if row.Role == "assistant" && row.HasUsage {
+			finalUsageCount++
+		}
+	}
+
+	if thinkingCount != 1 {
+		t.Fatalf("thinking count = %d want 1; chat=%+v", thinkingCount, chat)
+	}
+	if finalUsageCount != 1 {
+		t.Fatalf("final usage count = %d want 1; chat=%+v", finalUsageCount, chat)
+	}
+	if thinkingSummary != "agent progress" {
+		t.Fatalf("thinking summary = %q, want %q", thinkingSummary, "agent progress")
+	}
+	if !thinkingFold {
+		t.Fatal("demoted thinking row should start folded")
+	}
+	if !strings.Contains(thinkingBody, "step 1") || !strings.Contains(thinkingBody, "step 2") {
+		t.Fatalf("merged thinking should include intermediate steps, got %q", thinkingBody)
+	}
+}
+
+func TestChatRowsKeepsSingleAssistantWithoutUsage(t *testing.T) {
+	rows := []EventRow{
+		{Role: "user", Body: "hi"},
+		{Role: "assistant", Body: "hello back"},
+	}
+	chat := ChatRows(rows)
+	if len(chat) != 2 || chat[1].Role != "assistant" {
+		t.Fatalf("single assistant without usage should stay assistant, got %+v", chat)
 	}
 }
 

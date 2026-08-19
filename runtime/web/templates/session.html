@@ -89,7 +89,7 @@
         {{ template "chat-prompts" . }}
         {{ template "graph" . }}
         <ol class="event-list" id="event-list" data-testid="event-list" aria-live="polite"{{ if eq .View "graph" }} hidden inert{{ end }}
-            hx-get="/session/{{ .Slug }}/events?after={{ .LastEventSeq }}" hx-trigger="sse:disconnected from:body every 2s" hx-swap="beforeend" hx-target="#event-list">
+            hx-get="/session/{{ .Slug }}/events?after={{ .LastEventSeq }}&view={{ .View }}" hx-trigger="sse:disconnected from:body every 2s" hx-swap="beforeend" hx-target="#event-list">
           {{ range .Events }}{{ template "event-row" . }}{{ end }}
         </ol>
         <p class="empty" id="stream-empty" data-testid="trajectory-empty"{{ if or .Events (eq .View "chat") }} hidden{{ end }}>No host turns yet. Open Graph for the delivery run.</p>
@@ -225,6 +225,17 @@
     </div>
   </dialog>
   {{ template "workspace-browse-dialog" . }}
+  <dialog id="file-viewer-dialog" class="dialog-file-viewer" data-testid="file-viewer-dialog" aria-labelledby="file-viewer-heading">
+    <div class="dialog-body dialog-file-viewer-body">
+      <div class="dialog-head file-viewer-toolbar">
+        <button class="btn-icon" type="button" id="file-viewer-back" data-testid="file-viewer-back" aria-label="Back" disabled>{{ template "icon-back" }}</button>
+        <button class="btn-icon" type="button" id="file-viewer-forward" data-testid="file-viewer-forward" aria-label="Forward" disabled>{{ template "icon-forward" }}</button>
+        <h2 id="file-viewer-heading">File</h2>
+        <button class="btn" type="button" id="file-viewer-close">Close</button>
+      </div>
+      <div class="file-viewer-content" id="file-viewer-content"></div>
+    </div>
+  </dialog>
   <script>
     const app = document.getElementById("app");
     const eventList = document.getElementById("event-list");
@@ -417,7 +428,11 @@
         return max;
       }
       function refreshTailURL() {
-        eventList.setAttribute("hx-get", "/session/{{ .Slug }}/events?after=" + lastEventSeq());
+        eventList.setAttribute(
+          "hx-get",
+          "/session/{{ .Slug }}/events?after=" + lastEventSeq()
+          + "&view=" + encodeURIComponent(view)
+        );
       }
       document.body.addEventListener("htmx:afterSwap", (e) => {
         if (e.detail.target === eventList) {
@@ -428,7 +443,8 @@
       refreshTailURL();
 
       function streamPath() {
-        return "/session/{{ .Slug }}/events/stream?after=" + lastEventSeq();
+        return "/session/{{ .Slug }}/events/stream?after=" + lastEventSeq()
+          + "&view=" + encodeURIComponent(view);
       }
       let source;
       function connectSSE() {
@@ -443,7 +459,7 @@
           refreshTailURL();
           applyFilters();
           if (hostBusy && !hostBusy.hidden) {
-            if (row && row.dataset && (row.dataset.role === "assistant" || row.dataset.role === "question")) {
+            if (row && row.dataset && (row.dataset.role === "assistant" || row.dataset.role === "question" || row.dataset.role === "thinking")) {
               hostBusy.hidden = true;
             }
           }
@@ -458,6 +474,9 @@
       connectSSE();
 
       eventList.addEventListener("click", (e) => {
+        // File viewer links should not also trigger row selection.
+        const fileLink = e.target.closest("[data-file-view]");
+        if (fileLink) return;
         const expand = e.target.closest("[data-expand]");
         if (expand) {
           const li = expand.closest("li");
@@ -509,6 +528,110 @@
     }
 
     if (inspectorPane) inspectorPane.addEventListener("change", renderInspector);
+
+    const fileViewerDialog = document.getElementById("file-viewer-dialog");
+    const fileViewerContent = document.getElementById("file-viewer-content");
+    const fileViewerHeading = document.getElementById("file-viewer-heading");
+    const fileViewerClose = document.getElementById("file-viewer-close");
+    const fileViewerBack = document.getElementById("file-viewer-back");
+    const fileViewerForward = document.getElementById("file-viewer-forward");
+    const fileViewerHistory = [];
+    let fileViewerHistoryIndex = -1;
+
+    function updateFileViewerNav() {
+      if (fileViewerBack) {
+        fileViewerBack.disabled = fileViewerHistoryIndex <= 0;
+      }
+      if (fileViewerForward) {
+        fileViewerForward.disabled = fileViewerHistoryIndex < 0 || fileViewerHistoryIndex >= fileViewerHistory.length - 1;
+      }
+    }
+
+    async function loadFileViewer(path, { pushHistory = false, resetHistory = false } = {}) {
+      if (!fileViewerDialog || !fileViewerContent) return;
+      if (resetHistory) {
+        fileViewerHistory.length = 0;
+        fileViewerHistoryIndex = -1;
+      }
+      if (pushHistory) {
+        if (fileViewerHistoryIndex < fileViewerHistory.length - 1) {
+          fileViewerHistory.splice(fileViewerHistoryIndex + 1);
+        }
+        if (fileViewerHistory[fileViewerHistoryIndex] !== path) {
+          fileViewerHistory.push(path);
+          fileViewerHistoryIndex = fileViewerHistory.length - 1;
+        }
+      } else if (fileViewerHistoryIndex < 0) {
+        fileViewerHistory.push(path);
+        fileViewerHistoryIndex = 0;
+      }
+      fileViewerHeading.textContent = path;
+      fileViewerContent.innerHTML = '<p class="empty">Loading...</p>';
+      updateFileViewerNav();
+      try {
+        const res = await fetch("/workspace/files/view?path=" + encodeURIComponent(path));
+        if (!res.ok) {
+          fileViewerContent.innerHTML = '<p class="empty">Could not load file.</p>';
+          return;
+        }
+        fileViewerContent.innerHTML = await res.text();
+        const pathEl = fileViewerContent.querySelector(".file-viewer-path");
+        if (pathEl && pathEl.textContent) {
+          fileViewerHeading.textContent = pathEl.textContent.trim();
+        }
+      } catch (_) {
+        fileViewerContent.innerHTML = '<p class="empty">Could not load file.</p>';
+      }
+    }
+
+    async function openFileViewer(path) {
+      if (!fileViewerDialog) return;
+      await loadFileViewer(path, { resetHistory: true });
+      fileViewerDialog.showModal();
+    }
+
+    if (fileViewerClose) {
+      fileViewerClose.addEventListener("click", () => fileViewerDialog.close());
+    }
+    if (fileViewerBack) {
+      fileViewerBack.addEventListener("click", () => {
+        if (fileViewerHistoryIndex <= 0) return;
+        fileViewerHistoryIndex -= 1;
+        loadFileViewer(fileViewerHistory[fileViewerHistoryIndex], { pushHistory: false });
+      });
+    }
+    if (fileViewerForward) {
+      fileViewerForward.addEventListener("click", () => {
+        if (fileViewerHistoryIndex >= fileViewerHistory.length - 1) return;
+        fileViewerHistoryIndex += 1;
+        loadFileViewer(fileViewerHistory[fileViewerHistoryIndex], { pushHistory: false });
+      });
+    }
+    if (fileViewerDialog) {
+      fileViewerDialog.addEventListener("click", (e) => {
+        if (e.target === fileViewerDialog) fileViewerDialog.close();
+      });
+    }
+    if (fileViewerContent) {
+      fileViewerContent.addEventListener("click", (e) => {
+        const link = e.target.closest("[data-file-view]");
+        if (!link) return;
+        e.preventDefault();
+        e.stopPropagation();
+        loadFileViewer(link.dataset.fileView, { pushHistory: true });
+      });
+    }
+
+    if (eventList) {
+      eventList.addEventListener("click", (e) => {
+        const link = e.target.closest("[data-file-view]");
+        if (link) {
+          e.preventDefault();
+          e.stopPropagation();
+          openFileViewer(link.dataset.fileView);
+        }
+      });
+    }
 
     applyFilters();
   </script>

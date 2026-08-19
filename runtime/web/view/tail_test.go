@@ -3,12 +3,115 @@ package view
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 )
+
+func TestEventsAfterForViewChatDemotesIntermediateAssistants(t *testing.T) {
+	dir := t.TempDir()
+	logPath := session.AmbientLogPath(dir)
+	stamp := time.Date(2026, 8, 19, 10, 0, 0, 0, time.UTC)
+	for i, rec := range []session.Record{
+		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "cursor", Body: "start", At: stamp},
+		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "step 1", At: stamp.Add(time.Second)},
+		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "step 2", At: stamp.Add(2 * time.Second)},
+		{
+			Type:    session.TypeTranscriptMessage,
+			Source:  session.SourceTranscript,
+			Role:    "assistant",
+			Body:    "final",
+			Usage:   &session.Usage{Input: 60, Output: 30, CacheRead: 0},
+			At:      stamp.Add(3 * time.Second),
+			Event:   "",
+			Tool:    "",
+			Command: "",
+		},
+	} {
+		if _, err := session.Append(logPath, rec); err != nil {
+			t.Fatalf("append record %d: %v", i, err)
+		}
+	}
+
+	rows, err := EventsAfterForView(dir, "ambient", 0, "chat")
+	if err != nil {
+		t.Fatalf("EventsAfterForView: %v", err)
+	}
+
+	var (
+		thinkingFold    bool
+		thinkingSummary string
+		thinkingBody    string
+		finalHasUsage   bool
+	)
+	for _, row := range rows {
+		if row.Role == "thinking" {
+			thinkingFold = row.FoldClosed
+			thinkingSummary = row.Summary
+			thinkingBody = row.Body
+		}
+		if row.Body == "final" {
+			finalHasUsage = row.HasUsage && row.Role == "assistant"
+		}
+	}
+
+	if !strings.Contains(thinkingBody, "step 1") || !strings.Contains(thinkingBody, "step 2") {
+		t.Fatalf("merged thinking should include intermediate steps, got %q", thinkingBody)
+	}
+	if thinkingSummary != "agent progress" {
+		t.Fatalf("thinking summary = %q, want %q", thinkingSummary, "agent progress")
+	}
+	if !thinkingFold {
+		t.Fatal("thinking should be fold-closed when demoted")
+	}
+	if !finalHasUsage {
+		t.Fatal("final row should stay assistant with usage")
+	}
+}
+
+func TestEventsAfterForViewTrajectoryKeepsAssistantProgress(t *testing.T) {
+	dir := t.TempDir()
+	logPath := session.AmbientLogPath(dir)
+	stamp := time.Date(2026, 8, 19, 10, 0, 0, 0, time.UTC)
+	for i, rec := range []session.Record{
+		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "cursor", Body: "start", At: stamp},
+		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "step 1", At: stamp.Add(time.Second)},
+		{
+			Type:    session.TypeTranscriptMessage,
+			Source:  session.SourceTranscript,
+			Role:    "assistant",
+			Body:    "final",
+			Usage:   &session.Usage{Input: 60, Output: 30, CacheRead: 0},
+			At:      stamp.Add(2 * time.Second),
+			Event:   "",
+			Tool:    "",
+			Command: "",
+		},
+	} {
+		if _, err := session.Append(logPath, rec); err != nil {
+			t.Fatalf("append record %d: %v", i, err)
+		}
+	}
+
+	rows, err := EventsAfterForView(dir, "ambient", 0, "trajectory")
+	if err != nil {
+		t.Fatalf("EventsAfterForView: %v", err)
+	}
+
+	var step1Role string
+	for _, row := range rows {
+		if row.Body == "step 1" {
+			step1Role = row.Role
+			break
+		}
+	}
+	if step1Role != "assistant" {
+		t.Fatalf("step 1 role = %q, want %q", step1Role, "assistant")
+	}
+}
 
 func TestEventsAfterReturnsNewRowsOnly(t *testing.T) {
 	root := t.TempDir()

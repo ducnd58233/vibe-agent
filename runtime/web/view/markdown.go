@@ -1,3 +1,6 @@
+// Package view renders session UI models. markdown.go converts GFM source to
+// HTML for chat and .md file viewer content; workspace file I/O lives in
+// internal/web/app/files.go.
 package view
 
 import (
@@ -8,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	mdhtml "github.com/yuin/goldmark/renderer/html"
@@ -40,10 +44,17 @@ func RenderMarkdown(src string) template.HTML {
 		return template.HTML(html.EscapeString(src)) //nolint:gosec // G203 escaped fallback
 	}
 	out := highlightRefs(buf.String())
+	out = linkFilePathsInCode(out)
+	out = linkLocalMarkdownAnchors(out)
+	out = styleExternalMarkdownAnchors(out)
+	out = styleTaskListItems(out)
 	return template.HTML(out) //nolint:gosec // G203 goldmark WithUnsafe is off
 }
 
 var refRe = regexp.MustCompile(`(^|\s)(/[a-z][a-z0-9-]*)|(^|\s)(@[^\s<]+)`)
+var codeSpanRe = regexp.MustCompile(`<code>([^<]+)</code>`)
+var taskListItemRe = regexp.MustCompile(`<li>\s*(<input[^>]*type="checkbox"[^>]*>)`)
+var mdLocalAnchorRe = regexp.MustCompile(`<a href="([^"]+)"`)
 
 // highlightRefs wraps /command and @file references with <mark> tags,
 // skipping content inside <code> and <pre> blocks.
@@ -106,6 +117,94 @@ func highlightRefs(s string) string {
 		out.WriteString(replaced)
 	}
 	return out.String()
+}
+
+// linkFilePathsInCode wraps file paths inside <code> tags with a clickable
+// element that opens the file viewer dialog.
+func linkFilePathsInCode(s string) string {
+	return codeSpanRe.ReplaceAllStringFunc(s, func(m string) string {
+		sub := codeSpanRe.FindStringSubmatch(m)
+		if len(sub) < 2 {
+			return m
+		}
+		path := strings.TrimSpace(sub[1])
+		if !domain.LooksLikeFileRef(path) {
+			return m
+		}
+		return `<code><a href="#" data-file-view="` + html.EscapeString(path) + `" class="file-link">` + html.EscapeString(path) + `</a></code>`
+	})
+}
+
+// linkLocalMarkdownAnchors turns relative markdown links into file-viewer
+// triggers so cross-references can navigate inside the viewer dialog.
+func linkLocalMarkdownAnchors(s string) string {
+	return mdLocalAnchorRe.ReplaceAllStringFunc(s, func(m string) string {
+		sub := mdLocalAnchorRe.FindStringSubmatch(m)
+		if len(sub) < 2 {
+			return m
+		}
+		href := strings.TrimSpace(sub[1])
+		if href == "" || strings.HasPrefix(href, "#") {
+			return m
+		}
+		lower := strings.ToLower(href)
+		if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") ||
+			strings.HasPrefix(lower, "mailto:") || strings.HasPrefix(lower, "javascript:") {
+			return m
+		}
+		if strings.Contains(m, "data-file-view") {
+			return m
+		}
+		path := href
+		if idx := strings.IndexAny(path, "#?"); idx >= 0 {
+			path = path[:idx]
+		}
+		if path == "" {
+			return m
+		}
+		escaped := html.EscapeString(path)
+		return `<a href="#" data-file-view="` + escaped + `" class="file-link"`
+	})
+}
+
+// styleExternalMarkdownAnchors keeps http(s) links in the session UI and opens
+// them in a new tab instead of navigating the control-plane page away.
+func styleExternalMarkdownAnchors(s string) string {
+	return mdLocalAnchorRe.ReplaceAllStringFunc(s, func(m string) string {
+		sub := mdLocalAnchorRe.FindStringSubmatch(m)
+		if len(sub) < 2 {
+			return m
+		}
+		href := strings.TrimSpace(sub[1])
+		lower := strings.ToLower(href)
+		if !strings.HasPrefix(lower, "http://") && !strings.HasPrefix(lower, "https://") {
+			return m
+		}
+		if strings.Contains(m, `target="`) {
+			return m
+		}
+		return strings.Replace(m, "<a href=", `<a target="_blank" rel="noopener noreferrer" href=`, 1)
+	})
+}
+
+// styleTaskListItems annotates GFM task-list HTML so stylesheet rules can
+// remove bullet markers and align checkboxes consistently across browsers.
+func styleTaskListItems(s string) string {
+	return taskListItemRe.ReplaceAllStringFunc(s, func(m string) string {
+		sub := taskListItemRe.FindStringSubmatch(m)
+		if len(sub) < 2 {
+			return m
+		}
+		input := addClassToTag(sub[1], "task-list-item-checkbox")
+		return `<li class="task-list-item">` + input
+	})
+}
+
+func addClassToTag(tag, className string) string {
+	if strings.Contains(tag, `class="`) {
+		return strings.Replace(tag, `class="`, `class="`+className+` `, 1)
+	}
+	return strings.Replace(tag, ">", ` class="`+className+`">`, 1)
 }
 
 func markdownBody(role, body string) template.HTML {

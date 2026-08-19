@@ -58,12 +58,13 @@ func (d httpDeps) handleSessionEventsStream(w http.ResponseWriter, r *http.Reque
 	ws := d.activeWorkspace(r)
 	ticker := time.NewTicker(ssePollInterval)
 	defer ticker.Stop()
+	selectedView := r.URL.Query().Get("view")
 	for {
 		select {
 		case <-r.Context().Done():
 			return
 		case <-ticker.C:
-			rows, err := view.EventsAfter(ws, slug, after)
+			rows, err := view.EventsAfterForView(ws, slug, after, selectedView)
 			if err != nil {
 				if !isNotFoundErr(err) {
 					_, _ = fmt.Fprintf(w, "event: error\ndata: Could not read the session log.\n\n")

@@ -27,6 +27,93 @@ func TestWorkspaceFilesRejectsTraversal(t *testing.T) {
 	}
 }
 
+func TestWorkspaceFileViewResolvesBareFilenameFromAiAgentsReferences(t *testing.T) {
+	root := t.TempDir()
+	refDir := filepath.Join(root, ".ai-agents", "references")
+	if err := os.MkdirAll(refDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	filePath := filepath.Join(refDir, "loop-and-graph-engineering.md")
+	if err := os.WriteFile(filePath, []byte("# Title\n\nhello"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/workspace/files/view?path=loop-and-graph-engineering.md", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, `data-testid="file-viewer"`) {
+		t.Fatalf("missing file viewer: %s", body)
+	}
+	if !strings.Contains(body, "<h1") {
+		t.Fatalf("markdown not rendered: %s", body)
+	}
+}
+
+func TestWorkspaceFileViewRejectsMissingBareFilename(t *testing.T) {
+	root := t.TempDir()
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/workspace/files/view?path=missing.md", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestWorkspaceFileViewFallsBackToToolkitRootForAiAgentsReferences(t *testing.T) {
+	workspaceRoot := t.TempDir()
+	toolkitRoot := t.TempDir()
+
+	refDir := filepath.Join(toolkitRoot, ".ai-agents", "references")
+	if err := os.MkdirAll(refDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	filePath := filepath.Join(refDir, "loop-and-graph-engineering.md")
+	if err := os.WriteFile(filePath, []byte("# Title\n\nhello"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	handler, err := NewHandlerWithPort(workspaceRoot, toolkitRoot, 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rec := httptest.NewRecorder()
+	rel := ".ai-agents/references/loop-and-graph-engineering.md"
+	req := httptest.NewRequestWithContext(
+		context.Background(),
+		http.MethodGet,
+		"/workspace/files/view?path="+url.QueryEscape(rel),
+		nil,
+	)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, `data-testid="file-viewer"`) {
+		t.Fatalf("missing file viewer: %s", body)
+	}
+	if !strings.Contains(body, "<h1") {
+		t.Fatalf("markdown not rendered: %s", body)
+	}
+}
+
 func TestWorkspaceFilePreviewRedactsSecret(t *testing.T) {
 	root := t.TempDir()
 	secretPath := filepath.Join(root, "secret.txt")

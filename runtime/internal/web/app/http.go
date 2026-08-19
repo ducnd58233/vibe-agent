@@ -91,6 +91,9 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 	mux.HandleFunc("/catalog/skills", func(w http.ResponseWriter, r *http.Request) {
 		d.handleCatalogSkills(w, r)
 	})
+	mux.HandleFunc("/workspace/files/view", func(w http.ResponseWriter, r *http.Request) {
+		d.handleWorkspaceFileView(w, r)
+	})
 	mux.HandleFunc("/workspace/files/preview", func(w http.ResponseWriter, r *http.Request) {
 		d.handleWorkspaceFilePreview(w, r)
 	})
