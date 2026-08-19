@@ -51,6 +51,7 @@ func TestPolicyCases(t *testing.T) {
 			"Set AWS_SECRET_ACCESS_KEY before running the suite",
 			"Auth header is Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6",
 			"Deploy token github_pat_" + strings.Repeat("a", 24),
+			"slack " + "xox" + "b-" + strings.Repeat("12ab-", 4),
 		} {
 			_, decision, err := store.Propose(ctx, candidate(func(r *Record) { r.Content = content }), at())
 			if err != nil {

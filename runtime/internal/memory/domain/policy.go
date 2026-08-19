@@ -25,23 +25,31 @@ type Decision struct {
 	MergeInto string
 }
 
-// secretPatterns catch candidates that would put a credential in a database
-// that gets read back into a model's context. Detection is deliberately broad:
-// a false positive costs one rejected memory, a false negative leaks a secret.
-var secretPatterns = redact.MemoryRejectPatterns()
+const (
+	rejectReasonSecret    = "looks like a secret value; secrets are never stored in memory"
+	rejectReasonTransient = "reads as task state, which belongs in the run manifest rather than durable memory"
+	rejectReasonHedge     = "reads as a guess rather than an observation; record what was observed"
+)
 
-// hedgePatterns catch candidates that record a guess rather than an
-// observation. "Probably needs Redis" is not worth remembering; it is worth
-// checking.
-var hedgePatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)\b(probably|maybe|might|perhaps|seems? to|i think|possibly|could be|not sure|appears to)\b`),
+// hedgeSpecs catch candidates that record a guess rather than an observation.
+var hedgeSpecs = []string{
+	`(?i)\b(probably|maybe|might|perhaps|seems? to|i think|possibly|could be|not sure|appears to|i believe|likely needs|likely requires)\b`,
 }
 
-// transientPatterns catch task state that belongs in a run manifest, not in
-// durable memory. Storing it makes the next run act on a finished task.
-var transientPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)\b(currently (working|running)|for now|temporar(y|ily)|todo|fixme|wip|in progress|next step is|about to)\b`),
-	regexp.MustCompile(`(?i)\bon branch\s+\S+`),
+// transientSpecs catch task state that belongs in a run manifest, not memory.
+var transientSpecs = []string{
+	`(?i)\b(currently (working|running)|for now|temporar(y|ily)|todo|fixme|wip|in progress|next step is|about to|blocked on|pending (ci|review|approval|merge))\b`,
+	`(?i)\bon branch\s+\S+`,
+}
+
+type contentRule struct {
+	patterns []*regexp.Regexp
+	reason   string
+}
+
+var contentRules = []contentRule{
+	{patterns: redact.CompilePatterns(transientSpecs), reason: rejectReasonTransient},
+	{patterns: redact.CompilePatterns(hedgeSpecs), reason: rejectReasonHedge},
 }
 
 // Filter decides whether a candidate becomes a stored memory.
@@ -60,27 +68,17 @@ func (f Filter) Decide(candidate Record) Decision {
 		return Decision{VerdictReject, err.Error(), ""}
 	}
 
-	// A candidate arriving as confirmed is a caller trying to skip the gate.
 	if candidate.Status == StatusConfirmed {
 		return Decision{VerdictReject, "a candidate may only be proposed; confirmation comes from a verifier result or a human event", ""}
 	}
 
 	haystack := candidate.Content + " " + strings.Join(candidate.Evidence, " ")
 
-	for _, pattern := range secretPatterns {
-		if pattern.MatchString(haystack) {
-			return Decision{VerdictReject, "looks like a credential; secrets are never stored in memory", ""}
-		}
+	if redact.ContainsCredential(haystack) {
+		return Decision{VerdictReject, rejectReasonSecret, ""}
 	}
-	for _, pattern := range transientPatterns {
-		if pattern.MatchString(candidate.Content) {
-			return Decision{VerdictReject, "reads as task state, which belongs in the run manifest rather than durable memory", ""}
-		}
-	}
-	for _, pattern := range hedgePatterns {
-		if pattern.MatchString(candidate.Content) {
-			return Decision{VerdictReject, "reads as a guess rather than an observation; record what was observed", ""}
-		}
+	if reason := matchContentRules(candidate.Content); reason != "" {
+		return Decision{VerdictReject, reason, ""}
 	}
 	if !hasSubstance(candidate.Evidence) {
 		return Decision{VerdictReject, "evidence is too thin to support the claim", ""}
@@ -99,6 +97,17 @@ func (f Filter) Decide(candidate Record) Decision {
 	}
 
 	return Decision{VerdictStore, "evidence-backed and reusable", ""}
+}
+
+func matchContentRules(content string) string {
+	for _, rule := range contentRules {
+		for _, pattern := range rule.patterns {
+			if pattern.MatchString(content) {
+				return rule.reason
+			}
+		}
+	}
+	return ""
 }
 
 // hasSubstance rejects evidence that is technically present but says nothing.
