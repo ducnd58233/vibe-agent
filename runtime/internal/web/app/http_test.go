@@ -554,8 +554,12 @@ func TestCheckpointRejectsVerifierNode(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
-	if rec.Code != http.StatusBadRequest {
+	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	loc := rec.Header().Get("Location")
+	if !strings.Contains(loc, "error=") {
+		t.Fatalf("expected error in redirect, got Location = %s", loc)
 	}
 	loaded, err := state.Load(state.ManifestPath(root, slug))
 	if err != nil {
