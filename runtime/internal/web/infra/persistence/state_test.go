@@ -21,3 +21,22 @@ func TestWriteStateCreatesWebJSON(t *testing.T) {
 		t.Fatalf("web.json = %s", raw)
 	}
 }
+
+func TestRemoveStateDeletesWebJSON(t *testing.T) {
+	root := t.TempDir()
+	if err := WriteState(root, domain.State{URL: "http://127.0.0.1:3080/", PID: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if err := RemoveState(root); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(StatePath(root)); !os.IsNotExist(err) {
+		t.Fatalf("web.json still present: %v", err)
+	}
+}
+
+func TestRemoveStateMissingIsOK(t *testing.T) {
+	if err := RemoveState(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+}

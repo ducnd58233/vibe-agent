@@ -2,18 +2,25 @@
 package app
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/persistence"
 )
 
-const defaultPort = 3080
+const (
+	defaultPort         = 3080
+	shutdownGracePeriod = 10 * time.Second
+)
 
 // ListenHost is always loopback.
 const ListenHost = "127.0.0.1"
@@ -79,8 +86,38 @@ func Run(cfg Config) error {
 		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	if _, err := fmt.Fprintf(os.Stdout, "vibe-agent web listening on http://%s/\n", addr); err != nil {
+	listenErr := make(chan error, 1)
+	go func() {
+		err := srv.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			listenErr <- err
+		}
+	}()
+	if _, err := fmt.Fprintf(os.Stdout, "vibe-agent web listening on http://%s/ (Ctrl+C to stop)\n", addr); err != nil {
 		return err
 	}
-	return srv.ListenAndServe()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
+
+	select {
+	case sig := <-sigCh:
+		_, _ = fmt.Fprintf(os.Stderr, "\nshutting down (%s)...\n", sig)
+	case err := <-listenErr:
+		_ = persistence.RemoveState(cfg.WorkspaceRoot)
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownGracePeriod)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		_ = persistence.RemoveState(cfg.WorkspaceRoot)
+		return fmt.Errorf("shutdown: %w", err)
+	}
+	if err := persistence.RemoveState(cfg.WorkspaceRoot); err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintln(os.Stdout, "stopped")
+	return nil
 }

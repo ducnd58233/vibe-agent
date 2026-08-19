@@ -114,7 +114,7 @@ UPDATE_GOLDEN=1 go test ./internal/run/infra/persistence -run TestFreshRunMatche
 
 ## Web UI (loopback)
 
-`vibe-agent web` serves the control-plane viewer on `127.0.0.1` only. One process can register multiple workspace roots; the sidebar switches the active root without a restart.
+`vibe-agent web` serves the control-plane viewer on `127.0.0.1` only. One process can register multiple workspace roots; the sidebar switches the active root without a restart. The command blocks in the foreground; press Ctrl+C to stop gracefully and remove `.agent-state/web.json`.
 
 ```sh
 vibe-agent web --workspace . --toolkit /path/to/vibe-agent --port 3080

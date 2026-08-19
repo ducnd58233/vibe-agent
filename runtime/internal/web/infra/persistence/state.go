@@ -17,6 +17,15 @@ func StatePath(workspaceRoot string) string {
 	return filepath.Join(workspace.StateDir(workspaceRoot), stateFileName)
 }
 
+// RemoveState deletes web.json when the server stops.
+func RemoveState(workspaceRoot string) error {
+	path := StatePath(workspaceRoot)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove web state: %w", err)
+	}
+	return nil
+}
+
 // WriteState records the loopback URL for a running server.
 func WriteState(workspaceRoot string, state domain.State) error {
 	if err := os.MkdirAll(workspace.StateDir(workspaceRoot), 0o750); err != nil {
