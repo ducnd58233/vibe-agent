@@ -97,6 +97,30 @@ func TestCursorBeforeShellRecordsCommand(t *testing.T) {
 	}
 }
 
+func TestEmptyPreToolUseDoesNotRecordSession(t *testing.T) {
+	root := workspaceWithRun(t)
+	invoke(t, Request{
+		Event: EventPreToolUse, Client: ClientCursor, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{}`),
+	})
+	events := sessionLog(t, root)
+	if len(events) != 0 {
+		t.Fatalf("empty PreToolUse must not append, events = %+v", events)
+	}
+}
+
+func TestEmptyToolUseDoesNotRecordSession(t *testing.T) {
+	root := workspaceWithRun(t)
+	invoke(t, Request{
+		Event: EventPostToolUse, Client: ClientCursor, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{}`),
+	})
+	events := sessionLog(t, root)
+	if len(events) != 0 {
+		t.Fatalf("empty ToolUse must not append, events = %+v", events)
+	}
+}
+
 func TestCursorToolAliasRecordsName(t *testing.T) {
 	root := workspaceWithRun(t)
 	invoke(t, Request{
