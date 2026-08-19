@@ -41,7 +41,9 @@
         <span>Folder path</span>
         <input id="workspace-browse-path" name="path" required placeholder="Absolute path to a project folder" autocomplete="off">
       </label>
+      <p id="workspace-browse-notice" class="composer-description" data-testid="workspace-browse-notice" hidden></p>
       <div class="dialog-actions">
+        <button class="btn" type="button" id="workspace-browse-pick" data-testid="workspace-browse-pick">Choose folder</button>
         <button class="btn btn-accent" type="submit">Open</button>
       </div>
     </form>

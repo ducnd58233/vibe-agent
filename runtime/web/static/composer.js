@@ -159,7 +159,7 @@
     }
     if (!data || data.cancelled || !data.path) return;
     showPickNotice("");
-    insertAtCursor(data.path);
+    insertAtCursor("@" + data.path);
   }
 
   function setHostMenu(on) {
