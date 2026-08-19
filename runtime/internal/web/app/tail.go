@@ -23,7 +23,7 @@ func handleSessionEvents(w http.ResponseWriter, r *http.Request, d httpDeps) {
 		return
 	}
 	selectedView := r.URL.Query().Get("view")
-	rows, err := view.EventsAfterForView(d.activeWorkspace(r), slug, after, selectedView)
+	rows, err := view.EventsAfterForView(d.sessionRead, d.activeWorkspace(r), slug, after, selectedView)
 	if err != nil {
 		if session.IsNotFound(err) {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")

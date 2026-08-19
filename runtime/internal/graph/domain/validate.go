@@ -5,10 +5,11 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/validate"
 )
 
 var (
-	assetIDPattern    = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 	identifierPattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 	conditionPattern  = regexp.MustCompile(`^!?[a-z][a-z0-9_]*$`)
 )
@@ -41,7 +42,7 @@ func (g *Graph) Validate() error {
 	if g.Kind != Kind {
 		problems = append(problems, fmt.Sprintf("kind %q is not %q", g.Kind, Kind))
 	}
-	if !assetIDPattern.MatchString(g.Metadata.ID) {
+	if !validate.AssetID(g.Metadata.ID) {
 		problems = append(problems, fmt.Sprintf("metadata.id %q must be lowercase and hyphenated", g.Metadata.ID))
 	}
 	if g.Metadata.Description == "" {

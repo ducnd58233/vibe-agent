@@ -43,7 +43,7 @@ func (d httpDeps) handleSessionEventsStream(w http.ResponseWriter, r *http.Reque
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		rows, err := view.EventsAfterForView(ws, slug, cursor, selectedView)
+		rows, err := view.EventsAfterForView(d.sessionRead, ws, slug, cursor, selectedView)
 		if err != nil {
 			if session.IsNotFound(err) {
 				return nil, nil

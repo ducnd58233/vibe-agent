@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/httpserver"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/redact"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 	ui "github.com/ducnd58233/vibe-agent/runtime/web"
 	"github.com/ducnd58233/vibe-agent/runtime/web/view"
@@ -157,7 +157,7 @@ func (d httpDeps) handleWorkspaceFilePreview(w http.ResponseWriter, r *http.Requ
 		writeHTMXOrError(w, r, http.StatusInternalServerError, "read error")
 		return
 	}
-	text := session.RedactText(string(raw))
+	text := redact.Text(string(raw))
 	model := struct {
 		Path    string
 		Attach  string
@@ -209,7 +209,7 @@ func (d httpDeps) handleWorkspaceFileView(w http.ResponseWriter, r *http.Request
 		writeHTMXOrError(w, r, http.StatusInternalServerError, "read error")
 		return
 	}
-	text := session.RedactText(string(raw))
+	text := redact.Text(string(raw))
 	isMarkdown := strings.HasSuffix(strings.ToLower(resolvedRel), ".md")
 	model := fileViewerModel{
 		Path:       filepath.ToSlash(resolvedRel),

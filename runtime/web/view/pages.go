@@ -3,7 +3,6 @@ package view
 import (
 	"encoding/json"
 	"html/template"
-	"os"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
@@ -11,6 +10,7 @@ import (
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/sessionread"
 )
 
 // HostRow is one PATH inventory line for the shell sidebar.
@@ -42,7 +42,7 @@ type ShellPage struct {
 }
 
 // BuildShellPage loads workspace metadata for the empty shell.
-func BuildShellPage(workspaceRoot, bindAddr string, reg domain.Registry, activeRoot string) (ShellPage, error) {
+func BuildShellPage(logs sessionread.Reader, workspaceRoot, bindAddr string, reg domain.Registry, activeRoot string) (ShellPage, error) {
 	page := ShellPage{
 		Workspace: workspaceRoot,
 		BindAddr:  bindAddr,
@@ -75,7 +75,7 @@ func BuildShellPage(workspaceRoot, bindAddr string, reg domain.Registry, activeR
 	if err != nil {
 		return page, err
 	}
-	page.Sessions = ProjectSessions(workspaceRoot, slugs, time.Now().UTC())
+	page.Sessions = ProjectSessions(logs, workspaceRoot, slugs, time.Now().UTC())
 	page.HasSessions = len(page.Sessions) > 0
 	return page, nil
 }
@@ -110,8 +110,8 @@ type SessionPage struct {
 }
 
 // BuildSessionPage loads one session log for rendering.
-func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug, selectedView string, reg domain.Registry, activeRoot string) (SessionPage, error) {
-	shell, err := BuildShellPage(workspaceRoot, bindAddr, reg, activeRoot)
+func BuildSessionPage(logs sessionread.Reader, workspaceRoot, toolkitRoot, bindAddr, slug, selectedView string, reg domain.Registry, activeRoot string) (SessionPage, error) {
+	shell, err := BuildShellPage(logs, workspaceRoot, bindAddr, reg, activeRoot)
 	if err != nil {
 		return SessionPage{}, err
 	}
@@ -122,13 +122,10 @@ func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug, selectedView s
 		View:      NormalizeSessionView(selectedView),
 	}
 	page.CurrentSlug = slug
-	var logPath string
 	var run *state.Run
 	switch slug {
 	case "ambient":
-		logPath = session.AmbientLogPath(workspaceRoot)
 	default:
-		logPath = session.LogPath(workspaceRoot, slug)
 		if loaded, loadErr := state.Load(state.ManifestPath(workspaceRoot, slug)); loadErr == nil && loaded != nil {
 			run = loaded
 			page.RunStatus = string(run.Status)
@@ -143,8 +140,8 @@ func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug, selectedView s
 		page.GraphNodes = ProjectGraph(g, run)
 		page.GraphTypeCounts = GraphTypeCounts(page.GraphNodes)
 	}
-	events, err := session.Replay(logPath)
-	if err != nil && !session.IsNotFound(err) {
+	events, err := logs.Replay(workspaceRoot, slug)
+	if err != nil {
 		return SessionPage{}, err
 	}
 	graphRows := []EventRow{}
@@ -179,7 +176,7 @@ func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug, selectedView s
 	if encoded, err := json.Marshal(page.EventDetails); err == nil {
 		page.EventDataJSON = template.JS(encoded) //nolint:gosec // G203 JSON script block from server-built rows
 	}
-	page.LastEventSeq = LastSequence(workspaceRoot, slug)
+	page.LastEventSeq = LastSequence(logs, workspaceRoot, slug)
 	return page, nil
 }
 
@@ -255,10 +252,4 @@ type ErrorPage struct {
 	Code   int
 	Title  string
 	Detail string
-}
-
-func hasAmbientSession(workspaceRoot string) bool {
-	path := session.AmbientLogPath(workspaceRoot)
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir() && info.Size() > 0
 }
