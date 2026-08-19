@@ -1,19 +1,14 @@
 package source
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 func TestLoadGitignoreFromWorkspaceRoot(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", "..", "..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(filepath.Join(root, ".gitignore")); err != nil {
-		t.Skip("workspace root not found from runtime module")
-	}
+	root := testutil.ToolkitRoot(t)
 	g := loadGitignore(root)
 	agentState := filepath.Join(root, ".agent-state")
 	if !g.skipDir(agentState) {

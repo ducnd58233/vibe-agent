@@ -168,6 +168,37 @@ runtime/
 - Go: **`go test ./...`** or **`make check`** from **`runtime/`**.
 - After changing runtime code: **`make check`** from **`runtime/`** (gofmt, vet, golangci-lint, tests, e2e).
 - Reinstall for hook testing: **`make install`** then **`vibe-agent doctor`**. Passing `go test` does not update the binary on PATH.
+- Benchmarks (optional, not in **`check`**): **`make bench`** from **`runtime/`** runs **`go test -bench=. -benchmem`**. See **Benchmark tests** below.
+
+### Benchmark tests
+
+Benchmarks measure CPU and allocation cost of hot paths. They are **not** regression gates in CI unless a task explicitly adds one.
+
+**Add or extend a benchmark when:**
+
+- The code sits on a **request, hook, or verifier hot path** (for example `redact.Text`, `session.Replay`, graph load, catalog load, slop scan).
+- You are **optimizing** a function and need a before/after number, not a gut feel.
+- A change **touches allocation-heavy logic** (regex, JSON, tree-sitter, markdown parsing) and you need to confirm you did not regress it.
+- The package already has **`bench_test.go`** and your change modifies the timed path; update the bench in the same PR.
+
+**Do not add a benchmark when:**
+
+- The path is **cold** (one-off CLI, install, release) or dominated by **network/disk** without a stable **`testdata`** fixture.
+- A **unit test** already covers correctness and the function is trivial (getters, thin wrappers).
+- You would benchmark **third-party libraries** instead of our wrapper or call pattern.
+- The only goal is to satisfy coverage; use **`go test`**, not **`go test -bench`**.
+
+**Authoring rules (MUST):**
+
+- File name **`bench_test.go`**, functions **`BenchmarkXxx`**, package under test (not a separate `benchmark` package unless the subject is a fixture suite).
+- **Setup outside the timed loop**: build fixtures, warm one-shot init (for example gitleaks), read files, with **`b.ResetTimer()`** when setup is inside the benchmark function.
+- Prefer **`b.Loop()`** (Go 1.22+) or a classic **`for i := 0; i < b.N; i++`** loop with **no work** outside it.
+- Use **`b.ReportAllocs()`** for paths that allocate.
+- Split inputs with **`b.Run("case", ...)`** when cost differs materially (clean vs redacted text, short vs long input).
+- Repo paths: **`testutil.ToolkitRoot(tb)`** / **`RuntimeRoot(tb)`** from **`internal/testutil`** (`testing.TB` works for tests and benchmarks); do not duplicate module-root walks.
+- Keep **`slopaudit/fixture/`** regression fixtures (`TestSeededFixtures...`) separate from Go benchmarks (`BenchmarkAudit...` in **`bench_test.go`**).
+
+**Where benches live today:** `internal/shared/redact`, `internal/shared/markdown`, `internal/graph`, `internal/session`, `internal/web/infra/catalog`, `internal/slopaudit/fixture`.
 
 ### Test helpers and fakes (MUST)
 

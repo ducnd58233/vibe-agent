@@ -13,7 +13,11 @@ type Options struct {
 }
 
 func Audit(ctx context.Context, target string, options Options) domain.Report {
-	scanner := source.NewScanner(options.Workers)
+	workers := options.Workers
+	if workers <= 0 {
+		workers = app.DefaultWorkers
+	}
+	scanner := source.NewScanner(workers)
 	auditor := app.NewAuditor([]app.Scanner{scanner}, nil)
 	return auditor.Audit(ctx, target)
 }

@@ -145,7 +145,7 @@ State lands in `tmp/my-feature/manifest.json` with the log at `tmp/my-feature/ev
 
 ## Audit code slop
 
-`vibe-agent slop audit [path]` scans source-like text across a codebase for signals that often show up in low-quality AI-generated patches: unfinished markers, empty declarations, ignored call results, debug output, placeholder aborts, parse errors, oversized files, and repeated non-trivial lines.
+`vibe-agent slop audit [path]` scans source-like text across a codebase for signals that often show up in low-quality AI-generated patches: unfinished markers, empty declarations, ignored call results, swallowed error branches, debug output, placeholder aborts, AI-tell filler comments, parse errors, oversized files, and repeated non-trivial lines.
 
 ```sh
 vibe-agent slop audit .

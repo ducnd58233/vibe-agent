@@ -50,7 +50,7 @@ TOOLS_DIR    := $(CURDIR)/bin
 GOLANGCI     := $(TOOLS_DIR)/golangci-lint$(EXE)
 GOLANGCI_REF ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.1
 
-.PHONY: all build test vet fmt fmt-check lint golangci tools check release clean install help
+.PHONY: all build test bench vet fmt fmt-check lint golangci tools check release clean install help
 
 all: check build
 
@@ -85,6 +85,10 @@ install:
 ## test: run every package test, including the consumer-repo end-to-end suite
 test:
 	go test -count=1 ./...
+
+## bench: run Go benchmarks with allocation counts (not part of check)
+bench:
+	go test -run=^$$ -bench=. -benchmem ./...
 
 ## vet: run the Go static checks
 vet:

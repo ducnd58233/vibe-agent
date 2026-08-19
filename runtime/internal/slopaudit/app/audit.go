@@ -41,7 +41,7 @@ func (a *Auditor) Audit(ctx context.Context, target string) domain.Report {
 	return domain.Report{
 		Target:   target,
 		Score:    score,
-		Status:   domain.Status(score),
+		Status:   domain.ScoreBand(score),
 		Summary:  scanResult.Summary,
 		Findings: scanResult.Findings,
 		Adapters: adapters,
