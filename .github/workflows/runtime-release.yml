@@ -64,9 +64,21 @@ jobs:
             echo "prerelease=false"       >> "$GITHUB_OUTPUT"
             echo "title=runtime $version" >> "$GITHUB_OUTPUT"
           else
-            # Rolling build off main. The version carries the commit so a
-            # `vibe-agent version` answer points at an exact tree.
-            version="0.0.0-main.$(git rev-parse --short HEAD)"
+            # Rolling build off main. Derive next patch from the latest stable
+            # tag so the binary always reports a meaningful version.
+            git fetch --tags --quiet
+            latest=$(git tag --list 'runtime/v*' --sort=-v:refname | head -n1)
+            if [ -z "$latest" ]; then
+              base="0.1.0"
+            else
+              semver="${latest#runtime/v}"
+              major=$(echo "$semver" | cut -d. -f1)
+              minor=$(echo "$semver" | cut -d. -f2)
+              patch=$(echo "$semver" | cut -d. -f3)
+              patch=$((patch + 1))
+              base="${major}.${minor}.${patch}"
+            fi
+            version="${base}-dev.$(git rev-parse --short HEAD)"
             echo "tag=runtime/latest"     >> "$GITHUB_OUTPUT"
             echo "version=$version"       >> "$GITHUB_OUTPUT"
             echo "prerelease=true"        >> "$GITHUB_OUTPUT"
