@@ -225,6 +225,15 @@
     </div>
   </dialog>
   {{ template "workspace-browse-dialog" . }}
+  <dialog id="file-viewer-dialog" class="dialog-file-viewer" data-testid="file-viewer-dialog" aria-labelledby="file-viewer-heading">
+    <div class="dialog-body dialog-file-viewer-body">
+      <div class="dialog-head">
+        <h2 id="file-viewer-heading">File</h2>
+        <button class="btn" type="button" id="file-viewer-close">Close</button>
+      </div>
+      <div class="file-viewer-content" id="file-viewer-content"></div>
+    </div>
+  </dialog>
   <script>
     const app = document.getElementById("app");
     const eventList = document.getElementById("event-list");
@@ -509,6 +518,47 @@
     }
 
     if (inspectorPane) inspectorPane.addEventListener("change", renderInspector);
+
+    const fileViewerDialog = document.getElementById("file-viewer-dialog");
+    const fileViewerContent = document.getElementById("file-viewer-content");
+    const fileViewerHeading = document.getElementById("file-viewer-heading");
+    const fileViewerClose = document.getElementById("file-viewer-close");
+    if (fileViewerClose) {
+      fileViewerClose.addEventListener("click", () => fileViewerDialog.close());
+    }
+    if (fileViewerDialog) {
+      fileViewerDialog.addEventListener("click", (e) => {
+        if (e.target === fileViewerDialog) fileViewerDialog.close();
+      });
+    }
+
+    async function openFileViewer(path) {
+      if (!fileViewerDialog || !fileViewerContent) return;
+      fileViewerHeading.textContent = path;
+      fileViewerContent.innerHTML = '<p class="empty">Loading...</p>';
+      fileViewerDialog.showModal();
+      try {
+        const res = await fetch("/workspace/files/view?path=" + encodeURIComponent(path));
+        if (!res.ok) {
+          fileViewerContent.innerHTML = '<p class="empty">Could not load file.</p>';
+          return;
+        }
+        fileViewerContent.innerHTML = await res.text();
+      } catch (_) {
+        fileViewerContent.innerHTML = '<p class="empty">Could not load file.</p>';
+      }
+    }
+
+    if (eventList) {
+      eventList.addEventListener("click", (e) => {
+        const link = e.target.closest("[data-file-view]");
+        if (link) {
+          e.preventDefault();
+          e.stopPropagation();
+          openFileViewer(link.dataset.fileView);
+        }
+      });
+    }
 
     applyFilters();
   </script>

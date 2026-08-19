@@ -44,3 +44,18 @@
   <pre class="file-preview-excerpt">{{ .Excerpt }}</pre>
 </div>
 {{ end }}
+
+{{ define "file-viewer" }}
+<div class="file-viewer" data-testid="file-viewer">
+  <header class="file-viewer-head">
+    <span class="file-viewer-path">{{ .Path }}</span>
+  </header>
+  <div class="file-viewer-body">
+    {{ if .IsMarkdown }}
+    <div class="file-viewer-md event-md">{{ .RenderedHTML }}</div>
+    {{ else }}
+    <pre class="file-viewer-pre">{{ .Content }}</pre>
+    {{ end }}
+  </div>
+</div>
+{{ end }}

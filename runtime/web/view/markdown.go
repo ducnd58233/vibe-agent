@@ -40,10 +40,12 @@ func RenderMarkdown(src string) template.HTML {
 		return template.HTML(html.EscapeString(src)) //nolint:gosec // G203 escaped fallback
 	}
 	out := highlightRefs(buf.String())
+	out = linkFilePathsInCode(out)
 	return template.HTML(out) //nolint:gosec // G203 goldmark WithUnsafe is off
 }
 
 var refRe = regexp.MustCompile(`(^|\s)(/[a-z][a-z0-9-]*)|(^|\s)(@[^\s<]+)`)
+var filePathInCodeRe = regexp.MustCompile(`<code>([^<]*\.(?:md|yaml|yml|json|go|ts|js|sh|toml))</code>`)
 
 // highlightRefs wraps /command and @file references with <mark> tags,
 // skipping content inside <code> and <pre> blocks.
@@ -106,6 +108,19 @@ func highlightRefs(s string) string {
 		out.WriteString(replaced)
 	}
 	return out.String()
+}
+
+// linkFilePathsInCode wraps file paths inside <code> tags with a clickable
+// element that opens the file viewer dialog.
+func linkFilePathsInCode(s string) string {
+	return filePathInCodeRe.ReplaceAllStringFunc(s, func(m string) string {
+		sub := filePathInCodeRe.FindStringSubmatch(m)
+		if len(sub) < 2 {
+			return m
+		}
+		path := sub[1]
+		return `<code><a href="#" data-file-view="` + html.EscapeString(path) + `" class="file-link">` + html.EscapeString(path) + `</a></code>`
+	})
 }
 
 func markdownBody(role, body string) template.HTML {

@@ -2953,6 +2953,57 @@ form.dialog-body > .field {
   }
 }
 
+.dialog-file-viewer {
+  max-width: min(56rem, 90vw);
+  width: 56rem;
+  max-height: 80vh;
+}
+
+.dialog-file-viewer-body {
+  display: flex;
+  flex-direction: column;
+  max-height: 78vh;
+}
+
+.file-viewer-content {
+  overflow: auto;
+  flex: 1 1 auto;
+  padding: var(--space-3);
+}
+
+.file-viewer-head {
+  padding: 0 0 var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.file-viewer-path {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-dim);
+  word-break: break-all;
+}
+
+.file-viewer-md {
+  line-height: 1.6;
+}
+
+.file-viewer-pre {
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.file-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  cursor: pointer;
+}
+
+.file-link:hover {
+  text-decoration-style: solid;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

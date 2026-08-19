@@ -34,3 +34,20 @@ func TestRenderMarkdownDropsJavascriptHrefs(t *testing.T) {
 		t.Fatalf("javascript href must not survive, got %s", html)
 	}
 }
+
+func TestRenderMarkdownLinksFilePathsInCode(t *testing.T) {
+	html := string(RenderMarkdown("See `docs/harness-improvement/SPEC.md` for details."))
+	if !strings.Contains(html, `data-file-view="docs/harness-improvement/SPEC.md"`) {
+		t.Fatalf("file path in backtick code should become a clickable link, got %s", html)
+	}
+	if !strings.Contains(html, "file-link") {
+		t.Fatalf("missing file-link class, got %s", html)
+	}
+}
+
+func TestRenderMarkdownDoesNotLinkNonFilePaths(t *testing.T) {
+	html := string(RenderMarkdown("Use `go test ./...` to run tests."))
+	if strings.Contains(html, "data-file-view") {
+		t.Fatalf("non-file code should not become a file link, got %s", html)
+	}
+}

@@ -266,6 +266,9 @@ func KindCounts(rows []EventRow) map[session.FilterKind]int {
 }
 
 // ChatRows returns the operator thread: user, thinking, and assistant.
+// Intermediate assistant messages without token usage are demoted to thinking
+// so that only the final result (carrying in/out/cache counts) appears as a
+// first-class assistant bubble.
 func ChatRows(rows []EventRow) []EventRow {
 	out := make([]EventRow, 0, len(rows))
 	lastPrompt := ""
@@ -294,7 +297,47 @@ func ChatRows(rows []EventRow) []EventRow {
 		}
 		out = append(out, row)
 	}
+	demoteIntermediateAssistants(out)
 	return out
+}
+
+// demoteIntermediateAssistants reclassifies assistant messages that lack token
+// usage as thinking when the same turn also contains an assistant message WITH
+// usage. The assistant carrying usage is the final model result; earlier ones
+// are progress updates. When no assistant in the turn has usage, all stay as-is.
+func demoteIntermediateAssistants(rows []EventRow) {
+	demoteTurnRange(rows, 0, len(rows))
+}
+
+func demoteTurnRange(rows []EventRow, start, end int) {
+	// Split on user messages to process each turn independently.
+	turnStart := start
+	for i := start; i <= end; i++ {
+		isUser := i < end && rows[i].Role == "user"
+		isBound := isUser || i == end
+		if !isBound {
+			continue
+		}
+		lastWithUsage := -1
+		for j := turnStart; j < i; j++ {
+			if rows[j].Role == "assistant" && rows[j].HasUsage {
+				lastWithUsage = j
+			}
+		}
+		if lastWithUsage >= 0 {
+			for j := turnStart; j < i; j++ {
+				if rows[j].Role != "assistant" || j == lastWithUsage {
+					continue
+				}
+				rows[j].Role = "thinking"
+				rows[j].Summary = "agent progress"
+				rows[j].FoldClosed = strings.TrimSpace(rows[j].Body) != ""
+			}
+		}
+		if isUser {
+			turnStart = i
+		}
+	}
 }
 
 func transcriptEchoesPrompt(body, prompt string) bool {

@@ -248,7 +248,7 @@ func TestPromoteUsageSkipsEphemeralAssistant(t *testing.T) {
 func TestChatRowsIncludesThinkingBeforeAssistant(t *testing.T) {
 	rows := []EventRow{
 		{Role: "thinking", Body: "I will read the file"},
-		{Role: "assistant", Body: "done"},
+		{Role: "assistant", Body: "done", HasUsage: true, Usage: &session.Usage{Input: 10, Output: 5}},
 		{Role: "user", Body: "go"},
 	}
 	chat := ChatRows(rows)
@@ -257,6 +257,45 @@ func TestChatRowsIncludesThinkingBeforeAssistant(t *testing.T) {
 	}
 	if !ChatVisibleRole("thinking") {
 		t.Fatal("thinking belongs on Chat, collapsed above the assistant reply")
+	}
+}
+
+func TestChatRowsDemotesIntermediateAssistantsToThinking(t *testing.T) {
+	rows := []EventRow{
+		{Role: "user", Body: "start"},
+		{Role: "assistant", Body: "step 1"},
+		{Role: "assistant", Body: "step 2"},
+		{Role: "assistant", Body: "final result", HasUsage: true, Usage: &session.Usage{Input: 60, Output: 30000, CacheRead: 1640000}},
+	}
+	chat := ChatRows(rows)
+	if len(chat) != 4 {
+		t.Fatalf("chat rows = %d", len(chat))
+	}
+	if chat[0].Role != "user" {
+		t.Fatalf("row 0 = %q", chat[0].Role)
+	}
+	if chat[1].Role != "thinking" || chat[1].Summary != "agent progress" {
+		t.Fatalf("intermediate row 1 should be thinking, got role=%q summary=%q", chat[1].Role, chat[1].Summary)
+	}
+	if chat[2].Role != "thinking" {
+		t.Fatalf("intermediate row 2 should be thinking, got %q", chat[2].Role)
+	}
+	if chat[3].Role != "assistant" || !chat[3].HasUsage {
+		t.Fatalf("final row should stay assistant with usage, got role=%q hasUsage=%v", chat[3].Role, chat[3].HasUsage)
+	}
+	if !chat[1].FoldClosed || !chat[2].FoldClosed {
+		t.Fatal("demoted thinking rows should start folded")
+	}
+}
+
+func TestChatRowsKeepsSingleAssistantWithoutUsage(t *testing.T) {
+	rows := []EventRow{
+		{Role: "user", Body: "hi"},
+		{Role: "assistant", Body: "hello back"},
+	}
+	chat := ChatRows(rows)
+	if len(chat) != 2 || chat[1].Role != "assistant" {
+		t.Fatalf("single assistant without usage should stay assistant, got %+v", chat)
 	}
 }
 

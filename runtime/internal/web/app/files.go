@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"errors"
+	"html/template"
 	"io"
 	"net/http"
 	"os"
@@ -12,9 +13,11 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 	ui "github.com/ducnd58233/vibe-agent/runtime/web"
+	"github.com/ducnd58233/vibe-agent/runtime/web/view"
 )
 
 const filePreviewMaxBytes = 4096
+const fileViewMaxBytes = 64 * 1024
 
 type fileBrowserModel struct {
 	Mode      string
@@ -176,6 +179,64 @@ func (d httpDeps) handleWorkspaceFilePreview(w http.ResponseWriter, r *http.Requ
 	if err := tmpl.ExecuteTemplate(w, "file-preview", model); err != nil {
 		http.Error(w, "template error", http.StatusInternalServerError)
 	}
+}
+
+func (d httpDeps) handleWorkspaceFileView(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	ws := d.activeWorkspace(r)
+	rel := strings.TrimSpace(r.URL.Query().Get("path"))
+	abs, err := domain.ResolveWorkspacePath(ws, rel)
+	if err != nil {
+		http.Error(w, "bad path", http.StatusBadRequest)
+		return
+	}
+	abs = filepath.Clean(abs)
+	info, err := os.Stat(abs)
+	if err != nil || info.IsDir() {
+		http.Error(w, "not a file", http.StatusBadRequest)
+		return
+	}
+	f, err := os.Open(abs)
+	if err != nil {
+		http.Error(w, "read error", http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = f.Close() }()
+	limited := io.LimitReader(f, fileViewMaxBytes)
+	raw, err := io.ReadAll(limited)
+	if err != nil {
+		http.Error(w, "read error", http.StatusInternalServerError)
+		return
+	}
+	text := session.RedactText(string(raw))
+	isMarkdown := strings.HasSuffix(strings.ToLower(rel), ".md")
+	model := fileViewerModel{
+		Path:       filepath.ToSlash(rel),
+		Content:    text,
+		IsMarkdown: isMarkdown,
+	}
+	if isMarkdown {
+		model.RenderedHTML = view.RenderMarkdown(text)
+	}
+	tmpl, err := ui.Templates()
+	if err != nil {
+		http.Error(w, "template error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "file-viewer", model); err != nil {
+		http.Error(w, "template error", http.StatusInternalServerError)
+	}
+}
+
+type fileViewerModel struct {
+	Path         string
+	Content      string
+	IsMarkdown   bool
+	RenderedHTML template.HTML
 }
 
 type pickJSON struct {
