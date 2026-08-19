@@ -673,8 +673,12 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 		t.Fatalf("inner field must not draw a second ring, got %q", fieldFocus)
 	}
 	previewAlign := cssBlock(css, ".composer-field-wrap .composer-preview")
-	if !strings.Contains(previewAlign, "align-items: center") {
-		t.Fatalf("slash and @ chips must sit on the field midline, got %q", previewAlign)
+	if strings.Contains(previewAlign, "display: flex") {
+		t.Fatalf("preview flex layout shifts the caret against highlighted text, got %q", previewAlign)
+	}
+	wrapAlign := cssBlock(css, ".composer-field-wrap")
+	if !strings.Contains(wrapAlign, "align-items: center") {
+		t.Fatalf("composer wrap must vertically center preview and input, got %q", wrapAlign)
 	}
 	statTokens := cssBlock(css, ".stat .token-pair")
 	if !strings.Contains(statTokens, "margin-inline-start: 0") {
@@ -691,6 +695,9 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 	mark := cssBlock(css, ".composer-field-wrap .composer-ref")
 	if strings.Contains(mark, "color: transparent") {
 		t.Fatalf("slash and @ marks must stay visible on the preview, got %q", mark)
+	}
+	if strings.Contains(mark, "padding: 0 0.125rem") {
+		t.Fatalf("attach highlight padding shifts the caret, got %q", mark)
 	}
 	closed := cssBlock(css, "dialog:not([open])")
 	if !strings.Contains(closed, "display: none") {

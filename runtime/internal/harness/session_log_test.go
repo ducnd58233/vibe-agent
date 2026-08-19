@@ -65,6 +65,31 @@ func TestCursorPromptSubmitRecordsSessionWithoutOutput(t *testing.T) {
 	}
 }
 
+func TestUserPromptSubmitSkippedWhenComposerAlreadyLogged(t *testing.T) {
+	root := workspaceWithRun(t)
+	logPath := session.LogPath(root, "demo")
+	if _, err := session.Append(logPath, session.Record{
+		Type:   session.TypePromptSubmit,
+		Source: session.SourcePrint,
+		Client: "claude",
+		Body:   "hello from composer",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	invoke(t, Request{
+		Event: EventUserPromptSubmit, Client: ClientClaude,
+		WorkspaceRoot: root,
+		Stdin:         strings.NewReader(`{"prompt":"hello from composer"}`),
+	})
+	events := sessionLog(t, root)
+	if len(events) != 1 {
+		t.Fatalf("duplicate prompt_submit must be skipped, events = %+v", events)
+	}
+	if events[0].Source != session.SourcePrint {
+		t.Fatalf("source = %q, want print", events[0].Source)
+	}
+}
+
 func TestPrefixShapedPromptSubmitDoesNotRecordSession(t *testing.T) {
 	root := workspaceWithRun(t)
 	dump := "User: earlier turn\nAssistant: Host produced no output.\n\nplease continue"

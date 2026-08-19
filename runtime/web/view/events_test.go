@@ -209,6 +209,42 @@ func TestEventSummaryComposerStartAndSessionEnd(t *testing.T) {
 	}
 }
 
+func TestChatRowsHidesTranscriptCommandInjection(t *testing.T) {
+	goalFile := "Drive one objective end to end.\n\n<context>\n\nFollow the skill.\n</context>\n\n## Inputs"
+	rows := []EventRow{
+		{Type: session.TypePromptSubmit, Source: session.SourcePrint, Role: "user", Body: "/goal please continue"},
+		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "user", Body: "<command-message>goal</command-message>\n<command-name>/goal</command-name>\n<command-args>please continue</command-args>"},
+		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "user", Body: goalFile},
+		{Role: "assistant", Body: "done"},
+	}
+	chat := ChatRows(rows)
+	if len(chat) != 3 {
+		t.Fatalf("chat = %+v", chat)
+	}
+	if chat[0].Role != "user" || chat[1].Role != "thinking" || chat[2].Role != "assistant" {
+		t.Fatalf("roles = %q %q %q", chat[0].Role, chat[1].Role, chat[2].Role)
+	}
+	if chat[1].Summary != "command context" || !chat[1].FoldClosed {
+		t.Fatalf("command context row = %+v", chat[1])
+	}
+}
+
+func TestPromoteUsageSkipsEphemeralAssistant(t *testing.T) {
+	rows := []EventRow{
+		{Role: "user", Body: "hi"},
+		{Role: "assistant", Body: "real answer", HasUsage: false},
+		{Role: "assistant", Body: session.HostStatusTimeout, HasUsage: false},
+		{Role: "system", HasUsage: true, Usage: &session.Usage{Input: 9, Output: 2, CacheRead: 4}},
+	}
+	promoteUsageToAssistant(rows)
+	if !rows[1].HasUsage || rows[1].Usage.Input != 9 {
+		t.Fatalf("usage = %+v", rows[1].Usage)
+	}
+	if rows[3].HasUsage {
+		t.Fatal("trace row must not keep usage after promotion")
+	}
+}
+
 func TestChatRowsIncludesThinkingBeforeAssistant(t *testing.T) {
 	rows := []EventRow{
 		{Role: "thinking", Body: "I will read the file"},

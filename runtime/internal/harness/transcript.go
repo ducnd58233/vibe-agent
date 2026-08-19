@@ -74,7 +74,7 @@ func parseTranscriptLine(line string) (projectedMessage, bool) {
 		switch typ {
 		case "user":
 			if text := extractTranscriptText(raw); text != "" {
-				return projectedMessage{role: "user", body: text}, true
+				return projectedMessage{role: transcriptUserRole(text), body: text}, true
 			}
 		case "assistant":
 			if text := extractTranscriptText(raw); text != "" {
@@ -105,6 +105,9 @@ func parseTranscriptLine(line string) (projectedMessage, bool) {
 			if role == "assistant" {
 				usage = extractTranscriptUsage(raw)
 			}
+			if role == "user" {
+				role = transcriptUserRole(text)
+			}
 			return projectedMessage{role: role, body: text, usage: usage}, true
 		}
 	}
@@ -114,6 +117,9 @@ func parseTranscriptLine(line string) (projectedMessage, bool) {
 		if r, ok := raw["role"].(string); ok && r != "" {
 			role = r
 		}
+		if role == "user" {
+			role = transcriptUserRole(text)
+		}
 		usage := (*session.Usage)(nil)
 		if role == "assistant" {
 			usage = extractTranscriptUsage(raw)
@@ -122,6 +128,47 @@ func parseTranscriptLine(line string) (projectedMessage, bool) {
 	}
 
 	return projectedMessage{}, false
+}
+
+func transcriptUserRole(text string) string {
+	if session.IsCommandInjectionUserText(text) {
+		return "thinking"
+	}
+	return "user"
+}
+
+func assistantUsageFromTranscript(body payload, assistantText string) *session.Usage {
+	path := body.TranscriptPath
+	if path == "" {
+		path = body.AgentTranscriptPath
+	}
+	if path == "" {
+		return nil
+	}
+	file, err := os.Open(filepath.Clean(path))
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = file.Close() }()
+
+	want := strings.TrimSpace(assistantText)
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		msg, ok := parseTranscriptLine(line)
+		if !ok || msg.role != "assistant" || msg.usage == nil || !msg.usage.Reported() {
+			continue
+		}
+		if want != "" && strings.TrimSpace(msg.body) != want {
+			continue
+		}
+		return msg.usage
+	}
+	return nil
 }
 
 func extractTranscriptText(raw map[string]any) string {

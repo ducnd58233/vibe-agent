@@ -89,7 +89,8 @@
       </div>
       <label class="field">
         <span>Slug</span>
-        <input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="kebab-case-slug" autocomplete="off">
+        <input name="slug" id="new-session-slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="kebab-case-slug" autocomplete="off">
+        <span id="new-session-slug-status" class="field-hint"></span>
       </label>
       <label class="field">
         <span>Goal</span>
@@ -97,7 +98,7 @@
       </label>
       <input type="hidden" name="graph" value="goal-delivery">
       <div class="dialog-actions">
-        <button class="btn btn-block btn-accent" type="submit">Start delivery run</button>
+        <button class="btn btn-block btn-accent" type="submit" id="new-session-submit">Start delivery run</button>
       </div>
     </form>
   </dialog>
@@ -122,6 +123,50 @@
     document.getElementById("new-session-close").addEventListener("click", () => {
       document.getElementById("new-session-dialog").close();
     });
+    (function() {
+      var slugInput = document.getElementById("new-session-slug");
+      var slugStatus = document.getElementById("new-session-slug-status");
+      var submitBtn = document.getElementById("new-session-submit");
+      var timer;
+      var lastChecked = "";
+      function check() {
+        var v = (slugInput.value || "").trim();
+        if (!v || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(v)) {
+          slugStatus.textContent = "";
+          slugStatus.className = "field-hint";
+          submitBtn.disabled = false;
+          lastChecked = "";
+          return;
+        }
+        if (v === lastChecked) return;
+        lastChecked = v;
+        slugStatus.textContent = "Checking...";
+        slugStatus.className = "field-hint";
+        fetch("/session/check-slug?slug=" + encodeURIComponent(v))
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (slugInput.value.trim() !== v) return;
+            if (d.exists) {
+              slugStatus.textContent = "Slug already exists";
+              slugStatus.className = "field-hint field-hint-error";
+              submitBtn.disabled = true;
+            } else {
+              slugStatus.textContent = "Available";
+              slugStatus.className = "field-hint field-hint-ok";
+              submitBtn.disabled = false;
+            }
+          })
+          .catch(function() {
+            slugStatus.textContent = "";
+            submitBtn.disabled = false;
+          });
+      }
+      slugInput.addEventListener("input", function() {
+        clearTimeout(timer);
+        submitBtn.disabled = true;
+        timer = setTimeout(check, 300);
+      });
+    })();
     document.getElementById("settings-close").addEventListener("click", () => {
       document.getElementById("settings-dialog").close();
     });

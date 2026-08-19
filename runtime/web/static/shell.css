@@ -900,6 +900,15 @@ button {
   align-items: center;
   gap: 0.5rem;
 }
+.chat-prompt-thinking {
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+  animation: pulse-opacity 1.2s ease-in-out infinite;
+}
+@keyframes pulse-opacity {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
 
 .chat-prompt-note {
   display: flex;
@@ -1711,8 +1720,8 @@ html[data-theme="light"] .is-chat-view li[data-role="thinking"] .event-body {
   height: var(--control-height);
   margin: 0;
   padding: 0 0.625rem;
-  line-height: var(--control-height);
   font: inherit;
+  line-height: var(--control-height);
   white-space: nowrap;
 }
 
@@ -1731,9 +1740,8 @@ html[data-theme="light"] .is-chat-view li[data-role="thinking"] .event-body {
 }
 
 .composer-field-wrap .composer-preview {
-  display: flex;
-  align-items: center;
-  line-height: 1.25rem;
+  display: block;
+  white-space: nowrap;
   color: var(--color-text);
   z-index: 0;
   overflow-x: auto;
@@ -1747,11 +1755,14 @@ html[data-theme="light"] .is-chat-view li[data-role="thinking"] .event-body {
 
 .composer-field-wrap .composer-ref {
   display: inline;
-  padding: 0 0.125rem;
+  padding: 0;
+  margin: 0;
   height: auto;
   border-radius: 0.1875rem;
   background: color-mix(in srgb, var(--color-accent) 22%, transparent);
   color: var(--color-accent);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 .composer-ref {
@@ -1898,7 +1909,7 @@ html[data-theme="light"] .is-chat-view li[data-role="thinking"] .event-body {
   margin: 0;
   border: 0;
   background: transparent;
-  padding: 0 0.5rem;
+  padding: 0 0.625rem;
   line-height: var(--control-height);
   position: relative;
   z-index: 1;
@@ -2378,6 +2389,21 @@ form.dialog-body {
 form.dialog-body > .field {
   display: block;
   margin: 1rem 1.25rem 0;
+}
+
+.field-hint {
+  display: block;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  min-height: 1rem;
+}
+
+.field-hint-error {
+  color: var(--color-danger);
+}
+
+.field-hint-ok {
+  color: var(--color-success, #22c55e);
 }
 
 .dialog-body label {

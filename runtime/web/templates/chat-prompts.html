@@ -12,9 +12,11 @@
     <form class="chat-prompt-actions" method="post" action="/session/{{ $.Slug }}/checkpoint">
       <input type="hidden" name="check" value="{{ .Check }}">
       <input type="hidden" name="node" value="{{ .NodeID }}">
+      <input type="hidden" name="verdict" value="">
       <label class="chat-prompt-note"><span>Note</span><input name="note" type="text" maxlength="500" autocomplete="off"></label>
-      <button class="btn btn-accent" type="submit" name="verdict" value="passed">Approve</button>
-      <button class="btn btn-quiet" type="submit" name="verdict" value="failed">Send back</button>
+      <button class="btn btn-accent" type="submit" onclick="var f=this.form;f.querySelector('input[name=verdict]').value='passed';setTimeout(function(){f.querySelectorAll('button[type=submit]').forEach(function(b){b.disabled=true});f.querySelector('.chat-prompt-thinking').hidden=false},0)">Approve</button>
+      <button class="btn btn-quiet" type="submit" onclick="var f=this.form;f.querySelector('input[name=verdict]').value='failed';setTimeout(function(){f.querySelectorAll('button[type=submit]').forEach(function(b){b.disabled=true});f.querySelector('.chat-prompt-thinking').hidden=false},0)">Send back</button>
+      <span class="chat-prompt-thinking" hidden>Processing...</span>
     </form>
     {{ else }}
     <p class="chat-prompt-hint" data-testid="chat-prompt-hint">This step waits on a verifier. Chat cannot mark it passed.</p>

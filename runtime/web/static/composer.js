@@ -118,10 +118,6 @@
       const caret = document.caretPositionFromPoint(x, y);
       if (caret && caret.offsetNode === inputEl) return caret.offset;
     }
-    if (typeof document.caretRangeFromPoint === "function") {
-      const range = document.caretRangeFromPoint(x, y);
-      if (range && range.startContainer === inputEl) return range.startOffset;
-    }
     return null;
   }
 

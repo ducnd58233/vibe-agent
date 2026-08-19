@@ -14,15 +14,6 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 )
 
-const composerTimeout = 2 * time.Minute
-
-const (
-	hostTimeoutCopy = "Host timed out while generating output."
-	hostErrorCopy   = "Host exited with an error."
-	hostFailCopy    = "Host failed to produce output."
-	hostEmptyCopy   = "Host produced no output."
-)
-
 var hostPrint = runHostPrint
 
 // SendComposerMessage records a redacted user prompt and optional print output.
@@ -49,7 +40,7 @@ func SendComposerMessage(ctx context.Context, workspaceRoot, slug, hostID, messa
 	}
 	if _, err := session.Append(logPath, session.Record{
 		Type:   session.TypePromptSubmit,
-		Source: session.SourceHook,
+		Source: session.SourcePrint,
 		Client: host.Binary,
 		Body:   message,
 		At:     time.Now().UTC(),
@@ -61,8 +52,7 @@ func SendComposerMessage(ctx context.Context, workspaceRoot, slug, hostID, messa
 }
 
 func appendHostPrint(parent context.Context, workspaceRoot, slug string, host hosts.Host, message string, opts hosts.PrintOptions) {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), composerTimeout)
-	defer cancel()
+	ctx := context.WithoutCancel(parent)
 	logPath := session.LogPath(workspaceRoot, slug)
 	out, err := hostPrint(ctx, host, message, opts)
 	if err != nil || strings.TrimSpace(out) == "" {
@@ -176,19 +166,19 @@ func appendComposerStop(logPath, client string) error {
 
 func printFailureChatBody(ctx context.Context, err error) string {
 	if ctx != nil && ctx.Err() == context.DeadlineExceeded {
-		return hostTimeoutCopy
+		return session.HostStatusTimeout
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
-		return hostTimeoutCopy
+		return session.HostStatusTimeout
 	}
 	var exit *exec.ExitError
 	if errors.As(err, &exit) {
-		return hostErrorCopy
+		return session.HostStatusError
 	}
 	if err != nil {
-		return hostFailCopy
+		return session.HostStatusFail
 	}
-	return hostEmptyCopy
+	return session.HostStatusEmpty
 }
 
 func printFailureStderr(err error) string {

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ .Title }} · vibe-agent web</title>
+  {{ template "theme-boot" }}
+  <link rel="stylesheet" href="/static/tokens.css">
+  <link rel="stylesheet" href="/static/shell.css">
+  <style>
+    .error-page {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: calc(var(--space) * 6);
+      background: var(--color-bg);
+      text-align: center;
+    }
+    .error-card {
+      max-width: 28rem;
+      padding: calc(var(--space) * 8) calc(var(--space) * 6);
+      background: var(--color-surface);
+      border: var(--hairline) solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+    }
+    .error-code {
+      font-size: 4rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--color-text-tertiary);
+      margin: 0 0 calc(var(--space) * 2);
+      letter-spacing: -0.04em;
+    }
+    .error-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--color-text);
+      margin: 0 0 calc(var(--space) * 3);
+    }
+    .error-detail {
+      font-size: var(--font-size-ui);
+      color: var(--color-text-secondary);
+      margin: 0 0 calc(var(--space) * 6);
+      line-height: 1.6;
+    }
+    .error-actions {
+      display: flex;
+      gap: calc(var(--space) * 3);
+      justify-content: center;
+    }
+    .error-home {
+      display: inline-flex;
+      align-items: center;
+      gap: calc(var(--space) * 2);
+      padding: calc(var(--space) * 2) calc(var(--space) * 5);
+      background: var(--color-accent);
+      color: var(--color-on-accent);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .error-home:hover {
+      background: var(--color-accent-hover);
+    }
+    .error-back {
+      display: inline-flex;
+      align-items: center;
+      gap: calc(var(--space) * 2);
+      padding: calc(var(--space) * 2) calc(var(--space) * 5);
+      background: var(--color-surface-2);
+      color: var(--color-text-secondary);
+      border: var(--hairline) solid var(--color-border-strong);
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .error-back:hover {
+      background: var(--color-surface-3);
+    }
+  </style>
+</head>
+<body>
+  <div class="error-page">
+    <div class="error-card">
+      <p class="error-code">{{ .Code }}</p>
+      <h1 class="error-title">{{ .Title }}</h1>
+      {{ if .Detail }}
+      <p class="error-detail">{{ .Detail }}</p>
+      {{ end }}
+      <div class="error-actions">
+        <a class="error-home" href="/">Back to home</a>
+        <button class="error-back" onclick="history.back()">Go back</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

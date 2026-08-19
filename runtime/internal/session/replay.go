@@ -102,6 +102,9 @@ func ComposePrefix(events []Event, maxTurns, maxBytes int) string {
 		case TypePromptSubmit:
 			lines = append(lines, "User: "+body)
 		case TypeTranscriptMessage:
+			if EphemeralHostStatus(body) {
+				continue
+			}
 			role := strings.ToLower(strings.TrimSpace(eventPayload(ev).Role))
 			if role == "" {
 				role = strings.ToLower(strings.TrimSpace(ev.Role))
@@ -123,6 +126,24 @@ func ComposePrefix(events []Event, maxTurns, maxBytes int) string {
 		text = strings.Join(lines, "\n")
 	}
 	return text
+}
+
+// HasPromptSubmitBody reports whether the log already ends with the same user prompt.
+// Web composer records a prompt before the host user-prompt-submit hook fires.
+func HasPromptSubmitBody(logPath, body string) bool {
+	events, err := Replay(logPath)
+	if err != nil {
+		return false
+	}
+	trimmed := strings.TrimSpace(body)
+	for i := len(events) - 1; i >= 0; i-- {
+		if events[i].Type != TypePromptSubmit {
+			continue
+		}
+		got := strings.TrimSpace(eventPayload(events[i]).Body)
+		return got == trimmed
+	}
+	return false
 }
 
 // LooksLikeComposePrefix reports spawn memory that must not become a Chat user card.

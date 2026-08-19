@@ -127,6 +127,61 @@ func TestTranscriptSkipsDuplicateAssistantFromStop(t *testing.T) {
 	}
 }
 
+func TestTranscriptCommandInjectionProjectsAsThinking(t *testing.T) {
+	root := workspaceWithRun(t)
+	path := writeTranscriptFile(t,
+		`{"type":"user","message":{"content":[{"type":"text","text":"<command-message>goal</command-message>\n<command-name>/goal</command-name>"}]}}`,
+		`{"type":"user","message":{"content":[{"type":"text","text":"Drive one objective end to end.\n\n<context>\n\nFollow the skill.\n</context>\n\n## Inputs"}]}}`,
+	)
+	invoke(t, Request{
+		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{"transcript_path":` + jsonString(path) + `}`),
+	})
+	var thinking int
+	for _, ev := range sessionLog(t, root) {
+		if ev.Source != session.SourceTranscript {
+			continue
+		}
+		var body session.Payload
+		if err := json.Unmarshal(ev.Payload, &body); err != nil {
+			t.Fatal(err)
+		}
+		if body.Role == "thinking" {
+			thinking++
+		}
+		if body.Role == "user" {
+			t.Fatalf("command injection must not stay user, got %+v", body)
+		}
+	}
+	if thinking != 2 {
+		t.Fatalf("thinking rows = %d, want 2", thinking)
+	}
+}
+
+func TestStopCopiesUsageFromSkippedTranscriptAssistant(t *testing.T) {
+	root := workspaceWithRun(t)
+	assistant := "same assistant text"
+	path := writeTranscriptFile(t,
+		`{"type":"assistant","message":{"content":[{"type":"text","text":"`+assistant+`"}],"usage":{"input_tokens":120,"output_tokens":45,"cache_read_input_tokens":10}}}`,
+	)
+	invoke(t, Request{
+		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{"transcript_path":` + jsonString(path) + `,"last_assistant_message":` + jsonString(assistant) + `}`),
+	})
+	var body session.Payload
+	for _, ev := range sessionLog(t, root) {
+		if ev.Type != session.TypeTranscriptMessage || ev.Source != session.SourceHook {
+			continue
+		}
+		if err := json.Unmarshal(ev.Payload, &body); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if body.Usage == nil || body.Usage.Input != 120 || body.Usage.Output != 45 || body.Usage.CacheRead != 10 {
+		t.Fatalf("usage = %+v", body.Usage)
+	}
+}
+
 func TestTranscriptMissingUsageStaysUnset(t *testing.T) {
 	root := workspaceWithRun(t)
 	path := writeTranscriptFile(t,

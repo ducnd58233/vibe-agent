@@ -1,6 +1,7 @@
 package app
 
 import (
+	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -63,6 +64,16 @@ func (d httpDeps) storeRegistry(reg domain.Registry) {
 	*d.registry = reg
 }
 
+func renderError(w http.ResponseWriter, tmpl *template.Template, code int, title, detail string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(code)
+	_ = tmpl.ExecuteTemplate(w, "error.html", view.ErrorPage{
+		Code:   code,
+		Title:  title,
+		Detail: detail,
+	})
+}
+
 func mountHTTP(d httpDeps) (http.Handler, error) {
 	tmpl, err := ui.Templates()
 	if err != nil {
@@ -101,6 +112,9 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 	mux.HandleFunc("/session/new", func(w http.ResponseWriter, r *http.Request) {
 		handleNewSession(w, r, d)
 	})
+	mux.HandleFunc("/session/check-slug", func(w http.ResponseWriter, r *http.Request) {
+		handleCheckSlug(w, r, d)
+	})
 	mux.HandleFunc("/session/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && strings.HasSuffix(strings.Trim(r.URL.Path, "/"), "/checkpoint") {
 			handleSessionCheckpoint(w, r, d)
@@ -121,38 +135,38 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 		slug := strings.TrimPrefix(r.URL.Path, "/session/")
 		slug = strings.Trim(slug, "/")
 		if slug == "" || strings.Contains(slug, "/") {
-			http.NotFound(w, r)
+			renderError(w, tmpl, 404, "Session not found", "The requested session does not exist or the URL is invalid.")
 			return
 		}
 		ws := d.activeWorkspace(r)
 		page, err := view.BuildSessionPage(ws, d.toolkitRoot, d.bindAddr, slug, r.URL.Query().Get("view"), d.snapshotRegistry(), ws)
 		if err != nil {
 			if os.IsNotExist(err) {
-				http.NotFound(w, r)
+				renderError(w, tmpl, 404, "Session not found", "No session with slug \""+slug+"\" exists in this workspace.")
 				return
 			}
-			http.Error(w, "page error", http.StatusInternalServerError)
+			renderError(w, tmpl, 500, "Something went wrong", "Failed to load the session page. Check server logs for details.")
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := tmpl.ExecuteTemplate(w, "session.html", page); err != nil {
-			http.Error(w, "template error", http.StatusInternalServerError)
+			renderError(w, tmpl, 500, "Render failed", "The session page template could not be rendered.")
 		}
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
-			http.NotFound(w, r)
+			renderError(w, tmpl, 404, "Page not found", "The page you are looking for does not exist.")
 			return
 		}
 		ws := d.activeWorkspace(r)
 		page, err := view.BuildShellPage(ws, d.bindAddr, d.snapshotRegistry(), ws)
 		if err != nil {
-			http.Error(w, "page error", http.StatusInternalServerError)
+			renderError(w, tmpl, 500, "Something went wrong", "Failed to load the workspace page.")
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := tmpl.ExecuteTemplate(w, "shell.html", page); err != nil {
-			http.Error(w, "template error", http.StatusInternalServerError)
+			renderError(w, tmpl, 500, "Render failed", "The workspace template could not be rendered.")
 		}
 	})
 	return mux, nil

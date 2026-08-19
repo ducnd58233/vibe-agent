@@ -41,10 +41,30 @@ func recordPromptSubmit(req Request, body payload) {
 	if session.LooksLikeComposePrefix(text) {
 		return
 	}
+	if promptSubmitAlreadyLogged(req, text) {
+		return
+	}
 	appendSession(req, session.Record{
 		Type: session.TypePromptSubmit,
 		Body: text,
 	})
+}
+
+func promptSubmitAlreadyLogged(req Request, text string) bool {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return false
+	}
+	runs := activeRuns(req.WorkspaceRoot)
+	if len(runs) == 0 {
+		return session.HasPromptSubmitBody(session.AmbientLogPath(req.WorkspaceRoot), trimmed)
+	}
+	for _, run := range runs {
+		if session.HasPromptSubmitBody(session.LogPath(req.WorkspaceRoot, run.Slug), trimmed) {
+			return true
+		}
+	}
+	return false
 }
 
 func recordPreToolUse(req Request, body payload) {
@@ -74,9 +94,10 @@ func recordStop(req Request, body payload, subagent bool) {
 	})
 	if body.LastAssistantMessage != "" {
 		appendSession(req, session.Record{
-			Type: session.TypeTranscriptMessage,
-			Role: "assistant",
-			Body: body.LastAssistantMessage,
+			Type:  session.TypeTranscriptMessage,
+			Role:  "assistant",
+			Body:  body.LastAssistantMessage,
+			Usage: assistantUsageFromTranscript(body, body.LastAssistantMessage),
 		})
 	}
 	projectTranscript(req, body, body.LastAssistantMessage)

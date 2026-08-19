@@ -723,22 +723,22 @@ func eventTypes(events []session.Event) []session.Type {
 
 func TestPrintFailureChatBody(t *testing.T) {
 	ctx := context.Background()
-	if got := printFailureChatBody(ctx, nil); got != hostEmptyCopy {
+	if got := printFailureChatBody(ctx, nil); got != session.HostStatusEmpty {
 		t.Fatalf("empty = %q", got)
 	}
-	if got := printFailureChatBody(ctx, context.DeadlineExceeded); got != hostTimeoutCopy {
+	if got := printFailureChatBody(ctx, context.DeadlineExceeded); got != session.HostStatusTimeout {
 		t.Fatalf("deadline err = %q", got)
 	}
 	deadline, cancel := context.WithTimeout(ctx, time.Nanosecond)
 	defer cancel()
 	time.Sleep(time.Millisecond)
-	if got := printFailureChatBody(deadline, &exec.ExitError{}); got != hostTimeoutCopy {
+	if got := printFailureChatBody(deadline, &exec.ExitError{}); got != session.HostStatusTimeout {
 		t.Fatalf("killed after timeout = %q", got)
 	}
-	if got := printFailureChatBody(ctx, &exec.ExitError{}); got != hostErrorCopy {
+	if got := printFailureChatBody(ctx, &exec.ExitError{}); got != session.HostStatusError {
 		t.Fatalf("exit = %q", got)
 	}
-	if got := printFailureChatBody(ctx, os.ErrNotExist); got != hostFailCopy {
+	if got := printFailureChatBody(ctx, os.ErrNotExist); got != session.HostStatusFail {
 		t.Fatalf("other err = %q", got)
 	}
 }
@@ -764,10 +764,10 @@ func TestAppendHostPrintWritesTimeoutAndRedactedStderr(t *testing.T) {
 		if err := jsonUnmarshalPayload(ev, &body); err != nil {
 			t.Fatal(err)
 		}
-		if body.Role == "assistant" && body.Body == hostTimeoutCopy {
+		if body.Role == "assistant" && body.Body == session.HostStatusTimeout {
 			found = true
 		}
-		if strings.Contains(body.Body, hostEmptyCopy) {
+		if strings.Contains(body.Body, session.HostStatusEmpty) {
 			t.Fatalf("timeout used empty copy: %+v", body)
 		}
 	}
@@ -809,7 +809,7 @@ func TestAppendHostPrintWritesTimeoutAndRedactedStderr(t *testing.T) {
 			contextRow = body.Body
 		}
 	}
-	if assistant != hostErrorCopy {
+	if assistant != session.HostStatusError {
 		t.Fatalf("assistant = %q", assistant)
 	}
 	if contextRow == "" || strings.Contains(contextRow, secret) {

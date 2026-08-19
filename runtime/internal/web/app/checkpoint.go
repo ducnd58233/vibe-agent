@@ -13,47 +13,49 @@ import (
 )
 
 func handleSessionCheckpoint(w http.ResponseWriter, r *http.Request, d httpDeps) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 	path := strings.TrimPrefix(r.URL.Path, "/session/")
 	path = strings.Trim(path, "/")
 	parts := strings.Split(path, "/")
 	if len(parts) != 2 || parts[1] != "checkpoint" {
-		http.NotFound(w, r)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 	slug := parts[0]
+	sessionURL := "/session/" + url.PathEscape(slug) + "?view=chat"
+
+	if r.Method != http.MethodPost {
+		http.Redirect(w, r, sessionURL, http.StatusSeeOther)
+		return
+	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
+		http.Redirect(w, r, sessionURL+"&error=bad+form", http.StatusSeeOther)
 		return
 	}
 	checkName := strings.TrimSpace(r.FormValue("check"))
 	verdict := strings.TrimSpace(r.FormValue("verdict"))
 	note := strings.TrimSpace(r.FormValue("note"))
 	if checkName == "" || (verdict != "passed" && verdict != "failed") {
-		http.Error(w, "checkpoint failed", http.StatusBadRequest)
+		http.Redirect(w, r, sessionURL+"&error=invalid+verdict", http.StatusSeeOther)
 		return
 	}
 	ws := d.activeWorkspace(r)
 	run, err := state.Load(state.ManifestPath(ws, slug))
 	if err != nil {
-		http.Error(w, "checkpoint failed", http.StatusBadRequest)
+		http.Redirect(w, r, sessionURL+"&error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 	loaded, err := graph.LoadByID(graph.DefaultDir(d.toolkitRoot), run.GraphID)
 	if err != nil {
-		http.Error(w, "checkpoint failed", http.StatusBadRequest)
+		http.Redirect(w, r, sessionURL+"&error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 	node, ok := loaded.Node(run.CurrentNode)
 	if !ok || node.Type != graph.NodeHumanGate {
-		http.Error(w, "checkpoint failed", http.StatusBadRequest)
+		http.Redirect(w, r, sessionURL+"&error=not+a+human+gate", http.StatusSeeOther)
 		return
 	}
 	if node.Check == "" || node.Check != checkName {
-		http.Error(w, "checkpoint failed", http.StatusBadRequest)
+		http.Redirect(w, r, sessionURL+"&error=check+mismatch", http.StatusSeeOther)
 		return
 	}
 	if len(note) > 500 {
@@ -80,8 +82,8 @@ func handleSessionCheckpoint(w http.ResponseWriter, r *http.Request, d httpDeps)
 		},
 	})
 	if err != nil {
-		http.Error(w, "checkpoint failed", http.StatusBadRequest)
+		http.Redirect(w, r, sessionURL+"&error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, "/session/"+url.PathEscape(slug)+"?view=chat", http.StatusSeeOther)
+	http.Redirect(w, r, sessionURL, http.StatusSeeOther)
 }

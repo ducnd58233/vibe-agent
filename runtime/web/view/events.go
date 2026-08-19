@@ -78,17 +78,19 @@ func promoteUsageToAssistant(rows []EventRow) {
 		case "user":
 			assistant = -1
 		case "assistant":
-			assistant = i
+			if !session.EphemeralHostStatus(rows[i].Body) {
+				assistant = i
+			}
 		}
 		if !rows[i].HasUsage || ChatVisibleRole(rows[i].Role) {
 			continue
 		}
-		if assistant < 0 || rows[assistant].HasUsage {
+		if assistant < 0 || rows[assistant].HasUsage { //nolint:gosec // bounds checked by assistant < 0 guard
 			continue
 		}
-		rows[assistant].Usage = rows[i].Usage
-		rows[assistant].HasUsage = true
-		rows[assistant].TokensText = rows[i].TokensText
+		rows[assistant].Usage = rows[i].Usage           //nolint:gosec // assistant is valid index
+		rows[assistant].HasUsage = true                 //nolint:gosec // assistant is valid index
+		rows[assistant].TokensText = rows[i].TokensText //nolint:gosec // assistant is valid index
 		rows[i].Usage = nil
 		rows[i].HasUsage = false
 		rows[i].TokensText = ""
@@ -266,15 +268,65 @@ func KindCounts(rows []EventRow) map[session.FilterKind]int {
 // ChatRows returns the operator thread: user, thinking, and assistant.
 func ChatRows(rows []EventRow) []EventRow {
 	out := make([]EventRow, 0, len(rows))
+	lastPrompt := ""
 	for _, row := range rows {
+		if row.Role == "user" && row.Type == session.TypePromptSubmit {
+			lastPrompt = strings.TrimSpace(row.Body)
+		}
 		if row.Role == "thinking" && strings.TrimSpace(row.Body) == "" {
 			continue
 		}
-		if ChatVisibleRole(row.Role) {
-			out = append(out, row)
+		if !ChatVisibleRole(row.Role) {
+			continue
 		}
+		if row.Type == session.TypeTranscriptMessage && row.Source == session.SourceTranscript {
+			if row.Role == "user" && session.IsCommandInjectionUserText(row.Body) {
+				if strings.Contains(row.Body, "<command-message>") && lastPrompt != "" {
+					continue
+				}
+				row.Role = "thinking"
+				row.Summary = "command context"
+				row.FoldClosed = strings.TrimSpace(row.Body) != ""
+			}
+			if row.Role == "user" && transcriptEchoesPrompt(row.Body, lastPrompt) {
+				continue
+			}
+		}
+		out = append(out, row)
 	}
 	return out
+}
+
+func transcriptEchoesPrompt(body, prompt string) bool {
+	prompt = strings.TrimSpace(prompt)
+	if prompt == "" {
+		return false
+	}
+	trimmed := strings.TrimSpace(body)
+	if trimmed == prompt {
+		return true
+	}
+	if strings.Contains(trimmed, "<command-args>") {
+		if args := extractCommandArgs(trimmed); args != "" && strings.Contains(prompt, args) {
+			return true
+		}
+	}
+	return false
+}
+
+func extractCommandArgs(body string) string {
+	const open = "<command-args>"
+	const close = "</command-args>"
+	start := strings.Index(body, open)
+	if start < 0 {
+		return ""
+	}
+	start += len(open)
+	end := strings.Index(body[start:], close)
+	if end < 0 {
+		return strings.TrimSpace(body[start:])
+	}
+	return strings.TrimSpace(body[start : start+end])
 }
 
 func chatFoldClosed(role, body string) bool {

@@ -160,6 +160,29 @@ func TestComposePrefixRedactsAndCaps(t *testing.T) {
 	}
 }
 
+func TestHasPromptSubmitBody(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, LogName)
+	if HasPromptSubmitBody(path, "hello") {
+		t.Fatal("empty log should not match")
+	}
+	if _, err := Append(path, Record{Type: TypePromptSubmit, Source: SourcePrint, Client: "claude", Body: "hello"}); err != nil {
+		t.Fatal(err)
+	}
+	if !HasPromptSubmitBody(path, "hello") {
+		t.Fatal("expected match on last prompt_submit")
+	}
+	if HasPromptSubmitBody(path, "other") {
+		t.Fatal("different body must not match")
+	}
+	if _, err := Append(path, Record{Type: TypeTranscriptMessage, Source: SourcePrint, Role: "assistant", Body: "ok"}); err != nil {
+		t.Fatal(err)
+	}
+	if !HasPromptSubmitBody(path, "hello") {
+		t.Fatal("assistant row must not hide the last prompt_submit")
+	}
+}
+
 func TestKindMapping(t *testing.T) {
 	cases := []struct {
 		name string

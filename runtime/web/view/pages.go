@@ -185,7 +185,7 @@ func defaultComposeHost(composeHosts []HostRow, events []session.Event) (string,
 	lastClient := ""
 	for i := len(events) - 1; i >= 0; i-- {
 		ev := events[i]
-		if ev.Type == session.TypePromptSubmit && ev.Source == session.SourceHook && ev.Client != "" {
+		if ev.Type == session.TypePromptSubmit && composePromptSource(ev.Source) && ev.Client != "" {
 			lastClient = ev.Client
 			break
 		}
@@ -205,10 +205,14 @@ func busyComposeHost(events []session.Event) (string, int) {
 		return "", 0
 	}
 	last := events[len(events)-1]
-	if last.Type != session.TypePromptSubmit || last.Source != session.SourceHook || last.Client == "" {
+	if last.Type != session.TypePromptSubmit || !composePromptSource(last.Source) || last.Client == "" {
 		return "", 0
 	}
 	return last.Client, last.Sequence
+}
+
+func composePromptSource(src session.Source) bool {
+	return src == session.SourceHook || src == session.SourcePrint
 }
 
 // NormalizeSessionView maps a query value to chat, trajectory, or graph.
@@ -239,6 +243,13 @@ func countToolCalls(rows []EventRow) int {
 		}
 	}
 	return n
+}
+
+// ErrorPage holds data for the error.html template.
+type ErrorPage struct {
+	Code   int
+	Title  string
+	Detail string
 }
 
 func hasAmbientSession(workspaceRoot string) bool {
