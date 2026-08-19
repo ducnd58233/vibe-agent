@@ -144,7 +144,7 @@ func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug, selectedView s
 		page.GraphTypeCounts = GraphTypeCounts(page.GraphNodes)
 	}
 	events, err := session.Replay(logPath)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !session.IsNotFound(err) {
 		return SessionPage{}, err
 	}
 	graphRows := []EventRow{}

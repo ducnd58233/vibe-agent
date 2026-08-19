@@ -3,11 +3,11 @@ package app
 import (
 	"html/template"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/hostpick"
 	ui "github.com/ducnd58233/vibe-agent/runtime/web"
@@ -144,7 +144,7 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 		ws := d.activeWorkspace(r)
 		page, err := view.BuildSessionPage(ws, d.toolkitRoot, d.bindAddr, slug, r.URL.Query().Get("view"), d.snapshotRegistry(), ws)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if session.IsNotFound(err) {
 				renderError(w, tmpl, 404, "Session not found", "No session with slug \""+slug+"\" exists in this workspace.")
 				return
 			}
