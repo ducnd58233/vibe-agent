@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/markdown"
 )
 
 // The routing evals pair a user intent with the asset the router should select.
@@ -50,61 +50,7 @@ var countedFamilies = []string{"skill", "agent", "command"}
 // notAnAsset are the router scaffolding files, which no intent routes to.
 var notAnAsset = map[string]bool{"ROUTER.md": true, "TEMPLATE.md": true, "README.md": true}
 
-var (
-	evalLink  = regexp.MustCompile(`\[[^\]]*\]\(([^)]+)\)`)
-	tableRule = regexp.MustCompile(`^\|[\s\-:|]+\|$`)
-)
-
-// tableRow is one body row of a markdown table, carrying the line it came from
-// so a problem can name a place a person can open.
-type tableRow struct {
-	Line  int
-	Cells []string
-}
-
-// tableRows returns the body rows of the first markdown table in text.
-//
-// It reads a table the way the bash checker does: skip to the |---| rule, then
-// take pipe rows until the table ends. Anything after the first table is prose.
-func tableRows(text string) []tableRow {
-	var rows []tableRow
-	seenRule := false
-	for number, line := range strings.Split(text, "\n") {
-		trimmed := strings.TrimRight(line, " \t\r")
-		if !strings.HasPrefix(trimmed, "|") {
-			if seenRule && len(rows) > 0 {
-				break
-			}
-			continue
-		}
-		if tableRule.MatchString(trimmed) {
-			seenRule = true
-			continue
-		}
-		if !seenRule {
-			continue
-		}
-		cells := strings.Split(strings.Trim(trimmed, "|"), "|")
-		for i := range cells {
-			cells[i] = strings.TrimSpace(cells[i])
-		}
-		rows = append(rows, tableRow{Line: number + 1, Cells: cells})
-	}
-	return rows
-}
-
-// assetSlug is the name a link target points at, for both layouts an asset uses:
-// a directory holding SKILL.md, or a single .md file.
-func assetSlug(target string) string {
-	clean := path.Clean(target)
-	base := path.Base(clean)
-	if base == "SKILL.md" {
-		return path.Base(path.Dir(clean))
-	}
-	return strings.TrimSuffix(base, path.Ext(base))
-}
-
-// routableAssets is every asset of a family present on disk.
+// checkRoutingEvals validates the fixture table and reports intent coverage.
 func routableAssets(toolkitRoot, family string) map[string]bool {
 	found := map[string]bool{}
 	home := filepath.Join(toolkitRoot, ".ai-agents", familyHome[family])
@@ -159,7 +105,7 @@ func checkRoutingEvals(report *diagnostics, toolkitRoot string) {
 	}
 	rows := 0
 
-	for _, row := range tableRows(string(raw)) {
+	for _, row := range markdown.ParseFirstTable(string(raw)) {
 		at := fmt.Sprintf("line %d", row.Line)
 
 		if len(row.Cells) != 3 || row.Cells[0] == "" {
@@ -182,25 +128,25 @@ func checkRoutingEvals(report *diagnostics, toolkitRoot string) {
 			continue
 		}
 
-		targets := evalLink.FindAllStringSubmatch(cell, -1)
+		targets := markdown.LinkTargets(cell)
 		if len(targets) != 1 {
 			malformed = append(malformed, fmt.Sprintf("%s holds %d links, want 1", at, len(targets)))
 			continue
 		}
-		target := targets[0][1]
+		target := targets[0]
 
 		if _, err := os.Stat(filepath.Join(filepath.Dir(fixtures), filepath.FromSlash(target))); err != nil {
 			missing = append(missing, fmt.Sprintf("%s -> %s", at, target))
 			continue
 		}
 
-		if !strings.Contains(path.Clean(target), "/"+familyHome[family]+"/") {
+		if !strings.Contains(filepath.ToSlash(filepath.Clean(target)), "/"+familyHome[family]+"/") {
 			misfiled = append(misfiled, fmt.Sprintf("%s says %s but %s is not under %s/",
 				at, family, target, familyHome[family]))
 			continue
 		}
 
-		slug := assetSlug(target)
+		slug := markdown.AssetSlug(target)
 		covered[family][slug] = true
 
 		// Only a hyphenated slug is evidence. A one-word slug like "review" is

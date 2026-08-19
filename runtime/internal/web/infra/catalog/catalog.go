@@ -320,10 +320,10 @@ func loadRouter(path string, family Family) ([]Entry, error) {
 	}
 	var out []Entry
 	for _, row := range tableRows(string(raw)) {
-		if len(row.cells) < 2 {
+		if len(row.Cells) < 2 {
 			continue
 		}
-		target := linkTarget(row.cells[1])
+		target := linkTarget(row.Cells[1])
 		if target == "" {
 			continue
 		}
@@ -338,7 +338,7 @@ func loadRouter(path string, family Family) ([]Entry, error) {
 		out = append(out, Entry{
 			Family:      family,
 			Slug:        slug,
-			Description: row.cells[0],
+			Description: row.Cells[0],
 			Insert:      insert,
 		})
 	}

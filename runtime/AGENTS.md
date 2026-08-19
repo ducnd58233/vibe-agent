@@ -26,6 +26,8 @@ runtime/
     shared/               cross-cutting infra (no domain logic)
       workspace/          path constants (.agent-state, tmp)
       redact/             credential-shaped text replacement
+      markdown/           markdown table and link parsing for routers
+      validate/           shared format checks (slug, etc.)
       observability/      structured logging port + dual-sink logger
       infra/
         database/         SQLite open helper (driver registration)
