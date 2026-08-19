@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"strings"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
@@ -43,11 +44,16 @@ func recordPromptSubmit(req Request, body payload) {
 }
 
 func recordPreToolUse(req Request, body payload) {
+	tool := body.sessionTool()
+	command := body.sessionCommand()
+	if emptyToolRow(tool, command) {
+		return
+	}
 	appendSession(req, session.Record{
 		Type:    session.TypePreTool,
 		Event:   string(EventPreToolUse),
-		Tool:    body.sessionTool(),
-		Command: body.sessionCommand(),
+		Tool:    tool,
+		Command: command,
 	})
 }
 
@@ -73,9 +79,18 @@ func recordStop(req Request, body payload, subagent bool) {
 }
 
 func recordToolUse(req Request, body payload) {
+	tool := body.sessionTool()
+	command := body.sessionCommand()
+	if emptyToolRow(tool, command) {
+		return
+	}
 	appendSession(req, session.Record{
 		Type:    session.TypeToolUse,
-		Tool:    body.sessionTool(),
-		Command: body.sessionCommand(),
+		Tool:    tool,
+		Command: command,
 	})
+}
+
+func emptyToolRow(tool, command string) bool {
+	return strings.TrimSpace(tool) == "" && strings.TrimSpace(command) == ""
 }
