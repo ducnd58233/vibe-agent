@@ -300,6 +300,7 @@ func TestBudgetExceededStopsTheRun(t *testing.T) {
 	runner := newRunner(t)
 	run := newRun(t, runner)
 	run.CurrentNode = "build"
+	runner.Graph.Spec.MaxTransitions = 2
 	run.MaxTransitions = 2
 
 	advance(t, runner, run, Outcome{})
@@ -310,6 +311,30 @@ func TestBudgetExceededStopsTheRun(t *testing.T) {
 
 	if !transition.Terminal || run.Status != state.StatusBudgetExceeded {
 		t.Errorf("terminal=%v status=%q, want terminal budget_exceeded", transition.Terminal, run.Status)
+	}
+}
+
+func TestAdvanceRefreshesBudgetFromGraph(t *testing.T) {
+	runner := newRunner(t)
+	run := newRun(t, runner)
+	run.CurrentNode = "build"
+	run.Status = state.StatusRunning
+	run.Iteration = 50
+	run.MaxTransitions = 50
+	runner.Graph.Spec.MaxTransitions = 100
+
+	transition := advance(t, runner, run, Outcome{})
+	if run.Status == state.StatusBudgetExceeded {
+		t.Fatal("stale run budget blocked a graph raise")
+	}
+	if transition.To != "test" {
+		t.Fatalf("build -> %q, want test", transition.To)
+	}
+	if run.MaxTransitions != 100 {
+		t.Errorf("MaxTransitions = %d, want 100 from the graph", run.MaxTransitions)
+	}
+	if run.Iteration != 51 {
+		t.Errorf("Iteration = %d, want 51", run.Iteration)
 	}
 }
 
