@@ -28,15 +28,15 @@ type fileBrowserModel struct {
 	OpenPath  string
 }
 
-func renderFileBrowser(w http.ResponseWriter, model fileBrowserModel) {
+func renderFileBrowser(w http.ResponseWriter, r *http.Request, model fileBrowserModel) {
 	tmpl, err := ui.Templates()
 	if err != nil {
-		writeTemplateError(w)
+		writeTemplateError(w, r)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "file-browser", model); err != nil {
-		writeTemplateError(w)
+		writeTemplateError(w, r)
 	}
 }
 
@@ -48,17 +48,17 @@ func (d httpDeps) handleWorkspaceFiles(w http.ResponseWriter, r *http.Request) {
 	dir := strings.TrimSpace(r.URL.Query().Get("dir"))
 	absDir, err := domain.ResolveWorkspacePath(ws, dir)
 	if err != nil {
-		http.Error(w, "bad path", http.StatusBadRequest)
+		writeHTMXOrError(w, r, http.StatusBadRequest, "bad path")
 		return
 	}
 	info, err := os.Stat(filepath.Clean(absDir))
 	if err != nil || !info.IsDir() {
-		http.Error(w, "not a directory", http.StatusBadRequest)
+		writeHTMXOrError(w, r, http.StatusBadRequest, "not a directory")
 		return
 	}
 	entries, err := os.ReadDir(absDir)
 	if err != nil {
-		http.Error(w, "read error", http.StatusInternalServerError)
+		writeHTMXOrError(w, r, http.StatusInternalServerError, "read error")
 		return
 	}
 	var rows []domain.FileRow
@@ -94,7 +94,7 @@ func (d httpDeps) handleWorkspaceFiles(w http.ResponseWriter, r *http.Request) {
 			model.Parent = filepath.ToSlash(parent)
 		}
 	}
-	renderFileBrowser(w, model)
+	renderFileBrowser(w, r, model)
 }
 
 func (d httpDeps) handleWorkspaceBrowse(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +103,7 @@ func (d httpDeps) handleWorkspaceBrowse(w http.ResponseWriter, r *http.Request) 
 	}
 	dir := strings.TrimSpace(r.URL.Query().Get("dir"))
 	if dir == "" {
-		renderFileBrowser(w, fileBrowserModel{
+		renderFileBrowser(w, r, fileBrowserModel{
 			Mode: "open",
 			Dir:  "",
 			Rows: domain.HostRoots(),
@@ -112,15 +112,15 @@ func (d httpDeps) handleWorkspaceBrowse(w http.ResponseWriter, r *http.Request) 
 	}
 	abs, err := domain.ResolveHostDir(dir)
 	if err != nil {
-		http.Error(w, "bad path", http.StatusBadRequest)
+		writeHTMXOrError(w, r, http.StatusBadRequest, "bad path")
 		return
 	}
 	rows, err := domain.ListHostEntries(abs)
 	if err != nil {
-		http.Error(w, "bad path", http.StatusBadRequest)
+		writeHTMXOrError(w, r, http.StatusBadRequest, "bad path")
 		return
 	}
-	renderFileBrowser(w, fileBrowserModel{
+	renderFileBrowser(w, r, fileBrowserModel{
 		Mode:     "open",
 		Dir:      filepath.ToSlash(abs),
 		Rows:     rows,
@@ -137,24 +137,24 @@ func (d httpDeps) handleWorkspaceFilePreview(w http.ResponseWriter, r *http.Requ
 	rel := strings.TrimSpace(r.URL.Query().Get("path"))
 	abs, err := domain.ResolveWorkspacePath(ws, rel)
 	if err != nil {
-		http.Error(w, "bad path", http.StatusBadRequest)
+		writeHTMXOrError(w, r, http.StatusBadRequest, "bad path")
 		return
 	}
 	info, err := os.Stat(filepath.Clean(abs))
 	if err != nil || info.IsDir() {
-		http.Error(w, "not a file", http.StatusBadRequest)
+		writeHTMXOrError(w, r, http.StatusBadRequest, "not a file")
 		return
 	}
 	f, err := os.Open(filepath.Clean(abs))
 	if err != nil {
-		http.Error(w, "read error", http.StatusInternalServerError)
+		writeHTMXOrError(w, r, http.StatusInternalServerError, "read error")
 		return
 	}
 	defer func() { _ = f.Close() }()
 	limited := io.LimitReader(f, filePreviewMaxBytes)
 	raw, err := io.ReadAll(limited)
 	if err != nil {
-		http.Error(w, "read error", http.StatusInternalServerError)
+		writeHTMXOrError(w, r, http.StatusInternalServerError, "read error")
 		return
 	}
 	text := session.RedactText(string(raw))
@@ -169,12 +169,12 @@ func (d httpDeps) handleWorkspaceFilePreview(w http.ResponseWriter, r *http.Requ
 	}
 	tmpl, err := ui.Templates()
 	if err != nil {
-		writeTemplateError(w)
+		writeTemplateError(w, r)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "file-preview", model); err != nil {
-		writeTemplateError(w)
+		writeTemplateError(w, r)
 	}
 }
 
@@ -191,7 +191,7 @@ func (d httpDeps) handleWorkspaceFileView(w http.ResponseWriter, r *http.Request
 		// them, fall back to toolkitRoot so the viewer can still open.
 		abs2, resolvedRel2, err2 := resolveWorkspaceFileView(d.toolkitRoot, rel)
 		if err2 != nil {
-			http.Error(w, "not a file", http.StatusBadRequest)
+			writeHTMXOrError(w, r, http.StatusBadRequest, "not a file")
 			return
 		}
 		abs = abs2
@@ -199,14 +199,14 @@ func (d httpDeps) handleWorkspaceFileView(w http.ResponseWriter, r *http.Request
 	}
 	f, err := os.Open(abs) //nolint:gosec // abs comes from ResolveWorkspacePath and a prior Stat check
 	if err != nil {
-		http.Error(w, "read error", http.StatusInternalServerError)
+		writeHTMXOrError(w, r, http.StatusInternalServerError, "read error")
 		return
 	}
 	defer func() { _ = f.Close() }()
 	limited := io.LimitReader(f, fileViewMaxBytes)
 	raw, err := io.ReadAll(limited)
 	if err != nil {
-		http.Error(w, "read error", http.StatusInternalServerError)
+		writeHTMXOrError(w, r, http.StatusInternalServerError, "read error")
 		return
 	}
 	text := session.RedactText(string(raw))
@@ -221,12 +221,12 @@ func (d httpDeps) handleWorkspaceFileView(w http.ResponseWriter, r *http.Request
 	}
 	tmpl, err := ui.Templates()
 	if err != nil {
-		writeTemplateError(w)
+		writeTemplateError(w, r)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "file-viewer", model); err != nil {
-		writeTemplateError(w)
+		writeTemplateError(w, r)
 	}
 }
 
@@ -306,11 +306,11 @@ func (d httpDeps) handleWorkspacePick(w http.ResponseWriter, r *http.Request) {
 	}
 	kind, err := domain.ParsePickKind(r.URL.Query().Get("kind"))
 	if err != nil {
-		http.Error(w, "bad kind", http.StatusBadRequest)
+		writeHTMXOrError(w, r, http.StatusBadRequest, "bad kind")
 		return
 	}
 	if d.picker == nil {
-		http.Error(w, "picker unavailable", http.StatusNotImplemented)
+		writeHTMXOrError(w, r, http.StatusNotImplemented, "picker unavailable")
 		return
 	}
 	raw, err := d.picker.Pick(r.Context(), kind)
@@ -320,15 +320,15 @@ func (d httpDeps) handleWorkspacePick(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if errors.Is(err, domain.ErrPickUnavailable) {
-			http.Error(w, "picker unavailable", http.StatusNotImplemented)
+			writeHTMXOrError(w, r, http.StatusNotImplemented, "picker unavailable")
 			return
 		}
-		http.Error(w, "pick failed", http.StatusBadGateway)
+		writeHTMXOrError(w, r, http.StatusBadGateway, "pick failed")
 		return
 	}
 	formatted, err := domain.FormatAttachAbs(raw)
 	if err != nil {
-		http.Error(w, "bad path", http.StatusBadRequest)
+		writeHTMXOrError(w, r, http.StatusBadRequest, "bad path")
 		return
 	}
 	httpserver.JSON(w, http.StatusOK, pickJSON{Path: formatted})
