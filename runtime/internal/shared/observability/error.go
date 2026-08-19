@@ -13,10 +13,7 @@ func LogError(l Logger, msg string, err error) {
 	if l == nil || err == nil {
 		return
 	}
-	l.Error(msg,
-		"error", redact.Text(err.Error()),
-		"stack", redact.Text(string(debug.Stack())),
-	)
+	l.Error(msg, errorLogAttrs(err)...)
 }
 
 // LogErrorContext is LogError with a request context.
@@ -24,10 +21,14 @@ func LogErrorContext(ctx context.Context, l Logger, msg string, err error) {
 	if l == nil || err == nil {
 		return
 	}
-	l.ErrorContext(ctx, msg,
+	l.ErrorContext(ctx, msg, errorLogAttrs(err)...)
+}
+
+func errorLogAttrs(err error) []any {
+	return []any{
 		"error", redact.Text(err.Error()),
 		"stack", redact.Text(string(debug.Stack())),
-	)
+	}
 }
 
 // LogPanicRecovered records a panic without logging the panic value (may hold secrets).

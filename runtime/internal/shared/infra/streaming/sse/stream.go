@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+const DefaultPollInterval = time.Second
+
 const headerAccelBuffering = "X-Accel-Buffering"
 
 // Conn holds a live SSE response. Call Flush after each WriteEvent.
@@ -45,7 +47,7 @@ func (c *Conn) WriteEvent(e Event) error {
 // Poll calls produce on each tick until ctx is cancelled or produce returns an error.
 func Poll(ctx context.Context, c *Conn, interval time.Duration, produce func(context.Context) ([]Event, error)) error {
 	if interval <= 0 {
-		interval = time.Second
+		interval = DefaultPollInterval
 	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()

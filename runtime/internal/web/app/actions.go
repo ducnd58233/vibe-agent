@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -9,8 +8,13 @@ import (
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/run/infra/persistence"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/httpserver"
 )
+
+type slugExistsResponse struct {
+	Exists bool `json:"exists"`
+}
 
 func handleNewSession(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	if r.Method != http.MethodPost {
@@ -34,34 +38,26 @@ func handleNewSession(w http.ResponseWriter, r *http.Request, d httpDeps) {
 func handleCheckSlug(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	slug := strings.TrimSpace(r.URL.Query().Get("slug"))
 	if slug == "" {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprint(w, `{"exists":false}`)
+		httpserver.JSON(w, http.StatusOK, slugExistsResponse{Exists: false})
 		return
 	}
-	manifest := persistence.ManifestPath(d.activeWorkspace(r), slug)
+	manifest := state.ManifestPath(d.activeWorkspace(r), slug)
 	_, err := os.Stat(filepath.Clean(manifest))
-	w.Header().Set("Content-Type", "application/json")
-	if err == nil {
-		_, _ = fmt.Fprint(w, `{"exists":true}`)
-	} else {
-		_, _ = fmt.Fprint(w, `{"exists":false}`)
-	}
+	httpserver.JSON(w, http.StatusOK, slugExistsResponse{Exists: err == nil})
 }
 
 func handleComposerSend(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
-	path := strings.TrimPrefix(r.URL.Path, "/session/")
-	path = strings.Trim(path, "/")
-	parts := strings.Split(path, "/")
-	if len(parts) != 2 || parts[1] != "send" {
+	slug, ok := parseSessionSubpath(r.URL.Path, "send")
+	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	slug := parts[0]
+	sessionURL := "/session/" + url.PathEscape(slug) + "?view=chat"
 	if err := r.ParseForm(); err != nil {
-		writeBadForm(w)
+		http.Redirect(w, r, sessionURL+"&error=bad+form", http.StatusSeeOther)
 		return
 	}
 	hostID := strings.TrimSpace(r.FormValue("host"))
@@ -74,8 +70,8 @@ func handleComposerSend(w http.ResponseWriter, r *http.Request, d httpDeps) {
 		opts.Mode = ""
 	}
 	if err := SendComposerMessage(r.Context(), d.activeWorkspace(r), slug, hostID, message, opts); err != nil {
-		http.Error(w, "send failed", http.StatusBadRequest)
+		http.Redirect(w, r, sessionURL+"&error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, "/session/"+url.PathEscape(slug)+"?view=chat", http.StatusSeeOther)
+	http.Redirect(w, r, sessionURL, http.StatusSeeOther)
 }

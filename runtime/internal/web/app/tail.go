@@ -2,7 +2,6 @@ package app
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 
 	ui "github.com/ducnd58233/vibe-agent/runtime/web"
@@ -13,22 +12,15 @@ func handleSessionEvents(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	if !requireMethod(w, r, http.MethodGet) {
 		return
 	}
-	path := strings.TrimPrefix(r.URL.Path, "/session/")
-	path = strings.Trim(path, "/")
-	parts := strings.Split(path, "/")
-	if len(parts) != 2 || parts[1] != "events" {
+	slug, ok := parseSessionSubpath(r.URL.Path, "events")
+	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	slug := parts[0]
-	after := 0
-	if raw := r.URL.Query().Get("after"); raw != "" {
-		n, err := strconv.Atoi(raw)
-		if err != nil || n < 0 {
-			writeBadAfter(w)
-			return
-		}
-		after = n
+	after, ok := parseAfterQuery(r)
+	if !ok {
+		writeBadAfter(w)
+		return
 	}
 	selectedView := r.URL.Query().Get("view")
 	rows, err := view.EventsAfterForView(d.activeWorkspace(r), slug, after, selectedView)
@@ -47,11 +39,9 @@ func handleSessionEvents(w http.ResponseWriter, r *http.Request, d httpDeps) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	for _, row := range rows {
-		if err := tmpl.ExecuteTemplate(w, "event-row", row); err != nil {
-			writeTemplateError(w)
-			return
-		}
+	if err := writeEventRows(w, tmpl, rows); err != nil {
+		writeTemplateError(w)
+		return
 	}
 }
 
