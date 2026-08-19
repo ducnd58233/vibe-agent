@@ -2205,6 +2205,77 @@ dialog {
   z-index: 40;
 }
 
+dialog.dialog-file-picker {
+  width: min(40rem, calc(100vw - 2rem));
+  height: min(70vh, 40rem);
+  max-height: calc(100vh - 2rem);
+}
+
+.dialog-body.dialog-file-picker {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding-bottom: 1rem;
+}
+
+.dialog-file-picker .composer-file-panel {
+  position: static;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  max-height: none;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
+.dialog-file-picker .file-browser {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.dialog-file-picker .file-browser-list {
+  overflow: auto;
+  flex: 1;
+}
+
+.file-browser-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.file-browser-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-browser-pick,
+.file-browser-footer {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: inherit;
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  font: inherit;
+}
+
+.file-browser-footer {
+  margin: 0.5rem 0.625rem 0.625rem;
+}
+
+.file-browser-pick:hover,
+.file-browser-footer:hover {
+  background: var(--color-hover);
+}
+
 dialog:not([open]) {
   display: none;
 }

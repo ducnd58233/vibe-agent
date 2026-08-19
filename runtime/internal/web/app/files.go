@@ -14,6 +14,27 @@ import (
 
 const filePreviewMaxBytes = 4096
 
+type fileBrowserModel struct {
+	Mode      string
+	Dir       string
+	Rows      []domain.FileRow
+	Parent    string
+	AttachDir string
+	OpenPath  string
+}
+
+func renderFileBrowser(w http.ResponseWriter, model fileBrowserModel) {
+	tmpl, err := ui.Templates()
+	if err != nil {
+		http.Error(w, "template error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "file-browser", model); err != nil {
+		http.Error(w, "template error", http.StatusInternalServerError)
+	}
+}
+
 func (d httpDeps) handleWorkspaceFiles(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -45,23 +66,21 @@ func (d httpDeps) handleWorkspaceFiles(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
-		row := domain.FileRow{
-			Name:  entry.Name(),
-			Path:  rel,
-			IsDir: entry.IsDir(),
-		}
-		if !entry.IsDir() {
-			row.Attach = domain.FormatAttach(rel)
-		}
-		rows = append(rows, row)
+		rows = append(rows, domain.FileRow{
+			Name:   entry.Name(),
+			Path:   rel,
+			IsDir:  entry.IsDir(),
+			Attach: domain.FormatAttach(rel),
+		})
 	}
-	model := struct {
-		Dir    string
-		Rows   []domain.FileRow
-		Parent string
-	}{
-		Dir:  filepath.ToSlash(strings.TrimPrefix(dir, "/")),
+	relDir := filepath.ToSlash(strings.TrimPrefix(dir, "/"))
+	model := fileBrowserModel{
+		Mode: "attach",
+		Dir:  relDir,
 		Rows: rows,
+	}
+	if relDir != "" {
+		model.AttachDir = domain.FormatAttach(relDir)
 	}
 	if dir != "" {
 		parent := filepath.Dir(filepath.FromSlash(dir))
@@ -71,15 +90,40 @@ func (d httpDeps) handleWorkspaceFiles(w http.ResponseWriter, r *http.Request) {
 			model.Parent = filepath.ToSlash(parent)
 		}
 	}
-	tmpl, err := ui.Templates()
-	if err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
+	renderFileBrowser(w, model)
+}
+
+func (d httpDeps) handleWorkspaceBrowse(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.ExecuteTemplate(w, "file-browser", model); err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
+	dir := strings.TrimSpace(r.URL.Query().Get("dir"))
+	if dir == "" {
+		renderFileBrowser(w, fileBrowserModel{
+			Mode: "open",
+			Dir:  "",
+			Rows: domain.HostRoots(),
+		})
+		return
 	}
+	abs, err := domain.ResolveHostDir(dir)
+	if err != nil {
+		http.Error(w, "bad path", http.StatusBadRequest)
+		return
+	}
+	rows, err := domain.ListHostEntries(abs)
+	if err != nil {
+		http.Error(w, "bad path", http.StatusBadRequest)
+		return
+	}
+	renderFileBrowser(w, fileBrowserModel{
+		Mode:     "open",
+		Dir:      filepath.ToSlash(abs),
+		Rows:     rows,
+		Parent:   domain.HostParent(abs),
+		OpenPath: abs,
+	})
 }
 
 func (d httpDeps) handleWorkspaceFilePreview(w http.ResponseWriter, r *http.Request) {

@@ -53,9 +53,45 @@
     browseOpen.addEventListener("click", () => {
       setOpen(false);
       browseDialog.showModal();
+      loadBrowse("");
     });
   }
   if (browseClose && browseDialog) {
     browseClose.addEventListener("click", () => browseDialog.close());
+  }
+  const browsePanel = document.getElementById("workspace-browse-panel");
+  const browsePath = document.getElementById("workspace-browse-path");
+  async function loadBrowse(dir) {
+    if (!browsePanel) return;
+    const q = dir ? "?dir=" + encodeURIComponent(dir) : "";
+    const res = await fetch("/workspace/browse" + q);
+    if (!res.ok) return;
+    browsePanel.innerHTML = await res.text();
+    const openBtn = browsePanel.querySelector("[data-open-path]");
+    if (browsePath && openBtn) {
+      browsePath.value = openBtn.getAttribute("data-open-path") || "";
+    }
+  }
+  if (browsePanel) {
+    browsePanel.addEventListener("click", (event) => {
+      event.preventDefault();
+      const openBtn = event.target.closest("[data-testid=file-open-folder]");
+      if (openBtn) {
+        if (browsePath) browsePath.value = openBtn.getAttribute("data-open-path") || "";
+        const form = browseDialog && browseDialog.querySelector("form");
+        if (form) form.requestSubmit();
+        return;
+      }
+      const up = event.target.closest(".file-browser-up");
+      if (up) {
+        loadBrowse(up.dataset.dir || "");
+        return;
+      }
+      const row = event.target.closest("[data-path]");
+      if (!row) return;
+      if (row.dataset.isDir === "true") {
+        loadBrowse(row.dataset.path || "");
+      }
+    });
   }
 })();

@@ -30,15 +30,16 @@
 {{ end }}
 
 {{ define "workspace-browse-dialog" }}
-  <dialog id="workspace-browse-dialog" data-testid="workspace-browse-dialog" aria-labelledby="workspace-browse-heading">
-    <form class="dialog-body" method="post" action="/workspace/open">
+  <dialog id="workspace-browse-dialog" class="dialog-file-picker" data-testid="workspace-browse-dialog" aria-labelledby="workspace-browse-heading">
+    <form class="dialog-body dialog-file-picker" method="post" action="/workspace/open">
       <div class="dialog-head">
         <h2 id="workspace-browse-heading">Browse workspace</h2>
         <button class="btn" type="button" id="workspace-browse-close">Close</button>
       </div>
+      <div id="workspace-browse-panel" class="composer-file-panel" data-testid="workspace-browse-panel"></div>
       <label class="field">
         <span>Folder path</span>
-        <input name="path" required placeholder="Absolute path to a project folder" autocomplete="off">
+        <input id="workspace-browse-path" name="path" required placeholder="Absolute path to a project folder" autocomplete="off">
       </label>
       <div class="dialog-actions">
         <button class="btn btn-accent" type="submit">Open</button>
