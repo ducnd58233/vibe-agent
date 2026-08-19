@@ -46,4 +46,10 @@ func TestAwaitingChatPromptsIncludesCurrentVerifier(t *testing.T) {
 	if len(prompts) != 1 || prompts[0].Type != "verifier" || prompts[0].CanDecide {
 		t.Fatalf("prompts = %+v", prompts)
 	}
+	if strings.TrimSpace(prompts[0].Prompt) != "" {
+		t.Fatalf("verifier with no graph prompt must not copy the description into the body, got %q", prompts[0].Prompt)
+	}
+	if strings.TrimSpace(prompts[0].Title) == "" {
+		t.Fatal("verifier title should keep the node description")
+	}
 }

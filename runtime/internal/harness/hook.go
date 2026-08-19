@@ -384,6 +384,7 @@ func readPayload(reader io.Reader) payload {
 	// encoding the parsed struct would forward this package's view of the
 	// payload rather than the host's, and drop every field it does not read.
 	body.raw = raw
+	body.enrichFromRaw()
 	return body
 }
 

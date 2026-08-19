@@ -113,6 +113,9 @@ func projectEvent(ev session.Event) EventRow {
 	role := eventRole(ev, body.Payload)
 	summary := eventSummary(ev, body.Payload)
 	displayBody := eventBody(ev, body.Payload)
+	if strings.TrimSpace(displayBody) == strings.TrimSpace(summary) {
+		displayBody = ""
+	}
 	row := EventRow{
 		Seq:       ev.Sequence,
 		Role:      role,
@@ -165,7 +168,9 @@ func eventRole(ev session.Event, body session.Payload) string {
 			return role
 		}
 		return "assistant"
-	case session.TypePreTool, session.TypeToolUse:
+	case session.TypePreTool:
+		return "hook"
+	case session.TypeToolUse:
 		return "tool"
 	default:
 		return "system"
@@ -188,9 +193,6 @@ func eventSummary(ev session.Event, body session.Payload) string {
 	case session.TypePromptSubmit:
 		return "UserPromptSubmit"
 	case session.TypePreTool:
-		if body.Event != "" {
-			return body.Event
-		}
 		if body.Tool != "" {
 			return body.Tool
 		}
@@ -235,9 +237,10 @@ func eventBody(ev session.Event, body session.Payload) string {
 		if body.Command != "" {
 			return body.Command
 		}
-		if body.Tool != "" && body.Body == "" {
-			return body.Tool
+		if body.Body != "" {
+			return body.Body
 		}
+		return ""
 	}
 	if body.Body != "" {
 		return body.Body
@@ -285,8 +288,8 @@ func chatFoldClosed(role, body string) bool {
 }
 
 // ChatVisibleRole is the Chat tab allow-list. Trajectory keeps the full
-// trace (system, tool, question, context). Thinking sits above the assistant
-// reply and starts collapsed.
+// trace (system, hook, tool, graph, question, context). Thinking sits above
+// the assistant reply and starts collapsed.
 func ChatVisibleRole(role string) bool {
 	switch role {
 	case "user", "assistant", "thinking":

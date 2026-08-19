@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,6 +75,67 @@ func TestPreToolUseRecordsSession(t *testing.T) {
 	if len(events) != 1 || events[0].Type != session.TypePreTool {
 		t.Fatalf("events = %+v", events)
 	}
+	got := sessionPayload(t, events[0])
+	if got.Tool != "Bash" || got.Command != "echo hi" {
+		t.Fatalf("payload = %+v", got)
+	}
+}
+
+func TestCursorBeforeShellRecordsCommand(t *testing.T) {
+	root := workspaceWithRun(t)
+	invoke(t, Request{
+		Event: EventPreToolUse, Client: ClientCursor, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{"command":"git status","cwd":"/project"}`),
+	})
+	events := sessionLog(t, root)
+	if len(events) != 1 || events[0].Type != session.TypePreTool {
+		t.Fatalf("events = %+v", events)
+	}
+	got := sessionPayload(t, events[0])
+	if got.Tool != "Shell" || got.Command != "git status" {
+		t.Fatalf("payload = %+v, want Shell / git status", got)
+	}
+}
+
+func TestCursorToolAliasRecordsName(t *testing.T) {
+	root := workspaceWithRun(t)
+	invoke(t, Request{
+		Event: EventPreToolUse, Client: ClientCursor, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{"tool":"Read","file_path":"README.md"}`),
+	})
+	events := sessionLog(t, root)
+	if len(events) != 1 || events[0].Type != session.TypePreTool {
+		t.Fatalf("events = %+v", events)
+	}
+	got := sessionPayload(t, events[0])
+	if got.Tool != "Read" || got.Command != "README.md" {
+		t.Fatalf("payload = %+v, want Read / README.md", got)
+	}
+}
+
+func TestCursorStringToolInputRecordsCommand(t *testing.T) {
+	root := workspaceWithRun(t)
+	invoke(t, Request{
+		Event: EventPostToolUse, Client: ClientCursor, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{"tool_name":"Shell","tool_input":"{\"command\":\"npm test\"}"}`),
+	})
+	events := sessionLog(t, root)
+	if len(events) != 1 || events[0].Type != session.TypeToolUse {
+		t.Fatalf("events = %+v", events)
+	}
+	got := sessionPayload(t, events[0])
+	if got.Tool != "Shell" || got.Command != "npm test" {
+		t.Fatalf("payload = %+v, want Shell / npm test", got)
+	}
+}
+
+func sessionPayload(t *testing.T, ev session.Event) session.Payload {
+	t.Helper()
+	var body session.Payload
+	if err := json.Unmarshal(ev.Payload, &body); err != nil {
+		t.Fatalf("payload: %v", err)
+	}
+	return body
 }
 
 func TestPostToolUseRecordsSessionWithoutSecret(t *testing.T) {

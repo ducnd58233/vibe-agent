@@ -46,8 +46,8 @@ func recordPreToolUse(req Request, body payload) {
 	appendSession(req, session.Record{
 		Type:    session.TypePreTool,
 		Event:   string(EventPreToolUse),
-		Tool:    body.ToolName,
-		Command: body.shellCommand(),
+		Tool:    body.sessionTool(),
+		Command: body.sessionCommand(),
 	})
 }
 
@@ -75,7 +75,7 @@ func recordStop(req Request, body payload, subagent bool) {
 func recordToolUse(req Request, body payload) {
 	appendSession(req, session.Record{
 		Type:    session.TypeToolUse,
-		Tool:    body.ToolName,
-		Command: body.shellCommand(),
+		Tool:    body.sessionTool(),
+		Command: body.sessionCommand(),
 	})
 }

@@ -5,7 +5,9 @@
   <article class="chat-prompt" data-testid="chat-prompt" data-prompt-type="{{ .Type }}">
     <p class="chat-prompt-kicker">{{ .Type }} · {{ .NodeID }}</p>
     <h3>{{ .Title }}</h3>
+    {{ if .Prompt }}
     <p>{{ .Prompt }}</p>
+    {{ end }}
     {{ if .CanDecide }}
     <form class="chat-prompt-actions" method="post" action="/session/{{ $.Slug }}/checkpoint">
       <input type="hidden" name="check" value="{{ .Check }}">
@@ -15,7 +17,7 @@
       <button class="btn btn-quiet" type="submit" name="verdict" value="failed">Send back</button>
     </form>
     {{ else }}
-    <p class="chat-prompt-hint">Reply in the composer below. This step waits on a verifier, so Chat cannot mark it passed.</p>
+    <p class="chat-prompt-hint" data-testid="chat-prompt-hint">This step waits on a verifier. Chat cannot mark it passed.</p>
     {{ end }}
   </article>
   {{ end }}

@@ -149,6 +149,134 @@ func TestSettingsDialogPinsURLAndHostChips(t *testing.T) {
 	}
 }
 
+func TestTrajectoryOmitsEmptyPreAndLabelsHook(t *testing.T) {
+	root := t.TempDir()
+	slug := "empty-tool-rows"
+	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	path := session.LogPath(root, slug)
+	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
+	for _, rec := range []session.Record{
+		{Type: session.TypePreTool, Source: session.SourceHook, Client: "cursor", Event: "pre-tool-use", At: stamp},
+		{Type: session.TypeToolUse, Source: session.SourceHook, Client: "cursor", At: stamp},
+		{Type: session.TypePreTool, Source: session.SourceHook, Client: "cursor", Event: "pre-tool-use", Tool: "Shell", Command: "ls", At: stamp},
+	} {
+		if _, err := session.Append(path, rec); err != nil {
+			t.Fatal(err)
+		}
+	}
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug, nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `data-role="hook"`) {
+		t.Fatal("pre_tool must use data-role=hook")
+	}
+	if !strings.Contains(body, `class="role role-hook"`) {
+		t.Fatal("gutter must use role-hook, not role-tool, for hooks")
+	}
+	if !strings.Contains(body, `data-role="tool"`) {
+		t.Fatal("tool_use must keep data-role=tool")
+	}
+	if strings.Contains(body, "<pre></pre>") {
+		t.Fatal("empty tool/hook rows must not render an empty pre")
+	}
+	if !strings.Contains(body, "<pre>ls</pre>") {
+		t.Fatal("command body should render in pre")
+	}
+	if strings.Count(body, "pre-tool-use") > 0 && strings.Contains(body, `<p class="event-text">pre-tool-use</p>`) {
+		t.Fatal("must not repeat pre-tool-use as the body")
+	}
+}
+
+func TestTrajectoryShowsGraphTransitionsFromRunLog(t *testing.T) {
+	root := t.TempDir()
+	slug := "graph-on-trajectory"
+	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	stamp := time.Date(2026, 8, 19, 2, 10, 0, 0, time.UTC)
+	run, err := state.NewRun(slug, "show graph on trajectory", "goal-delivery", 50, stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "research"
+	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
+		Type: "run_started", Node: "intake", At: stamp, Payload: []byte(`{"goal":"show graph on trajectory","graph":"goal-delivery"}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
+		Type: "tool_use", Node: "intake", At: stamp.Add(time.Second), Payload: []byte(`{"tool":"Bash","command":"true"}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
+		Type: "transition", Node: "research", At: stamp.Add(2 * time.Second),
+		Payload: []byte(`{"from":"intake","to":"research","via":"goal_clear=true"}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug, nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if got := strings.Count(body, `data-kind="graph"`); got != 2 {
+		t.Fatalf("graph rows = %d want 2, body snippet missing?", got)
+	}
+	if !strings.Contains(body, `data-role="graph"`) || !strings.Contains(body, `class="role role-graph"`) {
+		t.Fatal("graph rows need gutter role-graph")
+	}
+	if !strings.Contains(body, `data-testid="graph-view"`) {
+		t.Fatal("Graph tab map must still render")
+	}
+	if strings.Contains(body, `data-kind="tool"`) {
+		t.Fatal("journal tool_use in events.ndjson must not become a Trajectory tool row")
+	}
+	if !strings.Contains(body, ">research</span>") && !strings.Contains(body, "research") {
+		t.Fatal("transition target should appear")
+	}
+	chat := httptest.NewRecorder()
+	chatReq := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug+"?view=chat", nil)
+	handler.ServeHTTP(chat, chatReq)
+	if chat.Code != http.StatusOK {
+		t.Fatalf("chat status = %d", chat.Code)
+	}
+	chatBody := chat.Body.String()
+	if !strings.Contains(chatBody, `is-chat-view`) {
+		t.Fatal("chat view class missing")
+	}
+	emptyAt := strings.Index(chatBody, `data-testid="chat-empty"`)
+	if emptyAt < 0 {
+		t.Fatal("Chat should stay empty of host prose when only graph rows exist")
+	}
+	start := emptyAt - 80
+	if start < 0 {
+		start = 0
+	}
+	if strings.Contains(chatBody[start:emptyAt], "hidden") {
+		t.Fatal("chat-empty must be visible when Trajectory only has graph rows")
+	}
+}
+
 func TestSessionRendersMarkdownAndOmitsEmptyUserTokens(t *testing.T) {
 	root := t.TempDir()
 	slug := "md-session"
@@ -752,6 +880,56 @@ func TestChatQueryKeepsHumanGateVisible(t *testing.T) {
 	}
 	if !strings.Contains(body, `aria-selected="true" data-view="chat"`) && !strings.Contains(body, `data-view="chat" aria-selected="true"`) {
 		t.Fatal("chat tab must be selected when view=chat")
+	}
+}
+
+func TestChatVerifierPromptOmitsDuplicateAndComposerHint(t *testing.T) {
+	root := t.TempDir()
+	slug := "e2e-chat-prompt"
+	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	stamp := time.Date(2026, 8, 19, 2, 28, 0, 0, time.UTC)
+	run, err := state.NewRun(slug, "verifier card copy", "goal-delivery", 50, stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "e2e"
+	run.Status = state.StatusRunning
+	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug+"?view=chat", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	start := strings.Index(body, `data-prompt-type="verifier"`)
+	if start < 0 {
+		t.Fatal("expected verifier chat prompt")
+	}
+	end := strings.Index(body[start:], "</article>")
+	if end < 0 {
+		t.Fatal("expected prompt article")
+	}
+	article := body[start : start+end]
+	if strings.Contains(article, "composer below") {
+		t.Fatal("verifier hint must not point at the composer")
+	}
+	if !strings.Contains(article, `data-testid="chat-prompt-hint"`) {
+		t.Fatal("expected verifier hint")
+	}
+	if strings.Count(article, "vibe-checks.yaml") > 1 {
+		t.Fatal("e2e description must not repeat as title and body")
+	}
+	if !strings.Contains(body, `data-testid="composer"`) {
+		t.Fatal("dock composer must still be on the page")
 	}
 }
 

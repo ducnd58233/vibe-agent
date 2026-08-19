@@ -230,7 +230,7 @@ func TestChatRowsKeepsHostQuestionOnTrajectory(t *testing.T) {
 	if len(chat) != 1 || chat[0].Role != "user" {
 		t.Fatalf("chat = %+v", chat)
 	}
-	if ChatVisibleRole("question") || ChatVisibleRole("context") || ChatVisibleRole("system") || ChatVisibleRole("tool") {
+	if ChatVisibleRole("question") || ChatVisibleRole("context") || ChatVisibleRole("system") || ChatVisibleRole("tool") || ChatVisibleRole("hook") || ChatVisibleRole("graph") {
 		t.Fatal("host questions and trace roles belong on Trajectory, not Chat")
 	}
 }
@@ -270,6 +270,93 @@ func TestHostGapFromPayload(t *testing.T) {
 	rows := ProjectEvents(events)
 	if len(rows) != 1 || !rows[0].HostGap {
 		t.Fatalf("host gap row = %+v", rows)
+	}
+}
+
+func TestProjectPreToolUsesHookRoleAndDropsDuplicateBody(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, session.LogName)
+	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
+	if _, err := session.Append(path, session.Record{
+		Type:   session.TypePreTool,
+		Source: session.SourceHook,
+		Client: "cursor",
+		Event:  "pre-tool-use",
+		At:     stamp,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	events, err := session.Replay(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := ProjectEvents(events)
+	if len(rows) != 1 {
+		t.Fatalf("rows = %+v", rows)
+	}
+	row := rows[0]
+	if row.Role != "hook" {
+		t.Fatalf("role = %q, want hook so the gutter is not tool", row.Role)
+	}
+	if row.Kind != session.FilterHook {
+		t.Fatalf("kind = %q, want hook", row.Kind)
+	}
+	if row.Summary != "PreToolUse" {
+		t.Fatalf("summary = %q, want PreToolUse not the raw event slug", row.Summary)
+	}
+	if strings.TrimSpace(row.Body) != "" {
+		t.Fatalf("body = %q, should not repeat the title", row.Body)
+	}
+}
+
+func TestProjectPreToolShowsToolAndCommand(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, session.LogName)
+	if _, err := session.Append(path, session.Record{
+		Type:    session.TypePreTool,
+		Source:  session.SourceHook,
+		Client:  "cursor",
+		Event:   "pre-tool-use",
+		Tool:    "Shell",
+		Command: "ls",
+		At:      time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	events, err := session.Replay(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := ProjectEvents(events)[0]
+	if row.Role != "hook" || row.Summary != "Shell" || row.Body != "ls" {
+		t.Fatalf("row = %+v", row)
+	}
+}
+
+func TestProjectEmptyToolUseOmitsBody(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, session.LogName)
+	if _, err := session.Append(path, session.Record{
+		Type:   session.TypeToolUse,
+		Source: session.SourceHook,
+		Client: "cursor",
+		At:     time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	events, err := session.Replay(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := ProjectEvents(events)[0]
+	if row.Role != "tool" || row.Kind != session.FilterTool {
+		t.Fatalf("row = %+v", row)
+	}
+	if row.Summary != "ToolUse" {
+		t.Fatalf("summary = %q", row.Summary)
+	}
+	if strings.TrimSpace(row.Body) != "" {
+		t.Fatalf("empty tool_use must not invent a body, got %q", row.Body)
 	}
 }
 

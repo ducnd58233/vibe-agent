@@ -25,10 +25,12 @@
       </span>
       {{ if .BodyHTML }}
       <div class="event-md" data-testid="event-md">{{ .BodyHTML }}</div>
-      {{ else if or (eq .Kind "tool") (eq .Kind "skill") }}
+      {{ else if .Body }}
+      {{ if or (eq .Kind "tool") (eq .Kind "skill") (eq .Role "hook") }}
       <pre>{{ .Body }}</pre>
       {{ else }}
       <p class="event-text">{{ .Body }}</p>
+      {{ end }}
       {{ end }}
     </span>
   </article>
