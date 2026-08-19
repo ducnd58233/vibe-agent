@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/redact"
 )
 
 // Verdict is what the policy filter decided about a candidate.
@@ -26,12 +28,21 @@ type Decision struct {
 // secretPatterns catch candidates that would put a credential in a database
 // that gets read back into a model's context. Detection is deliberately broad:
 // a false positive costs one rejected memory, a false negative leaks a secret.
-var secretPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)\b(api[_-]?key|secret|password|passwd|token|credential|private[_-]?key)\b\s*[:=]`),
-	regexp.MustCompile(`(?i)\bbearer\s+[a-z0-9._-]{16,}`),
-	regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),
-	regexp.MustCompile(`(?i)\b(gh[pousr]_[a-z0-9]{16,}|sk-[a-z0-9]{16,}|xox[baprs]-[a-z0-9-]{10,})`),
-	regexp.MustCompile(`(?i)\baws_(access|secret)_[a-z_]*key\b`),
+var secretPatterns = joinSecretPatterns(
+	redact.LiteralPatterns(),
+	redact.ContextualPatterns(),
+)
+
+func joinSecretPatterns(groups ...[]*regexp.Regexp) []*regexp.Regexp {
+	var n int
+	for _, g := range groups {
+		n += len(g)
+	}
+	out := make([]*regexp.Regexp, 0, n)
+	for _, g := range groups {
+		out = append(out, g...)
+	}
+	return out
 }
 
 // hedgePatterns catch candidates that record a guess rather than an
