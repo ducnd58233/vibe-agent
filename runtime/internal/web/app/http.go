@@ -10,6 +10,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/hostpick"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/sessionread"
 	ui "github.com/ducnd58233/vibe-agent/runtime/web"
 	"github.com/ducnd58233/vibe-agent/runtime/web/view"
 )
@@ -39,6 +40,7 @@ type httpDeps struct {
 	toolkitRoot string
 	bindAddr    string
 	picker      domain.HostPicker
+	sessionRead sessionread.Reader
 }
 
 func newHTTPDeps(reg domain.Registry, toolkitRoot string, port int) httpDeps {
@@ -49,6 +51,7 @@ func newHTTPDeps(reg domain.Registry, toolkitRoot string, port int) httpDeps {
 		toolkitRoot: filepath.Clean(toolkitRoot),
 		bindAddr:    Addr(port),
 		picker:      hostpick.OS(),
+		sessionRead: sessionread.NewFS(),
 	}
 }
 
@@ -142,7 +145,7 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 			return
 		}
 		ws := d.activeWorkspace(r)
-		page, err := view.BuildSessionPage(ws, d.toolkitRoot, d.bindAddr, slug, r.URL.Query().Get("view"), d.snapshotRegistry(), ws)
+		page, err := view.BuildSessionPage(d.sessionRead, ws, d.toolkitRoot, d.bindAddr, slug, r.URL.Query().Get("view"), d.snapshotRegistry(), ws)
 		if err != nil {
 			if session.IsNotFound(err) {
 				renderError(w, tmpl, 404, "Session not found", "No session with slug \""+slug+"\" exists in this workspace.")
@@ -162,7 +165,7 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 			return
 		}
 		ws := d.activeWorkspace(r)
-		page, err := view.BuildShellPage(ws, d.bindAddr, d.snapshotRegistry(), ws)
+		page, err := view.BuildShellPage(d.sessionRead, ws, d.bindAddr, d.snapshotRegistry(), ws)
 		if err != nil {
 			renderError(w, tmpl, 500, "Something went wrong", "Failed to load the workspace page.")
 			return

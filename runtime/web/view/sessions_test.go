@@ -8,6 +8,7 @@ import (
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/sessionread"
 )
 
 func TestFormatRel(t *testing.T) {
@@ -55,7 +56,7 @@ func TestProjectSessionsCardFields(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rows := ProjectSessions(root, []string{slug}, now)
+	rows := ProjectSessions(sessionread.NewFS(), root, []string{slug}, now)
 	if len(rows) != 1 {
 		t.Fatalf("rows = %d", len(rows))
 	}

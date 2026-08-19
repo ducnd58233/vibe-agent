@@ -1,16 +1,13 @@
 package view
 
 import (
-	"bufio"
-	"encoding/json"
-	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"time"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/sessionread"
 )
 
 // SessionRow is one sidebar session card.
@@ -24,14 +21,8 @@ type SessionRow struct {
 	UpdatedAt   time.Time
 }
 
-type sessionLine struct {
-	Payload struct {
-		Client string `json:"client"`
-	} `json:"payload"`
-}
-
 // ProjectSessions builds sidebar cards from run manifests and log metadata.
-func ProjectSessions(workspaceRoot string, slugs []string, now time.Time) []SessionRow {
+func ProjectSessions(logs sessionread.Reader, workspaceRoot string, slugs []string, now time.Time) []SessionRow {
 	rows := make([]SessionRow, 0, len(slugs)+1)
 	for _, slug := range slugs {
 		run, err := state.Load(state.ManifestPath(workspaceRoot, slug))
@@ -41,26 +32,22 @@ func ProjectSessions(workspaceRoot string, slugs []string, now time.Time) []Sess
 		rows = append(rows, SessionRow{
 			Slug:        slug,
 			Title:       slug,
-			Host:        peekHost(session.LogPath(workspaceRoot, slug)),
+			Host:        logs.PeekHost(session.LogPath(workspaceRoot, slug)),
 			Status:      string(run.Status),
 			StatusClass: statusClass(string(run.Status)),
 			Rel:         FormatRel(now, run.UpdatedAt),
 			UpdatedAt:   run.UpdatedAt,
 		})
 	}
-	if hasAmbientSession(workspaceRoot) {
-		updated := now
-		if info, err := os.Stat(session.AmbientLogPath(workspaceRoot)); err == nil {
-			updated = info.ModTime()
-		}
+	if ambient := logs.AmbientStat(workspaceRoot); ambient.Present {
 		rows = append(rows, SessionRow{
 			Slug:        "ambient",
 			Title:       "Ambient journal",
-			Host:        peekHost(session.AmbientLogPath(workspaceRoot)),
+			Host:        logs.PeekHost(session.AmbientLogPath(workspaceRoot)),
 			Status:      "idle",
 			StatusClass: "",
-			Rel:         FormatRel(now, updated),
-			UpdatedAt:   updated,
+			Rel:         FormatRel(now, ambient.ModTime),
+			UpdatedAt:   ambient.ModTime,
 		})
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
@@ -103,25 +90,4 @@ func statusClass(status string) string {
 	default:
 		return ""
 	}
-}
-
-func peekHost(logPath string) string {
-	file, err := os.Open(filepath.Clean(logPath))
-	if err != nil {
-		return ""
-	}
-	defer func() { _ = file.Close() }()
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	for i := 0; i < 8 && scanner.Scan(); i++ {
-		var line sessionLine
-		if err := json.Unmarshal(scanner.Bytes(), &line); err != nil {
-			continue
-		}
-		if line.Payload.Client != "" {
-			return line.Payload.Client
-		}
-	}
-	_ = scanner.Err()
-	return ""
 }

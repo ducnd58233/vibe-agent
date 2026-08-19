@@ -2,12 +2,12 @@ package view
 
 import (
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/sessionread"
 )
 
 // EventsAfter returns trajectory rows with sequence greater than after.
-func EventsAfter(workspaceRoot, slug string, after int) ([]EventRow, error) {
-	rows, err := TrajectoryRows(workspaceRoot, slug)
+func EventsAfter(logs sessionread.Reader, workspaceRoot, slug string, after int) ([]EventRow, error) {
+	rows, err := TrajectoryRows(logs, workspaceRoot, slug)
 	if err != nil {
 		return nil, err
 	}
@@ -25,8 +25,8 @@ func EventsAfter(workspaceRoot, slug string, after int) ([]EventRow, error) {
 
 // EventsAfterForView returns trajectory rows like EventsAfter, but applies
 // chat-only shaping (fold intermediate assistant progress under "thinking").
-func EventsAfterForView(workspaceRoot, slug string, after int, selectedView string) ([]EventRow, error) {
-	rows, err := EventsAfter(workspaceRoot, slug, after)
+func EventsAfterForView(logs sessionread.Reader, workspaceRoot, slug string, after int, selectedView string) ([]EventRow, error) {
+	rows, err := EventsAfter(logs, workspaceRoot, slug, after)
 	if err != nil {
 		return nil, err
 	}
@@ -37,16 +37,9 @@ func EventsAfterForView(workspaceRoot, slug string, after int, selectedView stri
 }
 
 // TrajectoryRows is the Trajectory tab: session gestures plus graph transitions.
-func TrajectoryRows(workspaceRoot, slug string) ([]EventRow, error) {
-	var logPath string
-	switch slug {
-	case "ambient":
-		logPath = session.AmbientLogPath(workspaceRoot)
-	default:
-		logPath = session.LogPath(workspaceRoot, slug)
-	}
-	events, err := session.Replay(logPath)
-	if err != nil && !session.IsNotFound(err) {
+func TrajectoryRows(logs sessionread.Reader, workspaceRoot, slug string) ([]EventRow, error) {
+	events, err := logs.Replay(workspaceRoot, slug)
+	if err != nil {
 		return nil, err
 	}
 	graphRows := []EventRow{}
@@ -61,8 +54,8 @@ func TrajectoryRows(workspaceRoot, slug string) ([]EventRow, error) {
 }
 
 // LastSequence returns the highest event sequence in the log, or 0 when empty.
-func LastSequence(workspaceRoot, slug string) int {
-	rows, err := EventsAfter(workspaceRoot, slug, 0)
+func LastSequence(logs sessionread.Reader, workspaceRoot, slug string) int {
+	rows, err := EventsAfter(logs, workspaceRoot, slug, 0)
 	if err != nil || len(rows) == 0 {
 		return 0
 	}

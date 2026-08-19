@@ -9,6 +9,7 @@ import (
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/sessionread"
 )
 
 func TestEventsAfterForViewChatDemotesIntermediateAssistants(t *testing.T) {
@@ -36,7 +37,7 @@ func TestEventsAfterForViewChatDemotesIntermediateAssistants(t *testing.T) {
 		}
 	}
 
-	rows, err := EventsAfterForView(dir, "ambient", 0, "chat")
+	rows, err := EventsAfterForView(sessionread.NewFS(), dir, "ambient", 0, "chat")
 	if err != nil {
 		t.Fatalf("EventsAfterForView: %v", err)
 	}
@@ -96,7 +97,7 @@ func TestEventsAfterForViewTrajectoryKeepsAssistantProgress(t *testing.T) {
 		}
 	}
 
-	rows, err := EventsAfterForView(dir, "ambient", 0, "trajectory")
+	rows, err := EventsAfterForView(sessionread.NewFS(), dir, "ambient", 0, "trajectory")
 	if err != nil {
 		t.Fatalf("EventsAfterForView: %v", err)
 	}
@@ -127,11 +128,11 @@ func TestEventsAfterReturnsNewRowsOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	all, err := EventsAfter(root, slug, 0)
+	all, err := EventsAfter(sessionread.NewFS(), root, slug, 0)
 	if err != nil || len(all) != 1 {
 		t.Fatalf("all rows = %d err = %v", len(all), err)
 	}
-	none, err := EventsAfter(root, slug, first.Sequence)
+	none, err := EventsAfter(sessionread.NewFS(), root, slug, first.Sequence)
 	if err != nil || len(none) != 0 {
 		t.Fatalf("after first = %d err = %v", len(none), err)
 	}
@@ -141,7 +142,7 @@ func TestEventsAfterReturnsNewRowsOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tail, err := EventsAfter(root, slug, first.Sequence)
+	tail, err := EventsAfter(sessionread.NewFS(), root, slug, first.Sequence)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +153,7 @@ func TestEventsAfterReturnsNewRowsOnly(t *testing.T) {
 
 func TestLastSequenceEmptyLog(t *testing.T) {
 	root := t.TempDir()
-	if LastSequence(root, "missing") != 0 {
+	if LastSequence(sessionread.NewFS(), root, "missing") != 0 {
 		t.Fatal("expected zero for missing log")
 	}
 }
@@ -185,7 +186,7 @@ func TestTrajectoryRowsMergesGraphTransitions(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	rows, err := TrajectoryRows(root, slug)
+	rows, err := TrajectoryRows(sessionread.NewFS(), root, slug)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +202,7 @@ func TestTrajectoryRowsMergesGraphTransitions(t *testing.T) {
 	if rows[2].Kind != session.FilterGraph || rows[2].Seq != 3 || rows[2].Summary != "research" {
 		t.Fatalf("transition = %+v", rows[2])
 	}
-	tail, err := EventsAfter(root, slug, 1)
+	tail, err := EventsAfter(sessionread.NewFS(), root, slug, 1)
 	if err != nil || len(tail) != 2 {
 		t.Fatalf("after 1 = %d err = %v", len(tail), err)
 	}

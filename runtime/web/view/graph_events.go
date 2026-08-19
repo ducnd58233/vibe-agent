@@ -8,6 +8,7 @@ import (
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/redact"
 )
 
 type graphTransitionPayload struct {
@@ -69,7 +70,7 @@ func graphEventCopy(ev state.Event) (summary, body, payloadJSON string) {
 	case "run_started":
 		var payload graphStartPayload
 		_ = json.Unmarshal(ev.Payload, &payload)
-		payload.Goal = session.RedactText(strings.TrimSpace(payload.Goal))
+		payload.Goal = redact.Text(strings.TrimSpace(payload.Goal))
 		if encoded, err := json.Marshal(payload); err == nil {
 			payloadJSON = string(encoded)
 		}
