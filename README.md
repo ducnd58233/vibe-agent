@@ -78,64 +78,6 @@ flowchart LR
 
 It will not merge to `main` unless you say so. Rules: [`.ai-agents/commands/goal.md`](.ai-agents/commands/goal.md).
 
-## Install as a plugin
-
-This repo ships plugin manifests so GenAI tools can discover skills, commands, hooks, and rules from the GitHub repo. The plugin gives you the agent workflow assets. The Go runtime binary (`vibe-agent`) needs a separate install -- see [Get started](#get-started).
-
-### Claude Code
-
-```bash
-/plugin marketplace add ducnd58233/vibe-agent
-/plugin install vibe-agent@vibe-agent
-```
-
-After installing, run the runtime install separately:
-
-```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-runtime.sh"
-```
-
-### Cursor
-
-```
-/add-plugin https://github.com/ducnd58233/vibe-agent
-```
-
-For local development or to avoid the [known stale-cache issue](https://forum.cursor.com/t/add-plugin-github-imports-can-get-stuck-on-stale-plugin-versions/163895), clone instead:
-
-```bash
-git clone https://github.com/ducnd58233/vibe-agent ~/.cursor/plugins/local/vibe-agent
-```
-
-### Codex CLI
-
-```bash
-codex plugin marketplace add ducnd58233/vibe-agent
-codex plugin add vibe-agent@vibe-agent
-```
-
-Or browse with `/plugins` inside the TUI after adding the marketplace.
-
-### Manual (any tool)
-
-Clone this repo as `.vibe-agent` inside your project and run the link script:
-
-```bash
-git clone https://github.com/ducnd58233/vibe-agent .vibe-agent
-bash .vibe-agent/scripts/link-ai-agents.sh --workspace "$PWD" --assets "$PWD/.vibe-agent/.ai-agents"
-```
-
-### What the plugin includes vs. what it does not
-
-| Included in plugin | Needs separate install |
-|---|---|
-| Skills (`.ai-agents/skills/`) | `vibe-agent` binary (Go runtime) |
-| Commands (`.ai-agents/commands/`) | |
-| Hooks (`.ai-agents/hooks/`) | |
-| Rules (`.cursor/rules/` for Cursor) | |
-| Delivery graphs (`.ai-agents/graphs/`) | |
-
-Commands that need the runtime (`/goal`, `/build`, `/test`, `/review`, `/ship`) will refuse to run until the binary is on PATH.
 
 ## Where to edit
 
