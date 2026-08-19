@@ -1,12 +1,15 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/httpserver"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/streaming/sse"
 	ui "github.com/ducnd58233/vibe-agent/runtime/web"
 	"github.com/ducnd58233/vibe-agent/runtime/web/view"
 )
@@ -14,8 +17,7 @@ import (
 const ssePollInterval = time.Second
 
 func (d httpDeps) handleSessionEventsStream(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodGet) {
 		return
 	}
 	const suffix = "/events/stream"
@@ -33,66 +35,44 @@ func (d httpDeps) handleSessionEventsStream(w http.ResponseWriter, r *http.Reque
 	if raw := r.URL.Query().Get("after"); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 0 {
-			http.Error(w, "bad after", http.StatusBadRequest)
+			writeBadAfter(w)
 			return
 		}
 		after = n
 	}
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "stream unsupported", http.StatusInternalServerError)
+	conn, err := sse.Begin(w)
+	if err != nil {
+		httpserver.RespondError(w, r, http.StatusInternalServerError, "stream unsupported")
 		return
 	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.WriteHeader(http.StatusOK)
-	flusher.Flush()
-
 	tmpl, err := ui.Templates()
 	if err != nil {
-		_, _ = fmt.Fprintf(w, "event: error\ndata: template error\n\n")
-		flusher.Flush()
+		_ = conn.WriteEvent(sse.Event{Type: "error", Data: msgTemplateError})
 		return
 	}
 	ws := d.activeWorkspace(r)
-	ticker := time.NewTicker(ssePollInterval)
-	defer ticker.Stop()
 	selectedView := r.URL.Query().Get("view")
-	for {
-		select {
-		case <-r.Context().Done():
-			return
-		case <-ticker.C:
-			rows, err := view.EventsAfterForView(ws, slug, after, selectedView)
-			if err != nil {
-				if !isNotFoundErr(err) {
-					_, _ = fmt.Fprintf(w, "event: error\ndata: Could not read the session log.\n\n")
-					flusher.Flush()
-				}
+	cursor := after
+	_ = sse.Poll(r.Context(), conn, ssePollInterval, func(ctx context.Context) ([]sse.Event, error) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		rows, err := view.EventsAfterForView(ws, slug, cursor, selectedView)
+		if err != nil {
+			if isNotFoundErr(err) {
+				return nil, nil
+			}
+			return []sse.Event{{Type: "error", Data: "Could not read the session log."}}, nil
+		}
+		var out []sse.Event
+		for _, row := range rows {
+			var buf strings.Builder
+			if err := tmpl.ExecuteTemplate(&buf, "event-row", row); err != nil {
 				continue
 			}
-			for _, row := range rows {
-				var buf strings.Builder
-				if err := tmpl.ExecuteTemplate(&buf, "event-row", row); err != nil {
-					continue
-				}
-				if err := writeSSEData(w, buf.String()); err != nil {
-					return
-				}
-				flusher.Flush()
-				after = row.Seq
-			}
+			out = append(out, sse.Event{ID: fmt.Sprint(row.Seq), Data: buf.String()})
+			cursor = row.Seq
 		}
-	}
-}
-
-func writeSSEData(w http.ResponseWriter, html string) error {
-	for _, line := range strings.Split(strings.TrimRight(html, "\n"), "\n") {
-		if _, err := fmt.Fprintf(w, "data: %s\n", line); err != nil {
-			return err
-		}
-	}
-	_, err := fmt.Fprint(w, "\n")
-	return err
+		return out, nil
+	})
 }
