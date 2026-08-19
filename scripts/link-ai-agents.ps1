@@ -639,9 +639,65 @@ function Install-Runtime {
     }
 }
 
+function Emit-PluginManifests {
+    param([Parameter(Mandatory = $true)][string] $WorkspaceFull)
+    $pluginName = 'vibe-agent'
+    $pluginDesc = 'Domain-agnostic agent workflows: skills, commands, hooks, and delivery graphs.'
+
+    # Claude Code plugin
+    $claudePluginDir = Join-Path $WorkspaceFull '.claude-plugin'
+    if (-not (Test-Path -LiteralPath $claudePluginDir)) {
+        New-Item -ItemType Directory -Path $claudePluginDir -Force | Out-Null
+    }
+    Write-JsonFile -Path (Join-Path $claudePluginDir 'plugin.json') -Value ([ordered]@{
+        name = $pluginName
+        description = $pluginDesc
+    })
+    Write-JsonFile -Path (Join-Path $claudePluginDir 'marketplace.json') -Value ([ordered]@{
+        name = $pluginName
+        owner = [ordered]@{ name = $pluginName }
+        plugins = @([ordered]@{
+            name = $pluginName
+            source = './'
+            description = 'Skills, slash commands, hooks, and goal-delivery graphs. Canonical assets live under .ai-agents/.'
+        })
+    })
+
+    # Codex plugin
+    $codexPluginDir = Join-Path $WorkspaceFull '.codex-plugin'
+    if (-not (Test-Path -LiteralPath $codexPluginDir)) {
+        New-Item -ItemType Directory -Path $codexPluginDir -Force | Out-Null
+    }
+    Write-JsonFile -Path (Join-Path $codexPluginDir 'plugin.json') -Value ([ordered]@{
+        name = $pluginName
+        description = 'Domain-agnostic agent workflows: skills and hooks for Codex.'
+    })
+
+    # Cursor plugin (host-specific)
+    $cursorPluginDir = Join-Path $WorkspaceFull '.cursor-plugin'
+    if (-not (Test-Path -LiteralPath $cursorPluginDir)) {
+        New-Item -ItemType Directory -Path $cursorPluginDir -Force | Out-Null
+    }
+    Write-JsonFile -Path (Join-Path $cursorPluginDir 'plugin.json') -Value ([ordered]@{
+        '$schema' = 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json'
+        name = $pluginName
+        description = 'Domain-agnostic agent workflows for Cursor Agent Plugins.'
+    })
+
+    # Agent Plugins 1.0.0 (root, portable)
+    Write-JsonFile -Path (Join-Path $WorkspaceFull 'plugin.json') -Value ([ordered]@{
+        '$schema' = 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json'
+        name = $pluginName
+        description = $pluginDesc
+    })
+
+    Write-Host "Plugin manifests emitted under $WorkspaceFull"
+}
+
 Install-LocalGitExclude -WorkspaceFull $workspaceFull
 Install-CommitAttributionHook -AssetsFull $assetsFull -WorkspaceFull $workspaceFull
 Install-WorkspaceHookConfigs
+Emit-PluginManifests -WorkspaceFull $workspaceFull
 Install-Runtime
 
 Write-Host "Links created under $workspaceFull (.claude, .cursor, .opencode, .agents) -> $assetsFull"

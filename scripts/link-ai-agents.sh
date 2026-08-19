@@ -640,9 +640,70 @@ install_runtime() {
   return 0
 }
 
+emit_plugin_manifests() {
+  local workspace="$1"
+  local plugin_name="vibe-agent"
+  local plugin_desc="Domain-agnostic agent workflows: skills, commands, hooks, and delivery graphs."
+
+  # Claude Code plugin
+  mkdir -p "$workspace/.claude-plugin"
+  cat > "$workspace/.claude-plugin/plugin.json" <<EOF
+{
+  "name": "$plugin_name",
+  "description": "$plugin_desc"
+}
+EOF
+
+  cat > "$workspace/.claude-plugin/marketplace.json" <<EOF
+{
+  "name": "$plugin_name",
+  "owner": {
+    "name": "$plugin_name"
+  },
+  "plugins": [
+    {
+      "name": "$plugin_name",
+      "source": "./",
+      "description": "Skills, slash commands, hooks, and goal-delivery graphs. Canonical assets live under .ai-agents/."
+    }
+  ]
+}
+EOF
+
+  # Codex plugin
+  mkdir -p "$workspace/.codex-plugin"
+  cat > "$workspace/.codex-plugin/plugin.json" <<EOF
+{
+  "name": "$plugin_name",
+  "description": "Domain-agnostic agent workflows: skills and hooks for Codex."
+}
+EOF
+
+  # Cursor plugin (host-specific)
+  mkdir -p "$workspace/.cursor-plugin"
+  cat > "$workspace/.cursor-plugin/plugin.json" <<EOF
+{
+  "\$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "$plugin_name",
+  "description": "Domain-agnostic agent workflows for Cursor Agent Plugins."
+}
+EOF
+
+  # Agent Plugins 1.0.0 (root, portable)
+  cat > "$workspace/plugin.json" <<EOF
+{
+  "\$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "$plugin_name",
+  "description": "$plugin_desc"
+}
+EOF
+  echo "Plugin manifests emitted under $workspace"
+}
+
 install_local_git_exclude "$WORKSPACE"
 install_commit_attribution_hook "$ASSETS" "$WORKSPACE"
 install_workspace_hook_configs
+emit_plugin_manifests "$WORKSPACE"
 install_runtime
 
 echo "Symlinks created under $WORKSPACE (.claude, .cursor, .opencode, .agents) -> $ASSETS"

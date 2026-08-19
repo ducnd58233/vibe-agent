@@ -1,0 +1,13 @@
+{
+  "name": "vibe-agent",
+  "owner": {
+    "name": "vibe-agent"
+  },
+  "plugins": [
+    {
+      "name": "vibe-agent",
+      "source": "./",
+      "description": "Skills, slash commands, hooks, and goal-delivery graphs. Canonical assets live under .ai-agents/."
+    }
+  ]
+}

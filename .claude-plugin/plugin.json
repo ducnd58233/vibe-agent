@@ -1,0 +1,4 @@
+{
+  "name": "vibe-agent",
+  "description": "Domain-agnostic agent workflows: skills, commands, hooks, and delivery graphs."
+}

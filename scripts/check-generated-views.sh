@@ -34,6 +34,22 @@ for view in "$root/.claude" "$root/.cursor" "$root/.opencode" "$root/.agents"; d
   done
 done
 
+# Plugin manifests: verify they exist and contain the expected name field.
+for manifest in \
+  "$root/.claude-plugin/plugin.json" \
+  "$root/.claude-plugin/marketplace.json" \
+  "$root/.codex-plugin/plugin.json" \
+  "$root/.cursor-plugin/plugin.json" \
+  "$root/plugin.json"; do
+  if [ ! -f "$manifest" ]; then
+    echo "MISSING: $manifest"
+    drift=1
+  elif ! grep -q '"vibe-agent"' "$manifest" 2>/dev/null; then
+    echo "DRIFT: $manifest does not contain expected name"
+    drift=1
+  fi
+done
+
 if [ "$drift" -ne 0 ]; then
   echo ""
   echo "A generated view is stale, so the harness is reading different text than .ai-agents."
