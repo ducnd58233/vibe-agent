@@ -190,8 +190,16 @@ func (d httpDeps) handleWorkspaceFileView(w http.ResponseWriter, r *http.Request
 	rel := strings.TrimSpace(r.URL.Query().Get("path"))
 	abs, resolvedRel, err := resolveWorkspaceFileView(ws, rel)
 	if err != nil {
-		http.Error(w, "not a file", http.StatusBadRequest)
-		return
+		// Some links in session content point at vibe-agent toolkit assets
+		// (like `.ai-agents/...`). If the active workspace does not contain
+		// them, fall back to toolkitRoot so the viewer can still open.
+		abs2, resolvedRel2, err2 := resolveWorkspaceFileView(d.toolkitRoot, rel)
+		if err2 != nil {
+			http.Error(w, "not a file", http.StatusBadRequest)
+			return
+		}
+		abs = abs2
+		resolvedRel = resolvedRel2
 	}
 	f, err := os.Open(abs) //nolint:gosec // abs comes from ResolveWorkspacePath and a prior Stat check
 	if err != nil {

@@ -51,3 +51,43 @@ func TestRenderMarkdownDoesNotLinkNonFilePaths(t *testing.T) {
 		t.Fatalf("non-file code should not become a file link, got %s", html)
 	}
 }
+
+func TestRenderMarkdownLinksBareFilenameWithKnownExtension(t *testing.T) {
+	html := string(RenderMarkdown("See `loop-and-graph-engineering.md` in references."))
+	if !strings.Contains(html, `data-file-view="loop-and-graph-engineering.md"`) {
+		t.Fatalf("bare filename with linguist-known extension should link, got %s", html)
+	}
+}
+
+func TestRenderMarkdownStylesTaskListItems(t *testing.T) {
+	html := string(RenderMarkdown("- [ ] first\n- [x] second"))
+	if !strings.Contains(html, `class="task-list-item"`) {
+		t.Fatalf("task list item class missing, got %s", html)
+	}
+	if !strings.Contains(html, `class="task-list-item-checkbox"`) {
+		t.Fatalf("task list checkbox class missing, got %s", html)
+	}
+}
+
+func TestRenderMarkdownLinksLocalMarkdownAnchors(t *testing.T) {
+	html := string(RenderMarkdown("See [spec](docs/harness-improvement/SPEC.md) for details."))
+	if !strings.Contains(html, `data-file-view="docs/harness-improvement/SPEC.md"`) {
+		t.Fatalf("local markdown anchor should open file viewer, got %s", html)
+	}
+	if strings.Contains(html, `href="docs/harness-improvement/SPEC.md"`) {
+		t.Fatalf("local href should be replaced with file viewer trigger, got %s", html)
+	}
+}
+
+func TestRenderMarkdownOpensExternalLinksInNewTab(t *testing.T) {
+	html := string(RenderMarkdown("Read [LangChain](https://www.langchain.com/blog/the-art-of-loop-engineering) for context."))
+	if !strings.Contains(html, `href="https://www.langchain.com/blog/the-art-of-loop-engineering"`) {
+		t.Fatalf("external href should remain, got %s", html)
+	}
+	if !strings.Contains(html, `target="_blank"`) || !strings.Contains(html, `rel="noopener noreferrer"`) {
+		t.Fatalf("external link should open in a new tab, got %s", html)
+	}
+	if strings.Contains(html, "data-file-view") {
+		t.Fatalf("external link must not become a file viewer trigger, got %s", html)
+	}
+}
