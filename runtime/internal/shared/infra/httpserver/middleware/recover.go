@@ -1,9 +1,13 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/httpserver"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/observability"
 )
 
@@ -13,13 +17,17 @@ const msgInternal = "internal server error"
 func Recover(l observability.Logger) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			defer func() {
+			defer func(ctx context.Context) {
 				if x := recover(); x != nil {
-					observability.LogErrorContext(r.Context(), l, "panic recovered",
-						fmt.Errorf("%T: %v", x, x))
-					http.Error(w, msgInternal, http.StatusInternalServerError)
+					if l != nil {
+						l.ErrorContext(ctx, "panic recovered",
+							"panic_type", fmt.Sprintf("%T", x),
+							"stack", session.RedactText(string(debug.Stack())),
+						)
+					}
+					httpserver.RespondError(w, r, http.StatusInternalServerError, msgInternal)
 				}
-			}()
+			}(r.Context())
 			next.ServeHTTP(w, r)
 		})
 	}
