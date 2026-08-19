@@ -162,6 +162,9 @@ func eventRole(ev session.Event, body session.Payload) string {
 	case session.TypeSessionStart, session.TypeStop, session.TypeSubagentStop:
 		return "system"
 	case session.TypePromptSubmit:
+		if session.LooksLikeComposePrefix(body.Body) {
+			return "hook"
+		}
 		return "user"
 	case session.TypeTranscriptMessage:
 		if role := strings.ToLower(strings.TrimSpace(body.Role)); role != "" {

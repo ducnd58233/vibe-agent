@@ -61,6 +61,34 @@ func TestProjectEventsMixedRoles(t *testing.T) {
 	}
 }
 
+func TestPrefixShapedPromptSubmitIsNotChatUser(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, session.LogName)
+	dump := "User: earlier\nAssistant: Host produced no output.\n\nplease continue"
+	stamp := time.Date(2026, 8, 19, 4, 0, 0, 0, time.UTC)
+	var events []session.Event
+	for _, rec := range []session.Record{
+		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "claude", Body: dump, At: stamp},
+		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "claude", Body: "please continue", At: stamp.Add(time.Second)},
+	} {
+		ev, err := session.Append(path, rec)
+		if err != nil {
+			t.Fatal(err)
+		}
+		events = append(events, ev)
+	}
+	rows := ProjectEvents(events)
+	if len(rows) != 2 {
+		t.Fatalf("rows = %d", len(rows))
+	}
+	if rows[0].Role == "user" || ChatVisibleRole(rows[0].Role) {
+		t.Fatalf("prefix dump must not be a Chat user card, role = %q body = %q", rows[0].Role, rows[0].Body)
+	}
+	if rows[1].Role != "user" || strings.TrimSpace(rows[1].Body) != "please continue" {
+		t.Fatalf("typed sentence missing, row = %+v", rows[1])
+	}
+}
+
 func TestPromoteUsageMovesStopCountsOntoAssistant(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, session.LogName)

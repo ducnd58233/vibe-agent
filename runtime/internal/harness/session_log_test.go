@@ -65,6 +65,24 @@ func TestCursorPromptSubmitRecordsSessionWithoutOutput(t *testing.T) {
 	}
 }
 
+func TestPrefixShapedPromptSubmitDoesNotRecordSession(t *testing.T) {
+	root := workspaceWithRun(t)
+	dump := "User: earlier turn\nAssistant: Host produced no output.\n\nplease continue"
+	raw, err := json.Marshal(map[string]string{"prompt": dump})
+	if err != nil {
+		t.Fatal(err)
+	}
+	invoke(t, Request{
+		Event: EventUserPromptSubmit, Client: ClientClaude,
+		WorkspaceRoot: root,
+		Stdin:         strings.NewReader(string(raw)),
+	})
+	events := sessionLog(t, root)
+	if len(events) != 0 {
+		t.Fatalf("prefix dump must not append, events = %+v", events)
+	}
+}
+
 func TestPreToolUseRecordsSession(t *testing.T) {
 	root := workspaceWithRun(t)
 	invoke(t, Request{

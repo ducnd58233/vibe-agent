@@ -37,9 +37,13 @@ func recordSessionStart(req Request) {
 }
 
 func recordPromptSubmit(req Request, body payload) {
+	text := body.text()
+	if session.LooksLikeComposePrefix(text) {
+		return
+	}
 	appendSession(req, session.Record{
 		Type: session.TypePromptSubmit,
-		Body: body.text(),
+		Body: text,
 	})
 }
 
