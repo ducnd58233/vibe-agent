@@ -104,8 +104,7 @@ path. When a rule already has a home, link to it instead of restating it.
   `PLAN.md`, `TASKS.md`, ADRs, research digests, analysis reports) writes it under `docs/<slug>/` at
   the **workspace root** - the directory containing `.vibe-agent/`, or the repo root when this
   toolkit is standalone. `<slug>` is short kebab-case for the work. Never inside `.vibe-agent/`, never
-  scattered. Confirm the slug with the user when it is not obvious. In **this** repository, `/docs/` is
-  **gitignored** (local workspace output only; do not commit).
+  scattered. Confirm the slug with the user when it is not obvious.
 - **Portable paths (MUST):** in committed docs, plans, and agent deliverables, use paths relative to the workspace root or repo ids. Do not paste machine-absolute paths (`C:\...`, `/Users/...`, `d:\...`) into files that ship in git.
 - **XML section tags (MUST):** wrap sections in the documented tag set for always-loaded charter files
   (`AGENTS.md`, `CLAUDE.md`, `CURSOR.md`, and harness-loaded nested `AGENTS.md` such as
@@ -143,8 +142,8 @@ Follow links from those files only as the task requires.
 | Runtime control plane | [`runtime/README.md`](runtime/README.md), [`runtime/AGENTS.md`](runtime/AGENTS.md) |
 | Delivery commands | [`.ai-agents/commands/ROUTER.md`](.ai-agents/commands/ROUTER.md) |
 | Stack detection | [`.ai-agents/stack-profiles/ROUTER.md`](.ai-agents/stack-profiles/ROUTER.md) |
-| Generated docs from commands | `docs/<slug>/` at workspace root (gitignored here) |
-| Verification evidence | `tmp/<slug>/` (gitignored) |
+| Generated docs from commands | `docs/<slug>/` at workspace root |
+| Verification evidence | `tmp/<slug>/` (when gitignored in the workspace) |
 | Consumer multi-repo doc workspace | Consumer repo `AGENTS.md` (local-first overrides toolkit defaults) |
 | XML section tags | [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) section "XML section tags" |
 </references>
@@ -161,8 +160,9 @@ Follow links from those files only as the task requires.
   unrelated work needs a new one. `/build` never merges to `main`. Merge only after `/ship` returns
   **GO** and the human explicitly approves. See
   [`git-workflow-and-versioning`](.ai-agents/skills/git-workflow-and-versioning/SKILL.md).
-- **Evidence.** `/goal` records verification under `tmp/<slug>/` (gitignored), redacted before write.
-  See [`goal-verification-records`](.ai-agents/references/goal-verification-records.md).
+- **Evidence.** `/goal` records verification under `tmp/<slug>/` when that path is gitignored in the
+  workspace, redacted before write. See
+  [`goal-verification-records`](.ai-agents/references/goal-verification-records.md).
 - **Commit attribution.** Never add AI or agent co-author trailers, "Generated with ..." lines, or
   robot-emoji attribution to commits or PR bodies. Commits belong to the human contributor's git
   identity, on every harness and for manual commits. How that is enforced, and what not to remove:
@@ -170,9 +170,9 @@ Follow links from those files only as the task requires.
   "No Agent Attribution".
 - **Secrets.** Never commit credentials. Read secrets only through configured secure paths or
   environment variables.
-- **Gitignore is a commit boundary (MUST).** When developing **this** repository, never commit paths
-  that `.gitignore` excludes (`/docs/`, `/tmp/`, and every other listed entry). Ignore rules apply only
-  to untracked files; if a path was committed before it was ignored, remove it from the index with
-  `git rm --cached` (keep the local copy). Do not use `git add -f` to bypass ignore for deliverables
-  that belong in gitignored workspace folders.
+- **Gitignore is a commit boundary (MUST).** Before staging, read the **workspace root**
+  `.gitignore`. Never commit paths it excludes. Each repo defines its own rules: many consumer repos
+  track `docs/`; this toolkit gitignores `/docs/` and `/tmp/`. Ignore rules do not untrack files
+  already in git; remove stray tracked paths with `git rm --cached` (keep the local copy). Do not use
+  `git add -f` to bypass ignore for workspace-local deliverables.
 </delivery_gates>
