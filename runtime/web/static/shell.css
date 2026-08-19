@@ -856,6 +856,10 @@ button {
   gap: 0.75rem;
   margin: 0 0 0.75rem;
   padding: 0;
+  position: sticky;
+  top: 0.5rem;
+  z-index: 5;
+  background: var(--color-bg);
 }
 
 .chat-prompt {
