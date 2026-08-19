@@ -18,6 +18,10 @@
   let catalogActive = -1;
   let debounceTimer;
   let catalogAbort = null;
+  /** @type {Map<string, string>} display token (@basename) -> send value (@abs path) */
+  const attachPathMap = new Map();
+  let attachTooltip = null;
+  let attachTooltipTimer = null;
 
   function escapeHtml(text) {
     return text
@@ -33,11 +37,288 @@
     preview.scrollTop = input.scrollTop;
   }
 
+  function attachRefTitle(ref) {
+    if (ref.startsWith('@"') && ref.endsWith('"')) {
+      return ref.slice(2, -1);
+    }
+    return ref.slice(1);
+  }
+
+  function isAbsoluteAttachRef(ref) {
+    return (
+      /^@[A-Za-z]:/.test(ref) ||
+      /^@"[A-Za-z]:/.test(ref) ||
+      ref.startsWith("@/")
+    );
+  }
+
+  function escapeRegex(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function pathBasename(path) {
+    const bare = String(path || "").replace(/^"|"$/g, "");
+    const slash = bare.replace(/\\/g, "/");
+    const parts = slash.split("/").filter(Boolean);
+    return parts.length ? parts[parts.length - 1] : bare;
+  }
+
+  function attachSendValue(path) {
+    return "@" + path;
+  }
+
+  function makeAttachToken(basename) {
+    let token = "@" + basename;
+    let suffix = 2;
+    while (attachPathMap.has(token)) {
+      token = "@" + basename + "~" + suffix;
+      suffix += 1;
+    }
+    return token;
+  }
+
+  function expandAttachRefs(text) {
+    let out = text;
+    const tokens = [...attachPathMap.keys()].sort((a, b) => b.length - a.length);
+    tokens.forEach((token) => {
+      out = out.split(token).join(attachPathMap.get(token) || token);
+    });
+    return out;
+  }
+
+  function findAttachRefAt(value, pos) {
+    const tokens = [...attachPathMap.keys()].sort((a, b) => b.length - a.length);
+    for (let i = 0; i < tokens.length; i += 1) {
+      const token = tokens[i];
+      let idx = 0;
+      while (idx < value.length) {
+        const at = value.indexOf(token, idx);
+        if (at < 0) break;
+        const leadOk = at === 0 || /\s/.test(value[at - 1]);
+        if (leadOk) {
+          const end = at + token.length;
+          if (pos >= at && pos <= end) return token;
+        }
+        idx = at + 1;
+      }
+    }
+    const re = /(^|\s)(@"[^"]+"|@[A-Za-z]:[^\s]+|@[^\s]+)/g;
+    let match;
+    while ((match = re.exec(value)) !== null) {
+      const start = match.index + match[1].length;
+      const ref = match[2];
+      const end = start + ref.length;
+      if (pos >= start && pos <= end) return ref;
+    }
+    return null;
+  }
+
+  function caretIndexFromPoint(inputEl, x, y) {
+    if (typeof document.caretPositionFromPoint === "function") {
+      const caret = document.caretPositionFromPoint(x, y);
+      if (caret && caret.offsetNode === inputEl) return caret.offset;
+    }
+    if (typeof document.caretRangeFromPoint === "function") {
+      const range = document.caretRangeFromPoint(x, y);
+      if (range && range.startContainer === inputEl) return range.startOffset;
+    }
+    return null;
+  }
+
+  function ensureAttachTooltip() {
+    if (attachTooltip) return attachTooltip;
+    const wrap = input.closest(".composer-field-wrap");
+    if (!wrap) return null;
+    attachTooltip = document.createElement("div");
+    attachTooltip.id = "composer-attach-tooltip";
+    attachTooltip.className = "composer-attach-tooltip";
+    attachTooltip.hidden = true;
+    attachTooltip.setAttribute("role", "tooltip");
+    wrap.appendChild(attachTooltip);
+    return attachTooltip;
+  }
+
+  function hideAttachTooltip() {
+    if (attachTooltipTimer) {
+      window.clearTimeout(attachTooltipTimer);
+      attachTooltipTimer = null;
+    }
+    if (attachTooltip) attachTooltip.hidden = true;
+  }
+
+  function showAttachTooltip(fullPath, clientX, clientY) {
+    const tip = ensureAttachTooltip();
+    if (!tip || !fullPath) return;
+    tip.textContent = fullPath;
+    tip.hidden = false;
+    const pad = 8;
+    tip.style.left = clientX + pad + "px";
+    tip.style.top = clientY + pad + "px";
+  }
+
+  function attachRefFullPath(ref) {
+    if (attachPathMap.has(ref)) {
+      return attachRefTitle(attachPathMap.get(ref));
+    }
+    if (isAbsoluteAttachRef(ref)) {
+      return attachRefTitle(ref);
+    }
+    return "";
+  }
+
+  function updateAttachTooltipFromPointer(event) {
+    const pos = caretIndexFromPoint(input, event.clientX, event.clientY);
+    if (pos == null) {
+      hideAttachTooltip();
+      return;
+    }
+    const ref = findAttachRefAt(input.value, pos);
+    const fullPath = ref ? attachRefFullPath(ref) : "";
+    if (!fullPath) {
+      hideAttachTooltip();
+      return;
+    }
+    showAttachTooltip(fullPath, event.clientX, event.clientY);
+  }
+
+  /** Unicode private-use sentinel; never typed by the user. */
+  const HIGHLIGHT_MASK = "\uE000";
+
+  function attachSuggestions(query) {
+    const q = (query || "").toLowerCase();
+    const hits = [];
+    attachPathMap.forEach((sendValue, token) => {
+      const name = token.slice(1);
+      const lower = name.toLowerCase();
+      if (!q || lower.startsWith(q) || lower.includes(q)) {
+        hits.push({
+          token: token,
+          path: attachRefTitle(sendValue),
+          name: name
+        });
+      }
+    });
+    hits.sort((a, b) => {
+      const aStart = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+      const bStart = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+      if (aStart !== bStart) return aStart - bStart;
+      return a.name.length - b.name.length;
+    });
+    return hits;
+  }
+
+  function catalogHasNoMatches() {
+    if (!catalogPanel || catalogPanel.hidden) return false;
+    return catalogItems().length === 0 && !!catalogPanel.querySelector(".catalog-empty");
+  }
+
+  function getHighlightSuppressRange(value) {
+    if (!catalogTrigger || catalogTrigger.kind !== "skills") return null;
+    if (!catalogHasNoMatches()) return null;
+    const pos = input.selectionStart == null ? value.length : input.selectionStart;
+    const end = Math.max(pos, catalogTrigger.start + 1);
+    if (end <= catalogTrigger.start) return null;
+    return { start: catalogTrigger.start, end: end };
+  }
+
+  function renderAttachCatalogItems(hits) {
+    return hits
+      .map((hit) => {
+        const token = escapeHtml(hit.token);
+        const path = escapeHtml(hit.path);
+        return (
+          '<li class="catalog-item" data-testid="catalog-item" role="option"' +
+          ' data-insert="' + token + '" data-description="' + path + '">' +
+          '<span class="catalog-item-name">' + token + "</span>" +
+          '<span class="catalog-item-desc">' + path + "</span></li>"
+        );
+      })
+      .join("");
+  }
+
+  function renderAttachCatalog(hits) {
+    if (!hits.length) {
+      return (
+        '<ul class="catalog-list" data-testid="composer-catalog" role="listbox">' +
+        '<li class="catalog-empty" aria-hidden="true">No matches</li></ul>'
+      );
+    }
+    return (
+      '<ul class="catalog-list" data-testid="composer-catalog" role="listbox">' +
+      renderAttachCatalogItems(hits) +
+      "</ul>"
+    );
+  }
+
+  function mergeAttachIntoSkillsCatalog(attachHits, skillsHtml) {
+    if (!attachHits.length) return skillsHtml;
+    const rows = renderAttachCatalogItems(attachHits);
+    if (!skillsHtml.includes('data-testid="catalog-item"')) {
+      return renderAttachCatalog(attachHits);
+    }
+    return skillsHtml.replace(
+      /(<ul class="catalog-list"[^>]*>)/,
+      "$1" + rows
+    );
+  }
+
+  function isCompleteAttachFragment(fragment) {
+    if (!fragment) return false;
+    return attachPathMap.has("@" + fragment);
+  }
+
+  function maskHighlightRange(value, suppress) {
+    if (!suppress) return { masked: value, seg: "" };
+    const seg = value.slice(suppress.start, suppress.end);
+    const masked =
+      value.slice(0, suppress.start) + HIGHLIGHT_MASK + value.slice(suppress.end);
+    return { masked: masked, seg: seg };
+  }
+
+  function unmaskHighlightHtml(html, seg) {
+    if (!seg) return html;
+    return html.split(escapeHtml(HIGHLIGHT_MASK)).join(escapeHtml(seg));
+  }
+
+  function markComposerRef(lead, ref, fullPath) {
+    const tip = fullPath || (isAbsoluteAttachRef(ref) ? attachRefTitle(ref) : "");
+    const titleAttr = tip ? ' title="' + escapeHtml(tip) + '"' : "";
+    const dataAttr = tip ? ' data-full-path="' + escapeHtml(tip) + '"' : "";
+    const cls = tip ? "composer-ref composer-ref-attach" : "composer-ref";
+    return lead + '<mark class="' + cls + '"' + titleAttr + dataAttr + ">" + ref + "</mark>";
+  }
+
+  function highlightMappedAttachRefs(html) {
+    const tokens = [...attachPathMap.keys()].sort((a, b) => b.length - a.length);
+    tokens.forEach((token) => {
+      const sendValue = attachPathMap.get(token) || "";
+      const fullPath = attachRefTitle(sendValue);
+      const re = new RegExp("(^|\\s)(" + escapeRegex(escapeHtml(token)) + ")(?=\\s|$)", "g");
+      html = html.replace(re, (_, lead, ref) => markComposerRef(lead, ref, fullPath));
+    });
+    return html;
+  }
+
+  function highlightComposerAtRefs(html) {
+    html = html.replace(/(^|\s)(@"[^"]+")/g, (_, lead, ref) =>
+      markComposerRef(lead, ref, isAbsoluteAttachRef(ref) ? attachRefTitle(ref) : "")
+    );
+    html = html.replace(/(^|\s)(@[A-Za-z]:[^\s]+)/g, (_, lead, ref) =>
+      markComposerRef(lead, ref, attachRefTitle(ref))
+    );
+    html = html.replace(/(^|\s)(@[a-z0-9./_-]+)/gi, (_, lead, ref) => markComposerRef(lead, ref, ""));
+    return html;
+  }
+
   function highlightPreview(value) {
     if (!preview) return;
-    let html = escapeHtml(value);
+    const suppress = getHighlightSuppressRange(value);
+    const masked = maskHighlightRange(value, suppress);
+    let html = escapeHtml(masked.masked);
     html = html.replace(/(^|\s)(\/[a-z0-9-]+)/gi, '$1<mark class="composer-ref">$2</mark>');
-    html = html.replace(/(^|\s)(@[a-z0-9./_-]+)/gi, '$1<mark class="composer-ref">$2</mark>');
+    html = highlightMappedAttachRefs(html);
+    html = highlightComposerAtRefs(html);
+    html = unmaskHighlightHtml(html, masked.seg);
     preview.innerHTML = html;
     syncPreviewScroll();
   }
@@ -54,6 +335,9 @@
     if (at >= 0 && (at === 0 || /\s/.test(before[at - 1]))) {
       const fragment = before.slice(at + 1);
       if (fragment.includes(" ")) {
+        return null;
+      }
+      if (isCompleteAttachFragment(fragment)) {
         return null;
       }
       if (fragment.endsWith("/")) {
@@ -108,6 +392,7 @@
     catalogTrigger = null;
     catalogActive = -1;
     setDescription("");
+    highlightPreview(input.value);
   }
 
   function closeFilePanel() {
@@ -159,7 +444,10 @@
     }
     if (!data || data.cancelled || !data.path) return;
     showPickNotice("");
-    insertAtCursor("@" + data.path);
+    const sendValue = attachSendValue(data.path);
+    const token = makeAttachToken(pathBasename(data.path));
+    attachPathMap.set(token, sendValue);
+    insertAtCursor(token);
   }
 
   function setHostMenu(on) {
@@ -224,6 +512,7 @@
     closeFilePanel();
     setHostMenu(false);
     setModelMenu(false);
+    const attachHits = trig.kind === "skills" ? attachSuggestions(trig.q) : [];
     const url =
       trig.kind === "commands"
         ? "/catalog/commands?q=" + encodeURIComponent(trig.q)
@@ -235,15 +524,26 @@
       res = await fetch(url, { signal: catalogAbort.signal });
     } catch (err) {
       if (err && err.name === "AbortError") return;
+      if (attachHits.length) {
+        catalogPanel.innerHTML = renderAttachCatalog(attachHits);
+        catalogPanel.hidden = false;
+        setCatalogActive(0);
+        highlightPreview(input.value);
+      }
       return;
     }
     if (!res.ok) return;
     if (triggerAtCursor() == null || triggerAtCursor().kind !== trig.kind) {
       return;
     }
-    catalogPanel.innerHTML = await res.text();
+    let body = await res.text();
+    if (trig.kind === "skills") {
+      body = mergeAttachIntoSkillsCatalog(attachHits, body);
+    }
+    catalogPanel.innerHTML = body;
     catalogPanel.hidden = false;
     setCatalogActive(0);
+    highlightPreview(input.value);
   }
 
   function insertAtTrigger(text) {
@@ -293,6 +593,16 @@
   input.addEventListener("scroll", () => {
     syncPreviewScroll();
   });
+
+  const fieldWrap = input.closest(".composer-field-wrap");
+  if (fieldWrap) {
+    fieldWrap.addEventListener("mousemove", (event) => {
+      updateAttachTooltipFromPointer(event);
+    });
+    fieldWrap.addEventListener("mouseleave", () => {
+      hideAttachTooltip();
+    });
+  }
 
   if (catalogPanel) {
     catalogPanel.addEventListener("click", (event) => {
@@ -498,6 +808,9 @@
         insertActiveCatalogItem();
         return;
       }
+      input.value = expandAttachRefs(input.value);
+      attachPathMap.clear();
+      hideAttachTooltip();
       if (hostBusy) hostBusy.hidden = false;
     });
   }
