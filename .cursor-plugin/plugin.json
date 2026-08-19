@@ -1,5 +1,11 @@
 {
-  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "vibe-agent",
-  "description": "Domain-agnostic agent workflows for Cursor Agent Plugins."
+  "description": "Agent skills, slash commands, hooks, and delivery graphs for Cursor.",
+  "version": "0.1.0",
+  "author": { "name": "ducnd58233" },
+  "license": "MIT",
+  "homepage": "https://github.com/ducnd58233/vibe-agent",
+  "skills": ".ai-agents/skills",
+  "commands": ".ai-agents/commands",
+  "rules": ".cursor/rules"
 }

@@ -80,7 +80,7 @@ It will not merge to `main` unless you say so. Rules: [`.ai-agents/commands/goal
 
 ## Install as a plugin
 
-This repo ships plugin manifests (`.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, `plugin.json`) so GenAI tools can discover it as a plugin directly from the GitHub repo. Install separately for each tool you use.
+This repo ships plugin manifests so GenAI tools can discover skills, commands, hooks, and rules from the GitHub repo. The plugin gives you the agent workflow assets. The Go runtime binary (`vibe-agent`) needs a separate install -- see [Get started](#get-started).
 
 ### Claude Code
 
@@ -89,7 +89,11 @@ This repo ships plugin manifests (`.claude-plugin/`, `.cursor-plugin/`, `.codex-
 /plugin install vibe-agent@vibe-agent
 ```
 
-The first line registers this repo as a personal marketplace. The second installs the plugin from it.
+After installing, run the runtime install separately:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/install-runtime.sh"
+```
 
 ### Cursor
 
@@ -97,7 +101,7 @@ The first line registers this repo as a personal marketplace. The second install
 /add-plugin https://github.com/ducnd58233/vibe-agent
 ```
 
-For local development or to avoid the known stale-cache issue with `/add-plugin`, clone and symlink instead:
+For local development or to avoid the [known stale-cache issue](https://forum.cursor.com/t/add-plugin-github-imports-can-get-stuck-on-stale-plugin-versions/163895), clone instead:
 
 ```bash
 git clone https://github.com/ducnd58233/vibe-agent ~/.cursor/plugins/local/vibe-agent
@@ -110,7 +114,7 @@ codex plugin marketplace add ducnd58233/vibe-agent
 codex plugin add vibe-agent@vibe-agent
 ```
 
-Or browse interactively with `/plugins` inside the TUI after adding the marketplace.
+Or browse with `/plugins` inside the TUI after adding the marketplace.
 
 ### Manual (any tool)
 
@@ -121,35 +125,17 @@ git clone https://github.com/ducnd58233/vibe-agent .vibe-agent
 bash .vibe-agent/scripts/link-ai-agents.sh --workspace "$PWD" --assets "$PWD/.vibe-agent/.ai-agents"
 ```
 
-## Plugin manifests
+### What the plugin includes vs. what it does not
 
-The link scripts generate plugin manifests so GenAI tools can discover this kit as an installable plugin. After running the link script, the following files exist:
-
-| File | Target tool |
+| Included in plugin | Needs separate install |
 |---|---|
-| `plugin.json` (root) | Generic [Agent Plugins](https://agent-plugins.org/) spec |
-| `.claude-plugin/plugin.json` + `marketplace.json` | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) |
-| `.cursor-plugin/plugin.json` | [Cursor](https://docs.cursor.com/) |
-| `.codex-plugin/plugin.json` | [Codex CLI](https://github.com/openai/codex) |
+| Skills (`.ai-agents/skills/`) | `vibe-agent` binary (Go runtime) |
+| Commands (`.ai-agents/commands/`) | |
+| Hooks (`.ai-agents/hooks/`) | |
+| Rules (`.cursor/rules/` for Cursor) | |
+| Delivery graphs (`.ai-agents/graphs/`) | |
 
-These files are generated, not hand-edited. To regenerate after changing `.ai-agents/`:
-
-```bash
-bash scripts/link-ai-agents.sh          # Linux / macOS / Git Bash
-powershell -ExecutionPolicy Bypass -File scripts/link-ai-agents.ps1  # Windows
-```
-
-### What is a plugin?
-
-A plugin is a manifest that tells an AI coding tool where to find skills, commands, rules, and hooks so they load automatically when the tool opens a project. Instead of copying instructions into each tool's config, the plugin points to the canonical `.ai-agents/` tree.
-
-### Real-world plugin examples
-
-- [Figma Agent Toolkit](https://github.com/nichochar/figma-mcp-write-server) - MCP server plugin for Figma design-to-code workflows
-- [Supabase MCP](https://github.com/supabase-community/supabase-mcp) - database and auth plugin for Supabase projects
-- [Stripe Agent Toolkit](https://github.com/stripe/agent-toolkit) - payment integration plugin for Stripe APIs
-- [Sentry MCP](https://github.com/getsentry/sentry-mcp) - error monitoring plugin connecting AI tools to Sentry
-- [Linear MCP](https://github.com/linear/linear-mcp) - project management plugin for Linear issues and cycles
+Commands that need the runtime (`/goal`, `/build`, `/test`, `/review`, `/ship`) will refuse to run until the binary is on PATH.
 
 ## Where to edit
 
