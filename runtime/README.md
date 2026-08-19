@@ -36,13 +36,19 @@ runtime/
     templates/            html/template pages
     view/                 event projection, pages, inspector, usage
   internal/
+    shared/
+      workspace/          directory names every module agrees on
+      observability/      structured logging (console + JSON file)
+      infra/
+        database/         SQLite driver registration and open helper
+        httpserver/
+          middleware/     recover, access log, chain
     web/
       app/                HTTP server composition root (bootstrap, routes)
       domain/             registry, workspace path rules
       infra/
         catalog/          ROUTER.md parsers for composer autocomplete
         persistence/      web.json and workspace registry writer
-    shared/workspace/     the directory names every module agrees on
     run/                  one delivery run: where it sits, what was recorded
       domain/             Run, Check, Event, the provenance enum, and its rules
       infra/persistence/  the manifest and the append-only event log
@@ -115,6 +121,8 @@ UPDATE_GOLDEN=1 go test ./internal/run/infra/persistence -run TestFreshRunMatche
 ## Web UI (loopback)
 
 `vibe-agent web` serves the control-plane viewer on `127.0.0.1` only. One process can register multiple workspace roots; the sidebar switches the active root without a restart. The command blocks in the foreground; press Ctrl+C to stop gracefully and remove `.agent-state/web.json`.
+
+Long-running commands (`web`, `hook`, `mcp serve`) write structured logs to a sibling `logs/` directory next to the install `bin/` folder (for example `~/.local/logs/web.log`), with tinted console output. Set `VIBE_LOG_LEVEL` (`debug`, `info`, `warn`, `error`) or `VIBE_LOG_DIR` to override the directory. Error records include a redacted stack trace in the JSON file.
 
 ```sh
 vibe-agent web --workspace . --toolkit /path/to/vibe-agent --port 3080
