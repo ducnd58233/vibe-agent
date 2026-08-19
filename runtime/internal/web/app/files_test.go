@@ -271,3 +271,33 @@ func TestWorkspacePickReturnsAbsoluteJSONPath(t *testing.T) {
 		t.Fatalf("cancel must not include a path: %s", cancelBody)
 	}
 }
+
+func TestWorkspacePickUnavailableReturns501(t *testing.T) {
+	handler := handlerWithPicker(t, &stubPicker{err: domain.ErrPickUnavailable})
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/workspace/pick?kind=file", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotImplemented {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestWorkspacePickBadPathReturns400(t *testing.T) {
+	handler := handlerWithPicker(t, &stubPicker{path: "relative.txt"})
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/workspace/pick?kind=file", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestWorkspacePickRejectsGet(t *testing.T) {
+	handler := handlerWithPicker(t, &stubPicker{path: t.TempDir()})
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/workspace/pick?kind=file", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d", rec.Code)
+	}
+}

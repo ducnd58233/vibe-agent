@@ -4,7 +4,6 @@ package hostpick
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
@@ -22,11 +21,7 @@ func pick(ctx context.Context, kind domain.PickKind) (string, error) {
 	}
 	out, err := cmd.Output()
 	if err != nil {
-		var exitErr *safexec.ExitError
-		if errors.As(err, &exitErr) {
-			return "", domain.ErrPickCancelled
-		}
-		return "", domain.ErrPickUnavailable
+		return "", pickSubprocessErr(err, 1)
 	}
 	path := strings.TrimSpace(string(out))
 	if path == "" {

@@ -126,17 +126,39 @@
     }
   }
 
+  let pickNoticeTimer;
+
+  function showPickNotice(text) {
+    setDescription(text);
+    if (pickNoticeTimer) window.clearTimeout(pickNoticeTimer);
+    if (!text) return;
+    pickNoticeTimer = window.setTimeout(() => setDescription(""), 5000);
+  }
+
   async function pickHost(kind) {
     setAttachMenu(false);
     const res = await fetch("/workspace/pick?kind=" + encodeURIComponent(kind), { method: "POST" });
-    if (!res.ok || res.status === 204) return;
+    if (res.status === 501) {
+      showPickNotice("Attach picker is not available on this system.");
+      return;
+    }
+    if (res.status === 502) {
+      showPickNotice("Attach picker failed. Try again.");
+      return;
+    }
+    if (!res.ok || res.status === 204) {
+      if (!res.ok) showPickNotice("Attach picker failed.");
+      return;
+    }
     let data;
     try {
       data = await res.json();
     } catch (_) {
+      showPickNotice("Attach picker failed.");
       return;
     }
     if (!data || data.cancelled || !data.path) return;
+    showPickNotice("");
     insertAtCursor(data.path);
   }
 
