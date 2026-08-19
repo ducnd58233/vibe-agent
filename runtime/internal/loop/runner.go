@@ -138,6 +138,13 @@ func (r *Runner) Advance(run *state.Run, outcome Outcome) (*Transition, error) {
 		return nil, err
 	}
 
+	// A run keeps the budget it started with until the graph raises it. Without
+	// this, a long delivery run can hit budget_exceeded even though the graph
+	// was updated to fit the realistic worst case.
+	if r.Graph.Spec.MaxTransitions > run.MaxTransitions {
+		run.MaxTransitions = r.Graph.Spec.MaxTransitions
+	}
+
 	run.Iteration++
 	if run.Iteration > run.MaxTransitions {
 		run.Status = state.StatusBudgetExceeded

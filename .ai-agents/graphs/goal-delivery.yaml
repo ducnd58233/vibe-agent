@@ -17,7 +17,7 @@ metadata:
 
 spec:
   initial: intake
-  maxTransitions: 50
+  maxTransitions: 100
 
   guards:
     - name: research_required
