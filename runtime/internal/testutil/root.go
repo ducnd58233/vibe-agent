@@ -8,23 +8,25 @@ import (
 	"testing"
 )
 
+const runtimeModule = "github.com/ducnd58233/vibe-agent/runtime"
+
 // RuntimeRoot returns the directory that contains runtime/go.mod.
-func RuntimeRoot(t *testing.T) string {
-	t.Helper()
-	return findModuleRoot(t, "github.com/ducnd58233/vibe-agent/runtime")
+func RuntimeRoot(tb testing.TB) string {
+	tb.Helper()
+	return findModuleRoot(tb, runtimeModule)
 }
 
 // ToolkitRoot returns the consumer repo root that owns .ai-agents (parent of runtime/).
-func ToolkitRoot(t *testing.T) string {
-	t.Helper()
-	return filepath.Dir(RuntimeRoot(t))
+func ToolkitRoot(tb testing.TB) string {
+	tb.Helper()
+	return filepath.Dir(RuntimeRoot(tb))
 }
 
-func findModuleRoot(t *testing.T, modulePath string) string {
-	t.Helper()
+func findModuleRoot(tb testing.TB, modulePath string) string {
+	tb.Helper()
 	start, err := os.Getwd()
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	dir := start
 	for {
@@ -37,9 +39,9 @@ func findModuleRoot(t *testing.T, modulePath string) string {
 		if parent == dir {
 			_, file, _, ok := runtime.Caller(2)
 			if ok {
-				t.Fatalf("module root %q not found from %s (started at %s)", modulePath, file, start)
+				tb.Fatalf("module root %q not found from %s (started at %s)", modulePath, file, start)
 			}
-			t.Fatalf("module root %q not found from %s", modulePath, start)
+			tb.Fatalf("module root %q not found from %s", modulePath, start)
 		}
 		dir = parent
 	}
