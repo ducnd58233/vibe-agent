@@ -7,6 +7,7 @@
   const fileOpen = document.getElementById("composer-file-open");
   const fileDialog = document.getElementById("composer-file-dialog");
   const fileClose = document.getElementById("composer-file-close");
+  const attachMenu = document.getElementById("composer-attach-menu");
   const hostOpen = document.getElementById("composer-host-open");
   const hostMenu = document.getElementById("composer-host-menu");
   const hostInput = document.getElementById("composer-host");
@@ -111,8 +112,32 @@
 
   function closeFilePanel() {
     if (filePanel) filePanel.innerHTML = "";
-    if (fileOpen) fileOpen.setAttribute("aria-expanded", "false");
     if (fileDialog && fileDialog.open) fileDialog.close();
+  }
+
+  function setAttachMenu(on) {
+    if (!attachMenu || !fileOpen) return;
+    attachMenu.hidden = !on;
+    fileOpen.setAttribute("aria-expanded", on ? "true" : "false");
+    if (on) {
+      setHostMenu(false);
+      setModelMenu(false);
+      closeCatalog();
+    }
+  }
+
+  async function pickHost(kind) {
+    setAttachMenu(false);
+    const res = await fetch("/workspace/pick?kind=" + encodeURIComponent(kind), { method: "POST" });
+    if (!res.ok || res.status === 204) return;
+    let data;
+    try {
+      data = await res.json();
+    } catch (_) {
+      return;
+    }
+    if (!data || data.cancelled || !data.path) return;
+    insertAtCursor(data.path);
   }
 
   function setHostMenu(on) {
@@ -269,19 +294,25 @@
     if (!res.ok) return;
     filePanel.innerHTML = await res.text();
     if (fileDialog && !fileDialog.open) fileDialog.showModal();
-    if (fileOpen) fileOpen.setAttribute("aria-expanded", "true");
   }
 
   if (fileOpen) {
     fileOpen.addEventListener("click", (event) => {
+      event.preventDefault();
       event.stopPropagation();
-      setHostMenu(false);
-      if (fileDialog && fileDialog.open) {
-        closeFilePanel();
-        return;
-      }
+      closeFilePanel();
       closeCatalog();
-      loadFiles("");
+      setHostMenu(false);
+      setModelMenu(false);
+      setAttachMenu(attachMenu ? attachMenu.hidden : true);
+    });
+  }
+  if (attachMenu) {
+    attachMenu.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const option = event.target.closest("[data-kind]");
+      if (!option) return;
+      pickHost(option.dataset.kind || "");
     });
   }
   if (fileClose) {
@@ -293,7 +324,6 @@
     });
     fileDialog.addEventListener("close", () => {
       if (filePanel) filePanel.innerHTML = "";
-      if (fileOpen) fileOpen.setAttribute("aria-expanded", "false");
     });
   }
 
@@ -392,6 +422,7 @@
       event.stopPropagation();
       closeFilePanel();
       closeCatalog();
+      setAttachMenu(false);
       setHostMenu(hostMenu.hidden);
     });
     hostMenu.addEventListener("click", (event) => {
@@ -416,6 +447,7 @@
       event.stopPropagation();
       closeFilePanel();
       closeCatalog();
+      setAttachMenu(false);
       setHostMenu(false);
       setModelMenu(modelMenu.hidden);
     });
@@ -484,6 +516,11 @@
         setHostMenu(false);
       }
     }
+    if (attachMenu && !attachMenu.hidden) {
+      if (!attachMenu.contains(event.target) && !(fileOpen && fileOpen.contains(event.target))) {
+        setAttachMenu(false);
+      }
+    }
     if (modelMenu && !modelMenu.hidden) {
       if (!modelMenu.contains(event.target) && !(modelOpen && modelOpen.contains(event.target)) && event.target !== modelInput) {
         setModelMenu(false);
@@ -495,6 +532,7 @@
     if (event.key !== "Escape") return;
     closeFilePanel();
     closeCatalog();
+    setAttachMenu(false);
     setHostMenu(false);
     setModelMenu(false);
   });

@@ -73,7 +73,7 @@ func TestSessionPageRendersEventList(t *testing.T) {
 		"chat-empty", "chat-prompts", "chat-prompt",
 		"graph-view", "settings-dialog", "composer", "new-session-form",
 		"composer-catalog", "composer-preview", "composer-description", "composer-file-panel",
-		"composer-file-dialog",
+		"composer-file-dialog", "composer-attach-file", "composer-attach-folder",
 		"composer-host-open", "composer-host-menu", "composer-model", "composer-model-open", "composer-model-menu", "composer-mode-agent", "host-busy", "thinking-bar",
 	} {
 		if !strings.Contains(body, `data-testid="`+id+`"`) {
@@ -116,6 +116,9 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	assertNewSessionForm(t, body)
 	if !strings.Contains(body, `class="dock"`) || !strings.Contains(body, `data-testid="composer"`) {
 		t.Fatal("expected composer dock on the session page")
+	}
+	if strings.Contains(body, `data-testid="composer-file-open"`) && strings.Contains(body, `aria-controls="composer-file-dialog"`) {
+		t.Fatal("Attach must not open the workspace explorer dialog")
 	}
 	if !strings.Contains(body, `data-tip="Ask is the default`) {
 		t.Fatal("Agent checkbox needs a tooltip explaining ask vs agent")

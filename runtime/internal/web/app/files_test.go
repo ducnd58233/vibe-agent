@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 )
 
 func TestWorkspaceFilesRejectsTraversal(t *testing.T) {
@@ -168,5 +170,104 @@ func TestWorkspaceBrowseListsTempDirWithoutExcerpt(t *testing.T) {
 	}
 	if !strings.Contains(body, `data-testid="file-open-folder"`) {
 		t.Fatalf("open-this-folder missing: %s", body)
+	}
+}
+
+type stubPicker struct {
+	path string
+	err  error
+	kind domain.PickKind
+}
+
+func (s *stubPicker) Pick(_ context.Context, kind domain.PickKind) (string, error) {
+	s.kind = kind
+	return s.path, s.err
+}
+
+func handlerWithPicker(t *testing.T, picker domain.HostPicker) http.Handler {
+	t.Helper()
+	root := t.TempDir()
+	d := newHTTPDeps(domain.NewRegistry(root, nil), testToolkitRoot(t), 3080)
+	d.picker = picker
+	handler, err := mountHTTP(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return handler
+}
+
+func TestWorkspacePickReturnsAbsoluteJSONPath(t *testing.T) {
+	root := t.TempDir()
+	fileBody := "token=" + testSecret
+	filePath := filepath.Join(root, "my file.txt")
+	if err := os.WriteFile(filePath, []byte(fileBody), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	folderPath := filepath.Join(root, "pkg")
+	if err := os.Mkdir(folderPath, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	filePicker := &stubPicker{path: filePath}
+	handler := handlerWithPicker(t, filePicker)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/workspace/pick?kind=file", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("file status = %d body=%s", rec.Code, rec.Body.String())
+	}
+	if filePicker.kind != domain.PickFile {
+		t.Fatalf("kind = %q", filePicker.kind)
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, fileBody) || strings.Contains(body, testSecret) {
+		t.Fatalf("file body leaked: %s", body)
+	}
+	if strings.Contains(body, "@") {
+		t.Fatalf("attach must not use @: %s", body)
+	}
+	if !strings.Contains(body, `"path"`) {
+		t.Fatalf("missing path: %s", body)
+	}
+	if !strings.Contains(body, "my file.txt") {
+		t.Fatalf("missing file name: %s", body)
+	}
+
+	folderPicker := &stubPicker{path: folderPath}
+	handler = handlerWithPicker(t, folderPicker)
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/workspace/pick?kind=folder", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("folder status = %d body=%s", rec.Code, rec.Body.String())
+	}
+	if folderPicker.kind != domain.PickFolder {
+		t.Fatalf("kind = %q", folderPicker.kind)
+	}
+	if !strings.Contains(rec.Body.String(), "pkg") {
+		t.Fatalf("missing folder name: %s", rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/workspace/pick?kind=other", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("other kind status = %d", rec.Code)
+	}
+
+	cancelPicker := &stubPicker{err: domain.ErrPickCancelled}
+	handler = handlerWithPicker(t, cancelPicker)
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/workspace/pick?kind=file", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cancel status = %d body=%s", rec.Code, rec.Body.String())
+	}
+	cancelBody := rec.Body.String()
+	if !strings.Contains(cancelBody, `"cancelled":true`) && !strings.Contains(cancelBody, `"cancelled": true`) {
+		t.Fatalf("expected cancelled: %s", cancelBody)
+	}
+	if strings.Contains(cancelBody, `"path"`) {
+		t.Fatalf("cancel must not include a path: %s", cancelBody)
 	}
 }

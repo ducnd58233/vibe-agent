@@ -1912,6 +1912,17 @@ html[data-theme="light"] .is-chat-view li[data-role="thinking"] .event-body {
   overflow: visible;
 }
 
+.attach-picker {
+  width: var(--control-height);
+  height: var(--control-height);
+}
+
+.attach-picker .host-menu {
+  left: 0;
+  right: auto;
+  min-width: 8rem;
+}
+
 .host-picker-open {
   display: inline-flex;
   align-items: center;

@@ -69,3 +69,17 @@ type FileRow struct {
 func FormatAttach(relPath string) string {
 	return "@" + strings.TrimPrefix(filepath.ToSlash(relPath), "/")
 }
+
+// FormatAttachAbs formats a host path for the composer: absolute, slash-separated,
+// quoted when it contains whitespace, never prefixed with @.
+func FormatAttachAbs(path string) (string, error) {
+	abs, err := CleanPickPath(path)
+	if err != nil {
+		return "", err
+	}
+	slash := filepath.ToSlash(abs)
+	if strings.ContainsAny(slash, " \t") {
+		return `"` + slash + `"`, nil
+	}
+	return slash, nil
+}

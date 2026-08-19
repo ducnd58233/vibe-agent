@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/hostpick"
 	ui "github.com/ducnd58233/vibe-agent/runtime/web"
 	"github.com/ducnd58233/vibe-agent/runtime/web/view"
 )
@@ -36,6 +37,7 @@ type httpDeps struct {
 	registry    *domain.Registry
 	toolkitRoot string
 	bindAddr    string
+	picker      domain.HostPicker
 }
 
 func newHTTPDeps(reg domain.Registry, toolkitRoot string, port int) httpDeps {
@@ -45,6 +47,7 @@ func newHTTPDeps(reg domain.Registry, toolkitRoot string, port int) httpDeps {
 		registry:    &copyReg,
 		toolkitRoot: filepath.Clean(toolkitRoot),
 		bindAddr:    Addr(port),
+		picker:      hostpick.OS(),
 	}
 }
 
@@ -82,6 +85,9 @@ func mountHTTP(d httpDeps) (http.Handler, error) {
 	})
 	mux.HandleFunc("/workspace/files", func(w http.ResponseWriter, r *http.Request) {
 		d.handleWorkspaceFiles(w, r)
+	})
+	mux.HandleFunc("/workspace/pick", func(w http.ResponseWriter, r *http.Request) {
+		d.handleWorkspacePick(w, r)
 	})
 	mux.HandleFunc("/workspace/browse", func(w http.ResponseWriter, r *http.Request) {
 		d.handleWorkspaceBrowse(w, r)
