@@ -49,8 +49,7 @@ func handleCheckSlug(w http.ResponseWriter, r *http.Request, d httpDeps) {
 }
 
 func handleComposerSend(w http.ResponseWriter, r *http.Request, d httpDeps) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
 	path := strings.TrimPrefix(r.URL.Path, "/session/")
@@ -62,7 +61,7 @@ func handleComposerSend(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	}
 	slug := parts[0]
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
+		writeBadForm(w)
 		return
 	}
 	hostID := strings.TrimSpace(r.FormValue("host"))

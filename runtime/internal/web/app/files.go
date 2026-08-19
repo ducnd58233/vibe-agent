@@ -31,18 +31,17 @@ type fileBrowserModel struct {
 func renderFileBrowser(w http.ResponseWriter, model fileBrowserModel) {
 	tmpl, err := ui.Templates()
 	if err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
+		writeTemplateError(w)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "file-browser", model); err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
+		writeTemplateError(w)
 	}
 }
 
 func (d httpDeps) handleWorkspaceFiles(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodGet) {
 		return
 	}
 	ws := d.activeWorkspace(r)
@@ -99,8 +98,7 @@ func (d httpDeps) handleWorkspaceFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d httpDeps) handleWorkspaceBrowse(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodGet) {
 		return
 	}
 	dir := strings.TrimSpace(r.URL.Query().Get("dir"))
@@ -132,8 +130,7 @@ func (d httpDeps) handleWorkspaceBrowse(w http.ResponseWriter, r *http.Request) 
 }
 
 func (d httpDeps) handleWorkspaceFilePreview(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodGet) {
 		return
 	}
 	ws := d.activeWorkspace(r)
@@ -172,18 +169,17 @@ func (d httpDeps) handleWorkspaceFilePreview(w http.ResponseWriter, r *http.Requ
 	}
 	tmpl, err := ui.Templates()
 	if err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
+		writeTemplateError(w)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "file-preview", model); err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
+		writeTemplateError(w)
 	}
 }
 
 func (d httpDeps) handleWorkspaceFileView(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodGet) {
 		return
 	}
 	ws := d.activeWorkspace(r)
@@ -225,12 +221,12 @@ func (d httpDeps) handleWorkspaceFileView(w http.ResponseWriter, r *http.Request
 	}
 	tmpl, err := ui.Templates()
 	if err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
+		writeTemplateError(w)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "file-viewer", model); err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
+		writeTemplateError(w)
 	}
 }
 
@@ -305,8 +301,7 @@ type pickJSON struct {
 }
 
 func (d httpDeps) handleWorkspacePick(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
 	kind, err := domain.ParsePickKind(r.URL.Query().Get("kind"))

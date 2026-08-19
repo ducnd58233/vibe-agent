@@ -23,12 +23,11 @@ func (d httpDeps) activeWorkspace(r *http.Request) string {
 }
 
 func handleWorkspaceSwitch(w http.ResponseWriter, r *http.Request, d httpDeps) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
+		writeBadForm(w)
 		return
 	}
 	id := strings.TrimSpace(r.FormValue("workspace_id"))
@@ -41,12 +40,11 @@ func handleWorkspaceSwitch(w http.ResponseWriter, r *http.Request, d httpDeps) {
 }
 
 func handleWorkspaceOpen(w http.ResponseWriter, r *http.Request, d httpDeps) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
+		writeBadForm(w)
 		return
 	}
 	raw := strings.TrimSpace(r.FormValue("path"))

@@ -10,8 +10,7 @@ import (
 )
 
 func handleSessionEvents(w http.ResponseWriter, r *http.Request, d httpDeps) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodGet) {
 		return
 	}
 	path := strings.TrimPrefix(r.URL.Path, "/session/")
@@ -26,7 +25,7 @@ func handleSessionEvents(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	if raw := r.URL.Query().Get("after"); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 0 {
-			http.Error(w, "bad after", http.StatusBadRequest)
+			writeBadAfter(w)
 			return
 		}
 		after = n
@@ -44,13 +43,13 @@ func handleSessionEvents(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	}
 	tmpl, err := ui.Templates()
 	if err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
+		writeTemplateError(w)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	for _, row := range rows {
 		if err := tmpl.ExecuteTemplate(w, "event-row", row); err != nil {
-			http.Error(w, "template error", http.StatusInternalServerError)
+			writeTemplateError(w)
 			return
 		}
 	}
