@@ -237,6 +237,9 @@ func runStatus(args []string) error {
 		}
 	}
 	for _, blocker := range current.Blockers {
+		if blocker.Node != current.CurrentNode {
+			continue
+		}
 		fmt.Printf("  blocker    %s at %s (attempt %d)\n", blocker.Reason, blocker.Node, blocker.Attempts)
 	}
 	return nil
