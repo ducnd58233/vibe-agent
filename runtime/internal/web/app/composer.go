@@ -92,12 +92,13 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 	for _, frag := range fragments {
 		if isPrintLifecycle(frag.Type) {
 			rec := session.Record{
-				Type:   frag.Type,
-				Source: session.SourcePrint,
-				Client: host.Binary,
-				Event:  frag.Event,
-				Tool:   frag.Tool,
-				At:     now,
+				Type:    frag.Type,
+				Source:  session.SourcePrint,
+				Client:  host.Binary,
+				Event:   frag.Event,
+				Tool:    frag.Tool,
+				Command: session.RedactText(frag.Command),
+				At:      now,
 			}
 			if frag.Type == session.TypeStop || frag.Type == session.TypeSubagentStop {
 				wroteStop = true
@@ -319,9 +320,9 @@ func fragmentsFromSystem(raw map[string]any) []printFragment {
 	event := hookEventName(raw)
 	switch subtype {
 	case "hook_started":
-		return hookFragment(event, false)
+		return hookFragment(event, false, raw)
 	case "hook_response":
-		return hookFragment(event, true)
+		return hookFragment(event, true, raw)
 	default:
 		return nil
 	}
@@ -339,7 +340,7 @@ func hookEventName(raw map[string]any) string {
 	return name
 }
 
-func hookFragment(event string, response bool) []printFragment {
+func hookFragment(event string, response bool, raw map[string]any) []printFragment {
 	key := hookEventKey(event)
 	if response && key != "sessionend" {
 		return nil
@@ -351,7 +352,27 @@ func hookFragment(event string, response bool) []printFragment {
 	if !ok {
 		return nil
 	}
+	if key == "pretooluse" || key == "beforeshellexecution" {
+		frag.Tool, frag.Command = printHookTool(raw)
+	}
 	return []printFragment{frag}
+}
+
+func printHookTool(raw map[string]any) (tool, command string) {
+	tool = firstString(raw, "tool_name", "toolName", "tool", "name")
+	command = firstString(raw, "command")
+	if input, ok := raw["tool_input"].(map[string]any); ok {
+		if command == "" {
+			command = firstString(input, "command", "file_path", "filePath", "path")
+		}
+	}
+	if command == "" {
+		command = firstString(raw, "file_path", "filePath", "path")
+	}
+	if tool == "" && firstString(raw, "command") != "" {
+		tool = "Shell"
+	}
+	return tool, command
 }
 
 func hookEventKey(event string) string {

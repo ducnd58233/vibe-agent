@@ -158,6 +158,18 @@ func TestParsePrintOutputSystemResultIsNotRawJSON(t *testing.T) {
 	}
 }
 
+func TestParsePrintOutputHookStartedPreToolUseKeepsToolName(t *testing.T) {
+	raw := `{"type":"system","subtype":"hook_started","hook_event":"PreToolUse","tool_name":"Read","tool_input":{"file_path":"README.md"}}`
+	fragments, _ := parsePrintOutput(raw)
+	if len(fragments) != 1 {
+		t.Fatalf("fragments = %+v", fragments)
+	}
+	got := fragments[0]
+	if got.Type != session.TypePreTool || got.Tool != "Read" || got.Command != "README.md" {
+		t.Fatalf("pretool = %+v, want Read / README.md", got)
+	}
+}
+
 func TestParsePrintOutputHookStartedSessionStartDropsOutput(t *testing.T) {
 	raw := `{"type":"system","subtype":"hook_started","hook_event":"SessionStart","output":"sk-secret-should-not-land"}`
 	fragments, _ := parsePrintOutput(raw)

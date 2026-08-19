@@ -67,7 +67,7 @@ func (p *payload) enrichFromRaw() {
 		return
 	}
 	if p.ToolName == "" {
-		p.ToolName = firstRawString(top, "tool_name", "toolName")
+		p.ToolName = firstRawString(top, "tool_name", "toolName", "tool", "name")
 	}
 	if p.Command == "" {
 		p.Command = firstRawString(top, "command")

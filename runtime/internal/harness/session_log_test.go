@@ -97,6 +97,22 @@ func TestCursorBeforeShellRecordsCommand(t *testing.T) {
 	}
 }
 
+func TestCursorToolAliasRecordsName(t *testing.T) {
+	root := workspaceWithRun(t)
+	invoke(t, Request{
+		Event: EventPreToolUse, Client: ClientCursor, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{"tool":"Read","file_path":"README.md"}`),
+	})
+	events := sessionLog(t, root)
+	if len(events) != 1 || events[0].Type != session.TypePreTool {
+		t.Fatalf("events = %+v", events)
+	}
+	got := sessionPayload(t, events[0])
+	if got.Tool != "Read" || got.Command != "README.md" {
+		t.Fatalf("payload = %+v, want Read / README.md", got)
+	}
+}
+
 func TestCursorStringToolInputRecordsCommand(t *testing.T) {
 	root := workspaceWithRun(t)
 	invoke(t, Request{
