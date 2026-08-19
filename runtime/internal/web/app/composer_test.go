@@ -535,6 +535,7 @@ func TestComposerModelAndAgentModeReachPrint(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("print stub was not called")
 	}
+	waitForPrintToSettle(t, root, slug, 1)
 }
 
 func TestComposerReplayPrefixesFollowUpAndRedacts(t *testing.T) {
@@ -555,6 +556,8 @@ func TestComposerReplayPrefixesFollowUpAndRedacts(t *testing.T) {
 	}
 	t.Cleanup(func() { hostPrint = runHostPrint })
 	root, slug := writeEmptySession(t)
+	sends := 0
+	t.Cleanup(func() { waitForPrintToSettle(t, root, slug, sends) })
 	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
 	if err != nil {
 		t.Fatal(err)
@@ -569,6 +572,7 @@ func TestComposerReplayPrefixesFollowUpAndRedacts(t *testing.T) {
 		if rec.Code != http.StatusSeeOther {
 			t.Fatalf("status = %d", rec.Code)
 		}
+		sends++
 		select {
 		case <-wait:
 		case <-time.After(2 * time.Second):
@@ -706,6 +710,51 @@ func TestComposerFirstSendWritesStartAndStop(t *testing.T) {
 	if startsAfter != starts || startsAfter != 1 {
 		t.Fatalf("session_start count = %d then %d, want 1", starts, startsAfter)
 	}
+}
+
+// waitForPrintToSettle blocks until the background print goroutine has written
+// its terminal record.
+//
+// SendComposerMessage returns as soon as it has spawned appendHostPrint, which
+// then keeps writing into the session log under t.TempDir(). A test that
+// returns at the stub call leaves that goroutine writing into a directory the
+// test framework is deleting, and on Windows the cleanup fails with "The
+// directory is not empty". It surfaces only under full-suite timing, so the
+// package passes when run alone and fails in CI.
+//
+// Waiting on the stop record waits on the observable end of the work rather
+// than on a sleep long enough to usually be enough.
+func waitForPrintToSettle(t *testing.T, root, slug string, sends int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		events, err := session.Replay(session.LogPath(root, slug))
+		if err == nil && countType(events, session.TypeStop) >= sends {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("only %d of %d background prints finished; one may still be writing into the temp dir",
+		countType(mustReplay(t, root, slug), session.TypeStop), sends)
+}
+
+func mustReplay(t *testing.T, root, slug string) []session.Event {
+	t.Helper()
+	events, err := session.Replay(session.LogPath(root, slug))
+	if err != nil {
+		return nil
+	}
+	return events
+}
+
+func countType(events []session.Event, typ session.Type) int {
+	n := 0
+	for _, ev := range events {
+		if ev.Type == typ {
+			n++
+		}
+	}
+	return n
 }
 
 func hasType(events []session.Event, typ session.Type) bool {
