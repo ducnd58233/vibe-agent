@@ -15,8 +15,8 @@ var literalSpecs = []string{
 	`(?i)aws_secret_access_key\s*[:=]\s*\S{16,}`,
 }
 
-// formatRedactSpecs are additional format-specific shapes for output redaction
-// only. Gate stays narrow; logs and UI get wider coverage.
+// formatRedactSpecs are format-specific credential shapes used for output
+// redaction and memory rejection. Gate stays narrow (literal only).
 var formatRedactSpecs = []string{
 	`sk-ant-[A-Za-z0-9_-]{20,}`,
 	`github_pat_[A-Za-z0-9_]{22,}`,
@@ -75,4 +75,16 @@ func LiteralPatterns() []*regexp.Regexp {
 // output redaction.
 func ContextualPatterns() []*regexp.Regexp {
 	return contextualPatterns
+}
+
+// FormatPatterns returns format-specific shapes for memory rejection and output
+// redaction (not used by the harness write gate).
+func FormatPatterns() []*regexp.Regexp {
+	return formatRedactPatterns
+}
+
+// MemoryRejectPatterns returns all non-gitleaks regex groups used to reject
+// credential-shaped memory candidates.
+func MemoryRejectPatterns() []*regexp.Regexp {
+	return joinPatterns(literalPatterns, formatRedactPatterns, contextualPatterns)
 }

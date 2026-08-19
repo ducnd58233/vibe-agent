@@ -28,22 +28,7 @@ type Decision struct {
 // secretPatterns catch candidates that would put a credential in a database
 // that gets read back into a model's context. Detection is deliberately broad:
 // a false positive costs one rejected memory, a false negative leaks a secret.
-var secretPatterns = joinSecretPatterns(
-	redact.LiteralPatterns(),
-	redact.ContextualPatterns(),
-)
-
-func joinSecretPatterns(groups ...[]*regexp.Regexp) []*regexp.Regexp {
-	var n int
-	for _, g := range groups {
-		n += len(g)
-	}
-	out := make([]*regexp.Regexp, 0, n)
-	for _, g := range groups {
-		out = append(out, g...)
-	}
-	return out
-}
+var secretPatterns = redact.MemoryRejectPatterns()
 
 // hedgePatterns catch candidates that record a guess rather than an
 // observation. "Probably needs Redis" is not worth remembering; it is worth
