@@ -13,7 +13,7 @@ const defaultLogDirName = "logs"
 // When the binary lives in bin/ (for example ~/.local/bin), logs go in a sibling
 // logs/ directory (for example ~/.local/logs). VIBE_LOG_DIR overrides that.
 func ResolveLogDir() (string, error) {
-	if dir := strings.TrimSpace(os.Getenv("VIBE_LOG_DIR")); dir != "" {
+	if dir := strings.TrimSpace(os.Getenv(EnvLogDir)); dir != "" {
 		return filepath.Clean(dir), nil
 	}
 	exec, _ := os.Executable()

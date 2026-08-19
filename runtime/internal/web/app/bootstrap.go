@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -19,10 +18,13 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/persistence"
 )
 
-const defaultPort = 3080
+const (
+	// DefaultPort is the loopback web UI listen port.
+	DefaultPort = 3080
 
-// ListenHost is always loopback.
-const ListenHost = "127.0.0.1"
+	// ListenHost is always loopback.
+	ListenHost = "127.0.0.1"
+)
 
 // Config holds loopback server settings.
 type Config struct {
@@ -52,7 +54,7 @@ func ValidateListenHost(host string) error {
 // Addr formats the listen address for a port.
 func Addr(port int) string {
 	if port <= 0 {
-		port = defaultPort
+		port = DefaultPort
 	}
 	return fmt.Sprintf("%s:%d", ListenHost, port)
 }
@@ -60,7 +62,7 @@ func Addr(port int) string {
 // Run starts the loopback server and blocks until it stops.
 func Run(cfg Config) error {
 	if cfg.Port <= 0 {
-		cfg.Port = defaultPort
+		cfg.Port = DefaultPort
 	}
 	if err := ValidateListenHost(ListenHost); err != nil {
 		return err
@@ -73,7 +75,7 @@ func Run(cfg Config) error {
 	if err != nil {
 		return err
 	}
-	handler = wrapHTTPMiddleware(handler, cfg.Logger)
+	handler = httpservermiddleware.StandardStack(handler, cfg.Logger)
 
 	addr := Addr(cfg.Port)
 	if err := persistence.WriteState(cfg.WorkspaceRoot, domain.State{
@@ -109,15 +111,4 @@ func Run(cfg Config) error {
 	}
 	_, _ = fmt.Fprintln(os.Stdout, "stopped")
 	return nil
-}
-
-func wrapHTTPMiddleware(handler http.Handler, log observability.Logger) http.Handler {
-	if log == nil {
-		return httpservermiddleware.Chain(handler, httpservermiddleware.RequestID)
-	}
-	return httpservermiddleware.Chain(handler,
-		httpservermiddleware.RequestID,
-		httpservermiddleware.AccessLog(log),
-		httpservermiddleware.Recover(log),
-	)
 }

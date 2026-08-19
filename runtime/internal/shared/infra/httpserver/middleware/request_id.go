@@ -10,16 +10,19 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/httpserver"
 )
 
-const maxRequestIDLen = 128
+const (
+	maxRequestIDLen = 128
+	headerRequestID = "X-Request-Id"
+)
 
 // RequestID honours inbound X-Request-Id or generates one.
 func RequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := clipRequestID(strings.TrimSpace(r.Header.Get("X-Request-Id")))
+		id := clipRequestID(strings.TrimSpace(r.Header.Get(headerRequestID)))
 		if id == "" {
 			id = uuid.NewString()
 		}
-		w.Header().Set("X-Request-Id", id)
+		w.Header().Set(headerRequestID, id)
 		next.ServeHTTP(w, r.WithContext(httpserver.WithRequestID(r.Context(), id)))
 	})
 }

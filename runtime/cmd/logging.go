@@ -9,18 +9,14 @@ import (
 )
 
 func openServiceLogger(service string) (*slog.Logger, io.Closer, error) {
-	level := os.Getenv("VIBE_LOG_LEVEL")
+	level := os.Getenv(observability.EnvLogLevel)
 	if level == "" {
-		level = "info"
-	}
-	dir, err := observability.ResolveLogDir()
-	if err != nil {
-		return nil, nil, err
+		level = observability.DefaultLogLevel
 	}
 	return observability.NewLogger(observability.Options{
 		Service: service,
 		Level:   level,
-		Dir:     dir,
+		Dir:     "", // ResolveLogDir inside NewLogger when empty
 	})
 }
 

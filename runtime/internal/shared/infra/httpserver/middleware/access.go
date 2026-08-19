@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/httpserver"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/observability"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/redact"
 )
 
 type statusWriter struct {
@@ -31,7 +31,7 @@ func AccessLog(l observability.Logger) Middleware {
 			}
 			l.InfoContext(r.Context(), "http request",
 				"method", r.Method,
-				"path", session.RedactText(r.URL.Path),
+				"path", redact.Text(r.URL.Path),
 				"request_id", httpserver.RequestIDFrom(r.Context()),
 				"status", sw.status,
 				"duration_ms", time.Since(start).Milliseconds(),

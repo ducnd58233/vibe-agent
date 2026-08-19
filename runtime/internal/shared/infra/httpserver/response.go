@@ -6,7 +6,12 @@ import (
 	"strings"
 )
 
-const contentTypeJSON = "application/json"
+const (
+	contentTypeJSON = "application/json"
+
+	headerAccept    = "Accept"
+	headerHXRequest = "HX-Request"
+)
 
 // ErrorBody is the JSON error envelope for API handlers and panic recovery.
 type ErrorBody struct {
@@ -36,8 +41,8 @@ func RespondError(w http.ResponseWriter, r *http.Request, status int, msg string
 }
 
 func wantsJSON(r *http.Request) bool {
-	if r.Header.Get("HX-Request") != "" {
+	if r.Header.Get(headerHXRequest) != "" {
 		return false
 	}
-	return strings.Contains(r.Header.Get("Accept"), "application/json")
+	return strings.Contains(r.Header.Get(headerAccept), contentTypeJSON)
 }
