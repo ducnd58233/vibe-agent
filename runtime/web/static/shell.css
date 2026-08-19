@@ -1746,11 +1746,11 @@ html[data-theme="light"] .is-chat-view li[data-role="thinking"] .event-body {
 }
 
 .composer-field-wrap .composer-ref {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-  height: 1.25rem;
-  padding: 0 0.375rem;
+  display: inline;
+  padding: 0 0.125rem;
+  height: auto;
+  border-radius: 0.1875rem;
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
   color: var(--color-accent);
 }
 
@@ -1759,6 +1759,26 @@ html[data-theme="light"] .is-chat-view li[data-role="thinking"] .event-body {
   border-radius: 0.1875rem;
   background: color-mix(in srgb, var(--color-accent) 22%, transparent);
   color: var(--color-accent);
+}
+
+.composer-attach-tooltip {
+  position: fixed;
+  z-index: 20;
+  max-width: min(24rem, 90vw);
+  padding: 0.375rem 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-bg) 35%, transparent);
+  pointer-events: none;
+  word-break: break-all;
+}
+
+.composer-attach-tooltip[hidden] {
+  display: none;
 }
 
 .composer-description {
@@ -1910,6 +1930,17 @@ html[data-theme="light"] .is-chat-view li[data-role="thinking"] .event-body {
   position: relative;
   min-width: 0;
   overflow: visible;
+}
+
+.attach-picker {
+  width: var(--control-height);
+  height: var(--control-height);
+}
+
+.attach-picker .host-menu {
+  left: 0;
+  right: auto;
+  min-width: 8rem;
 }
 
 .host-picker-open {

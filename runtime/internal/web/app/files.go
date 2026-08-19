@@ -1,6 +1,8 @@
 package app
 
 import (
+	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -174,4 +176,46 @@ func (d httpDeps) handleWorkspaceFilePreview(w http.ResponseWriter, r *http.Requ
 	if err := tmpl.ExecuteTemplate(w, "file-preview", model); err != nil {
 		http.Error(w, "template error", http.StatusInternalServerError)
 	}
+}
+
+type pickJSON struct {
+	Path      string `json:"path,omitempty"`
+	Cancelled bool   `json:"cancelled,omitempty"`
+}
+
+func (d httpDeps) handleWorkspacePick(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	kind, err := domain.ParsePickKind(r.URL.Query().Get("kind"))
+	if err != nil {
+		http.Error(w, "bad kind", http.StatusBadRequest)
+		return
+	}
+	if d.picker == nil {
+		http.Error(w, "picker unavailable", http.StatusNotImplemented)
+		return
+	}
+	raw, err := d.picker.Pick(r.Context(), kind)
+	if err != nil {
+		if errors.Is(err, domain.ErrPickCancelled) {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(pickJSON{Cancelled: true})
+			return
+		}
+		if errors.Is(err, domain.ErrPickUnavailable) {
+			http.Error(w, "picker unavailable", http.StatusNotImplemented)
+			return
+		}
+		http.Error(w, "pick failed", http.StatusBadGateway)
+		return
+	}
+	formatted, err := domain.FormatAttachAbs(raw)
+	if err != nil {
+		http.Error(w, "bad path", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(pickJSON{Path: formatted})
 }

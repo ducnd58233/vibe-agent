@@ -73,7 +73,7 @@ func TestSessionPageRendersEventList(t *testing.T) {
 		"chat-empty", "chat-prompts", "chat-prompt",
 		"graph-view", "settings-dialog", "composer", "new-session-form",
 		"composer-catalog", "composer-preview", "composer-description", "composer-file-panel",
-		"composer-file-dialog",
+		"composer-file-dialog", "composer-attach-file", "composer-attach-folder",
 		"composer-host-open", "composer-host-menu", "composer-model", "composer-model-open", "composer-model-menu", "composer-mode-agent", "host-busy", "thinking-bar",
 	} {
 		if !strings.Contains(body, `data-testid="`+id+`"`) {
@@ -116,6 +116,9 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	assertNewSessionForm(t, body)
 	if !strings.Contains(body, `class="dock"`) || !strings.Contains(body, `data-testid="composer"`) {
 		t.Fatal("expected composer dock on the session page")
+	}
+	if strings.Contains(body, `data-testid="composer-file-open"`) && strings.Contains(body, `aria-controls="composer-file-dialog"`) {
+		t.Fatal("Attach must not open the workspace explorer dialog")
 	}
 	if !strings.Contains(body, `data-tip="Ask is the default`) {
 		t.Fatal("Agent checkbox needs a tooltip explaining ask vs agent")
@@ -1144,5 +1147,38 @@ func TestCatalogIncludesWorkspaceCommand(t *testing.T) {
 	body := rec.Body.String()
 	if !strings.Contains(body, "/vibe-unique-http-cmd") {
 		t.Fatalf("missing workspace command: %s", body)
+	}
+}
+
+func TestComposerJSHighlightsAbsoluteAttachPaths(t *testing.T) {
+	root := t.TempDir()
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/static/composer.js", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	js := rec.Body.String()
+	if !strings.Contains(js, "[A-Za-z]:[^\\s]+") {
+		t.Fatal("composer must highlight Windows absolute @ attach paths through the drive colon")
+	}
+	if !strings.Contains(js, "highlightComposerAtRefs") {
+		t.Fatal("composer @ highlight must handle quoted and drive-letter paths before workspace refs")
+	}
+	if !strings.Contains(js, "attachPathMap") || !strings.Contains(js, "expandAttachRefs") {
+		t.Fatal("composer must shorten host attach picks to @basename and expand before send")
+	}
+	if !strings.Contains(js, "composer-attach-tooltip") {
+		t.Fatal("composer must show full attach path on hover")
+	}
+	if !strings.Contains(js, "attachSuggestions") || !strings.Contains(js, "isCompleteAttachFragment") {
+		t.Fatal("composer must suggest attached files and skip catalog on complete attach tokens")
+	}
+	if !strings.Contains(js, "getHighlightSuppressRange") {
+		t.Fatal("composer must drop @ highlight while catalog shows no matches")
 	}
 }

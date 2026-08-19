@@ -108,7 +108,17 @@
           <div class="composer-description" id="composer-description" data-testid="composer-description" hidden></div>
           <div class="composer-catalog-panel" id="composer-catalog-panel" data-testid="composer-catalog" hidden></div>
         <form class="composer" method="post" action="/session/{{ .Slug }}/send" data-testid="composer"{{ if not .CanCompose }} aria-disabled="true"{{ end }}>
-          <button class="btn-icon" type="button" id="composer-file-open" data-testid="composer-file-open" aria-label="Attach file" aria-expanded="false" aria-controls="composer-file-dialog"{{ if not .CanCompose }} disabled{{ end }}>{{ template "icon-attach" }}</button>
+          <div class="host-picker attach-picker">
+            <button class="btn-icon" type="button" id="composer-file-open" data-testid="composer-file-open" aria-label="Attach" aria-haspopup="listbox" aria-expanded="false" aria-controls="composer-attach-menu"{{ if not .CanCompose }} disabled{{ end }}>{{ template "icon-attach" }}</button>
+            <ul class="host-menu" id="composer-attach-menu" data-testid="composer-attach-menu" role="listbox" hidden>
+              <li>
+                <button class="host-option" type="button" role="option" data-kind="file" data-testid="composer-attach-file">File</button>
+              </li>
+              <li>
+                <button class="host-option" type="button" role="option" data-kind="folder" data-testid="composer-attach-folder">Folder</button>
+              </li>
+            </ul>
+          </div>
           <div class="composer-field-wrap">
             <div class="composer-preview" id="composer-preview" data-testid="composer-preview" aria-hidden="true"></div>
             <input class="composer-field" id="composer-message" name="message" type="text" placeholder="{{ if .CanCompose }}Type / for commands, @ for skills, or attach a file{{ else }}Install a host on PATH to send{{ end }}"{{ if not .CanCompose }} disabled{{ end }} aria-label="Message" autocomplete="off">

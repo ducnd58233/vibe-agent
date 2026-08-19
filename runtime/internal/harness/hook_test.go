@@ -144,6 +144,22 @@ func TestStopReportsABlockerWhenThereIsOne(t *testing.T) {
 	}
 }
 
+func TestStopIgnoresStaleBlockerOnEarlierNode(t *testing.T) {
+	root := workspaceWithRun(t, func(run *state.Run) {
+		run.CurrentNode = "ship"
+		run.Blockers = []state.Blocker{{
+			Node: "external_reviews", Reason: "Awaiting human waiver", Attempts: 1, At: at(),
+		}}
+	})
+	output := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	if strings.Contains(output, "external_reviews") {
+		t.Errorf("stop reported a stale blocker: %s", output)
+	}
+	if !strings.Contains(output, "still at node ship") {
+		t.Errorf("stop did not report the current node: %s", output)
+	}
+}
+
 // A control plane that can wedge a session is worse than one that stays quiet.
 func TestHooksStayQuietWithNoRunAndNoWorkspace(t *testing.T) {
 	for _, event := range []Event{EventStop, EventSubagentStop, EventUserPromptSubmit} {

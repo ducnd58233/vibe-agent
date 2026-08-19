@@ -61,6 +61,56 @@
   }
   const browsePanel = document.getElementById("workspace-browse-panel");
   const browsePath = document.getElementById("workspace-browse-path");
+  const browsePick = document.getElementById("workspace-browse-pick");
+  const browseNotice = document.getElementById("workspace-browse-notice");
+
+  function setBrowseNotice(text) {
+    if (!browseNotice) return;
+    const copy = (text || "").trim();
+    browseNotice.textContent = copy;
+    browseNotice.hidden = copy === "";
+  }
+
+  function pickPathForForm(raw) {
+    const s = (raw || "").trim();
+    if (s.length >= 2 && s.startsWith('"') && s.endsWith('"')) {
+      return s.slice(1, -1);
+    }
+    return s;
+  }
+
+  async function pickWorkspaceFolder() {
+    setBrowseNotice("");
+    const res = await fetch("/workspace/pick?kind=folder", { method: "POST" });
+    if (res.status === 501) {
+      setBrowseNotice("Folder picker is not available on this system.");
+      return;
+    }
+    if (res.status === 502) {
+      setBrowseNotice("Folder picker failed. Try again.");
+      return;
+    }
+    if (!res.ok || res.status === 204) {
+      if (!res.ok) setBrowseNotice("Folder picker failed.");
+      return;
+    }
+    let data;
+    try {
+      data = await res.json();
+    } catch (_) {
+      setBrowseNotice("Folder picker failed.");
+      return;
+    }
+    if (!data || data.cancelled || !data.path) return;
+    if (browsePath) browsePath.value = pickPathForForm(data.path);
+  }
+
+  if (browsePick) {
+    browsePick.addEventListener("click", () => {
+      pickWorkspaceFolder();
+    });
+  }
+
   async function loadBrowse(dir) {
     if (!browsePanel) return;
     const q = dir ? "?dir=" + encodeURIComponent(dir) : "";

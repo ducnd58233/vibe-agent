@@ -609,6 +609,11 @@ func runReminder(runs []*state.Run) string {
 func reminderLine(run *state.Run) string {
 	if len(run.Blockers) > 0 {
 		blocker := run.Blockers[len(run.Blockers)-1]
+		if blocker.Node != run.CurrentNode {
+			return fmt.Sprintf(
+				"Run %s is still at node %s. Record evidence with vibe-agent checkpoint rather than assuming the step is done.",
+				run.Slug, orDash(run.CurrentNode))
+		}
 		return fmt.Sprintf("Run %s is blocked at %s: %s (attempt %d).",
 			run.Slug, blocker.Node, blocker.Reason, blocker.Attempts)
 	}

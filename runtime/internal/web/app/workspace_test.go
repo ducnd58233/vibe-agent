@@ -133,6 +133,9 @@ func TestShellShowsCurrentWorkspaceOnlyInRail(t *testing.T) {
 	if !strings.Contains(body, `data-testid="workspace-browse-panel"`) {
 		t.Fatal("browse dialog must host the folder explorer")
 	}
+	if !strings.Contains(body, `data-testid="workspace-browse-pick"`) {
+		t.Fatal("browse dialog must offer OS folder picker")
+	}
 	labelA := filepath.Base(rootA)
 	labelB := filepath.Base(rootB)
 	currentIdx := strings.Index(body, `data-testid="workspace-current"`)

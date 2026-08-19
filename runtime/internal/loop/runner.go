@@ -156,6 +156,7 @@ func (r *Runner) Advance(run *state.Run, outcome Outcome) (*Transition, error) {
 	}
 
 	transition := &Transition{From: run.CurrentNode, To: edge.To, Via: guardName}
+	run.Blockers = clearBlockersAt(run.Blockers, transition.From)
 	run.CurrentNode = edge.To
 	run.UpdatedAt = now
 
@@ -280,6 +281,19 @@ func (r *Runner) runtimeGuard(run *state.Run, key string) bool {
 
 // recordBlocker counts repeated failures at the same node with the same reason,
 // and returns the new attempt count.
+func clearBlockersAt(blockers []state.Blocker, node string) []state.Blocker {
+	if node == "" || len(blockers) == 0 {
+		return blockers
+	}
+	out := blockers[:0]
+	for _, blocker := range blockers {
+		if blocker.Node != node {
+			out = append(out, blocker)
+		}
+	}
+	return out
+}
+
 func (r *Runner) recordBlocker(run *state.Run, node, reason string, now time.Time) int {
 	for i := range run.Blockers {
 		if run.Blockers[i].Node == node && run.Blockers[i].Reason == reason {
