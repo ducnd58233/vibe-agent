@@ -281,6 +281,21 @@ func TestDiscoverToolkitOrder(t *testing.T) {
 // TestHoldsAssetsRejectsAFile guards the check that .ai-agents is a directory.
 // A file by that name would otherwise pass and every later read would fail with
 // a confusing error far from the cause.
+func TestNormalizeVolumeUppercasesDriveLetter(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("drive letters are a Windows concept")
+	}
+	for _, tc := range []struct{ in, want string }{
+		{`d:\projects\vibe-agent`, `D:\projects\vibe-agent`},
+		{`D:\projects\vibe-agent`, `D:\projects\vibe-agent`},
+		{`c:\Users`, `C:\Users`},
+	} {
+		if got := normalizeVolume(tc.in); got != tc.want {
+			t.Errorf("normalizeVolume(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
 func TestHoldsAssetsRejectsAFile(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, ".ai-agents"), []byte("not a directory"), 0o600); err != nil {

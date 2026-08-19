@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
@@ -121,6 +123,7 @@ func (r *rootFlags) resolve() (workspaceRoot, toolkitRoot string, err error) {
 	if err != nil {
 		return "", "", fmt.Errorf("resolve workspace: %w", err)
 	}
+	workspaceRoot = normalizeVolume(workspaceRoot)
 	if *r.toolkit == "" {
 		return workspaceRoot, discoverToolkit(workspaceRoot), nil
 	}
@@ -200,6 +203,16 @@ func discoverToolkit(workspaceRoot string) string {
 func holdsAssets(dir string) bool {
 	info, err := os.Stat(filepath.Join(dir, ".ai-agents"))
 	return err == nil && info.IsDir()
+}
+
+// normalizeVolume uppercases the drive letter on Windows so that paths written
+// by different shells (Git Bash yields lowercase, cmd/PowerShell uppercase)
+// compare equal when used as a database key.
+func normalizeVolume(path string) string {
+	if runtime.GOOS != "windows" || len(path) < 2 || path[1] != ':' {
+		return path
+	}
+	return strings.ToUpper(path[:1]) + path[1:]
 }
 
 // newFlagSet builds a flag set that reports usage errors through the returned
