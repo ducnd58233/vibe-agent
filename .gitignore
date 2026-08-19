@@ -5,26 +5,31 @@
 /.claude/skills/
 /.claude/agents/
 /.claude/commands/
-/.claude/sdd-cache/
 /.cursor/skills/
 /.cursor/commands/
-/.cursor/sdd-cache/
 /.opencode/agents/
 /.opencode/commands/
-/.opencode/sdd-cache/
 /.agents/skills/
 /.agents/commands/
-/.agents/sdd-cache/
 /.codex/agents/
 /.codex/prompts/
-/.codex/sdd-cache/
 /.codex/commands/
 # Goal verification artifacts from /goal (local only; see .ai-agents/references/goal-verification-records.md)
 # Run state lives at tmp/<slug>/manifest.json with the event log at tmp/<slug>/events.ndjson.
 /tmp/
 
-# Workspace-local runtime state: cross-run memory database and runtime logs.
+# Workspace-local runtime state: cross-run memory database, caches, runtime logs.
+# The WebFetch cache lives here too; it used to be one line per host directory.
 /.agent-state/
+
+# Legacy WebFetch cache location, written before the cache moved to
+# .agent-state/. Still ignored so an existing checkout does not suddenly offer
+# 56 cached pages for commit. Safe to delete by hand.
+/.claude/sdd-cache/
+
+# Python bytecode from the hook scripts.
+__pycache__/
+*.pyc
 
 # Compiled runtime binaries and release archives.
 # `make -C runtime build` writes to dist/. A bare `go build ./cmd` from

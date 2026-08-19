@@ -2,8 +2,12 @@ package harness
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
 // The WebFetch cache pair stayed in Python and each host config named it by a
@@ -65,5 +69,36 @@ func TestACacheRefusalIsDeliveredInEachHostsShape(t *testing.T) {
 	var out bytes.Buffer
 	if err := deliverBlock(Request{Client: ClientClaude}, reason, &out); err == nil {
 		t.Error("Claude got no error to exit 2 with")
+	}
+}
+
+// The scripts cannot import the Go constant, so the runtime hands them the
+// resolved directory. This is asserted against the script source rather than by
+// running them, because both make a network call before touching the cache and
+// a test that needs the network is a test that gets skipped.
+//
+// The bug this guards: both scripts hardcoded .claude/sdd-cache, so a Cursor or
+// opencode session wrote its cache into another host's directory. Nothing
+// failed, nothing was reported, and the cache looked like it was working.
+func TestTheCacheScriptsTakeTheirDirectoryFromTheRuntime(t *testing.T) {
+	for _, name := range []string{"sdd-cache-pre.py", "sdd-cache-post.py"} {
+		raw, err := os.ReadFile(filepath.Clean(filepath.Join(toolkitRoot, ".ai-agents", "hooks", name)))
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		source := string(raw)
+
+		if !strings.Contains(source, workspace.EnvSDDCacheDir) {
+			t.Errorf("%s does not read %s, so the runtime cannot place its cache",
+				name, workspace.EnvSDDCacheDir)
+		}
+		for _, host := range []string{".claude", ".cursor", ".codex", ".opencode"} {
+			if strings.Contains(source, host+"/sdd-cache") || strings.Contains(source, `"`+host+`"`) {
+				t.Errorf("%s still names %s for the cache; derived state has one home", name, host)
+			}
+		}
+		if !strings.Contains(source, workspace.StateDirName) {
+			t.Errorf("%s has no %s fallback for a standalone run", name, workspace.StateDirName)
+		}
 	}
 }

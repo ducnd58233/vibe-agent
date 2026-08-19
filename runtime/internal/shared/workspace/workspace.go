@@ -20,6 +20,17 @@ const (
 	// Gitignored, and kept apart from StateDirName because a run's record is
 	// evidence a person reads, not a cache a tool rebuilds.
 	RunsDirName = "tmp"
+
+	// SDDCacheDirName holds the source-driven WebFetch cache. It used to sit
+	// under .claude/, hardcoded in the two Python hooks, so a Cursor or
+	// opencode session wrote its cache into another host's directory and
+	// nothing reported it. Derived state has one home.
+	SDDCacheDirName = "sdd-cache"
+
+	// EnvSDDCacheDir hands the resolved cache directory to the hook scripts.
+	// They cannot import this constant, so the runtime passes it instead of
+	// each side keeping its own copy of the layout.
+	EnvSDDCacheDir = "VIBE_SDD_CACHE_DIR"
 )
 
 // StateDir is where derived state lives for a workspace.
@@ -30,6 +41,11 @@ func StateDir(workspaceRoot string) string {
 // RunsDir is where every run's directory sits.
 func RunsDir(workspaceRoot string) string {
 	return filepath.Join(workspaceRoot, RunsDirName)
+}
+
+// SDDCacheDir is where the WebFetch cache lives for a workspace.
+func SDDCacheDir(workspaceRoot string) string {
+	return filepath.Join(StateDir(workspaceRoot), SDDCacheDirName)
 }
 
 // RunDir is one run's directory, by slug.

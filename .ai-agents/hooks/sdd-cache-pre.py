@@ -28,9 +28,18 @@ def _project_root() -> Path:
     return Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
 
 
+def _cache_dir() -> Path:
+    # The runtime passes the resolved directory so both sides cannot drift.
+    # The fallback is for a standalone run, and names the same layout.
+    configured = os.environ.get("VIBE_SDD_CACHE_DIR", "").strip()
+    if configured:
+        return Path(configured)
+    return _project_root() / ".agent-state" / "sdd-cache"
+
+
 def _cache_file_for_url(url: str) -> Path:
     key = hashlib.sha256(url.encode("utf-8")).hexdigest()[:32]
-    return _project_root() / ".claude" / "sdd-cache" / f"{key}.json"
+    return _cache_dir() / f"{key}.json"
 
 
 def _http_head(url: str, etag: str, last_modified: str) -> int:
