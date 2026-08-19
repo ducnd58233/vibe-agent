@@ -23,15 +23,23 @@ func gitleaksDetector() (*detect.Detector, error) {
 }
 
 func applyGitleaks(s string) (string, bool) {
-	d, err := gitleaksDetector()
-	if err != nil || d == nil {
-		return s, false
-	}
-	findings := d.Detect(detect.Fragment{Raw: s})
+	findings := gitleaksFindings(s)
 	if len(findings) == 0 {
 		return s, false
 	}
 	return replaceFindings(s, findings), true
+}
+
+func hasGitleaksFinding(s string) bool {
+	return len(gitleaksFindings(s)) > 0
+}
+
+func gitleaksFindings(s string) []report.Finding {
+	d, err := gitleaksDetector()
+	if err != nil || d == nil {
+		return nil
+	}
+	return d.Detect(detect.Fragment{Raw: s})
 }
 
 func replaceFindings(s string, findings []report.Finding) string {

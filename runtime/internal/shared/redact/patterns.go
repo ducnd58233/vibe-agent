@@ -83,6 +83,11 @@ func FormatPatterns() []*regexp.Regexp {
 	return formatRedactPatterns
 }
 
+// CompilePatterns builds regexes from pattern specs. Invalid specs panic at init.
+func CompilePatterns(specs []string) []*regexp.Regexp {
+	return mustCompile(specs)
+}
+
 // MemoryRejectPatterns returns all non-gitleaks regex groups used to reject
 // credential-shaped memory candidates.
 func MemoryRejectPatterns() []*regexp.Regexp {
