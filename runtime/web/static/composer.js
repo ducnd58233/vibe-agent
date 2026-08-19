@@ -332,6 +332,39 @@
 
   if (hostOpen && hostMenu && hostInput) {
     const hostStorageKey = "vibe-composer-host";
+    const prefsStorageKey = "vibe-composer-prefs";
+    const agentBox = document.getElementById("composer-mode-agent");
+
+    function loadPrefs() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(prefsStorageKey) || "{}");
+        if (parsed && typeof parsed === "object") return parsed;
+      } catch (_) {}
+      return {};
+    }
+
+    function persistPrefs(id) {
+      if (!id) return;
+      const prefs = loadPrefs();
+      prefs[id] = {
+        model: modelInput ? modelInput.value : "",
+        agent: !!(agentBox && agentBox.checked)
+      };
+      try {
+        localStorage.setItem(prefsStorageKey, JSON.stringify(prefs));
+      } catch (_) {}
+    }
+
+    function restorePrefs(id) {
+      const saved = loadPrefs()[id];
+      if (!saved || typeof saved !== "object") return;
+      if (modelInput && typeof saved.model === "string") {
+        modelInput.value = saved.model;
+      }
+      if (agentBox && typeof saved.agent === "boolean") {
+        agentBox.checked = saved.agent;
+      }
+    }
     function applyHost(id, label) {
       hostInput.value = id;
       if (hostLabel) hostLabel.textContent = label || id;
@@ -346,6 +379,7 @@
       try {
         localStorage.setItem(hostStorageKey, JSON.stringify({ id: id, label: label || id }));
       } catch (_) {}
+      restorePrefs(id);
     }
     try {
       const saved = JSON.parse(localStorage.getItem(hostStorageKey) || "null");
@@ -368,6 +402,12 @@
       setHostMenu(false);
     });
     applyHost(hostInput.value, hostLabel ? hostLabel.textContent : hostInput.value);
+    const composerForm = input.closest("form");
+    if (composerForm) {
+      composerForm.addEventListener("submit", () => {
+        persistPrefs(hostInput.value);
+      });
+    }
   }
 
   if (modelOpen && modelMenu && modelInput) {

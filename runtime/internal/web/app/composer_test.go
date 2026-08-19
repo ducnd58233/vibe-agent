@@ -2,10 +2,14 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -715,4 +719,104 @@ func eventTypes(events []session.Event) []session.Type {
 		out = append(out, ev.Type)
 	}
 	return out
+}
+
+func TestPrintFailureChatBody(t *testing.T) {
+	ctx := context.Background()
+	if got := printFailureChatBody(ctx, nil); got != hostEmptyCopy {
+		t.Fatalf("empty = %q", got)
+	}
+	if got := printFailureChatBody(ctx, context.DeadlineExceeded); got != hostTimeoutCopy {
+		t.Fatalf("deadline err = %q", got)
+	}
+	deadline, cancel := context.WithTimeout(ctx, time.Nanosecond)
+	defer cancel()
+	time.Sleep(time.Millisecond)
+	if got := printFailureChatBody(deadline, &exec.ExitError{}); got != hostTimeoutCopy {
+		t.Fatalf("killed after timeout = %q", got)
+	}
+	if got := printFailureChatBody(ctx, &exec.ExitError{}); got != hostErrorCopy {
+		t.Fatalf("exit = %q", got)
+	}
+	if got := printFailureChatBody(ctx, os.ErrNotExist); got != hostFailCopy {
+		t.Fatalf("other err = %q", got)
+	}
+}
+
+func TestAppendHostPrintWritesTimeoutAndRedactedStderr(t *testing.T) {
+	root := t.TempDir()
+	slug := "print-fail"
+	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	hostPrint = func(ctx context.Context, host hosts.Host, prompt string, opts hosts.PrintOptions) (string, error) {
+		return "", context.DeadlineExceeded
+	}
+	t.Cleanup(func() { hostPrint = runHostPrint })
+	appendHostPrint(context.Background(), root, slug, hosts.Host{Binary: "cursor-agent"}, "hi", hosts.PrintOptions{})
+	events, err := session.Replay(session.LogPath(root, slug))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, ev := range events {
+		var body session.Payload
+		if err := jsonUnmarshalPayload(ev, &body); err != nil {
+			t.Fatal(err)
+		}
+		if body.Role == "assistant" && body.Body == hostTimeoutCopy {
+			found = true
+		}
+		if strings.Contains(body.Body, hostEmptyCopy) {
+			t.Fatalf("timeout used empty copy: %+v", body)
+		}
+	}
+	if !found {
+		t.Fatalf("timeout copy missing: %+v", events)
+	}
+
+	secret := "sk-0123456789abcdef0123456789ab"
+	hostPrint = func(ctx context.Context, host hosts.Host, prompt string, opts hosts.PrintOptions) (string, error) {
+		return "", &exec.ExitError{Stderr: []byte("fail " + secret)}
+	}
+	root2 := t.TempDir()
+	slug2 := "print-stderr"
+	if err := os.MkdirAll(filepath.Join(root2, "tmp", slug2), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	appendHostPrint(context.Background(), root2, slug2, hosts.Host{Binary: "claude"}, "hi", hosts.PrintOptions{})
+	raw, err := os.ReadFile(session.LogPath(root2, slug2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), secret) {
+		t.Fatalf("secret leaked: %s", raw)
+	}
+	events, err = session.Replay(session.LogPath(root2, slug2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var assistant, contextRow string
+	for _, ev := range events {
+		var body session.Payload
+		if err := jsonUnmarshalPayload(ev, &body); err != nil {
+			t.Fatal(err)
+		}
+		switch body.Role {
+		case "assistant":
+			assistant = body.Body
+		case "context":
+			contextRow = body.Body
+		}
+	}
+	if assistant != hostErrorCopy {
+		t.Fatalf("assistant = %q", assistant)
+	}
+	if contextRow == "" || strings.Contains(contextRow, secret) {
+		t.Fatalf("stderr row = %q", contextRow)
+	}
+}
+
+func jsonUnmarshalPayload(ev session.Event, body *session.Payload) error {
+	return json.Unmarshal(ev.Payload, body)
 }

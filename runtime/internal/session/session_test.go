@@ -141,6 +141,12 @@ func TestComposePrefixRedactsAndCaps(t *testing.T) {
 	if strings.Contains(prefix, "hidden") {
 		t.Fatal("thinking must not enter the replay prefix")
 	}
+	if !LooksLikeComposePrefix(prefix + "\n\nplease continue") {
+		t.Fatal("prefix plus typed sentence must look like spawn memory")
+	}
+	if LooksLikeComposePrefix("please continue") {
+		t.Fatal("typed sentence alone is not spawn memory")
+	}
 	capped := ComposePrefix(events, 1, DefaultReplayBytes)
 	if strings.Contains(capped, "deploy") {
 		t.Fatalf("oldest turn should drop: %q", capped)

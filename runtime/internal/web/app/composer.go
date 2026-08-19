@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -14,6 +15,13 @@ import (
 )
 
 const composerTimeout = 2 * time.Minute
+
+const (
+	hostTimeoutCopy = "Host timed out while generating output."
+	hostErrorCopy   = "Host exited with an error."
+	hostFailCopy    = "Host failed to produce output."
+	hostEmptyCopy   = "Host produced no output."
+)
 
 var hostPrint = runHostPrint
 
@@ -58,18 +66,24 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 	logPath := session.LogPath(workspaceRoot, slug)
 	out, err := hostPrint(ctx, host, message, opts)
 	if err != nil || strings.TrimSpace(out) == "" {
-		body := "Host produced no output."
-		if err != nil && errors.Is(err, context.DeadlineExceeded) {
-			body = "Host timed out while generating output."
-		}
 		_, _ = session.Append(logPath, session.Record{
 			Type:   session.TypeTranscriptMessage,
 			Source: session.SourcePrint,
 			Client: host.Binary,
 			Role:   "assistant",
-			Body:   session.RedactText(body),
+			Body:   session.RedactText(printFailureChatBody(ctx, err)),
 			At:     time.Now().UTC(),
 		})
+		if stderr := printFailureStderr(err); stderr != "" {
+			_, _ = session.Append(logPath, session.Record{
+				Type:   session.TypeTranscriptMessage,
+				Source: session.SourcePrint,
+				Client: host.Binary,
+				Role:   "context",
+				Body:   session.RedactText(stderr),
+				At:     time.Now().UTC(),
+			})
+		}
 		_ = appendComposerStop(logPath, host.Binary)
 		return
 	}
@@ -158,6 +172,31 @@ func appendComposerStop(logPath, client string) error {
 		At:     time.Now().UTC(),
 	})
 	return err
+}
+
+func printFailureChatBody(ctx context.Context, err error) string {
+	if ctx != nil && ctx.Err() == context.DeadlineExceeded {
+		return hostTimeoutCopy
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return hostTimeoutCopy
+	}
+	var exit *exec.ExitError
+	if errors.As(err, &exit) {
+		return hostErrorCopy
+	}
+	if err != nil {
+		return hostFailCopy
+	}
+	return hostEmptyCopy
+}
+
+func printFailureStderr(err error) string {
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) {
+		return ""
+	}
+	return strings.TrimSpace(string(exit.Stderr))
 }
 
 func logHasType(logPath string, typ session.Type) bool {

@@ -125,6 +125,12 @@ func ComposePrefix(events []Event, maxTurns, maxBytes int) string {
 	return text
 }
 
+// LooksLikeComposePrefix reports spawn memory that must not become a Chat user card.
+func LooksLikeComposePrefix(text string) bool {
+	trimmed := strings.TrimSpace(text)
+	return strings.HasPrefix(trimmed, "User:") && strings.Contains(trimmed, "\nAssistant:")
+}
+
 func lastUserTurns(lines []string, n int) []string {
 	users := 0
 	for i := len(lines) - 1; i >= 0; i-- {
