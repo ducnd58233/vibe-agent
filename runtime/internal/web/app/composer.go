@@ -12,6 +12,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/redact"
 )
 
 var hostPrint = runHostPrint
@@ -34,7 +35,7 @@ func SendComposerMessage(ctx context.Context, workspaceRoot, slug, hostID, messa
 	if prefix := session.ComposePrefixFromLog(logPath); prefix != "" {
 		prompt = prefix + "\n\n" + message
 	}
-	prompt = session.RedactText(prompt)
+	prompt = redact.Text(prompt)
 	if err := appendComposerStart(logPath, host.Binary); err != nil {
 		return err
 	}
@@ -61,7 +62,7 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 			Source: session.SourcePrint,
 			Client: host.Binary,
 			Role:   "assistant",
-			Body:   session.RedactText(printFailureChatBody(ctx, err)),
+			Body:   redact.Text(printFailureChatBody(ctx, err)),
 			At:     time.Now().UTC(),
 		})
 		if stderr := printFailureStderr(err); stderr != "" {
@@ -70,14 +71,14 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 				Source: session.SourcePrint,
 				Client: host.Binary,
 				Role:   "context",
-				Body:   session.RedactText(stderr),
+				Body:   redact.Text(stderr),
 				At:     time.Now().UTC(),
 			})
 		}
 		_ = appendComposerStop(logPath, host.Binary)
 		return
 	}
-	text := session.RedactText(strings.TrimSpace(out))
+	text := redact.Text(strings.TrimSpace(out))
 	if text == "" {
 		_ = appendComposerStop(logPath, host.Binary)
 		return
@@ -101,7 +102,7 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 				Client:  host.Binary,
 				Event:   frag.Event,
 				Tool:    frag.Tool,
-				Command: session.RedactText(frag.Command),
+				Command: redact.Text(frag.Command),
 				At:      now,
 			}
 			if frag.Type == session.TypeStop || frag.Type == session.TypeSubagentStop {
@@ -122,15 +123,15 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 			Source: session.SourcePrint,
 			Client: host.Binary,
 			Role:   frag.Role,
-			Body:   session.RedactText(body),
+			Body:   redact.Text(body),
 			Usage:  frag.Usage,
 			At:     now,
 		}
 		if frag.Type == session.TypeToolUse {
 			rec.Type = session.TypeToolUse
 			rec.Tool = frag.Tool
-			rec.Command = session.RedactText(frag.Command)
-			rec.Body = session.RedactText(frag.Body)
+			rec.Command = redact.Text(frag.Command)
+			rec.Body = redact.Text(frag.Body)
 		}
 		_, _ = session.Append(logPath, rec)
 	}
