@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/redact"
 )
 
 // BlockError stops the action a hook was called about instead of commenting on
@@ -203,27 +204,9 @@ func verdict(req Request, body payload) *BlockError {
 	return stateWriteVerdict(req, body)
 }
 
-// credentialLiteral matches the credential shapes that have no honest reason to
-// be typed into a repository. They are deliberately the narrow set: a shape that
-// is sometimes legitimate belongs in the warn-only Python guard
-// (the runtime sensitive-data-guard), not here, because a refusal that
-// fires on honest work gets the whole gate disabled.
-//
-// The patterns come from internal/memory/policy.go, which already refuses these
-// into the memory database. Same judgement, wider scope: memory was never the
-// only way a credential reaches disk.
-//
-// Each pattern is written so it does not match its own source text, which is why
-// this file can contain them. `gh[pousr]_` needs a letter from that class next,
-// and the literal here has `[`. The same trick holds for the rest.
-var credentialLiteral = []*regexp.Regexp{
-	regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),
-	regexp.MustCompile(`gh[pousr]_[A-Za-z0-9]{16,}`),
-	regexp.MustCompile(`\bsk-[A-Za-z0-9_-]{16,}`),
-	regexp.MustCompile(`xox[baprs]-[A-Za-z0-9-]{10,}`),
-	regexp.MustCompile(`\bAKIA[0-9A-Z]{16}\b`),
-	regexp.MustCompile(`(?i)aws_secret_access_key\s*[:=]\s*\S{16,}`),
-}
+// credentialLiteral matches high-confidence shapes from shared/redact. Gate
+// stays on the narrow literal set; redact.Text adds format and contextual
+// patterns for logs and UI.
 
 // allowMarker lets a line hold one of these shapes on purpose, which a
 // test fixture and this project's own documentation both need. It is a single
@@ -249,7 +232,7 @@ func credentialVerdict(body payload) *BlockError {
 		if strings.Contains(line, allowMarker) {
 			continue
 		}
-		for _, pattern := range credentialLiteral {
+		for _, pattern := range redact.LiteralPatterns() {
 			if match := pattern.FindString(line); match != "" {
 				return &BlockError{Reason: credentialReason(match, body.writeTarget())}
 			}

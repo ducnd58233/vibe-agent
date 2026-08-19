@@ -13,14 +13,11 @@ import (
 )
 
 func handleSessionCheckpoint(w http.ResponseWriter, r *http.Request, d httpDeps) {
-	path := strings.TrimPrefix(r.URL.Path, "/session/")
-	path = strings.Trim(path, "/")
-	parts := strings.Split(path, "/")
-	if len(parts) != 2 || parts[1] != "checkpoint" {
+	slug, ok := parseSessionSubpath(r.URL.Path, "checkpoint")
+	if !ok {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	slug := parts[0]
 	sessionURL := "/session/" + url.PathEscape(slug) + "?view=chat"
 
 	if r.Method != http.MethodPost {

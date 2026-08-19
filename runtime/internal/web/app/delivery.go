@@ -4,19 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"regexp"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/validate"
 )
-
-var slugPattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 // StartDeliveryRun creates a delivery run at the graph initial node.
 func StartDeliveryRun(workspaceRoot, toolkitRoot, slug, goal, graphID string) error {
-	if !slugPattern.MatchString(slug) {
+	if !validate.Slug(slug) {
 		return fmt.Errorf("invalid slug")
 	}
 	if goal == "" {

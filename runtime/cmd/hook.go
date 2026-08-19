@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/harness"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/observability"
 )
 
 // hookCommand handles one lifecycle hook from a host.
@@ -49,11 +50,22 @@ func hookCommand(args []string) error {
 		return err
 	}
 
-	return harness.Run(harness.Request{
+	log, closer, err := openServiceLogger("hook")
+	if err != nil {
+		return err
+	}
+	defer closeLogger(closer)
+
+	if err := harness.Run(harness.Request{
 		Event:         event,
 		Client:        harness.Client(*client),
 		WorkspaceRoot: workspaceRoot,
 		ToolkitRoot:   toolkitRoot,
 		Stdin:         os.Stdin,
-	}, os.Stdout)
+		Log:           log,
+	}, os.Stdout); err != nil {
+		observability.LogError(log, "hook failed", err)
+		return err
+	}
+	return nil
 }

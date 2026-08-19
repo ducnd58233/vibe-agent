@@ -32,6 +32,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/observability"
 )
 
 // Client is the host whose hook is firing. Payload shapes differ between them.
@@ -175,6 +176,7 @@ type Request struct {
 	WorkspaceRoot string
 	ToolkitRoot   string
 	Stdin         io.Reader
+	Log           observability.Logger
 }
 
 // payload is the union of the fields this package reads from either host.
@@ -316,6 +318,9 @@ func (p payload) writeTarget() string {
 
 // Run handles one hook invocation and writes any response to out.
 func Run(req Request, out io.Writer) error {
+	if req.Log != nil {
+		req.Log.Debug("hook invoke", "event", req.Event, "client", req.Client)
+	}
 	body := readPayload(req.Stdin)
 
 	switch req.Event {

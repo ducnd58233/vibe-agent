@@ -12,7 +12,7 @@ import (
 func webCommand(args []string) error {
 	flags := newFlagSet("web")
 	paths := addRootFlags(flags)
-	port := flags.Int("port", 3080, "listen port (loopback only)")
+	port := flags.Int("port", app.DefaultPort, "listen port (loopback only)")
 	open := flags.Bool("open", false, "open the URL in a browser")
 	workspaces := flags.String("workspaces", "", "comma-separated extra workspace roots")
 	if err := flags.Parse(args); err != nil {
@@ -34,11 +34,17 @@ func webCommand(args []string) error {
 	if *open {
 		_ = openBrowser(context.Background(), app.Addr(*port))
 	}
+	log, closer, err := openServiceLogger("web")
+	if err != nil {
+		return err
+	}
+	defer closeLogger(closer)
 	return app.Run(app.Config{
 		WorkspaceRoot:   workspaceRoot,
 		ToolkitRoot:     toolkitRoot,
 		Port:            *port,
 		ExtraWorkspaces: extra,
+		Logger:          log,
 	})
 }
 

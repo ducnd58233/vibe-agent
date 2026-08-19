@@ -17,7 +17,8 @@ Cursor requires `.mdc`, and neither documents HTML or XML support. See
 <scope>
 This repository is not a product-domain codebase; domain behavior belongs in each consuming repo's
 own `AGENTS.md`. It does ship infrastructure: validation scripts under [`scripts/`](scripts) and the
-control plane under [`runtime/`](runtime).
+control plane under [`runtime/`](runtime). When editing `runtime/`, read [`runtime/AGENTS.md`](runtime/AGENTS.md)
+for Go module boundaries, shared infra, and web UI rules.
 
 **Stance:** favor reusable patterns, explicit routing, stable permission boundaries, progressive
 disclosure, and minimal duplication across tools. Every rule below follows from those five.
@@ -104,7 +105,48 @@ path. When a rule already has a home, link to it instead of restating it.
   the **workspace root** - the directory containing `.vibe-agent/`, or the repo root when this
   toolkit is standalone. `<slug>` is short kebab-case for the work. Never inside `.vibe-agent/`, never
   scattered. Confirm the slug with the user when it is not obvious.
+- **Portable paths (MUST):** in committed docs, plans, and agent deliverables, use paths relative to the workspace root or repo ids. Do not paste machine-absolute paths (`C:\...`, `/Users/...`, `d:\...`) into files that ship in git.
+- **XML section tags (MUST):** wrap sections in the documented tag set for always-loaded charter files
+  (`AGENTS.md`, `CLAUDE.md`, `CURSOR.md`, and harness-loaded nested `AGENTS.md` such as
+  `runtime/AGENTS.md`) and for every asset under [`.ai-agents/`](.ai-agents). Do not invent tag
+  names. Tag set, nesting rules, and checker: [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md)
+  section "XML section tags"; run `bash scripts/check-xml-tags.sh` before commit.
 </always_on>
+
+## Read progressively
+
+<context>
+Do **not** load every linked document by default.
+
+| When | Read |
+|------|------|
+| Every session | This file through Delivery gates |
+| Authoring or wiring assets | [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) |
+| Picking a workflow | [`.ai-agents/ROUTER.md`](.ai-agents/ROUTER.md), then the folder router |
+| Editing `runtime/` | [`runtime/AGENTS.md`](runtime/AGENTS.md) |
+| Cursor-specific paths | [`CURSOR.md`](CURSOR.md) |
+| Claude-specific settings | [`CLAUDE.md`](CLAUDE.md) |
+| Delivery pipeline | [`.ai-agents/commands/goal.md`](.ai-agents/commands/goal.md) |
+
+Follow links from those files only as the task requires.
+</context>
+
+## Key maps
+
+<references>
+| Topic | Owner |
+|-------|--------|
+| Toolkit assets | [`.ai-agents/ROUTER.md`](.ai-agents/ROUTER.md) |
+| Authoring templates | [`.ai-agents/*/TEMPLATE.md`](.ai-agents/skills/TEMPLATE.md) |
+| Permissions | [`.ai-agents/PERMISSIONS.md`](.ai-agents/PERMISSIONS.md) |
+| Runtime control plane | [`runtime/README.md`](runtime/README.md), [`runtime/AGENTS.md`](runtime/AGENTS.md) |
+| Delivery commands | [`.ai-agents/commands/ROUTER.md`](.ai-agents/commands/ROUTER.md) |
+| Stack detection | [`.ai-agents/stack-profiles/ROUTER.md`](.ai-agents/stack-profiles/ROUTER.md) |
+| Generated docs from commands | `docs/<slug>/` at workspace root |
+| Verification evidence | `tmp/<slug>/` (gitignored) |
+| Consumer multi-repo doc workspace | Consumer repo `AGENTS.md` (local-first overrides toolkit defaults) |
+| XML section tags | [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) section "XML section tags" |
+</references>
 
 ## Delivery gates (MUST)
 

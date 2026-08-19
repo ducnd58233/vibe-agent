@@ -6,6 +6,7 @@ import (
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/mcp"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/observability"
 )
 
 // mcpCommand serves the control plane over stdio.
@@ -35,6 +36,13 @@ func mcpCommand(args []string) error {
 	store := memory.NewLazy(workspaceRoot)
 	defer func() { _ = store.Close() }()
 
+	log, closer, err := openServiceLogger("mcp")
+	if err != nil {
+		return err
+	}
+	defer closeLogger(closer)
+	log.Info("mcp server starting")
+
 	server := mcp.NewServer(version, mcp.Deps{
 		WorkspaceRoot: workspaceRoot,
 		ToolkitRoot:   toolkitRoot,
@@ -42,6 +50,12 @@ func mcpCommand(args []string) error {
 		// repositories, and two checkouts of the same repo are two workspaces.
 		WorkspaceID: workspaceRoot,
 		Memory:      store,
+		Log:         log,
 	})
-	return server.Serve(os.Stdin, os.Stdout)
+	if err := server.Serve(os.Stdin, os.Stdout); err != nil {
+		observability.LogError(log, "mcp serve failed", err)
+		return err
+	}
+	log.Info("mcp server stopped")
+	return nil
 }

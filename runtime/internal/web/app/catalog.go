@@ -8,16 +8,14 @@ import (
 )
 
 func (d httpDeps) handleCatalogCommands(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodGet) {
 		return
 	}
 	d.renderCatalog(w, r, catalog.FamilyCommand)
 }
 
 func (d httpDeps) handleCatalogSkills(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodGet) {
 		return
 	}
 	d.renderCatalog(w, r, catalog.FamilySkill)
@@ -39,11 +37,11 @@ func (d httpDeps) renderCatalog(w http.ResponseWriter, r *http.Request, family c
 	}
 	tmpl, err := ui.Templates()
 	if err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
+		writeTemplateError(w)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "catalog-items", items); err != nil {
-		http.Error(w, "template error", http.StatusInternalServerError)
+		writeTemplateError(w)
 	}
 }

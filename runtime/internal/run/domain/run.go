@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"regexp"
 	"time"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/validate"
 )
 
 // SchemaVersion is the manifest shape this package reads and writes.
@@ -125,14 +127,13 @@ type Run struct {
 }
 
 var (
-	slugPattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 	namePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 )
 
 // NewRun starts a run. The id embeds the UTC start time so runs sort
 // chronologically, and the slug so a directory listing is readable.
 func NewRun(slug, goal, graphID string, maxTransitions int, now time.Time) (*Run, error) {
-	if !slugPattern.MatchString(slug) {
+	if !validate.Slug(slug) {
 		return nil, fmt.Errorf("slug %q must be lowercase kebab-case", slug)
 	}
 	if goal == "" {
@@ -216,7 +217,7 @@ func (r *Run) Validate() error {
 	if r.SchemaVersion != SchemaVersion {
 		return fmt.Errorf("schemaVersion %d is not supported, want %d", r.SchemaVersion, SchemaVersion)
 	}
-	if !slugPattern.MatchString(r.Slug) {
+	if !validate.Slug(r.Slug) {
 		return fmt.Errorf("slug %q must be lowercase kebab-case", r.Slug)
 	}
 	if r.RunID == "" || r.GraphID == "" || r.Goal == "" {

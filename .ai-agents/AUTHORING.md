@@ -147,7 +147,7 @@ frontmatter, a tag nested inside itself, or nesting past one level.
 | After changing | Run |
 |---|---|
 | Any asset under `.ai-agents/` | `bash scripts/check-ai-agents-routers.sh` or `powershell -File scripts/check-ai-agents-routers.ps1` (dependency-free) |
-| An always-loaded file or any tagged asset | `bash scripts/check-xml-tags.sh` - pairing, nesting depth, unknown tags, and tags above frontmatter |
+| An always-loaded file or any tagged asset | `bash scripts/check-xml-tags.sh` - pairing, nesting depth, unknown tags, and tags above frontmatter. Scans root charter files, `runtime/AGENTS.md`, `runtime/CLAUDE.md`, and all `.ai-agents/**/*.md`. |
 | Any asset's YAML frontmatter, or its first body line | `python3 scripts/check-frontmatter.py` - invalid frontmatter does not error, it silently demotes the first body line to the description, and Cursor's command loader demotes it even when the frontmatter is valid |
 | Anything, before trusting a harness read | `bash scripts/check-generated-views.sh` - a canonical edit does not reach the harness until the link script re-runs |
 | `.ai-agents/graphs/*.yaml` or `schemas/*.json` | `python3 scripts/check-graphs.py` and `python3 scripts/check-schemas.py` |

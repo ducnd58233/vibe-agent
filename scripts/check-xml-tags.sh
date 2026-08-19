@@ -97,6 +97,7 @@ scan() {
 
 problems=0
 for path in "$root/AGENTS.md" "$root/CLAUDE.md" "$root/CURSOR.md" \
+            "$root/runtime/AGENTS.md" "$root/runtime/CLAUDE.md" \
             $(find "$root/.ai-agents" -name "*.md" 2>/dev/null | sort); do
   [ -f "$path" ] || continue
   scan "${path#"$root"/}" "$path" || problems=$((problems + 1))

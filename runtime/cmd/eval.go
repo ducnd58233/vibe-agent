@@ -14,6 +14,7 @@ import (
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/markdown"
 )
 
 // The routing fixtures name the asset each intent should reach. checkRoutingEvals
@@ -250,18 +251,18 @@ func loadFixtures(toolkitRoot string) ([]fixture, error) {
 		return nil, fmt.Errorf("read fixtures: %w", err)
 	}
 	var out []fixture
-	for _, row := range tableRows(string(raw)) {
+	for _, row := range markdown.ParseFirstTable(string(raw)) {
 		if len(row.Cells) != 3 || row.Cells[0] == "" {
 			continue
 		}
-		targets := evalLink.FindAllStringSubmatch(row.Cells[2], -1)
+		targets := markdown.LinkTargets(row.Cells[2])
 		if len(targets) != 1 {
 			continue
 		}
 		out = append(out, fixture{
 			Intent: row.Cells[0],
 			Family: row.Cells[1],
-			Slug:   strings.ToLower(assetSlug(targets[0][1])),
+			Slug:   strings.ToLower(markdown.AssetSlug(targets[0])),
 		})
 	}
 	return out, nil
@@ -325,7 +326,7 @@ func normalizeAnswer(raw string) string {
 	if last == "" {
 		return ""
 	}
-	return strings.ToLower(assetSlug(filepath.ToSlash(last)))
+	return strings.ToLower(markdown.AssetSlug(filepath.ToSlash(last)))
 }
 
 func finalJSONAgentMessage(raw string) string {

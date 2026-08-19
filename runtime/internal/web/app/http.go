@@ -16,7 +16,7 @@ import (
 
 // NewHandler builds routes for the empty shell.
 func NewHandler(workspaceRoot, toolkitRoot string) (http.Handler, error) {
-	return NewHandlerWithPort(workspaceRoot, toolkitRoot, defaultPort)
+	return NewHandlerWithPort(workspaceRoot, toolkitRoot, DefaultPort)
 }
 
 // NewHandlerWithPort builds routes using the given port for bind metadata.
