@@ -16,6 +16,11 @@ type graphTransitionPayload struct {
 	Via  string `json:"via"`
 }
 
+type graphStartPayload struct {
+	Goal  string `json:"goal,omitempty"`
+	Graph string `json:"graph,omitempty"`
+}
+
 // ProjectRunGraphEvents maps delivery-log lines onto Trajectory graph rows.
 // Journal tool_use lines stay on the session log; they are not graph rows.
 func ProjectRunGraphEvents(events []state.Event) []EventRow {
@@ -35,7 +40,7 @@ func projectRunGraphEvent(ev state.Event) (EventRow, bool) {
 	default:
 		return EventRow{}, false
 	}
-	summary, body := graphEventCopy(ev)
+	summary, body, payloadJSON := graphEventCopy(ev)
 	if strings.TrimSpace(body) == strings.TrimSpace(summary) {
 		body = ""
 	}
@@ -48,7 +53,7 @@ func projectRunGraphEvent(ev state.Event) (EventRow, bool) {
 		At:          ev.At,
 		Summary:     summary,
 		Body:        body,
-		PayloadJSON: string(ev.Payload),
+		PayloadJSON: payloadJSON,
 		EventName:   ev.Type,
 	}
 	row.SearchText = strings.ToLower(strings.Join([]string{
@@ -57,14 +62,24 @@ func projectRunGraphEvent(ev state.Event) (EventRow, bool) {
 	return row, true
 }
 
-func graphEventCopy(ev state.Event) (summary, body string) {
+func graphEventCopy(ev state.Event) (summary, body, payloadJSON string) {
 	node := strings.TrimSpace(ev.Node)
+	payloadJSON = string(ev.Payload)
 	switch ev.Type {
 	case "run_started":
-		if node == "" {
-			return "Run started", ""
+		var payload graphStartPayload
+		_ = json.Unmarshal(ev.Payload, &payload)
+		payload.Goal = session.RedactText(strings.TrimSpace(payload.Goal))
+		if encoded, err := json.Marshal(payload); err == nil {
+			payloadJSON = string(encoded)
 		}
-		return "Run started", node
+		if payload.Goal != "" {
+			return "Run started", payload.Goal, payloadJSON
+		}
+		if node == "" {
+			return "Run started", "", payloadJSON
+		}
+		return "Run started", node, payloadJSON
 	case "transition":
 		var payload graphTransitionPayload
 		_ = json.Unmarshal(ev.Payload, &payload)
@@ -73,7 +88,7 @@ func graphEventCopy(ev state.Event) (summary, body string) {
 			to = node
 		}
 		if to == "" {
-			return "Graph transition", ""
+			return "Graph transition", "", payloadJSON
 		}
 		parts := make([]string, 0, 2)
 		if from := strings.TrimSpace(payload.From); from != "" && from != to {
@@ -82,9 +97,9 @@ func graphEventCopy(ev state.Event) (summary, body string) {
 		if via := strings.TrimSpace(payload.Via); via != "" && via != "(fallback)" {
 			parts = append(parts, "via "+via)
 		}
-		return to, strings.Join(parts, " ")
+		return to, strings.Join(parts, " "), payloadJSON
 	default:
-		return ev.Type, node
+		return ev.Type, node, payloadJSON
 	}
 }
 

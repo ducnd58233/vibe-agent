@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 )
 
 // ChatPrompt is a graph question that belongs on the Chat tab.
@@ -16,8 +17,13 @@ type ChatPrompt struct {
 	CanDecide bool
 }
 
+const confirmGoalTitle = "Confirm this goal"
+
 // AwaitingChatPrompts returns human_gate and verifier cards for the current node.
-func AwaitingChatPrompts(rows []GraphNodeRow, slug string) []ChatPrompt {
+// When goal is set, the intake card titles a confirm line and shows that goal,
+// not the graph YAML description. Later human_gate cards keep their YAML prompts.
+func AwaitingChatPrompts(rows []GraphNodeRow, slug, goal string) []ChatPrompt {
+	goal = session.RedactText(strings.TrimSpace(goal))
 	out := make([]ChatPrompt, 0)
 	for _, row := range rows {
 		if !row.Current || row.Status != string(GraphStatusAwaiting) {
@@ -32,6 +38,10 @@ func AwaitingChatPrompts(rows []GraphNodeRow, slug string) []ChatPrompt {
 		title := row.Description
 		if strings.TrimSpace(title) == "" {
 			title = row.ID
+		}
+		if row.Type == string(graph.NodeHumanGate) && row.ID == "intake" && goal != "" {
+			title = confirmGoalTitle
+			prompt = goal
 		}
 		if strings.TrimSpace(prompt) == strings.TrimSpace(title) {
 			prompt = ""

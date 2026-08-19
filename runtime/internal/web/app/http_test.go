@@ -101,6 +101,9 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	if !strings.Contains(body, "docs/fixture-session/SPEC.md") {
 		t.Fatal("expected expanded human_gate prompt on chat")
 	}
+	if strings.Contains(body, "Confirm this goal") {
+		t.Fatal("approve_spec must not reuse the intake confirm title")
+	}
 	if !strings.Contains(body, `class="graph-desc"`) {
 		t.Fatal("graph nodes must show the workflow description, not only the id")
 	}
@@ -241,6 +244,9 @@ func TestTrajectoryShowsGraphTransitionsFromRunLog(t *testing.T) {
 	body := rec.Body.String()
 	if got := strings.Count(body, `data-kind="graph"`); got != 2 {
 		t.Fatalf("graph rows = %d want 2, body snippet missing?", got)
+	}
+	if !strings.Contains(body, "show graph on trajectory") {
+		t.Fatal("run_started body should be the goal, not only the node id")
 	}
 	if !strings.Contains(body, `data-role="graph"`) || !strings.Contains(body, `class="role role-graph"`) {
 		t.Fatal("graph rows need gutter role-graph")
@@ -930,6 +936,90 @@ func TestChatVerifierPromptOmitsDuplicateAndComposerHint(t *testing.T) {
 	}
 	if !strings.Contains(body, `data-testid="composer"`) {
 		t.Fatal("dock composer must still be on the page")
+	}
+}
+
+func TestChatIntakePromptShowsRunGoal(t *testing.T) {
+	root := t.TempDir()
+	slug := "intake-goal-card"
+	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	stamp := time.Date(2026, 8, 19, 3, 0, 0, 0, time.UTC)
+	run, err := state.NewRun(slug, "unique-goal-xyz", "goal-delivery", 50, stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "intake"
+	run.Status = state.StatusAwaitingHuman
+	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug+"?view=chat", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	start := strings.Index(body, `data-prompt-type="human_gate"`)
+	if start < 0 {
+		t.Fatal("expected intake human_gate card")
+	}
+	end := strings.Index(body[start:], "</article>")
+	if end < 0 {
+		t.Fatal("expected prompt article")
+	}
+	article := body[start : start+end]
+	if !strings.Contains(article, "unique-goal-xyz") {
+		t.Fatalf("goal missing from card: %s", article)
+	}
+	if strings.Contains(article, "measurable done line") {
+		t.Fatal("graph YAML must not be the only title")
+	}
+	if strings.Contains(article, `data-role="hook"`) || strings.Contains(article, `data-role="tool"`) || strings.Contains(article, `data-role="graph"`) {
+		t.Fatal("chat prompt card must not use trajectory roles")
+	}
+}
+
+func TestChatIntakePromptRedactsSecretInGoal(t *testing.T) {
+	root := t.TempDir()
+	slug := "intake-goal-secret"
+	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	stamp := time.Date(2026, 8, 19, 3, 5, 0, 0, time.UTC)
+	run, err := state.NewRun(slug, "ship with "+testSecret, "goal-delivery", 50, stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "intake"
+	run.Status = state.StatusAwaitingHuman
+	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
+		Type: "run_started", Node: "intake", At: stamp,
+		Payload: []byte(`{"goal":"ship with ` + testSecret + `","graph":"goal-delivery"}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug+"?view=chat", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	if strings.Contains(rec.Body.String(), testSecret) {
+		t.Fatal("credential-shaped goal leaked into Chat HTML")
 	}
 }
 
