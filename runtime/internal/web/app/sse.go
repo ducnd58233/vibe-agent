@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/httpserver"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/streaming/sse"
 	ui "github.com/ducnd58233/vibe-agent/runtime/web"
@@ -22,7 +23,7 @@ func (d httpDeps) handleSessionEventsStream(w http.ResponseWriter, r *http.Reque
 	}
 	after, ok := parseAfterQuery(r)
 	if !ok {
-		writeBadAfter(w)
+		writeBadAfter(w, r)
 		return
 	}
 	conn, err := sse.Begin(w)
@@ -44,7 +45,7 @@ func (d httpDeps) handleSessionEventsStream(w http.ResponseWriter, r *http.Reque
 		}
 		rows, err := view.EventsAfterForView(ws, slug, cursor, selectedView)
 		if err != nil {
-			if isNotFoundErr(err) {
+			if session.IsNotFound(err) {
 				return nil, nil
 			}
 			return []sse.Event{{Type: "error", Data: "Could not read the session log."}}, nil

@@ -2,6 +2,7 @@ package app
 
 import (
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,12 +28,12 @@ func handleWorkspaceSwitch(w http.ResponseWriter, r *http.Request, d httpDeps) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		writeBadForm(w)
+		writeBadForm(w, r)
 		return
 	}
 	id := strings.TrimSpace(r.FormValue("workspace_id"))
 	if _, ok := d.snapshotRegistry().Resolve(id); !ok {
-		http.Error(w, "unknown workspace", http.StatusBadRequest)
+		http.Redirect(w, r, "/?error=unknown+workspace", http.StatusSeeOther)
 		return
 	}
 	setWorkspaceCookie(w, id)
@@ -44,28 +45,28 @@ func handleWorkspaceOpen(w http.ResponseWriter, r *http.Request, d httpDeps) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		writeBadForm(w)
+		writeBadForm(w, r)
 		return
 	}
 	raw := strings.TrimSpace(r.FormValue("path"))
 	if raw == "" {
-		http.Error(w, "path required", http.StatusBadRequest)
+		http.Redirect(w, r, "/?error=path+required", http.StatusSeeOther)
 		return
 	}
 	abs, err := filepath.Abs(filepath.Clean(raw))
 	if err != nil {
-		http.Error(w, "bad path", http.StatusBadRequest)
+		http.Redirect(w, r, "/?error=bad+path", http.StatusSeeOther)
 		return
 	}
 	info, err := os.Stat(abs)
 	if err != nil || !info.IsDir() {
-		http.Error(w, "workspace directory not found", http.StatusBadRequest)
+		http.Redirect(w, r, "/?error=workspace+directory+not+found", http.StatusSeeOther)
 		return
 	}
 	current := d.snapshotRegistry()
 	next := domain.NewRegistry(current.Default, append(append([]string{}, current.Roots...), abs))
 	if err := persistence.WriteWorkspaces(next.Default, next); err != nil {
-		http.Error(w, "could not save workspace", http.StatusInternalServerError)
+		http.Redirect(w, r, "/?error="+url.QueryEscape("could not save workspace"), http.StatusSeeOther)
 		return
 	}
 	d.storeRegistry(next)

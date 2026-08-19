@@ -24,7 +24,7 @@ func (d httpDeps) handleCatalogSkills(w http.ResponseWriter, r *http.Request) {
 func (d httpDeps) renderCatalog(w http.ResponseWriter, r *http.Request, family catalog.Family) {
 	idx, err := catalog.LoadForWorkspace(d.activeWorkspace(r), d.toolkitRoot)
 	if err != nil {
-		http.Error(w, "catalog error", http.StatusInternalServerError)
+		writeHTMXOrError(w, r, http.StatusInternalServerError, "catalog error")
 		return
 	}
 	q := r.URL.Query().Get("q")
@@ -37,11 +37,11 @@ func (d httpDeps) renderCatalog(w http.ResponseWriter, r *http.Request, family c
 	}
 	tmpl, err := ui.Templates()
 	if err != nil {
-		writeTemplateError(w)
+		writeTemplateError(w, r)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, "catalog-items", items); err != nil {
-		writeTemplateError(w)
+		writeTemplateError(w, r)
 	}
 }

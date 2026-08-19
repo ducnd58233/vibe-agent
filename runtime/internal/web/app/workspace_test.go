@@ -211,7 +211,11 @@ func TestWorkspaceOpenRejectsMissingPath(t *testing.T) {
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/workspace/open", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	handler.ServeHTTP(rec, req)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want 303", rec.Code)
+	}
+	loc := rec.Header().Get("Location")
+	if !strings.Contains(loc, "error=") {
+		t.Fatalf("location = %q, want error query", loc)
 	}
 }

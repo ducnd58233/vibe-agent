@@ -1,8 +1,6 @@
 package view
 
 import (
-	"os"
-
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 )
@@ -48,7 +46,7 @@ func TrajectoryRows(workspaceRoot, slug string) ([]EventRow, error) {
 		logPath = session.LogPath(workspaceRoot, slug)
 	}
 	events, err := session.Replay(logPath)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !session.IsNotFound(err) {
 		return nil, err
 	}
 	graphRows := []EventRow{}
