@@ -54,6 +54,22 @@ func TestProjectRunStartedRedactsGoalSecret(t *testing.T) {
 	if strings.Contains(rows[0].Body, secret) {
 		t.Fatalf("secret leaked in body %q", rows[0].Body)
 	}
+	if strings.Contains(rows[0].PayloadJSON, secret) {
+		t.Fatalf("secret leaked in payload %q", rows[0].PayloadJSON)
+	}
+}
+
+func TestProjectRunStartedFallsBackToNodeWhenGoalMissing(t *testing.T) {
+	stamp := time.Date(2026, 8, 19, 2, 0, 0, 0, time.UTC)
+	rows := ProjectRunGraphEvents([]state.Event{
+		{Sequence: 1, Type: "run_started", Node: "intake", At: stamp, Payload: []byte(`{"graph":"goal-delivery"}`)},
+	})
+	if len(rows) != 1 {
+		t.Fatalf("rows = %d", len(rows))
+	}
+	if rows[0].Body != "intake" {
+		t.Fatalf("body = %q want node id when goal is missing", rows[0].Body)
+	}
 }
 
 func TestMergeTrajectoryRenumbersByTime(t *testing.T) {

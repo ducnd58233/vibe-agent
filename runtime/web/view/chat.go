@@ -20,8 +20,8 @@ type ChatPrompt struct {
 const confirmGoalTitle = "Confirm this goal"
 
 // AwaitingChatPrompts returns human_gate and verifier cards for the current node.
-// When goal is set, a human_gate card titles a confirm line and shows that goal,
-// not the graph YAML description.
+// When goal is set, the intake card titles a confirm line and shows that goal,
+// not the graph YAML description. Later human_gate cards keep their YAML prompts.
 func AwaitingChatPrompts(rows []GraphNodeRow, slug, goal string) []ChatPrompt {
 	goal = session.RedactText(strings.TrimSpace(goal))
 	out := make([]ChatPrompt, 0)
@@ -39,7 +39,7 @@ func AwaitingChatPrompts(rows []GraphNodeRow, slug, goal string) []ChatPrompt {
 		if strings.TrimSpace(title) == "" {
 			title = row.ID
 		}
-		if row.Type == string(graph.NodeHumanGate) && goal != "" {
+		if row.Type == string(graph.NodeHumanGate) && row.ID == "intake" && goal != "" {
 			title = confirmGoalTitle
 			prompt = goal
 		}

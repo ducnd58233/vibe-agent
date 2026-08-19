@@ -58,6 +58,31 @@ func TestAwaitingChatPromptsHumanGateShowsRunGoal(t *testing.T) {
 	}
 }
 
+func TestAwaitingChatPromptsApproveSpecKeepsGraphPrompt(t *testing.T) {
+	g := loadGoalDeliveryGraph(t)
+	run, err := state.NewRun("fixture-session", "unique-goal-xyz", "goal-delivery", 50, time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "approve_spec"
+	run.Status = state.StatusAwaitingHuman
+	rows := ProjectGraph(g, run)
+	prompts := AwaitingChatPrompts(rows, "fixture-session", run.Goal)
+	if len(prompts) != 1 {
+		t.Fatalf("prompts = %+v", prompts)
+	}
+	got := prompts[0]
+	if got.Title == confirmGoalTitle {
+		t.Fatal("later human_gate cards must not reuse the intake confirm title")
+	}
+	if !strings.Contains(got.Prompt, "docs/fixture-session/SPEC.md") {
+		t.Fatalf("approve_spec must keep graph YAML, prompt = %q", got.Prompt)
+	}
+	if strings.Contains(got.Prompt, "unique-goal-xyz") {
+		t.Fatalf("run goal must not replace approve_spec copy, prompt = %q", got.Prompt)
+	}
+}
+
 func TestAwaitingChatPromptsRedactsSecretInGoal(t *testing.T) {
 	g := loadGoalDeliveryGraph(t)
 	secret := "sk-0123456789abcdef0123456789ab"

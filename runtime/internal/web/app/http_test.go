@@ -98,20 +98,11 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	if strings.Contains(body, `data-pane="summary"`) {
 		t.Fatal("inspector panes should be a select, not a tab row")
 	}
-	if !strings.Contains(body, "Confirm this goal") {
-		t.Fatal("expected human_gate card title to confirm the goal")
+	if !strings.Contains(body, "docs/fixture-session/SPEC.md") {
+		t.Fatal("expected expanded human_gate prompt on chat")
 	}
-	startPrompt := strings.Index(body, `data-testid="chat-prompt"`)
-	if startPrompt < 0 {
-		t.Fatal("expected chat-prompt")
-	}
-	endPrompt := strings.Index(body[startPrompt:], "</article>")
-	if endPrompt < 0 {
-		t.Fatal("expected chat-prompt article")
-	}
-	card := body[startPrompt : startPrompt+endPrompt]
-	if !strings.Contains(card, "fixture") {
-		t.Fatal("expected human_gate card to show the run goal")
+	if strings.Contains(body, "Confirm this goal") {
+		t.Fatal("approve_spec must not reuse the intake confirm title")
 	}
 	if !strings.Contains(body, `class="graph-desc"`) {
 		t.Fatal("graph nodes must show the workflow description, not only the id")
@@ -1009,6 +1000,12 @@ func TestChatIntakePromptRedactsSecretInGoal(t *testing.T) {
 	run.CurrentNode = "intake"
 	run.Status = state.StatusAwaitingHuman
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
+		Type: "run_started", Node: "intake", At: stamp,
+		Payload: []byte(`{"goal":"ship with ` + testSecret + `","graph":"goal-delivery"}`),
+	}); err != nil {
 		t.Fatal(err)
 	}
 	handler, err := NewHandlerWithPort(root, testToolkitRoot(t), 3080)
