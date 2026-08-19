@@ -40,6 +40,7 @@ runtime/
       domain/             registry, path rules (no I/O)
       infra/              catalog parsers, persistence, host picker
     run/, graph/, memory/, harness/, mcp/, ...   other control-plane modules
+    testutil/             test helpers and port fakes (import only from tests)
 ```
 
 **Ports:** use small interfaces at boundaries (`observability.Logger`, repository interfaces in each module). Handlers stay thin; business rules stay in domain or application packages.
@@ -167,6 +168,21 @@ runtime/
 - Go: **`go test ./...`** or **`make check`** from **`runtime/`**.
 - After changing runtime code: **`make check`** from **`runtime/`** (gofmt, vet, golangci-lint, tests, e2e).
 - Reinstall for hook testing: **`make install`** then **`vibe-agent doctor`**. Passing `go test` does not update the binary on PATH.
+
+### Test helpers and fakes (MUST)
+
+Production packages under **`internal/**`** and **`web/**`** must not ship **`Fake`** types or test-only helpers.
+
+| Kind | Location | Example |
+|------|----------|---------|
+| Paths, port fakes, shared test doubles | **`internal/testutil`** | `testutil.ToolkitRoot(t)`, `testutil.SessionReadFake` |
+| Helpers used by one module only | **`<module>/.../*_test.go`** | `web/app` HTTP harness |
+
+Rules:
+
+- **`internal/testutil`** is for tests only: production packages must not import it.
+- Fakes implement production **interfaces**; name them **`SessionReadFake`**, not `Fake` in prod packages.
+- Do not add **`Fake`** types or test helpers under **`internal/shared/*`** (shared stays shippable infra).
 
 ### Web and UI changes (MUST)
 

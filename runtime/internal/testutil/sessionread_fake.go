@@ -1,17 +1,18 @@
-package sessionread
+package testutil
 
 import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/sessionread"
 )
 
-// Fake implements Reader with in-memory data for tests.
-type Fake struct {
+// SessionReadFake implements sessionread.Reader with in-memory data for tests.
+type SessionReadFake struct {
 	Events  map[string][]session.Event
-	Ambient AmbientStat
+	Ambient sessionread.AmbientStat
 	Hosts   map[string]string
 }
 
-func (f Fake) Replay(workspaceRoot, slug string) ([]session.Event, error) {
+func (f SessionReadFake) Replay(workspaceRoot, slug string) ([]session.Event, error) {
 	if f.Events == nil {
 		return nil, nil
 	}
@@ -26,11 +27,11 @@ func (f Fake) Replay(workspaceRoot, slug string) ([]session.Event, error) {
 	return append([]session.Event(nil), rows...), nil
 }
 
-func (f Fake) AmbientStat(_ string) AmbientStat {
+func (f SessionReadFake) AmbientStat(_ string) sessionread.AmbientStat {
 	return f.Ambient
 }
 
-func (f Fake) PeekHost(logPath string) string {
+func (f SessionReadFake) PeekHost(logPath string) string {
 	if f.Hosts == nil {
 		return ""
 	}
