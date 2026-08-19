@@ -2,6 +2,7 @@ package view
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,8 +28,8 @@ func TestProjectRunGraphEventsMapsStartAndTransition(t *testing.T) {
 	if rows[0].Kind != session.FilterGraph || rows[0].Role != "graph" || rows[0].Source != session.SourceGraph {
 		t.Fatalf("start row = %+v", rows[0])
 	}
-	if rows[0].Summary != "Run started" || rows[0].Body != "intake" {
-		t.Fatalf("start copy = %q %q", rows[0].Summary, rows[0].Body)
+	if rows[0].Summary != "Run started" || rows[0].Body != "show graph rows" {
+		t.Fatalf("start copy = %q %q want goal, not node id", rows[0].Summary, rows[0].Body)
 	}
 	if ChatVisibleRole(rows[0].Role) {
 		t.Fatal("graph rows must stay off Chat")
@@ -38,6 +39,20 @@ func TestProjectRunGraphEventsMapsStartAndTransition(t *testing.T) {
 	}
 	if rows[2].Summary != "research" || rows[2].Body != "" {
 		t.Fatalf("fallback via must be omitted, got body %q", rows[2].Body)
+	}
+}
+
+func TestProjectRunStartedRedactsGoalSecret(t *testing.T) {
+	stamp := time.Date(2026, 8, 19, 2, 0, 0, 0, time.UTC)
+	secret := "sk-0123456789abcdef0123456789ab"
+	rows := ProjectRunGraphEvents([]state.Event{
+		{Sequence: 1, Type: "run_started", Node: "intake", At: stamp, Payload: []byte(`{"goal":"ship with ` + secret + `"}`)},
+	})
+	if len(rows) != 1 {
+		t.Fatalf("rows = %d", len(rows))
+	}
+	if strings.Contains(rows[0].Body, secret) {
+		t.Fatalf("secret leaked in body %q", rows[0].Body)
 	}
 }
 

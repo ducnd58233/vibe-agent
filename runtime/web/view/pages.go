@@ -161,7 +161,11 @@ func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug, selectedView s
 	page.ToolbarTokens = FormatToolbarTokens(page.Tokens)
 	page.DefaultHostID, page.DefaultHostLabel = defaultComposeHost(page.ComposeHosts, events)
 	page.BusyHostLabel, page.BusyAfterSeq = busyComposeHost(events)
-	page.ChatPrompts = AwaitingChatPrompts(page.GraphNodes, slug)
+	goal := ""
+	if run != nil {
+		goal = run.Goal
+	}
+	page.ChatPrompts = AwaitingChatPrompts(page.GraphNodes, slug, goal)
 	page.HasChatPrompts = len(page.ChatPrompts) > 0
 	page.ChatEmpty = !ChatHasProse(page.Events) && !page.HasChatPrompts
 	page.TurnCount = countTurns(page.Events)

@@ -17,7 +17,7 @@ func TestAwaitingChatPromptsIncludesHumanGate(t *testing.T) {
 	run.CurrentNode = "approve_spec"
 	run.Status = state.StatusAwaitingHuman
 	rows := ProjectGraph(g, run)
-	prompts := AwaitingChatPrompts(rows, "fixture-session")
+	prompts := AwaitingChatPrompts(rows, "fixture-session", "")
 	if len(prompts) != 1 {
 		t.Fatalf("prompts = %+v", prompts)
 	}
@@ -33,6 +33,50 @@ func TestAwaitingChatPromptsIncludesHumanGate(t *testing.T) {
 	}
 }
 
+func TestAwaitingChatPromptsHumanGateShowsRunGoal(t *testing.T) {
+	g := loadGoalDeliveryGraph(t)
+	run, err := state.NewRun("fixture-session", "unique-goal-xyz", "goal-delivery", 50, time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "intake"
+	run.Status = state.StatusAwaitingHuman
+	rows := ProjectGraph(g, run)
+	prompts := AwaitingChatPrompts(rows, "fixture-session", run.Goal)
+	if len(prompts) != 1 {
+		t.Fatalf("prompts = %+v", prompts)
+	}
+	got := prompts[0]
+	if got.Title != confirmGoalTitle {
+		t.Fatalf("title = %q want confirm line, not graph YAML", got.Title)
+	}
+	if !strings.Contains(got.Prompt, "unique-goal-xyz") {
+		t.Fatalf("prompt = %q", got.Prompt)
+	}
+	if strings.Contains(got.Prompt, "measurable done line") {
+		t.Fatalf("graph YAML must not replace the goal, prompt = %q", got.Prompt)
+	}
+}
+
+func TestAwaitingChatPromptsRedactsSecretInGoal(t *testing.T) {
+	g := loadGoalDeliveryGraph(t)
+	secret := "sk-0123456789abcdef0123456789ab"
+	run, err := state.NewRun("fixture-session", "ship with "+secret, "goal-delivery", 50, time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "intake"
+	run.Status = state.StatusAwaitingHuman
+	rows := ProjectGraph(g, run)
+	prompts := AwaitingChatPrompts(rows, "fixture-session", run.Goal)
+	if len(prompts) != 1 {
+		t.Fatalf("prompts = %+v", prompts)
+	}
+	if strings.Contains(prompts[0].Prompt, secret) {
+		t.Fatalf("secret leaked in prompt %q", prompts[0].Prompt)
+	}
+}
+
 func TestAwaitingChatPromptsIncludesCurrentVerifier(t *testing.T) {
 	g := loadGoalDeliveryGraph(t)
 	run, err := state.NewRun("fixture-session", "goal", "goal-delivery", 50, time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC))
@@ -42,7 +86,7 @@ func TestAwaitingChatPromptsIncludesCurrentVerifier(t *testing.T) {
 	run.CurrentNode = "test"
 	run.Status = state.StatusRunning
 	rows := ProjectGraph(g, run)
-	prompts := AwaitingChatPrompts(rows, "fixture-session")
+	prompts := AwaitingChatPrompts(rows, "fixture-session", "unique-goal-xyz")
 	if len(prompts) != 1 || prompts[0].Type != "verifier" || prompts[0].CanDecide {
 		t.Fatalf("prompts = %+v", prompts)
 	}

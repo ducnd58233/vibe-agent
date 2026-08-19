@@ -16,6 +16,10 @@ type graphTransitionPayload struct {
 	Via  string `json:"via"`
 }
 
+type graphStartPayload struct {
+	Goal string `json:"goal"`
+}
+
 // ProjectRunGraphEvents maps delivery-log lines onto Trajectory graph rows.
 // Journal tool_use lines stay on the session log; they are not graph rows.
 func ProjectRunGraphEvents(events []state.Event) []EventRow {
@@ -61,6 +65,12 @@ func graphEventCopy(ev state.Event) (summary, body string) {
 	node := strings.TrimSpace(ev.Node)
 	switch ev.Type {
 	case "run_started":
+		var payload graphStartPayload
+		_ = json.Unmarshal(ev.Payload, &payload)
+		goal := session.RedactText(strings.TrimSpace(payload.Goal))
+		if goal != "" {
+			return "Run started", goal
+		}
 		if node == "" {
 			return "Run started", ""
 		}
