@@ -19,7 +19,7 @@ func handleSessionEvents(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	}
 	after, ok := parseAfterQuery(r)
 	if !ok {
-		writeBadAfter(w)
+		writeBadAfter(w, r)
 		return
 	}
 	selectedView := r.URL.Query().Get("view")
@@ -34,12 +34,12 @@ func handleSessionEvents(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	}
 	tmpl, err := ui.Templates()
 	if err != nil {
-		writeTemplateError(w)
+		writeTemplateError(w, r)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := writeEventRows(w, tmpl, rows); err != nil {
-		writeTemplateError(w)
+		writeTemplateError(w, r)
 		return
 	}
 }

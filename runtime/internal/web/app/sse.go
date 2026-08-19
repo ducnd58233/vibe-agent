@@ -23,7 +23,7 @@ func (d httpDeps) handleSessionEventsStream(w http.ResponseWriter, r *http.Reque
 	}
 	after, ok := parseAfterQuery(r)
 	if !ok {
-		writeBadAfter(w)
+		writeBadAfter(w, r)
 		return
 	}
 	conn, err := sse.Begin(w)
