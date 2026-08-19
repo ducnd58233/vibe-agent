@@ -17,7 +17,17 @@ In a **consumer** repo that keeps this kit at `.vibe-agent`:
 bash .vibe-agent/scripts/link-ai-agents.sh --workspace "$PWD" --assets "$PWD/.vibe-agent/.ai-agents"
 ```
 
-Then run `vibe-agent doctor` until it says OK. Open the local UI with `vibe-agent web --open` (only `http://127.0.0.1:3080/`). Flags and install options: [`runtime/README.md`](runtime/README.md).
+Then run `vibe-agent doctor` until it says OK.
+
+## Web UI
+
+Open the local control plane UI:
+
+```bash
+vibe-agent web --open
+```
+
+This starts a local server at `http://127.0.0.1:3080/` where you can manage sessions, compose prompts, and inspect run state. Add `--port 9090` to change the port. The UI is local-only and does not expose anything to the network. More flags: [`runtime/README.md`](runtime/README.md).
 
 ## How to type a command
 
@@ -70,42 +80,37 @@ It will not merge to `main` unless you say so. Rules: [`.ai-agents/commands/goal
 
 ## Install as a plugin
 
-Install vibe-agent as a plugin in your AI coding tool. If you use more than one tool, install separately for each.
+This repo ships plugin manifests (`.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, `plugin.json`) so GenAI tools can discover it as a plugin directly from the GitHub repo. Install separately for each tool you use.
 
 ### Claude Code
 
-```
-/plugin install vibe-agent@claude-plugins-official
+```bash
+/plugin marketplace add ducnd58233/vibe-agent
+/plugin install vibe-agent@vibe-agent
 ```
 
-Or from the vibe-agent marketplace:
-
-```
-/plugin marketplace add ducnd58233/vibe-agent-marketplace
-/plugin install vibe-agent@vibe-agent-marketplace
-```
+The first line registers this repo as a personal marketplace. The second installs the plugin from it.
 
 ### Cursor
 
 ```
-/add-plugin vibe-agent
+/add-plugin https://github.com/ducnd58233/vibe-agent
 ```
 
-Or search for "vibe-agent" in the Cursor plugin marketplace.
+For local development or to avoid the known stale-cache issue with `/add-plugin`, clone and symlink instead:
+
+```bash
+git clone https://github.com/ducnd58233/vibe-agent ~/.cursor/plugins/local/vibe-agent
+```
 
 ### Codex CLI
 
-```
-/plugins
+```bash
+codex plugin marketplace add ducnd58233/vibe-agent
+codex plugin add vibe-agent@vibe-agent
 ```
 
-Search for "vibe-agent" and select Install Plugin.
-
-### OpenCode
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/ducnd58233/vibe-agent/refs/heads/main/.opencode/INSTALL.md
-```
+Or browse interactively with `/plugins` inside the TUI after adding the marketplace.
 
 ### Manual (any tool)
 
