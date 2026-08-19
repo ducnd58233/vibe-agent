@@ -268,23 +268,43 @@ func TestChatRowsDemotesIntermediateAssistantsToThinking(t *testing.T) {
 		{Role: "assistant", Body: "final result", HasUsage: true, Usage: &session.Usage{Input: 60, Output: 30000, CacheRead: 1640000}},
 	}
 	chat := ChatRows(rows)
-	if len(chat) != 4 {
+	if len(chat) < 3 {
 		t.Fatalf("chat rows = %d", len(chat))
 	}
-	if chat[0].Role != "user" {
-		t.Fatalf("row 0 = %q", chat[0].Role)
+
+	var (
+		thinkingCount   int
+		thinkingBody    string
+		thinkingFold    bool
+		thinkingSummary string
+		finalUsageCount int
+	)
+	for _, row := range chat {
+		if row.Role == "thinking" {
+			thinkingCount++
+			thinkingBody = row.Body
+			thinkingFold = row.FoldClosed
+			thinkingSummary = row.Summary
+		}
+		if row.Role == "assistant" && row.HasUsage {
+			finalUsageCount++
+		}
 	}
-	if chat[1].Role != "thinking" || chat[1].Summary != "agent progress" {
-		t.Fatalf("intermediate row 1 should be thinking, got role=%q summary=%q", chat[1].Role, chat[1].Summary)
+
+	if thinkingCount != 1 {
+		t.Fatalf("thinking count = %d want 1; chat=%+v", thinkingCount, chat)
 	}
-	if chat[2].Role != "thinking" {
-		t.Fatalf("intermediate row 2 should be thinking, got %q", chat[2].Role)
+	if finalUsageCount != 1 {
+		t.Fatalf("final usage count = %d want 1; chat=%+v", finalUsageCount, chat)
 	}
-	if chat[3].Role != "assistant" || !chat[3].HasUsage {
-		t.Fatalf("final row should stay assistant with usage, got role=%q hasUsage=%v", chat[3].Role, chat[3].HasUsage)
+	if thinkingSummary != "agent progress" {
+		t.Fatalf("thinking summary = %q, want %q", thinkingSummary, "agent progress")
 	}
-	if !chat[1].FoldClosed || !chat[2].FoldClosed {
-		t.Fatal("demoted thinking rows should start folded")
+	if !thinkingFold {
+		t.Fatal("demoted thinking row should start folded")
+	}
+	if !strings.Contains(thinkingBody, "step 1") || !strings.Contains(thinkingBody, "step 2") {
+		t.Fatalf("merged thinking should include intermediate steps, got %q", thinkingBody)
 	}
 }
 

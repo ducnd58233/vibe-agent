@@ -324,14 +324,62 @@ func demoteTurnRange(rows []EventRow, start, end int) {
 				lastWithUsage = j
 			}
 		}
-		if lastWithUsage >= 0 {
-			for j := turnStart; j < i; j++ {
-				if rows[j].Role != "assistant" || j == lastWithUsage {
+		if lastWithUsage < 0 {
+			if isUser {
+				turnStart = i
+			}
+			continue
+		}
+
+		// Progress messages are assistant rows in the turn that do NOT carry
+		// token usage. We merge all of them into one thinking block so the chat
+		// UI has a single "Show thinking" toggle per turn.
+		progress := make([]int, 0, 2)
+		for j := turnStart; j < i; j++ {
+			if rows[j].Role != "assistant" || j == lastWithUsage {
+				continue
+			}
+			if rows[j].HasUsage {
+				// If another assistant row carries usage, treat it as a real
+				// assistant result. This avoids putting final token chips under
+				// thinking toggles.
+				continue
+			}
+			progress = append(progress, j)
+		}
+
+		if len(progress) > 0 {
+			mergedParts := make([]string, 0, len(progress))
+			for _, idx := range progress {
+				part := strings.TrimSpace(rows[idx].Body)
+				if part == "" {
 					continue
 				}
-				rows[j].Role = "thinking"
-				rows[j].Summary = "agent progress"
-				rows[j].FoldClosed = strings.TrimSpace(rows[j].Body) != ""
+				mergedParts = append(mergedParts, part)
+			}
+			merged := strings.Join(mergedParts, "\n\n")
+			if merged != "" {
+				first := progress[0]
+				rows[first].Role = "thinking"
+				rows[first].Summary = "agent progress"
+				rows[first].Body = merged
+				rows[first].BodyHTML = RenderMarkdown(merged)
+				rows[first].HasUsage = false
+				rows[first].Usage = nil
+				rows[first].TokensText = ""
+				rows[first].FoldClosed = true
+
+				// Hide the rest of the progress rows in chat view.
+				for _, idx := range progress[1:] {
+					rows[idx].Role = "system"
+					rows[idx].Summary = ""
+					rows[idx].Body = ""
+					rows[idx].BodyHTML = ""
+					rows[idx].HasUsage = false
+					rows[idx].Usage = nil
+					rows[idx].TokensText = ""
+					rows[idx].FoldClosed = false
+				}
 			}
 		}
 		if isUser {

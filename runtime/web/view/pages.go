@@ -156,6 +156,11 @@ func BuildSessionPage(workspaceRoot, toolkitRoot, bindAddr, slug, selectedView s
 		graphRows = ProjectRunGraphEvents(runEvents)
 	}
 	page.Events = MergeTrajectory(ProjectEvents(events), graphRows)
+	if page.View == "chat" {
+		// Chat view folds intermediate assistant progress under "thinking".
+		// Trajectory view keeps the full assistant trace.
+		demoteIntermediateAssistants(page.Events)
+	}
 	page.KindCounts = KindCounts(page.Events)
 	page.Tokens = SumUsage(page.Events)
 	page.ToolbarTokens = FormatToolbarTokens(page.Tokens)
