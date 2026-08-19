@@ -188,18 +188,12 @@ func (d httpDeps) handleWorkspaceFileView(w http.ResponseWriter, r *http.Request
 	}
 	ws := d.activeWorkspace(r)
 	rel := strings.TrimSpace(r.URL.Query().Get("path"))
-	abs, err := domain.ResolveWorkspacePath(ws, rel)
+	abs, resolvedRel, err := resolveWorkspaceFileView(ws, rel)
 	if err != nil {
-		http.Error(w, "bad path", http.StatusBadRequest)
-		return
-	}
-	abs = filepath.Clean(abs)
-	info, err := os.Stat(abs)
-	if err != nil || info.IsDir() {
 		http.Error(w, "not a file", http.StatusBadRequest)
 		return
 	}
-	f, err := os.Open(abs)
+	f, err := os.Open(abs) //nolint:gosec // abs comes from ResolveWorkspacePath and a prior Stat check
 	if err != nil {
 		http.Error(w, "read error", http.StatusInternalServerError)
 		return
@@ -212,9 +206,9 @@ func (d httpDeps) handleWorkspaceFileView(w http.ResponseWriter, r *http.Request
 		return
 	}
 	text := session.RedactText(string(raw))
-	isMarkdown := strings.HasSuffix(strings.ToLower(rel), ".md")
+	isMarkdown := strings.HasSuffix(strings.ToLower(resolvedRel), ".md")
 	model := fileViewerModel{
-		Path:       filepath.ToSlash(rel),
+		Path:       filepath.ToSlash(resolvedRel),
 		Content:    text,
 		IsMarkdown: isMarkdown,
 	}
@@ -230,6 +224,64 @@ func (d httpDeps) handleWorkspaceFileView(w http.ResponseWriter, r *http.Request
 	if err := tmpl.ExecuteTemplate(w, "file-viewer", model); err != nil {
 		http.Error(w, "template error", http.StatusInternalServerError)
 	}
+}
+
+func normalizeFileViewRel(rel string) string {
+	trimmed := strings.TrimSpace(rel)
+	if len(trimmed) >= 2 {
+		first := trimmed[0]
+		last := trimmed[len(trimmed)-1]
+		if (first == '\'' && last == '\'') || (first == '"' && last == '"') {
+			trimmed = strings.TrimSpace(trimmed[1 : len(trimmed)-1])
+		}
+		if trimmed == "" {
+			return ""
+		}
+	}
+	trimmed = strings.TrimPrefix(trimmed, "./")
+	return filepath.ToSlash(trimmed)
+}
+
+func resolveWorkspaceFileView(workspaceRoot, rel string) (abs string, resolvedRel string, err error) {
+	rel = normalizeFileViewRel(rel)
+	if rel == "" {
+		return "", "", os.ErrNotExist
+	}
+
+	tryCandidate := func(candidateRel string) (string, bool) {
+		absCandidate, err := domain.ResolveWorkspacePath(workspaceRoot, candidateRel)
+		if err != nil {
+			return "", false
+		}
+		info, err := os.Stat(filepath.Clean(absCandidate))
+		if err != nil || info.IsDir() {
+			return "", false
+		}
+		return absCandidate, true
+	}
+
+	if abs, ok := tryCandidate(rel); ok {
+		return abs, rel, nil
+	}
+
+	// If the link was a bare filename (no directory), allow resolving it from
+	// known references/docs roots. This supports inline code like
+	// `loop-and-graph-engineering.md` where the prose omits `.ai-agents/...`.
+	if strings.Contains(rel, "/") {
+		return "", "", os.ErrNotExist
+	}
+
+	candidates := []string{
+		filepath.ToSlash(filepath.Join(".ai-agents", "references", rel)),
+		filepath.ToSlash(filepath.Join("docs", rel)),
+		filepath.ToSlash(filepath.Join("runtime", rel)),
+	}
+	for _, cand := range candidates {
+		if abs, ok := tryCandidate(cand); ok {
+			return abs, cand, nil
+		}
+	}
+	return "", "", os.ErrNotExist
 }
 
 type fileViewerModel struct {
