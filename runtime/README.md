@@ -38,6 +38,7 @@ runtime/
   internal/
     shared/
       workspace/          directory names every module agrees on
+      redact/             credential-shaped text replacement for logs and UI
       observability/      structured logging (console + JSON file)
       infra/
         database/         SQLite driver registration and open helper

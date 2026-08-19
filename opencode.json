@@ -3,6 +3,7 @@
   "shell": "pwsh",
   "instructions": [
     "AGENTS.md",
+    "runtime/AGENTS.md",
     ".ai-agents/ROUTER.md",
     ".ai-agents/skills/ROUTER.md",
     ".ai-agents/agents/ROUTER.md",
