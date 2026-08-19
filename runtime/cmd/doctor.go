@@ -36,6 +36,7 @@ func doctorCommand(args []string) error {
 	fmt.Printf("  toolkit   %s\n\n", toolkitRoot)
 
 	checkGraphs(report, toolkitRoot)
+	checkGraphPathEvals(report, toolkitRoot)
 	checkRoutingEvals(report, toolkitRoot)
 	// The workspace, not the toolkit. A host reads hooks from the project
 	// directory it was opened on, so a vendored toolkit's own settings.json is
