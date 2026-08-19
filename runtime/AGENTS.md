@@ -4,6 +4,8 @@ Rules for the Go control plane and loopback web UI under `runtime/`. For project
 
 When your task touches files here, read this file before editing. Root charter still applies; this file adds runtime-specific layout, boundaries, and UI rules.
 
+<context>
+
 ## How harnesses load these rules
 
 | Harness | Loads `runtime/AGENTS.md`? | Mechanism |
@@ -38,6 +40,11 @@ runtime/
     run/, graph/, memory/, harness/, mcp/, ...   other control-plane modules
 ```
 
+**Ports:** use small interfaces at boundaries (`observability.Logger`, repository interfaces in each module). Handlers stay thin; business rules stay in domain or application packages.
+</context>
+
+<required>
+
 **Dependency direction (MUST):**
 
 - `internal/shared/*` depends on **nothing** under `internal/web`, `internal/memory`, `internal/harness`, etc.
@@ -45,7 +52,30 @@ runtime/
 - `web/app` is the web composition root: wires shared middleware, domain, and infra adapters.
 - Do not import concrete types across domain modules (e.g. `web` must not reach into `memory` persistence). Shared path names live in `shared/workspace` only.
 
-**Ports:** use small interfaces at boundaries (`observability.Logger`, repository interfaces in each module). Handlers stay thin; business rules stay in domain or application packages.
+**Loopback web server (MUST):**
+
+- Bind **`127.0.0.1` only** (`app.ListenHost`). Refuse `0.0.0.0` and non-loopback hosts.
+- Default port: **`app.DefaultPort`** (3080). Do not scatter `3080` literals in production code; tests may use the constant.
+- State file: `.agent-state/web.json` via `web/infra/persistence`; remove on shutdown.
+
+**Browser-facing HTTP (MUST):**
+
+- Never return **`http.Error`** or bare **`http.NotFound`** to the browser. Use **`renderError`** or redirect with an `error` query param.
+- Every handler that writes HTML must set **`Content-Type: text/html; charset=utf-8`** before writing.
+- POST handlers that fail should redirect (**303 See Other**) back to a meaningful page with an `error` query parameter, not render an error body inline.
+
+**Secrets and logging (MUST):**
+
+- Redact before any log or file sink: `redact.Text` (or `session.RedactText`, which delegates to it).
+- Never log raw panic values (may contain secrets); use `LogPanicRecovered` and log `panic_type` only.
+
+**Run and session state (MUST):**
+
+- Run state lives under **`tmp/<slug>/manifest.json`**. Do not write it directly; use **`checkpoint`** and **`run`** packages.
+- Session logs are append-only NDJSON. Do not truncate or rewrite them.
+</required>
+
+<rules>
 
 ## Shared infrastructure
 
@@ -53,15 +83,14 @@ runtime/
 
 - Long-running commands (`web`, `hook`, `mcp serve`) use dual-sink slog: tinted console + JSON file.
 - Log directory defaults to a sibling `logs/` next to the install `bin/` (see `ResolveLogDir`). Override with `VIBE_LOG_DIR`; level with `VIBE_LOG_LEVEL` (`observability.EnvLogDir`, `EnvLogLevel`, `DefaultLogLevel`).
-- Use `observability.LogError` / `LogErrorContext` for errors; `LogPanicRecovered` for panics. Never log raw panic values (may contain secrets); log `panic_type` only.
-- Redact before any log or file sink: `redact.Text` (or `session.RedactText`, which delegates to it).
+- Use `observability.LogError` / `LogErrorContext` for errors; `LogPanicRecovered` for panics.
 
 ### HTTP server (`internal/shared/infra/httpserver`)
 
 - **`httpserver.Serve(ctx, addr, handler, logger)`** owns listen + graceful shutdown. Callers cancel `ctx` on SIGINT/SIGTERM; do not reimplement shutdown loops in feature code.
 - Wrap handlers with **`middleware.StandardStack(h, log)`** (RequestID, AccessLog, Recover). Do not duplicate middleware wiring.
 - JSON responses: **`httpserver.JSON`**. API errors: **`httpserver.RespondError`** (JSON when `Accept: application/json`; plain text for HTMX via `HX-Request`).
-- HTML browser errors: **`renderError`** in `web/app/http.go`, not `http.Error` (see below).
+- HTML browser errors: **`renderError`** in `web/app/http.go`, not `http.Error`.
 
 ### SSE streaming (`internal/shared/infra/streaming/sse`)
 
@@ -77,16 +106,7 @@ runtime/
 
 ### HTTP handlers (HTML UI)
 
-- Never return **`http.Error`** or bare **`http.NotFound`** to the browser. These produce blank pages with no navigation. Use **`renderError`** or redirect with an `error` query param.
 - Use helpers in **`handler_http.go`**: `requireMethod`, `writeBadForm`, `writeTemplateError`, `writeBadAfter`. Keep user-visible message strings in that file's constants.
-- Every handler that writes HTML must set **`Content-Type: text/html; charset=utf-8`** before writing.
-- POST handlers that fail should redirect (**303 See Other**) back to a meaningful page with an `error` query parameter, not render an error body inline.
-
-### Loopback web server
-
-- Bind **`127.0.0.1` only** (`app.ListenHost`). Refuse `0.0.0.0` and non-loopback hosts.
-- Default port: **`app.DefaultPort`** (3080). Do not scatter `3080` literals in production code; tests may use the constant.
-- State file: `.agent-state/web.json` via `web/infra/persistence`; remove on shutdown.
 
 ### Context and timeouts
 
@@ -98,16 +118,9 @@ runtime/
 - When a form depends on which button was clicked, use a hidden input set via **`onclick`** on each button before submit.
 - Never disable submit buttons synchronously in **`onsubmit`** when the button's `name`/`value` is needed server-side. Use **`setTimeout(0)`** to defer disabling.
 
-### Session and run state
-
-- Run state lives under **`tmp/<slug>/manifest.json`**. Do not write it directly; use **`checkpoint`** and **`run`** packages.
-- Session logs are append-only NDJSON. Do not truncate or rewrite them.
-
 ### Commands and verification
 
 - One file per command under **`cmd/`**; shared flags in **`cmd/common.go`**.
-- After changing runtime code: **`make check`** from **`runtime/`** (gofmt, vet, golangci-lint, tests, e2e).
-- Reinstall for hook testing: **`make install`** then **`vibe-agent doctor`**. Passing `go test` does not update the binary on PATH.
 
 ## HTML/CSS frontend
 
@@ -141,12 +154,20 @@ runtime/
 - Vanilla JS only in templates or **`web/static/*.js`**.
 - Listeners on specific elements; delegate only when targets are dynamic.
 - Debounce input-triggered network calls (300ms minimum).
+</rules>
+
+<verification>
 
 ## Testing
 
 - Go: **`go test ./...`** or **`make check`** from **`runtime/`**.
 - CSS/HTML: verify visually via **`vibe-agent web`** before calling UI work done.
 - UI bugfixes: screenshot before and after in the browser.
+- After changing runtime code: **`make check`** from **`runtime/`** (gofmt, vet, golangci-lint, tests, e2e).
+- Reinstall for hook testing: **`make install`** then **`vibe-agent doctor`**. Passing `go test` does not update the binary on PATH.
+</verification>
+
+<antipatterns>
 
 ## Common mistakes to avoid
 
@@ -160,3 +181,4 @@ runtime/
 8. **Duplicate middleware or shutdown logic** outside **`httpserver.Serve`** / **`StandardStack`**.
 9. **Magic port/timeouts** instead of **`DefaultPort`**, **`readHeaderTimeout`**, **`shutdownTimeout`** in shared httpserver.
 10. **Committing generated plugin manifests** under **`.claude-plugin/`**, **`.cursor-plugin/`**, etc. If tracked by mistake, **`git rm --cached`**.
+</antipatterns>
