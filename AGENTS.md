@@ -106,10 +106,16 @@ path. When a rule already has a home, link to it instead of restating it.
   toolkit is standalone. `<slug>` is short kebab-case for the work. Never inside `.vibe-agent/`, never
   scattered. Confirm the slug with the user when it is not obvious.
 - **Portable paths (MUST):** in committed docs, plans, and agent deliverables, use paths relative to the workspace root or repo ids. Do not paste machine-absolute paths (`C:\...`, `/Users/...`, `d:\...`) into files that ship in git.
+- **XML section tags (MUST):** wrap sections in the documented tag set for always-loaded charter files
+  (`AGENTS.md`, `CLAUDE.md`, `CURSOR.md`, and harness-loaded nested `AGENTS.md` such as
+  `runtime/AGENTS.md`) and for every asset under [`.ai-agents/`](.ai-agents). Do not invent tag
+  names. Tag set, nesting rules, and checker: [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md)
+  section "XML section tags"; run `bash scripts/check-xml-tags.sh` before commit.
 </always_on>
 
 ## Read progressively
 
+<context>
 Do **not** load every linked document by default.
 
 | When | Read |
@@ -123,9 +129,11 @@ Do **not** load every linked document by default.
 | Delivery pipeline | [`.ai-agents/commands/goal.md`](.ai-agents/commands/goal.md) |
 
 Follow links from those files only as the task requires.
+</context>
 
 ## Key maps
 
+<references>
 | Topic | Owner |
 |-------|--------|
 | Toolkit assets | [`.ai-agents/ROUTER.md`](.ai-agents/ROUTER.md) |
@@ -137,6 +145,8 @@ Follow links from those files only as the task requires.
 | Generated docs from commands | `docs/<slug>/` at workspace root |
 | Verification evidence | `tmp/<slug>/` (gitignored) |
 | Consumer multi-repo doc workspace | Consumer repo `AGENTS.md` (local-first overrides toolkit defaults) |
+| XML section tags | [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) section "XML section tags" |
+</references>
 
 ## Delivery gates (MUST)
 
