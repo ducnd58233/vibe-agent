@@ -109,6 +109,7 @@ runtime/
 ### HTTP handlers (HTML UI)
 
 - Use helpers in **`handler_http.go`**: `requireMethod`, `writeBadForm`, `writeTemplateError`, `writeBadAfter`. Keep user-visible message strings in that file's constants.
+- HTMX partial errors: **`writeHTMXFragment`** / **`writeHTMXOrError`** in **`htmx.go`**. Escape user-visible text; never return raw paths or tool output in fragments.
 
 ### Context and timeouts
 
@@ -163,10 +164,23 @@ runtime/
 ## Testing
 
 - Go: **`go test ./...`** or **`make check`** from **`runtime/`**.
-- CSS/HTML: verify visually via **`vibe-agent web`** before calling UI work done.
-- UI bugfixes: screenshot before and after in the browser.
 - After changing runtime code: **`make check`** from **`runtime/`** (gofmt, vet, golangci-lint, tests, e2e).
 - Reinstall for hook testing: **`make install`** then **`vibe-agent doctor`**. Passing `go test` does not update the binary on PATH.
+
+### Web and UI changes (MUST)
+
+Any change under **`runtime/web/`**, **`runtime/internal/web/`**, or **`web/static/`** is not done until browser verification passes.
+
+1. **Run the loopback server:** `vibe-agent web --workspace .` (binds **`127.0.0.1:3080`** only).
+2. **Exercise affected flows in a real browser** (Cursor browser MCP, Playwright, or manual). At minimum hit every route or HTMX partial you touched, plus one happy path and one error path when the change affects errors or forms.
+3. **Record evidence** under **`tmp/<slug>/browser/`** at the workspace root (gitignored). For each session include:
+   - `RECORD.md` with date, branch, flows tested, pass/fail, and notes.
+   - Screenshots or short notes for before/after when the change is visual.
+   - Redact before write; no credentials or full file contents in evidence.
+4. **Do not skip browser checks** because unit tests passed. HTMX partials, SSE, composer alignment, and dialog behavior are not fully covered by `go test`.
+5. **`/test` and `/review`** on web tasks must cite the browser evidence path. **`/ship`** treats missing browser evidence on a web/UI task as **NO-GO**.
+
+CSS/HTML-only tweaks: verify at desktop (`>68.75em`) and mobile (`<48em`) per **`shell.css`**. UI bugfixes: screenshot before and after in the browser.
 </verification>
 
 <antipatterns>
