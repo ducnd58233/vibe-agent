@@ -629,6 +629,16 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 		t.Fatalf("status = %d", rec.Code)
 	}
 	css := rec.Body.String()
+	if !strings.Contains(css, `@import url("prose.css")`) {
+		t.Fatal("shell.css must import prose.css for rendered prose surfaces")
+	}
+	recMD := httptest.NewRecorder()
+	reqMD := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/static/prose.css", nil)
+	handler.ServeHTTP(recMD, reqMD)
+	if recMD.Code != http.StatusOK {
+		t.Fatalf("prose.css status = %d", recMD.Code)
+	}
+	css += "\n" + recMD.Body.String()
 	menu := cssBlock(css, ".kind-menu")
 	if !strings.Contains(menu, "left: 0") {
 		t.Fatalf("kind-menu must open from the filter left edge, got %q", menu)
@@ -729,6 +739,16 @@ func TestShellCSSKeepsFilterMenuAndEmptyStateOnCanvas(t *testing.T) {
 	md := cssBlock(css, ".event-md")
 	if !strings.Contains(md, "--font") && !strings.Contains(md, "overflow-wrap") && !strings.Contains(md, "margin") {
 		t.Fatalf("markdown body needs readable spacing, got %q", md)
+	}
+	dialogInput := cssBlock(css, `.dialog-body input:not([type="radio"]):not([type="checkbox"])`)
+	if dialogInput == "" && !strings.Contains(css, `:not([type="checkbox"])`) {
+		t.Fatal("dialog form inputs must exclude markdown task checkboxes")
+	}
+	if !strings.Contains(css, `.dialog-body .event-md input[type="checkbox"]`) {
+		t.Fatal("markdown task checkboxes must stay compact inside dialogs")
+	}
+	if !strings.Contains(css, "0.95em") {
+		t.Fatal("markdown task checkboxes must use compact sizing")
 	}
 	chatSeq := cssBlock(css, ".is-chat-view .event-kicker .event-seq")
 	if !strings.Contains(chatSeq, "display: none") {
