@@ -92,7 +92,7 @@ criterion is ambiguous, and auto mode stops at `approve_spec` and asks. That is 
 not a judgement call about the prompt.
 </rules>
 
-## Not yet built
+## What is built, and what auto does not do
 
 <context>
 
@@ -105,9 +105,25 @@ after the merge lands, and the `intake`, `approve_spec`, and `approve_plan` gate
 run's flags say a person is not needed. A skipped gate records `skipped`, never `passed`, so run
 state still says which gates a person answered.
 
-**Not yet:** a single `vibe-agent auto --goal` entry point that sets those flags and drives the
-loop. Until it lands, use [`goal.md`](goal.md) and answer the gates yourself. This file describes
-the contract that entry point implements, so the contract is reviewable before it arrives.
+```sh
+vibe-agent auto --goal "<one objective>"   # derives the slug, sets the flag, skips intake
+vibe-agent auto gate --slug <slug>         # answers the spec or plan gate from the document
+vibe-agent auto init                       # writes the opt-in, once per checkout
+```
+
+`auto gate` sets the flag only when the document declares nothing open: a populated **Open
+questions** section, or a `TBD` left in the prose. An empty result is not a promise the document is
+complete - it is the most a text search can claim - which is why the gate it opens records
+`skipped` and never `passed`.
+
+A goal that arrives over MCP is fenced where it enters run state, with the warning before the
+content, and content cannot close its own fence. Whoever filed that ticket is not the person
+running this.
+
+**Not yet:** nothing in this contract. What auto mode does **not** do is the work - the host coding
+agent still runs every agent node exactly as it does under [`goal.md`](goal.md), and the runtime
+still holds the evidence. Auto is a route through the same graph, not a second implementation of
+it.
 </context>
 
 ## Routing & discovery
