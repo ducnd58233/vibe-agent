@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
 // SchemaVersion is the only version this loader accepts.
@@ -72,7 +74,7 @@ type File struct {
 
 // Path is where a slug's task list lives, beside the TASKS.md it mirrors.
 func Path(workspaceRoot, slug string) string {
-	return filepath.Join(workspaceRoot, "docs", slug, FileName)
+	return filepath.Join(workspace.DocsDir(workspaceRoot, slug), FileName)
 }
 
 // Parse reads and validates a task list.

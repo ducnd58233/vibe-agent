@@ -9,6 +9,7 @@ import (
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/tasks"
 )
 
@@ -69,7 +70,7 @@ func checkTaskFiles(report *diagnostics, workspaceRoot string) {
 		report.check(fmt.Sprintf("task list %s loads and validates (%d tasks, %d remaining)",
 			slug, len(file.Tasks), len(file.Remaining())), true, "")
 
-		prose := filepath.Join(workspaceRoot, "docs", slug, "TASKS.md")
+		prose := filepath.Join(workspace.DocsDir(workspaceRoot, slug), "TASKS.md")
 		raw, readErr := os.ReadFile(filepath.Clean(prose))
 		if readErr != nil {
 			fmt.Printf("  note  %s has no TASKS.md beside its task list\n", slug)
