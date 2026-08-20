@@ -168,3 +168,44 @@ func TestACallWithNoInputFailsRatherThanGuessing(t *testing.T) {
 		t.Fatal("a read with no input was accepted")
 	}
 }
+
+// The tool runs one command without a shell, so passing shell syntax through
+// as an argument would succeed having done something other than what was asked.
+func TestShellSyntaxIsRefusedRatherThanPassedThrough(t *testing.T) {
+	d := New(t.TempDir())
+	for _, command := range []string{
+		"echo hi > out.txt",
+		"go version | grep go",
+		"ls && pwd",
+	} {
+		result := run(t, d, "shell", map[string]any{"command": command})
+		if !result.IsError {
+			t.Errorf("%q ran as though the operator meant something", command)
+			continue
+		}
+		if !strings.Contains(result.Content, "shell syntax") {
+			t.Errorf("%q: content = %q, want it to explain why", command, result.Content)
+		}
+	}
+}
+
+// Reading a large binary to search it for a string would end a run on memory
+// rather than on a budget, and the answer would be no matches either way.
+func TestGrepSkipsAFileTooLargeToSearch(t *testing.T) {
+	d := New(t.TempDir())
+	big := strings.Repeat("x", MaxReadBytes+1)
+	if result := run(t, d, "write", map[string]any{"path": "big.bin", "content": big}); result.IsError {
+		t.Fatal(result.Content)
+	}
+	if result := run(t, d, "write", map[string]any{"path": "small.txt", "content": "needle here"}); result.IsError {
+		t.Fatal(result.Content)
+	}
+
+	found := run(t, d, "grep", map[string]any{"pattern": "needle"})
+	if found.IsError || !strings.Contains(found.Content, "small.txt") {
+		t.Errorf("grep = %+v", found)
+	}
+	if strings.Contains(found.Content, "big.bin") {
+		t.Error("the oversized file was searched anyway")
+	}
+}

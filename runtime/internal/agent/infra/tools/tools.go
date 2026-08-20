@@ -169,6 +169,13 @@ func relative(path string) (string, error) {
 	return clean, nil
 }
 
+// shellOperator names the syntax a caller most often expects a shell to
+// interpret. Refusing is louder than passing it through as an argument, where
+// the command succeeds having done something other than what was asked.
+var shellOperator = map[string]bool{
+	"|": true, "||": true, "&&": true, ">": true, ">>": true, "<": true, ";": true, "&": true,
+}
+
 // skippable reports whether a walk error is one to step over rather than fail
 // on. A grep that dies on the first unreadable file is a grep nobody can rely
 // on; a grep that hides a real fault is worse.
@@ -301,6 +308,19 @@ func grepFiles(_ context.Context, d *Dispatcher, input json.RawMessage) (string,
 			case entry.IsDir(), len(matches) >= MaxMatches:
 				return nil
 			}
+			// Size first. Reading a 500MB binary to search it for a string
+			// would end the run on memory rather than on a budget, and the
+			// answer would be no matches either way.
+			info, statErr := entry.Info()
+			if statErr != nil {
+				if skippable(statErr) {
+					return nil
+				}
+				return statErr
+			}
+			if info.Size() > MaxReadBytes {
+				return nil
+			}
 			data, readErr := root.ReadFile(filepath.FromSlash(path))
 			if readErr != nil {
 				if skippable(readErr) {
@@ -354,6 +374,13 @@ func globFiles(_ context.Context, d *Dispatcher, input json.RawMessage) (string,
 	})
 }
 
+// runShell runs one command. It is not a shell.
+//
+// The command is split on whitespace and executed directly, so pipes,
+// redirects, globs, and variable expansion are passed through as literal
+// arguments rather than interpreted. That is the safer default and it is a
+// semantic the model has to be told, or it will write `a | b` and read the
+// absence of a pipe as the command having failed.
 func runShell(ctx context.Context, d *Dispatcher, input json.RawMessage) (string, error) {
 	var args struct {
 		Command string `json:"command"`
@@ -361,9 +388,18 @@ func runShell(ctx context.Context, d *Dispatcher, input json.RawMessage) (string
 	if err := decode(input, &args); err != nil {
 		return "", err
 	}
+	if d.WorkspaceRoot == "" {
+		return "", fmt.Errorf("dispatcher has no workspace root")
+	}
 	fields := strings.Fields(args.Command)
 	if len(fields) == 0 {
 		return "", fmt.Errorf("command is required")
+	}
+	for _, field := range fields {
+		if shellOperator[field] {
+			return "", fmt.Errorf("%q is shell syntax, and this tool runs one command without a shell; "+
+				"run the parts separately or use a program that does the work", field)
+		}
 	}
 	// safexec, never exec.Command: it resolves the binary on PATH so a planted
 	// executable in the working directory cannot shadow the one meant to run.
