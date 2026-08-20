@@ -20,7 +20,16 @@ import (
 type rootFlags struct {
 	workspace *string
 	toolkit   *string
+
+	// discovered records whether resolve found a real workspace or fell back to
+	// the current directory. Set by resolve; read by anything that writes state
+	// and should not scatter it into a folder that is not a workspace.
+	discovered bool
 }
+
+// InsideAWorkspace reports whether the resolved root is a workspace rather than
+// a directory somebody happened to be standing in. Valid after resolve.
+func (r *rootFlags) InsideAWorkspace() bool { return r.discovered }
 
 // addRootFlags registers the shared pair on a flag set.
 //
@@ -80,18 +89,24 @@ var (
 	rulesMarkers      = []string{"AGENTS.md", "CLAUDE.md", "CURSOR.md"}
 )
 
-func discoverWorkspace() (string, error) {
+// It reports whether a marker was actually found. Both outcomes used to be a
+// path and a nil error, so no caller could tell "this is the workspace root"
+// from "there is no workspace, have the current directory" - and every caller
+// treated the second as the first. That is how `fetch` came to create an
+// .agent-state directory in whatever folder someone happened to be standing in,
+// a cache nothing would ever find again.
+func discoverWorkspace() (root string, found bool, err error) {
 	start, err := os.Getwd()
 	if err != nil {
-		return "", fmt.Errorf("resolve current directory: %w", err)
+		return "", false, fmt.Errorf("resolve current directory: %w", err)
 	}
-	if root, found := nearestAncestorWith(start, structuralMarkers); found {
-		return root, nil
+	if root, ok := nearestAncestorWith(start, structuralMarkers); ok {
+		return root, true, nil
 	}
-	if root, found := nearestAncestorWith(start, rulesMarkers); found {
-		return root, nil
+	if root, ok := nearestAncestorWith(start, rulesMarkers); ok {
+		return root, true, nil
 	}
-	return start, nil
+	return start, false, nil
 }
 
 // nearestAncestorWith returns the closest directory at or above start holding
@@ -114,8 +129,11 @@ func nearestAncestorWith(start string, markers []string) (string, bool) {
 // resolve turns the flags into absolute paths.
 func (r *rootFlags) resolve() (workspaceRoot, toolkitRoot string, err error) {
 	given := *r.workspace
+	// A workspace named on the command line is one by definition; only a
+	// discovered path can turn out not to be.
+	r.discovered = true
 	if given == "" {
-		if given, err = discoverWorkspace(); err != nil {
+		if given, r.discovered, err = discoverWorkspace(); err != nil {
 			return "", "", err
 		}
 	}

@@ -65,11 +65,12 @@ func fetchCommand(args []string) error {
 	if err != nil {
 		return err
 	}
+	cacheRoot := fetchCacheRoot(workspaceRoot, paths.InsideAWorkspace())
 
 	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
 	defer cancel()
 
-	doc, cached, err := fetch.Get(ctx, workspaceRoot, source, fetch.Options{Refresh: *refresh})
+	doc, cached, err := fetch.Get(ctx, cacheRoot, source, fetch.Options{Refresh: *refresh})
 	if err != nil {
 		return err
 	}
@@ -111,7 +112,7 @@ func fetchCommand(args []string) error {
 		fmt.Printf("\n[%d more lines. Re-run with --budget to raise the limit, or --json for all of it.]\n",
 			omitted)
 	}
-	fmt.Println(summary(doc, cached, filepath.Join(fetch.CacheDir(workspaceRoot))))
+	fmt.Println(summary(doc, cached, fetch.CacheDir(cacheRoot)))
 	return nil
 }
 
@@ -135,4 +136,28 @@ func summary(doc fetch.Document, cached bool, cacheDir string) string {
 	saved := 100 - (extracted * 100 / max(before, 1))
 	return fmt.Sprintf("\n[%s; ~%d tokens from ~%d raw, %d%% smaller; cached in %s]", // sensitive-data-guard: allow - model tokens, not credentials
 		origin, extracted, before, saved, cacheDir)
+}
+
+// fetchCacheRoot picks the directory the fetch cache hangs off.
+//
+// Inside a workspace that is the workspace, where .agent-state is gitignored
+// and a consumer expects to find it. Outside one it used to be the current
+// working directory, which meant a fetch from a notes folder created an
+// .agent-state there - state in a place that is not a workspace, and a cache
+// nothing would ever hit again, because the next fetch from a different folder
+// started a fresh one. The token budget the feature exists to protect was being
+// spent re-fetching pages already on disk somewhere else.
+//
+// The platform cache directory is one place, so it persists and is reused. A
+// machine that cannot name one falls back to the old behaviour rather than
+// failing a fetch over where to put a cache.
+func fetchCacheRoot(workspaceRoot string, insideWorkspace bool) string {
+	if insideWorkspace {
+		return workspaceRoot
+	}
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		return workspaceRoot
+	}
+	return filepath.Join(dir, "vibe-agent")
 }
