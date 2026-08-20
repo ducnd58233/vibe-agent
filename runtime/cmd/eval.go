@@ -365,7 +365,7 @@ func finalJSONAgentMessage(raw string) string {
 // on Windows.
 func commandAsker(runner runnerSpec, timeout time.Duration) asker {
 	return func(ctx context.Context, prompt string) (string, error) {
-		spec, err := hostrunner.FromCommand(runner.Command, runner.PromptAsArg, 0)
+		spec, err := hostrunner.FromCommand(runner.Command, runner.PromptAsArg)
 		if err != nil {
 			return "", fmt.Errorf("empty --runner")
 		}

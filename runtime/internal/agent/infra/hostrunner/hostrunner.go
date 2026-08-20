@@ -11,7 +11,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/agent/domain"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
@@ -28,11 +27,13 @@ type Spec struct {
 	// PromptAsArg sends the prompt as the last argument instead of on stdin.
 	// Two of the four hosts want it that way.
 	PromptAsArg bool
-	// Timeout bounds one call. Zero means no bound, which is what the composer
-	// wants: host response time varies by model and load, and a fixed timeout
-	// there turns a slow answer into a failed one.
-	Timeout time.Duration
 }
+
+// No timeout field. Both callers refuse one for their own reasons: the composer
+// because host response time varies by model and load, so a fixed bound turns a
+// slow answer into a failed one, and the eval because its error message reads
+// ctx.Err() and so needs the context it owns. A knob neither caller sets is a
+// knob that goes stale.
 
 // Runner spawns one host CLI.
 type Runner struct {
@@ -44,7 +45,7 @@ func New(spec Spec) Runner { return Runner{Spec: spec} }
 
 // FromCommand builds a spec from a whole command line, as the eval runner
 // presets are written.
-func FromCommand(command string, promptAsArg bool, timeout time.Duration) (Spec, error) {
+func FromCommand(command string, promptAsArg bool) (Spec, error) {
 	parts := strings.Fields(command)
 	if len(parts) == 0 {
 		return Spec{}, fmt.Errorf("empty runner command")
@@ -53,7 +54,6 @@ func FromCommand(command string, promptAsArg bool, timeout time.Duration) (Spec,
 		Binary:      parts[0],
 		Args:        append([]string{}, parts[1:]...),
 		PromptAsArg: promptAsArg,
-		Timeout:     timeout,
 	}, nil
 }
 
@@ -88,12 +88,6 @@ func (r Runner) Run(ctx context.Context, req domain.Request) (domain.Response, e
 	if r.Spec.Binary == "" {
 		return domain.Response{}, fmt.Errorf("runner has no binary")
 	}
-	if r.Spec.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, r.Spec.Timeout)
-		defer cancel()
-	}
-
 	args := append([]string{}, r.Spec.Args...)
 	if r.Spec.PromptAsArg {
 		args = append(args, req.Prompt)

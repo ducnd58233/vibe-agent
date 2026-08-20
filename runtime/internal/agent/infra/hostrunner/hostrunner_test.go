@@ -5,13 +5,12 @@ import (
 	"errors"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/agent/domain"
 )
 
 func TestFromCommandSplitsACommandLine(t *testing.T) {
-	spec, err := FromCommand("claude -p --output-format stream-json", false, time.Minute)
+	spec, err := FromCommand("claude -p --output-format stream-json", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +23,7 @@ func TestFromCommandSplitsACommandLine(t *testing.T) {
 }
 
 func TestFromCommandRefusesAnEmptyCommand(t *testing.T) {
-	if _, err := FromCommand("   ", false, 0); err == nil {
+	if _, err := FromCommand("   ", false); err == nil {
 		t.Fatal("an empty command produced a runnable spec")
 	}
 }
@@ -42,7 +41,7 @@ func TestARunnerWithNoBinaryIsRefused(t *testing.T) {
 func TestAFailureCarriesTheStderrItPrinted(t *testing.T) {
 	// go is on PATH wherever this suite runs, and an unknown subcommand is a
 	// deterministic non-zero exit with something on stderr.
-	spec, err := FromCommand("go definitely-not-a-subcommand", false, 30*time.Second)
+	spec, err := FromCommand("go definitely-not-a-subcommand", false)
 	if err != nil {
 		t.Fatal(err)
 	}
