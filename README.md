@@ -78,6 +78,32 @@ flowchart LR
 
 It will not merge to `main` unless you say so. Rules: [`.ai-agents/commands/goal.md`](.ai-agents/commands/goal.md).
 
+## The same sequence, unattended
+
+`/auto` is `/goal` with the approval gates answered by evidence instead of by you. Same graph, same
+checks, same refusals. What changes is who confirms.
+
+| | `/goal` | `/auto` |
+|---|---|---|
+| Spec and plan | You approve each one | Passed on its own, unless the objective cannot be specified without guessing |
+| Merge to `main` | You approve, every time | Only with a workspace opt-in, and only when CI, the tests, the linter, and `/ship` all already say yes |
+| Anything on the danger list | You approve | Stops. Migrations, data destruction, production writes, credential changes, history rewrites, infrastructure destruction, publishing |
+
+Turn it on once per checkout, and answer the question it writes:
+
+```bash
+vibe-agent auto init     # writes .agent-state/auto.yaml with merge: false
+```
+
+No file, or `merge: false`, means auto stops at a green pull request and you merge it. Absence is a
+no; nothing infers the answer.
+
+Parts of `/auto` are still being built. The opt-in, the checks, and the danger gate work today; the
+graph edges that skip the approval gates do not, so until they land use `/goal`. What the finished
+mode may and may not decide is written down now, in
+[`.ai-agents/commands/auto.md`](.ai-agents/commands/auto.md), so the contract is reviewable before
+the machinery arrives.
+
 
 ## Where to edit
 

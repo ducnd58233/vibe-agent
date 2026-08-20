@@ -79,6 +79,7 @@ For skill and agent behavioral evaluation more broadly, see
 | Run the slash command that reduces complexity with tests still green | command | [`code-simplify.md`](../commands/code-simplify.md) |
 | Build UI registry-first with render evidence and anti-slop gates | command | [`design.md`](../commands/design.md) |
 | Drive one objective end to end through the delivery pipeline | command | [`goal.md`](../commands/goal.md) |
+| Run the whole delivery pipeline unattended, without stopping to approve each stage | command | [`auto.md`](../commands/auto.md) |
 | Turn an approved specification into ordered tasks with acceptance criteria | command | [`plan.md`](../commands/plan.md) |
 | Write the structured work definition before any implementation | command | [`spec.md`](../commands/spec.md) |
 | Start from a failing case, or run focused proof for a fix | command | [`test.md`](../commands/test.md) |
