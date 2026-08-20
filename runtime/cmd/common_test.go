@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -57,7 +58,7 @@ func chdir(t *testing.T, dir string) {
 // resolved returns what a command with no --workspace would use.
 func resolved(t *testing.T) string {
 	t.Helper()
-	root, err := discoverWorkspace()
+	root, _, err := discoverWorkspace()
 	if err != nil {
 		t.Fatalf("discoverWorkspace: %v", err)
 	}
@@ -303,5 +304,60 @@ func TestHoldsAssetsRejectsAFile(t *testing.T) {
 	}
 	if holdsAssets(dir) {
 		t.Fatal("a file named .ai-agents was accepted as a toolkit root")
+	}
+}
+
+// The distinction the fallback used to throw away. Both outcomes were a path
+// and a nil error, so every caller treated "there is no workspace here" as
+// "this is the workspace root" - which is how a fetch came to create an
+// .agent-state in whatever folder someone was standing in.
+func TestDiscoveryReportsWhetherItFoundAWorkspace(t *testing.T) {
+	bare := t.TempDir()
+	chdir(t, bare)
+	if _, found, err := discoverWorkspace(); err != nil {
+		t.Fatalf("discoverWorkspace: %v", err)
+	} else if found {
+		t.Error("a directory with no marker reported a workspace")
+	}
+
+	marked := t.TempDir()
+	if err := os.WriteFile(filepath.Join(marked, "AGENTS.md"), []byte("# rules\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	chdir(t, marked)
+	root, found, err := discoverWorkspace()
+	if err != nil {
+		t.Fatalf("discoverWorkspace: %v", err)
+	}
+	if !found {
+		t.Error("a directory with a marker did not report a workspace")
+	}
+	expectRoot(t, marked, root)
+}
+
+// Outside a workspace the cache goes somewhere shared, so a second fetch from a
+// different folder hits it instead of starting again.
+func TestTheFetchCacheLeavesNonWorkspacesAlone(t *testing.T) {
+	bare := t.TempDir()
+
+	outside := fetchCacheRoot(bare, false)
+	if outside == bare {
+		t.Error("a directory that is not a workspace was used as the cache root")
+	}
+	if cache, err := os.UserCacheDir(); err == nil {
+		if !strings.HasPrefix(outside, cache) {
+			t.Errorf("cache root = %q, want it under %q", outside, cache)
+		}
+	}
+
+	// Two different bare directories must agree on where the cache lives, or it
+	// is rebuilt per folder and the token budget pays for it every time.
+	if second := fetchCacheRoot(t.TempDir(), false); second != outside {
+		t.Errorf("two bare directories chose different caches: %q and %q", outside, second)
+	}
+
+	// Inside a workspace nothing changes.
+	if inside := fetchCacheRoot(bare, true); inside != bare {
+		t.Errorf("cache root = %q inside a workspace, want %q", inside, bare)
 	}
 }
