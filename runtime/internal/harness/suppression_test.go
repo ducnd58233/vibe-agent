@@ -307,3 +307,27 @@ func TestTheRuleIsWritableInTheFileThatDefinesIt(t *testing.T) {
 		t.Error("a file named suppression-something was exempted; the list is meant to be exact")
 	}
 }
+
+// The shapes a rule this blunt gets wrong. Each of these was either in the
+// pattern list once or is the obvious next thing to add, and each is the
+// opposite of the finding: a config that starts enabling rules, a test that
+// declares it can run alongside others.
+func TestConfigurationThatEnablesRulesIsNotADisabledRule(t *testing.T) {
+	for _, after := range []string{
+		"rules:",
+		"linters:\n  enable:\n    - errcheck\n    - gosec",
+		"\"rules\": {",
+		"func TestThing(t *testing.T) {\n\tt.Parallel()\n\tcheck(t)",
+	} {
+		if blocked := edit(t, t.TempDir(), "# config", after); blocked != nil {
+			t.Errorf("enabling work was refused:\n%s\n%s", after, blocked.Reason)
+		}
+	}
+}
+
+// Adding a ceiling where there was none is adding a check, not weakening one.
+func TestIntroducingAThresholdIsNotWideningOne(t *testing.T) {
+	if blocked := edit(t, t.TempDir(), "slop audit .", "slop audit --fail-on 5 ."); blocked != nil {
+		t.Errorf("introducing a ceiling was refused:\n%s", blocked.Reason)
+	}
+}

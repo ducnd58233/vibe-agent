@@ -47,9 +47,11 @@ spec:
       reason: >-
         Turning a rule off in configuration is the same act as silencing it in the file, one
         directory wider. What used to be checked no longer is, everywhere.
+      # A bare `rules:` key was in this list and is not any more. Adding one is
+      # how a config starts enabling rules, so the pattern fired on the opposite
+      # of what it was looking for, in every eslint and golangci file there is.
       patterns:
         - '(?i)^\s*-?\s*disable(?:-all)?:\s*(?:true|\[|-|\w)'
-        - '(?i)^\s*"?rules"?\s*:\s*\{?\s*$'
         - '(?i)\bexclude-rules\b'
         - '(?i)\bskip-(?:dirs|files)\b'
 
@@ -63,7 +65,6 @@ spec:
         - '(?i)\bx(?:it|describe)\s*\('
         - '(?i)@pytest\.mark\.skip\b'
         - '(?i)@(?:Disabled|Ignore)\b'
-        - '(?i)\bt\.Parallel\s*\(\s*\)\s*//\s*skip\b'
 
   # Widening rather than adding. These are numbers a check compares against, so
   # the rule is not "there is one more of these" but "the number moved the way
