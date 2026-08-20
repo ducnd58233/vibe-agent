@@ -65,15 +65,6 @@ func parseEvent(line state.Event) (Event, bool, error) {
 	}, true, nil
 }
 
-// MustReplay is for tests; it panics on error.
-func MustReplay(logPath string) []Event {
-	events, err := Replay(logPath)
-	if err != nil {
-		panic(fmt.Sprintf("session.Replay: %v", err))
-	}
-	return events
-}
-
 func eventPayload(ev Event) Payload {
 	var body Payload
 	_ = json.Unmarshal(ev.Payload, &body)

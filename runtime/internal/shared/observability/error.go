@@ -16,14 +16,6 @@ func LogError(l Logger, msg string, err error) {
 	l.Error(msg, errorLogAttrs(err)...)
 }
 
-// LogErrorContext is LogError with a request context.
-func LogErrorContext(ctx context.Context, l Logger, msg string, err error) {
-	if l == nil || err == nil {
-		return
-	}
-	l.ErrorContext(ctx, msg, errorLogAttrs(err)...)
-}
-
 func errorLogAttrs(err error) []any {
 	return []any{
 		"error", redact.Text(err.Error()),

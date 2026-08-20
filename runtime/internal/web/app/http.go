@@ -15,11 +15,6 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/web/view"
 )
 
-// NewHandler builds routes for the empty shell.
-func NewHandler(workspaceRoot, toolkitRoot string) (http.Handler, error) {
-	return NewHandlerWithPort(workspaceRoot, toolkitRoot, DefaultPort)
-}
-
 // NewHandlerWithPort builds routes using the given port for bind metadata.
 func NewHandlerWithPort(workspaceRoot, toolkitRoot string, port int) (http.Handler, error) {
 	reg, err := loadRegistry(filepath.Clean(workspaceRoot), nil)
