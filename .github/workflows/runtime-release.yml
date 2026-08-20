@@ -64,8 +64,14 @@ jobs:
             echo "prerelease=false"       >> "$GITHUB_OUTPUT"
             echo "title=runtime $version" >> "$GITHUB_OUTPUT"
           else
-            # Rolling build off main. Derive next patch from the latest stable
-            # tag so the binary always reports a meaningful version.
+            # Rolling build off main. The bump comes from the commits since the
+            # last stable tag, because this repository writes Conventional
+            # Commits without exception and so the input is already there.
+            #
+            # It used to add one to the patch and stop. With 21 feat commits
+            # since runtime/v0.1.0 that reported 0.1.1-dev, a version which
+            # understates what is in the binary - worse than no version,
+            # because it reads as authoritative.
             git fetch --tags --quiet
             latest=$(git tag --list 'runtime/v*' --sort=-v:refname | head -n1)
             if [ -z "$latest" ]; then
@@ -75,7 +81,15 @@ jobs:
               major=$(echo "$semver" | cut -d. -f1)
               minor=$(echo "$semver" | cut -d. -f2)
               patch=$(echo "$semver" | cut -d. -f3)
-              patch=$((patch + 1))
+              subjects=$(git log --format=%s "${latest}..HEAD")
+              bodies=$(git log --format=%B "${latest}..HEAD")
+              if printf '%s' "$subjects" | grep -qE '^[a-z]+(\([^)]*\))?!:'                  || printf '%s' "$bodies" | grep -q 'BREAKING CHANGE'; then
+                major=$((major + 1)); minor=0; patch=0
+              elif printf '%s' "$subjects" | grep -qE '^feat(\([^)]*\))?:'; then
+                minor=$((minor + 1)); patch=0
+              else
+                patch=$((patch + 1))
+              fi
               base="${major}.${minor}.${patch}"
             fi
             version="${base}-dev.$(git rev-parse --short HEAD)"
