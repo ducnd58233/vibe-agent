@@ -571,7 +571,16 @@ func TestASkippedCheckAdvancesWithoutBeingAPass(t *testing.T) {
 func TestASkippedCheckSatisfiesOnlyAGuardThatOptedIn(t *testing.T) {
 	runner := newRunner(t)
 
-	allowed := map[string]bool{"e2e_ok": true, "slop_ok": true}
+	// An allowlist, with a reason beside each entry, because acceptsSkipped is
+	// the one setting that lets a gate open on something that never ran.
+	allowed := map[string]string{
+		"e2e_ok":         "a workspace that declares no e2e check must not stall",
+		"slop_ok":        "the same, for a workspace with no slop threshold",
+		"lint_ok":        "the same, for a workspace that declares no lint command",
+		"main_ci_passed": "the same, for a workspace with no default-branch CI to ask about",
+		"spec_approved":  "auto mode skips the gate when the spec holds no open question; the check records skipped, never passed",
+		"plan_approved":  "the same, for the plan gate",
+	}
 	for name := range allowed {
 		optedIn, ok := runner.Graph.Guard(name)
 		if !ok {
@@ -583,8 +592,8 @@ func TestASkippedCheckSatisfiesOnlyAGuardThatOptedIn(t *testing.T) {
 	}
 
 	for _, guard := range runner.Graph.Spec.Guards {
-		if guard.AcceptsSkipped && !allowed[guard.Name] {
-			t.Errorf("guard %q accepts a skip; only e2e_ok and slop_ok are meant to", guard.Name)
+		if guard.AcceptsSkipped && allowed[guard.Name] == "" {
+			t.Errorf("guard %q accepts a skip and is not on the allowlist; add it with the reason, or take the setting off", guard.Name)
 		}
 	}
 }

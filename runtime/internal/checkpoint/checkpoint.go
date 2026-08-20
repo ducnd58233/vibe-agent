@@ -110,6 +110,10 @@ type transitionEvent struct {
 	To   string `json:"to"`
 	Via  string `json:"via"`
 	Key  string `json:"key,omitempty"`
+	// Skipped records that the destination was a human gate the graph declared
+	// skippable and the run walked through it. In the journal because "no one
+	// was asked here" is exactly the kind of thing an audit goes looking for.
+	Skipped bool `json:"skipped,omitempty"`
 }
 
 // Apply records the outcome and advances the state.
@@ -155,7 +159,7 @@ func Apply(req Request) (*Result, error) {
 	// Append the event before saving state: an event without a matching state
 	// change is recoverable, a state change with no record of why is not.
 	payload, err := json.Marshal(transitionEvent{
-		From: from, To: transition.To, Via: transition.Via, Key: key,
+		From: from, To: transition.To, Via: transition.Via, Key: key, Skipped: transition.Skipped,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("encode transition: %w", err)
@@ -196,7 +200,7 @@ func advanceStuckVerifier(req VerifyRequest, plan *Plan, run *state.Run, loaded 
 		return nil, err
 	}
 	payload, err := json.Marshal(transitionEvent{
-		From: from, To: transition.To, Via: transition.Via, Key: "stuck-" + plan.Check,
+		From: from, To: transition.To, Via: transition.Via, Key: "stuck-" + plan.Check, Skipped: transition.Skipped,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("encode transition: %w", err)

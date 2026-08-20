@@ -54,6 +54,32 @@ spec:
       args: [-C, runtime, run, ./cmd, slop, audit, --fail-on, "3", ..]
       timeoutSeconds: 300
 
+    lint:
+      description: >-
+        The linter with nothing suppressed. Separate from the unit check because
+        the auto path gates on it on its own, and because "the tests pass" and
+        "no rule was switched off to make them" are two different statements.
+        golangci-lint reads .golangci.yml from the runtime directory, so the
+        enabled set is a reviewed file rather than a flag typed at the keyboard.
+      command: make
+      args: [-C, runtime, golangci]
+      timeoutSeconds: 600
+
+    main_ci:
+      description: >-
+        CI on the default branch after a merge landed. A squash produces a commit
+        no pull request ever built, so this asks GitHub about main rather than
+        about the branch. --branch main is what keeps it from answering with the
+        run that is still attached to the merged head.
+        A run still in progress exits non-zero, the same way the ci check does
+        while a PR check is pending. That reads as a failure and routes back to
+        build, so ask once the run has finished rather than the moment the merge
+        lands; status is checked as well as conclusion so a cancelled run cannot
+        report as anything but not-success.
+      command: gh
+      args: [run, list, --branch, main, --limit, "1", --json, 'status,conclusion', --jq, 'if .[0].status == "completed" and .[0].conclusion == "success" then "ok" else halt_error(1) end']
+      timeoutSeconds: 3600
+
     pr_open:
       description: Exits non-zero when the current branch has no pull request, which is what the node asks.
       command: gh

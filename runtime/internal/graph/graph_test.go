@@ -142,6 +142,31 @@ func TestParseRejectsBrokenGraphs(t *testing.T) {
 			want: "cannot reach any terminal",
 		},
 		{
+			// A negated skip on a gate holds in a fresh run, because a flag
+			// nobody set reads as false. The gate would be gone before anything
+			// had a chance to set anything.
+			name: "human gate skipped by a negated condition",
+			change: func(doc map[string]any) {
+				gate, ok := nodes(t, doc)["approve_merge"].(map[string]any)
+				if !ok {
+					t.Fatal("approve_merge is not a node map")
+				}
+				gate["skipWhen"] = "!auto"
+			},
+			want: "skipped by default",
+		},
+		{
+			name: "agent node claiming a skip condition",
+			change: func(doc map[string]any) {
+				build, ok := nodes(t, doc)["build"].(map[string]any)
+				if !ok {
+					t.Fatal("build is not a node map")
+				}
+				build["skipWhen"] = "auto"
+			},
+			want: "may not declare skipWhen",
+		},
+		{
 			name: "undeclared guard",
 			change: func(doc map[string]any) {
 				spec(t, doc)["edges"] = append(edges(t, doc),

@@ -269,24 +269,47 @@ spec:
 	}
 }
 
-// skipWhen is now honored at execution time, which makes a declared skip
-// condition load-bearing. A flag absent from run state reads as false, so
-// `skipWhen: "!x"` on a node skips that node by default, and the delivery graph's
-// e2e_ok guard accepts a skip as satisfying. That combination is the reported bug
-// with the runtime cooperating.
+// skipWhen is honored at execution time, which makes a declared skip condition
+// load-bearing. A flag absent from run state reads as false, so `skipWhen: "!x"`
+// skips that node by default, and a guard that accepts a skip then treats the
+// node as satisfied. That combination is the reported bug with the runtime
+// cooperating.
 //
-// So the shipped graph must not carry one. This fails if anyone adds it back
-// without deciding, per node, whether skipping by default is safe there.
-func TestTheShippedGraphNeverSkipsAVerifierByDefault(t *testing.T) {
+// The hazard is the negated form, not the setting. A positive condition reads
+// false in a fresh run and the node runs, which is the direction it has to fail
+// in. So this rejects negation outright and keeps the positive ones on a list
+// with a reason each, which is the per-node decision the earlier blanket ban
+// was standing in for.
+func TestTheShippedGraphNeverSkipsANodeByDefault(t *testing.T) {
 	loaded, err := graph.LoadByID(graphDir, "goal-delivery")
 	if err != nil {
 		t.Fatalf("load graph: %v", err)
 	}
+
+	decided := map[string]string{
+		"intake":       "auto mode agreed the objective from the prompt it was given; there was no one to ask",
+		"approve_spec": "auto mode reported the spec holds no open question, and a person is still asked when it does",
+		"approve_plan": "the same, for the plan",
+	}
+
 	for id, node := range loaded.Spec.Nodes {
-		if node.SkipWhen != "" {
-			t.Fatalf("node %q declares skipWhen %q; a flag absent from run state reads as false, "+
-				"so this would skip by default. Whether that is safe needs deciding per node.",
-				id, node.SkipWhen)
+		if node.SkipWhen == "" {
+			continue
+		}
+		if _, negated := node.SkipCondition(); negated {
+			t.Errorf("node %q declares skipWhen %q; a negated condition holds in a fresh run, "+
+				"so the node would be skipped by default", id, node.SkipWhen)
+			continue
+		}
+		if decided[id] == "" {
+			t.Errorf("node %q declares skipWhen %q and is not on the decided list; "+
+				"add it with the reason skipping it is safe, or take the condition off", id, node.SkipWhen)
+		}
+	}
+
+	for id := range decided {
+		if node, ok := loaded.Spec.Nodes[id]; !ok || node.SkipWhen == "" {
+			t.Errorf("node %q is listed as a decided skip but declares none; drop the entry", id)
 		}
 	}
 }
