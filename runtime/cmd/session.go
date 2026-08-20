@@ -106,11 +106,33 @@ func formatSessionLine(ev session.Event) string {
 	if role := firstNonEmpty(ev.Role, body.Role); role != "" {
 		typeLabel += "/" + role
 	}
-	line := fmt.Sprintf("#%d %s %s %s", ev.Sequence, typeLabel, ev.Source, kind)
-	if detail := singleLine(firstNonEmpty(body.Body, body.Command, body.Event, body.Tool)); detail != "" {
+	line := fmt.Sprintf("#%d %s %s %s", ev.Sequence, typeLabel, ev.Source, traceName(body, kind))
+	if detail := singleLine(firstNonEmpty(body.Body, body.Command)); detail != "" {
 		line += " " + detail
 	}
 	return line
+}
+
+// traceName is what the third column says: which tool ran, or which hook fired.
+//
+// It used to be session.Kind alone, a coarse category - "tool", "hook",
+// "message" - and the tool and event names were last in the detail fallback,
+// behind Body. So a payload with any body at all hid the one field that said
+// which tool it was, and every hook line read "hook hook" with the event name
+// nowhere. A trace where every entry says "tool" cannot answer the question a
+// trace is read for.
+//
+// The kind stays as the fallback, because a line with neither name still has to
+// say something.
+func traceName(body session.Payload, kind session.FilterKind) string {
+	switch {
+	case body.Tool != "":
+		return body.Tool
+	case body.Event != "":
+		return body.Event
+	default:
+		return string(kind)
+	}
 }
 
 func firstNonEmpty(values ...string) string {
