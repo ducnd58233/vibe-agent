@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
@@ -188,6 +189,8 @@ func checkRunState(report *diagnostics, workspaceRoot string) {
 	if err != nil {
 		return // no runs yet is not a problem
 	}
+	now := time.Now()
+	var stale []string
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -196,12 +199,54 @@ func checkRunState(report *diagnostics, workspaceRoot string) {
 		if _, err := os.Stat(path); err != nil {
 			continue
 		}
-		if _, err := state.Load(path); err != nil {
+		current, err := state.Load(path)
+		if err != nil {
 			report.check("run state "+entry.Name()+" is valid", false, err.Error())
 			continue
 		}
 		report.check("run state "+entry.Name()+" is valid", true, "")
+		if idle := idleRun(current, now); idle != "" {
+			stale = append(stale, idle)
+		}
 	}
+
+	// A note rather than a check, because an idle run is not a broken one and
+	// doctor failing on it would teach people to stop reading doctor.
+	//
+	// It exists because sixteen of these accumulated before anyone counted
+	// them: a parked run and an active one look identical in `run list`, so
+	// nothing said the backlog was growing until someone read the whole list.
+	for _, line := range stale {
+		fmt.Println("  note  " + line)
+	}
+	if len(stale) > 0 {
+		fmt.Printf("  note  %d run(s) idle past %d days; close one with `run abort --slug <slug> --reason <why>`\n",
+			len(stale), int(idleThreshold.Hours()/24))
+	}
+}
+
+// idleThreshold is how long a run may sit before doctor mentions it.
+//
+// Three days rather than one: a run picked up again after a weekend is not a
+// backlog, and a threshold that fires on those gets ignored. Rather than a
+// setting, because the number only has to be roughly right, and a knob here
+// would be one more thing to tune instead of one more run to close.
+const idleThreshold = 72 * time.Hour
+
+// idleRun reports a run that has sat too long, or "" for one that has not.
+//
+// Terminal runs are never idle: a run that finished is finished, and saying so
+// every time doctor runs would bury the ones that are actually waiting.
+func idleRun(current *state.Run, now time.Time) string {
+	switch current.Status {
+	case state.StatusDone, state.StatusFailed, state.StatusCancelled:
+		return ""
+	}
+	if current.UpdatedAt.IsZero() || now.Sub(current.UpdatedAt) < idleThreshold {
+		return ""
+	}
+	return fmt.Sprintf("run %s is %s idle at %s (%s)",
+		current.Slug, idleFor(now, current.UpdatedAt), current.CurrentNode, current.Status)
 }
 
 func checkWebState(report *diagnostics, workspaceRoot string) {
