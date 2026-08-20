@@ -64,7 +64,7 @@ var (
 	// A brace pair directly after struct or interface is a Go type literal.
 	// map[string]struct{} in a signature is not an empty body, and the rule
 	// reported one because "func" appeared earlier on the same line.
-	typeLiteralBrace = regexp.MustCompile(`(?i)\b(struct|interface)\{\s*\}$`)
+	typeLiteralBrace = regexp.MustCompile(`(?i)\b(struct|interface)\{\s*\}`)
 	// t.Fatal and friends are assertions. Their message describes what went
 	// wrong, so a test about placeholder handling read as unfinished code.
 	// The receiver list is deliberately short: log.Fatal must keep matching.
@@ -397,15 +397,27 @@ func hasPlaceholderAbort(lower string) bool {
 }
 
 // emptyDeclarationIndex returns the offset of the first genuinely empty
-// declaration body, or -1. It exists because the regex alone cannot tell a body
-// from a type literal.
+// declaration body, or -1.
+//
+// Type literals are masked rather than skipped. Discarding a match that ends in
+// one loses the body behind it: in `func f() interface{} {}` the regex stops at
+// the first brace pair, so rejecting that match hid a real empty function.
+// Masking leaves the braces the declaration actually owns.
 func emptyDeclarationIndex(text string) int {
-	for _, loc := range emptyBraceFunction.FindAllStringIndex(text, -1) {
-		if !typeLiteralBrace.MatchString(text[loc[0]:loc[1]]) {
-			return loc[0]
-		}
+	masked := maskTypeLiterals(text)
+	loc := emptyBraceFunction.FindStringIndex(masked)
+	if loc == nil {
+		return -1
 	}
-	return -1
+	return loc[0]
+}
+
+// maskTypeLiterals blanks the braces of struct{} and interface{}, keeping the
+// text the same length so offsets still point into the original.
+func maskTypeLiterals(text string) string {
+	return typeLiteralBrace.ReplaceAllStringFunc(text, func(match string) string {
+		return strings.Repeat(" ", len(match))
+	})
 }
 
 func lineOfIndex(text string, index int) int {
