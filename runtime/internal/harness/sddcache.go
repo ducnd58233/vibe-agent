@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
 // The WebFetch cache pair stayed in Python when the other eight hooks moved
@@ -93,7 +94,10 @@ func sddCache(req Request, body payload, script string) *BlockError {
 	// The script resolves the cache directory from this, and falls back to its
 	// own working directory without it. Passing the root this binary already
 	// discovered is what stops the fallback from being reached.
-	cmd.Env = append(os.Environ(), "CLAUDE_PROJECT_DIR="+req.WorkspaceRoot)
+	cmd.Env = append(os.Environ(),
+		"CLAUDE_PROJECT_DIR="+req.WorkspaceRoot,
+		workspace.EnvSDDCacheDir+"="+workspace.SDDCacheDir(req.WorkspaceRoot),
+	)
 
 	runErr := cmd.Run()
 

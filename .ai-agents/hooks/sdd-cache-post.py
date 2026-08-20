@@ -46,6 +46,15 @@ def _head_validators(url: str) -> tuple[str, str]:
     return etag, last_modified
 
 
+def _cache_dir() -> Path:
+    # The runtime passes the resolved directory so both sides cannot drift.
+    # The fallback is for a standalone run, and names the same layout.
+    configured = os.environ.get("VIBE_SDD_CACHE_DIR", "").strip()
+    if configured:
+        return Path(configured)
+    return _project_root() / ".agent-state" / "sdd-cache"
+
+
 def main() -> int:
     payload = _read_input()
     tool_input = payload.get("tool_input")
@@ -69,7 +78,7 @@ def main() -> int:
     if not etag and not last_modified:
         return 0
 
-    cache_dir = _project_root() / ".claude" / "sdd-cache"
+    cache_dir = _cache_dir()
     cache_dir.mkdir(parents=True, exist_ok=True)
     key = hashlib.sha256(url.encode("utf-8")).hexdigest()[:32]
     cache_file = cache_dir / f"{key}.json"
