@@ -335,6 +335,22 @@ spec:
     - from: task_complete
       to: build
       when: tasks_remaining
+      # A new task has proven nothing yet. Without this the next task began
+      # with the last one's tests, review, and merge approval already recorded,
+      # so approve_merge opened on a stale pass and pre-tool-use stopped
+      # refusing pushes to a protected branch, its rule being "no active run
+      # has recorded merge_approved". What a run earns once, the spec and the
+      # plan, is not listed here.
+      resets:
+        - unit
+        - e2e
+        - slop
+        - pr_open
+        - ci
+        - reviews
+        - ship
+        - merge_approved
+        - tasks_remaining
     - from: task_complete
       to: done
       when: "!tasks_remaining"

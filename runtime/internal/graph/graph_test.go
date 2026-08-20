@@ -285,3 +285,51 @@ func TestLoadByIDFindsTheShippedGraph(t *testing.T) {
 		t.Errorf("id = %q", loaded.Metadata.ID)
 	}
 }
+
+// A reset naming evidence nothing produces is a typo that reads as working:
+// the transition would clear a key nobody writes, and the check it meant to
+// clear would survive into the next task.
+func TestParseRejectsAResetNamingNoCheck(t *testing.T) {
+	_, err := Parse(mutate(t, func(doc map[string]any) {
+		spec, _ := doc["spec"].(map[string]any)
+		edges, _ := spec["edges"].([]any)
+		first, _ := edges[0].(map[string]any)
+		first["resets"] = []any{"not_a_check"}
+	}))
+	if err == nil {
+		t.Fatal("a reset naming an unknown check parsed")
+	}
+	if !strings.Contains(err.Error(), "not_a_check") {
+		t.Errorf("error = %q, want it to name the reset", err)
+	}
+}
+
+// The shipped graph resets the per-task checks when a task cycle restarts, and
+// leaves what a run earns once alone.
+func TestTheShippedGraphResetsPerTaskChecks(t *testing.T) {
+	loaded, err := Load(repoGraph)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var resets []string
+	for _, edge := range loaded.Spec.Edges {
+		if edge.From == "task_complete" && edge.To == "build" {
+			resets = edge.Resets
+		}
+	}
+	if len(resets) == 0 {
+		t.Fatal("the task cycle restarts without clearing anything")
+	}
+	held := map[string]bool{}
+	for _, name := range resets {
+		held[name] = true
+	}
+	if !held["merge_approved"] {
+		t.Error("merge_approved survives its own task, which opens the gate on a stale approval")
+	}
+	for _, perRun := range []string{"spec_approved", "plan_approved", "intake_confirmed"} {
+		if held[perRun] {
+			t.Errorf("%q is earned once per run and must not be cleared per task", perRun)
+		}
+	}
+}

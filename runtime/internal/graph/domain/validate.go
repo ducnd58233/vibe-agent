@@ -192,6 +192,19 @@ func (g *Graph) validateEdges() ProblemsError {
 		}
 	}
 
+	// A reset names evidence to drop. Naming one nothing produces is a typo
+	// that would read as working: the transition would clear a key nobody
+	// writes, and the check it meant to clear would survive.
+	written := checksNodesWrite(g)
+	for _, edge := range g.Spec.Edges {
+		for _, name := range edge.Resets {
+			if !written[name] {
+				problems = append(problems, fmt.Sprintf(
+					"edge %s -> %s resets %q, which no node writes", edge.From, edge.To, name))
+			}
+		}
+	}
+
 	for _, node := range g.Spec.Nodes {
 		if node.SkipWhen == "" {
 			continue
@@ -364,4 +377,15 @@ func sortedStringKeys(m map[string][]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// checksNodesWrite is every check name some node in the graph produces.
+func checksNodesWrite(g *Graph) map[string]bool {
+	written := map[string]bool{}
+	for _, node := range g.Spec.Nodes {
+		if node.Check != "" {
+			written[node.Check] = true
+		}
+	}
+	return written
 }
