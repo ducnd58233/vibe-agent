@@ -47,6 +47,11 @@ Merge to `main` happens only after [`ship.md`](ship.md) returns **Ship Decision:
 
 For **one** task only (then stop or ask before starting the next task on a new branch):
 
+0. **Read the task list first.** `docs/<slug>/tasks.json` and `TASKS.md`. Take the first `queued`
+   task whose dependencies are all `done`; never restart one already `done`; a `blocked` one needs
+   its blocker resolved or the task re-planned. Set it `in_progress` in both files. Rules:
+   [`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md), section
+   **Task status (MUST)**.
 1. Read acceptance criteria from `docs/<slug>/TASKS.md` (or the path the human gave).
 2. Create or confirm the dedicated task branch (rules above).
 3. Load context ([`context-engineering`](../skills/context-engineering/SKILL.md) as needed).
@@ -55,7 +60,11 @@ For **one** task only (then stop or ask before starting the next task on a new b
 6. Run full tests and typecheck/build per project (`npm`/`pnpm`/`uv` as documented).
 7. **Disclosure pass (MUST, before commit):** apply [`secure-by-default`](../skills/secure-by-default/SKILL.md) to the diff. For every sink the task added or changed (log call, response body, client storage, analytics event, error path, env var), name what goes into it. A clean runtime `sensitive-data-guard` finding set is a floor, not evidence. Channel detail: [`sensitive-data-exposure.md`](../references/sensitive-data-exposure.md).
 8. Commit with a human-friendly conventional message, `type(scope): subject`, that matches the branch. Use plain words, no AI-tell filler, no emojis/icons, no em-dash. **MUST NOT** add AI/agent co-author trailers (`Co-Authored-By: ...`) or "Generated with ..." lines; attribute commits solely to the human's git identity.
-9. Mark the task complete in `TASKS.md` if that file is in scope; report branch name and PR link if created. **Do not merge to `main`.**
+9. **Set the task `done` in `TASKS.md` and `tasks.json`, and tick its acceptance checkboxes.** Both
+   files, same edit, before the next verifier runs: `task_complete` reads `tasks.json` to decide
+   whether work remains, so a status written after it ran sends the run back through a whole build
+   cycle for a task that was already finished. Report branch name and PR link if created.
+   **Do not merge to `main`.**
 
 On failure: [`debugging-and-error-recovery`](../skills/debugging-and-error-recovery/SKILL.md).
 </procedure>
