@@ -106,7 +106,7 @@
     "entry": {
       "type": "object",
       "additionalProperties": false,
-      "description": "One check. Must say how it is produced: a command, a set of paths, or an explicit human decision.",
+      "description": "One check. Must say how it is produced: a command, a set of paths, a screen spec, a self-configuring verifier, or an explicit human decision.",
       "anyOf": [
         {
           "required": ["command"]
@@ -120,6 +120,14 @@
         {
           "properties": {
             "verifier": {
+              "const": "tasks"
+            }
+          },
+          "required": ["verifier"]
+        },
+        {
+          "properties": {
+            "verifier": {
               "const": "human"
             }
           },
@@ -128,8 +136,8 @@
       ],
       "properties": {
         "verifier": {
-          "enum": ["command", "files", "git", "screen", "human"],
-          "description": "Overrides the graph node's verifier kind. `human` means no runtime verifier can produce this check and a person decides it, which is the only route by which caller-supplied evidence reaches a verifier node."
+          "enum": ["command", "files", "git", "screen", "tasks", "human"],
+          "description": "Overrides the graph node's verifier kind. `human` means no runtime verifier can produce this check and a person decides it, which is the only route by which caller-supplied evidence reaches a verifier node. `tasks` finds its own input from the workspace root and the run's slug, so it needs no command, path, or screen."
         },
         "command": {
           "type": "string",

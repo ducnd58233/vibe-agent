@@ -79,8 +79,12 @@ spec:
         command whose exit code means GO.
 
     tasks_remaining:
-      verifier: human
+      verifier: tasks
       description: >-
-        Whether another in-scope task remains is a reading of TASKS.md against
-        the agreed scope. A file assertion can prove the file exists, which is a
-        different question.
+        Reads docs/<slug>/tasks.json and passes while any task has a status
+        other than done or canceled. This was a human verifier, and it was the
+        only one of the three that was human because nothing had given it a
+        machine-readable input rather than because the question needs judgement.
+        TASKS.md stays the file a person reviews; doctor reports when the two
+        disagree on count and does not refuse, because the prose file carries
+        context the JSON does not.

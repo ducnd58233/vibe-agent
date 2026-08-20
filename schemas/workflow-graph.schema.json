@@ -229,8 +229,8 @@
               "description": true,
               "timeoutSeconds": true,
               "verifier": {
-                "enum": ["command", "files", "git", "screen"],
-                "description": "Verifier implementation that produces the evidence. screen proves an app rendered rather than that a command exited."
+                "enum": ["command", "files", "git", "screen", "tasks"],
+                "description": "Verifier implementation that produces the evidence. screen proves an app rendered rather than that a command exited; tasks reads the machine-readable task list a plan produced."
               },
               "check": {
                 "$ref": "#/$defs/identifier",

@@ -51,11 +51,14 @@ const (
 	// the view hierarchy, and a frame that is not blank. An exit code cannot
 	// answer any of those.
 	VerifierScreen VerifierKind = "screen"
+	// VerifierTasks reads the machine-readable task list a plan produced and
+	// reports whether any task is still in scope.
+	VerifierTasks VerifierKind = "tasks"
 )
 
 func (k VerifierKind) valid() bool {
 	switch k {
-	case VerifierCommand, VerifierFiles, VerifierGit, VerifierScreen:
+	case VerifierCommand, VerifierFiles, VerifierGit, VerifierScreen, VerifierTasks:
 		return true
 	}
 	return false

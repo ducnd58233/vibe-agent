@@ -69,7 +69,7 @@ type Result struct {
 
 // Verifier turns a request into evidence.
 type Verifier interface {
-	// Kind is the graph's verifier name: command, files, git, or screen.
+	// Kind is the graph's verifier name: command, files, git, screen, or tasks.
 	Kind() string
 	Verify(ctx context.Context, req Request) (Result, error)
 }
@@ -84,6 +84,7 @@ func Default() Registry {
 		"files":   Files{},
 		"git":     Git{},
 		"screen":  Screen{},
+		"tasks":   Tasks{},
 	}
 }
 

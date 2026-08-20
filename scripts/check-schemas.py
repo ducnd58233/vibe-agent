@@ -232,7 +232,7 @@ def main() -> int:
         print(f"check-schemas: missing {schemas_dir}", file=sys.stderr)
         return 1
 
-    names = ["workflow-graph", "run-state", "memory-record", "check-plan"]
+    names = ["workflow-graph", "run-state", "memory-record", "check-plan", "tasks"]
     schemas: dict[str, dict] = {}
     failures = 0
 
