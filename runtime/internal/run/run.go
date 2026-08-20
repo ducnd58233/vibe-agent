@@ -15,13 +15,14 @@ import (
 
 // The names a caller uses. One definition each, in the layer that owns it.
 type (
-	Run         = domain.Run
-	Check       = domain.Check
-	CheckSource = domain.CheckSource
-	Status      = domain.Status
-	Blocker     = domain.Blocker
-	Artifact    = domain.Artifact
-	Event       = domain.Event
+	Run          = domain.Run
+	Check        = domain.Check
+	CheckSource  = domain.CheckSource
+	Status       = domain.Status
+	Blocker      = domain.Blocker
+	FailureClass = domain.FailureClass
+	Artifact     = domain.Artifact
+	Event        = domain.Event
 )
 
 // The provenance a check may claim, and the states a run may hold. There is
@@ -41,13 +42,21 @@ const (
 	StatusCancelled      = domain.StatusCancelled
 	StatusBudgetExceeded = domain.StatusBudgetExceeded
 
+	FailureContext    = domain.FailureContext
+	FailureTool       = domain.FailureTool
+	FailurePermission = domain.FailurePermission
+	FailureTest       = domain.FailureTest
+	FailureAmbiguity  = domain.FailureAmbiguity
+	FailureModel      = domain.FailureModel
+
 	EventLogName = domain.EventLogName
 	RunsDirName  = persistence.RunsDirName
 )
 
 // Creating a run is a domain act; reading and writing one is I/O.
 var (
-	NewRun = domain.NewRun
+	NewRun         = domain.NewRun
+	FailureClasses = domain.FailureClasses
 
 	Load         = persistence.Load
 	Save         = persistence.Save

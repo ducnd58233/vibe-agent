@@ -170,3 +170,34 @@ func TestIdleForUsesTheCoarsestUsefulUnit(t *testing.T) {
 		}
 	}
 }
+
+// Raising the transition count on a run that ran out of wallclock leaves it
+// stopping again on the next advance, having reported a resume that changed
+// nothing.
+func TestResumeRaisesTheBudgetThatStoppedTheRun(t *testing.T) {
+	for _, testCase := range []struct {
+		stoppedBy string
+		check     func(*state.Run) int
+		want      int
+	}{
+		{"tokens", func(r *state.Run) int { return r.TokenBudget }, 500},
+		{"wallclock", func(r *state.Run) int { return r.WallclockSeconds }, 500},
+		{"transitions", func(r *state.Run) int { return r.MaxTransitions }, 550},
+	} {
+		root := t.TempDir()
+		run := stoppedRun(t, root, "demo", state.StatusBudgetExceeded)
+		run.StoppedBy = testCase.stoppedBy
+		if err := state.Save(state.ManifestPath(root, "demo"), run); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := runResume([]string{
+			"--workspace", root, "--slug", "demo", "--reason", "worth more", "--budget", "500",
+		}); err != nil {
+			t.Fatalf("%s: %v", testCase.stoppedBy, err)
+		}
+		if got := testCase.check(reload(t, root, "demo")); got != testCase.want {
+			t.Errorf("%s: budget = %d, want %d", testCase.stoppedBy, got, testCase.want)
+		}
+	}
+}

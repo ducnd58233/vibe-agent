@@ -128,8 +128,13 @@ func runStart(args []string) error {
 	slug := flags.String("slug", "", "kebab-case slug for this goal (required)")
 	goal := flags.String("goal", "", "one-line objective (required)")
 	graphID := flags.String("graph", "goal-delivery", "workflow graph id")
+	tokenBudget := flags.Int("token-budget", 0, "stop the run past this many host-reported tokens (0 for no limit)")
+	wallclock := flags.Duration("wallclock", 0, "stop the run this long after it started (0 for no limit)")
 	if err := flags.Parse(args); err != nil {
 		return err
+	}
+	if *tokenBudget < 0 || *wallclock < 0 {
+		return fmt.Errorf("a budget bounds a run, so it cannot be negative")
 	}
 	if *slug == "" || *goal == "" {
 		return fmt.Errorf("run start needs --slug and --goal")
@@ -156,6 +161,8 @@ func runStart(args []string) error {
 	if err != nil {
 		return err
 	}
+	current.TokenBudget = *tokenBudget
+	current.WallclockSeconds = int(wallclock.Seconds())
 	if err := loop.New(loaded).Enter(current); err != nil {
 		return err
 	}
@@ -220,6 +227,16 @@ func runStatus(args []string) error {
 	fmt.Printf("  status     %s\n", current.Status)
 	fmt.Printf("  node       %s\n", orDash(current.CurrentNode))
 	fmt.Printf("  iteration  %d/%d\n", current.Iteration, current.MaxTransitions)
+	if current.TokenBudget > 0 || current.TokensUsed > 0 {
+		fmt.Printf("  tokens     %s\n", budgetLine(current.TokensUsed, current.TokenBudget))
+	}
+	if current.WallclockSeconds > 0 {
+		elapsed := time.Since(current.CreatedAt).Round(time.Minute)
+		fmt.Printf("  clock      %s/%s\n", elapsed, time.Duration(current.WallclockSeconds)*time.Second)
+	}
+	if current.StoppedBy != "" {
+		fmt.Printf("  stopped by %s budget\n", current.StoppedBy)
+	}
 	fmt.Printf("  branch     %s\n", orDashPtr(current.Branch))
 	fmt.Printf("  events     %d\n", len(events))
 
@@ -246,7 +263,19 @@ func runStatus(args []string) error {
 		if blocker.Node != current.CurrentNode {
 			continue
 		}
-		fmt.Printf("  blocker    %s at %s (attempt %d)\n", blocker.Reason, blocker.Node, blocker.Attempts)
+		class := ""
+		if blocker.Class != "" {
+			class = " [" + string(blocker.Class) + "]"
+		}
+		fmt.Printf("  blocker%s  %s at %s (attempt %d)\n", class, blocker.Reason, blocker.Node, blocker.Attempts)
 	}
 	return nil
+}
+
+// budgetLine renders usage against a limit, or usage alone when none is set.
+func budgetLine(used, budget int) string {
+	if budget <= 0 {
+		return fmt.Sprintf("%d used, no limit", used)
+	}
+	return fmt.Sprintf("%d/%d", used, budget)
 }

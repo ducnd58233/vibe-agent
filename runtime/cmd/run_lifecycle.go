@@ -119,7 +119,7 @@ func runResume(args []string) error {
 	paths := addRootFlags(flags)
 	slug := flags.String("slug", "", "goal slug (required)")
 	reason := flags.String("reason", "", "why this run should continue (required)")
-	budget := flags.Int("budget", 0, "raise maxTransitions by this many")
+	budget := flags.Int("budget", 0, "raise the budget that stopped the run by this much: transitions, tokens, or seconds")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func runResume(args []string) error {
 	}
 
 	previous := current.Status
-	current.MaxTransitions += *budget
+	raised, unit := raiseBudget(current, *budget)
 
 	// The blocker count is what ended the run. Leaving it in place would end
 	// the resumed run on its first failure rather than after three.
@@ -167,10 +167,10 @@ func runResume(args []string) error {
 	current.UpdatedAt = time.Now().UTC()
 
 	payload, err := json.Marshal(map[string]any{
-		"reason":            *reason,
-		"from":              string(previous),
-		"budgetRaisedBy":    *budget,
-		"maxTransitionsNow": current.MaxTransitions,
+		"reason":         *reason,
+		"from":           string(previous),
+		"budgetRaisedBy": raised,
+		"budgetUnit":     unit,
 	})
 	if err != nil {
 		return fmt.Errorf("encode resume event: %w", err)
@@ -189,6 +189,9 @@ func runResume(args []string) error {
 	fmt.Printf("  status     %s\n", current.Status)
 	fmt.Printf("  node       %s\n", orDash(current.CurrentNode))
 	fmt.Printf("  iteration  %d/%d\n", current.Iteration, current.MaxTransitions)
+	if raised > 0 {
+		fmt.Printf("  raised     %s by %d\n", unit, raised)
+	}
 	return nil
 }
 
@@ -248,4 +251,26 @@ func runAbort(args []string) error {
 	fmt.Printf("  node       %s\n", orDash(current.CurrentNode))
 	fmt.Printf("  reason     %s\n", *reason)
 	return nil
+}
+
+// raiseBudget extends whichever limit stopped the run, and reports what it did.
+//
+// Raising the transition count on a run that ran out of wallclock would leave it
+// stopping again on the next advance, having reported a resume that changed
+// nothing. StoppedBy is what makes the right budget knowable.
+func raiseBudget(run *state.Run, by int) (int, string) {
+	if by <= 0 {
+		return 0, ""
+	}
+	switch run.StoppedBy {
+	case "tokens":
+		run.TokenBudget += by
+		return by, "token budget"
+	case "wallclock":
+		run.WallclockSeconds += by
+		return by, "wallclock seconds"
+	default:
+		run.MaxTransitions += by
+		return by, "transitions"
+	}
 }

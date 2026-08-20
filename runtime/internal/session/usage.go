@@ -69,3 +69,39 @@ func usageInt(raw map[string]any, keys ...string) (int, bool) {
 	}
 	return 0, false
 }
+
+// TokensUsed sums the host-reported token counts in a session log.
+//
+// The runtime owns no model call, so this is the only place a token figure
+// exists: whatever the hosts reported, as they reported it. Input plus output
+// where both are present, total where only that is, and cache reads left out
+// because a cache hit is the cost being avoided rather than paid.
+//
+// A record with no usage contributes nothing rather than being an error. Hosts
+// disagree about which turns carry counts, and a log full of untotalled turns
+// is normal rather than broken.
+func TokensUsed(logPath string) (int, error) {
+	events, err := Replay(logPath)
+	if err != nil {
+		return 0, err
+	}
+	total := 0
+	for _, event := range events {
+		if len(event.Payload) == 0 {
+			continue
+		}
+		var payload Payload
+		if json.Unmarshal(event.Payload, &payload) != nil {
+			continue
+		}
+		if payload.Usage == nil {
+			continue
+		}
+		if payload.Usage.Input > 0 || payload.Usage.Output > 0 {
+			total += payload.Usage.Input + payload.Usage.Output
+			continue
+		}
+		total += payload.Usage.Total
+	}
+	return total, nil
+}

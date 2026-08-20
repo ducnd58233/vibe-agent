@@ -67,6 +67,10 @@ type Request struct {
 	origin origin
 	// Now is injectable so tests do not depend on the clock.
 	Now time.Time
+	// TokensUsed is what the session log reports so far. Filled by the caller
+	// that has the log, because this package must not reach into another
+	// module's persistence to find one.
+	TokensUsed int
 }
 
 func (r Request) now() time.Time {
@@ -134,6 +138,13 @@ func Apply(req Request) (*Result, error) {
 		return &Result{Run: run, Graph: loaded, Duplicate: true}, nil
 	}
 
+	// Tokens are counted by the surface that has the session log; this package
+	// only carries the figure to the runner. Monotonic, because a total that
+	// could fall would let a budget un-exceed itself.
+	if req.TokensUsed > run.TokensUsed {
+		run.TokensUsed = req.TokensUsed
+	}
+
 	now := req.now()
 	from := run.CurrentNode
 	transition, err := loop.New(loaded).Advance(run, req.Outcome)
@@ -176,6 +187,7 @@ func advanceStuckVerifier(req VerifyRequest, plan *Plan, run *state.Run, loaded 
 	}
 	manifest := state.ManifestPath(req.WorkspaceRoot, req.Slug)
 	logPath := state.EventLogPath(req.WorkspaceRoot, req.Slug)
+
 	now := req.now()
 	from := run.CurrentNode
 	outcome := loop.Outcome{Check: &loop.NamedCheck{Name: plan.Check, Check: existing}}

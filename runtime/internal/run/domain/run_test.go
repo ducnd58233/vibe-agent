@@ -84,3 +84,49 @@ func TestSetCheckStampsUpdatedAt(t *testing.T) {
 		t.Errorf("UpdatedAt = %v, want later than %v", run.UpdatedAt, before)
 	}
 }
+
+// The set is closed on purpose. A free-form class cannot be counted, and
+// counting is the only reason to record one.
+func TestAnUnknownFailureClassIsRefused(t *testing.T) {
+	run, err := NewRun("demo", "class test", "goal-delivery", 50, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "build"
+	run.Blockers = []Blocker{{Node: "build", Reason: "something", Attempts: 1, Class: "vibes"}}
+	if err := run.Validate(); err == nil {
+		t.Fatal("a class outside the set validated")
+	}
+
+	for _, class := range FailureClasses() {
+		run.Blockers[0].Class = class
+		if err := run.Validate(); err != nil {
+			t.Errorf("class %q was refused: %v", class, err)
+		}
+	}
+}
+
+// A blocker recorded before the field existed carries none, and refusing those
+// would strand the runs the field was added to help.
+func TestABlockerWithNoClassStillValidates(t *testing.T) {
+	run, err := NewRun("demo", "class test", "goal-delivery", 50, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "build"
+	run.Blockers = []Blocker{{Node: "build", Reason: "something", Attempts: 1}}
+	if err := run.Validate(); err != nil {
+		t.Errorf("an unclassified blocker was refused: %v", err)
+	}
+}
+
+func TestANegativeBudgetIsRefused(t *testing.T) {
+	run, err := NewRun("demo", "budget test", "goal-delivery", 50, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.TokenBudget = -1
+	if err := run.Validate(); err == nil {
+		t.Fatal("a negative token budget validated")
+	}
+}

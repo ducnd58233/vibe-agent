@@ -9,6 +9,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 )
 
 // checkpointCommand records evidence for the current node and advances the graph.
@@ -27,6 +28,7 @@ func checkpointCommand(args []string) error {
 	failed := flags.Bool("failed", false, "record a failure")
 	skipped := flags.Bool("skipped", false, "record that the check did not run")
 	blocker := flags.String("blocker", "", "record a blocker at this node")
+	class := flags.String("class", "", "what kind of failure: context, tool, permission, test, ambiguity, or model")
 	results := resultFlags{}
 	flags.Var(&results, "result", "result guard as name or name=true|false; repeatable")
 	if err := flags.Parse(args); err != nil {
@@ -44,7 +46,14 @@ func checkpointCommand(args []string) error {
 		return err
 	}
 
-	outcome := loop.Outcome{Blocker: *blocker, Result: map[string]bool(results)}
+	if *class != "" && *blocker == "" {
+		return fmt.Errorf("--class describes a failure, so it needs --blocker")
+	}
+	outcome := loop.Outcome{
+		Blocker:      *blocker,
+		BlockerClass: state.FailureClass(*class),
+		Result:       map[string]bool(results),
+	}
 	if *checkName != "" {
 		if *source == "" {
 			return fmt.Errorf("a check needs --source; evidence without provenance is not evidence")
@@ -61,11 +70,16 @@ func checkpointCommand(args []string) error {
 		}
 	}
 
+	// A failed read is not a reason to refuse the checkpoint: the token figure
+	// is a budget input, and losing it must not cost the evidence.
+	tokens, _ := session.TokensUsed(session.LogPath(workspaceRoot, *slug))
+
 	result, err := checkpoint.Apply(checkpoint.Request{
 		WorkspaceRoot: workspaceRoot,
 		GraphDir:      graph.DefaultDir(toolkitRoot),
 		Slug:          *slug,
 		Outcome:       outcome,
+		TokensUsed:    tokens,
 	})
 	if err != nil {
 		return err

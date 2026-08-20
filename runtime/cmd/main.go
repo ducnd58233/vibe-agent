@@ -24,6 +24,7 @@ const usage = `vibe-agent - outer-loop control plane
 
 Usage:
   vibe-agent run start --slug <slug> --goal <text> [--graph <id>]
+                       [--token-budget <n>] [--wallclock <duration>]
   vibe-agent run status --slug <slug> [--json]
   vibe-agent run list [--status <status>]
   vibe-agent run flag --slug <slug> (--set|--clear) <guard> [--note <text>]
@@ -31,6 +32,7 @@ Usage:
   vibe-agent run abort --slug <slug> --reason <text>
   vibe-agent verify --slug <slug> [--dry-run]
   vibe-agent checkpoint --slug <slug> --check <name> --source <source> [--passed|--failed|--skipped]
+  vibe-agent checkpoint --slug <slug> --blocker <text> [--class <class>]
   vibe-agent graph validate [--graph <id>]
   vibe-agent fetch <url|path> [--budget <tokens>] [--json] [--refresh]
   vibe-agent slop audit [path] [--format text|json] [--workers N] [--fail-on score]
@@ -64,6 +66,14 @@ It does not spawn external linters from user-controlled paths.
 
 Evidence sources: exit_code, file_assert, ci_api, human_event. There is no
 source for model assertion, so nothing can mark its own work complete.
+
+A blocker may carry a failure class: context, tool, permission, test,
+ambiguity, or model. It is the set the harness responsibility checklist uses,
+so a recorded failure answers a question an audit already asks.
+
+A run stops on whichever of three budgets it passes first: transitions,
+host-reported tokens, or wallclock. Zero is no limit, and "run status" names
+the one that ended it.
 
 A verifier node's check comes from "verify", which runs what vibe-checks.yaml at
 the workspace root declares for that check. "checkpoint" cannot write it: a
