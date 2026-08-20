@@ -45,6 +45,7 @@ func doctorCommand(args []string) error {
 	checkCheckPlan(report, workspaceRoot, toolkitRoot)
 	checkHumanVerifiers(workspaceRoot)
 	checkTaskFiles(report, workspaceRoot)
+	checkAutoOptIn(report, workspaceRoot)
 	checkMemory(report, workspaceRoot)
 	checkRunState(report, workspaceRoot)
 	checkWebState(report, workspaceRoot)

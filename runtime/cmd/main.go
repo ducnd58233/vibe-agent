@@ -37,6 +37,7 @@ Usage:
   vibe-agent fetch <url|path> [--budget <tokens>] [--json] [--refresh]
   vibe-agent slop audit [path] [--format text|json] [--workers N] [--fail-on score]
   vibe-agent mcp serve
+  vibe-agent auto init [--workspace <dir>]
   vibe-agent guards <list|init> [--workspace <dir>] [--force]
   vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|post-tool-use-failure|stop|subagent-stop> [--client claude|cursor]
   vibe-agent hook --events
@@ -74,6 +75,10 @@ so a recorded failure answers a question an audit already asks.
 A run stops on whichever of three budgets it passes first: transitions,
 host-reported tokens, or wallclock. Zero is no limit, and "run status" names
 the one that ended it.
+
+"auto init" writes the opt-in a workspace answers before auto mode may merge
+its own pull request. A missing file, or merge left false, means auto stops at
+a green pull request and a person merges it. Nothing infers the answer.
 
 A verifier node's check comes from "verify", which runs what vibe-checks.yaml at
 the workspace root declares for that check. "checkpoint" cannot write it: a
@@ -165,6 +170,8 @@ func run(args []string) error {
 		return slopCommand(args[1:])
 	case "mcp":
 		return mcpCommand(args[1:])
+	case "auto":
+		return autoCommand(args[1:])
 	case "guards":
 		return guardsCommand(args[1:])
 	case "hook":
