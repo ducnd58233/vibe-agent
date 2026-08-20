@@ -259,3 +259,70 @@ func TestTheStartReportFollowsTheOptIn(t *testing.T) {
 		})
 	}
 }
+
+// The approval has to say what it was answering, not only where the answer
+// lived. The opt-in file is gitignored, so there is no diff to fall back on:
+// a manifest naming a path reads as "a person answered yes" while the file can
+// say something else by the time anyone opens it.
+func TestTheApprovalReferenceCarriesTheAnswerAndADigest(t *testing.T) {
+	root := t.TempDir()
+	optedIn(t, root, true)
+
+	config, found, err := autoconfig.Load(root)
+	if err != nil || !found {
+		t.Fatalf("load opt-in: %v (found %t)", err, found)
+	}
+
+	ref := approvalRef(root, config)
+	for _, want := range []string{"auto.yaml", "merge=true", "sha256="} {
+		if !strings.Contains(ref, want) {
+			t.Errorf("reference does not contain %q: %s", want, ref)
+		}
+	}
+	if strings.Contains(ref, "\n") {
+		t.Errorf("the reference is not one line: %q", ref)
+	}
+	if config.Digest() == "" {
+		t.Error("Load produced no digest")
+	}
+}
+
+// The digest has to come from the bytes the decision was made on. Two different
+// answers must not produce the same reference, or the fingerprint says nothing.
+func TestADifferentAnswerProducesADifferentReference(t *testing.T) {
+	yes, no := t.TempDir(), t.TempDir()
+	optedIn(t, yes, true)
+	optedIn(t, no, false)
+
+	load := func(root string) *autoconfig.Config {
+		t.Helper()
+		config, found, err := autoconfig.Load(root)
+		if err != nil || !found {
+			t.Fatalf("load opt-in: %v (found %t)", err, found)
+		}
+		return config
+	}
+
+	first, second := load(yes), load(no)
+	if first.Digest() == second.Digest() {
+		t.Error("two different files fingerprinted the same")
+	}
+	if !strings.Contains(approvalRef(no, second), "merge=false") {
+		t.Errorf("a workspace that answered no recorded: %s", approvalRef(no, second))
+	}
+}
+
+// A config nothing read cannot be fingerprinted, and must not pretend otherwise.
+func TestAConfigThatWasNeverReadHasNoDigest(t *testing.T) {
+	parsed, err := autoconfig.Parse([]byte("apiVersion: vibe-agent/v1\nkind: AutoConfig\nspec:\n  merge: true\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.Digest() != "" {
+		t.Errorf("Parse produced a digest for bytes no file was read from: %q", parsed.Digest())
+	}
+	var absent *autoconfig.Config
+	if absent.Digest() != "" {
+		t.Error("a nil config produced a digest")
+	}
+}
