@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/autoconfig"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
@@ -84,4 +85,29 @@ func checkTaskFiles(report *diagnostics, workspaceRoot string) {
 	if checked == 0 {
 		fmt.Printf("  note  no %s in this workspace; tasks_remaining needs one where a graph reads it\n", tasks.FileName)
 	}
+}
+
+// checkAutoOptIn reports whether this workspace has answered the auto-mode
+// question, and refuses a file it cannot read.
+//
+// A malformed opt-in must not be reported as an absent one. Absence is a
+// deliberate no; a typo is a question nobody answered, and the two should not
+// look alike in a health check.
+func checkAutoOptIn(report *diagnostics, workspaceRoot string) {
+	config, present, err := autoconfig.Load(workspaceRoot)
+	if err != nil {
+		report.check("auto opt-in loads and validates", false, err.Error())
+		return
+	}
+	if !present {
+		fmt.Printf("  note  no %s; auto mode stops at a green pull request\n", autoconfig.FileName)
+		return
+	}
+	report.check("auto opt-in loads and validates", true, "")
+	if config.MayMerge() {
+		fmt.Printf("  note  auto mode may merge in this workspace, answered in %s\n",
+			autoconfig.Path(workspaceRoot))
+		return
+	}
+	fmt.Printf("  note  auto mode may not merge; %s still says merge: false\n", autoconfig.FileName)
 }

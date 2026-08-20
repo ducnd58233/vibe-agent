@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ducnd58233/vibe-agent/schemas/auto.schema.json",
+  "title": "AutoConfig",
+  "description": "A workspace's opt-in for auto mode, at .agent-state/auto.yaml. Auto mode may record its own merge approval, which is the one boundary this toolkit otherwise states without exception, so the opt-in is a file a person edited and can be read in a diff. A missing file, or merge left false, means auto mode stops at a green pull request.",
+  "type": "object",
+  "required": ["apiVersion", "kind", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "const": "vibe-agent/v1"
+    },
+    "kind": {
+      "const": "AutoConfig"
+    },
+    "spec": {
+      "type": "object",
+      "required": ["merge"],
+      "additionalProperties": false,
+      "properties": {
+        "merge": {
+          "type": "boolean",
+          "description": "Whether auto mode may merge its own pull request. It may only do so when every other condition already holds: required CI checks passed from the API, every test the spec names passed, the linter is clean with nothing suppressed, /ship returned GO, and the diff touches nothing on the danger list. This is the last of those, and the only one a machine cannot produce."
+        },
+        "budgets": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Ceilings for one auto run. Zero means no limit, matching run state, so a workspace opts into the ceilings it wants rather than inheriting numbers somebody picked.",
+          "properties": {
+            "tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Host-reported tokens this run may cost."
+            },
+            "wallclockSeconds": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "How long after the run started it may keep going."
+            }
+          }
+        }
+      }
+    }
+  }
+}
