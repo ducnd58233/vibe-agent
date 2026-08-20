@@ -195,6 +195,12 @@ func deliverBlock(req Request, blocked *BlockError, out io.Writer) error {
 
 // verdict runs every guard this hook enforces. The first refusal wins.
 func verdict(req Request, body payload) *BlockError {
+	// The danger list runs first. Every other refusal here is about the state
+	// of one delivery run; this one is about the action itself, and it holds
+	// whether or not a run exists.
+	if blocked := dangerVerdict(req, body); blocked != nil {
+		return blocked
+	}
 	if blocked := shellVerdict(req, body.shellCommand()); blocked != nil {
 		return blocked
 	}

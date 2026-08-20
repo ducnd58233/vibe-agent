@@ -1,0 +1,104 @@
+# Actions that stop for a person, whatever else has been approved.
+#
+# Separate from guards-default.yaml on purpose. That file is the advisory half:
+# it inspects file *content* after a tool ran and reports what it found. This is
+# the blocking half: it classifies an *action* before it runs, and it refuses.
+# Two jobs, two shapes, and forcing one into the other's model would mean
+# matching file-content rules against a shell command.
+#
+# Patterns are RE2 and are matched against each shell segment separately, so a
+# command hidden behind && or | is still seen.
+#
+# Deliberately narrow. A refusal that fires on honest work gets the whole gate
+# switched off, which is the failure mode this exists to avoid; a shape that is
+# only sometimes dangerous belongs in the warn-only half instead.
+#
+# A consumer repository extends this through .ai-agents/danger.yaml. It may add
+# categories and patterns. It cannot remove one: a workspace quietly weakening
+# the list that stops production writes is exactly what the list is for.
+
+apiVersion: vibe-agent/v1
+kind: DangerPlan
+
+spec:
+  categories:
+    - id: migration
+      reason: >-
+        A schema or data migration rewrites a database in place. Rolling one back is a second
+        migration written under pressure, not an undo.
+      commands:
+        - '(?i)\b(?:alembic|flyway|liquibase|sqitch)\b'
+        - '(?i)\b(?:migrate|migration)s?\s+(?:up|down|deploy|apply|reset)\b'
+        - '(?i)\b(?:rails|rake)\s+db:(?:migrate|rollback|drop|reset)\b'
+        - '(?i)\b(?:prisma|drizzle-kit|knex|goose|atlas)\s+migrate\b'
+        - '(?i)\bdjango-admin\s+migrate\b|\bmanage\.py\s+migrate\b'
+      paths:
+        - '(?i)(?:^|/)migrations?/'
+        - '(?i)(?:^|/)db/migrate/'
+
+    - id: data-destruction
+      reason: >-
+        This removes data rather than changing it. The rows are gone whether or not the change
+        that needed them was right.
+      commands:
+        - '(?i)\bDROP\s+(?:TABLE|DATABASE|SCHEMA|INDEX)\b'
+        - '(?i)\bTRUNCATE\s+(?:TABLE\s+)?\w'
+        - '(?i)\bDELETE\s+FROM\s+\w+\s*(?:;|$)'
+        - '(?i)\bredis-cli\s+(?:-\S+\s+)*(?:FLUSHALL|FLUSHDB)\b'
+        - '(?i)\bdropdb\b|\bmongo(?:sh)?\s+.*\bdropDatabase\b'
+
+    - id: production-write
+      reason: >-
+        This names a production target. A command that is safe against staging is not the same
+        command against production.
+      commands:
+        - '(?i)\b(?:kubectl|helm)\b.*--(?:namespace|n)[= ](?:prod|production)\b'
+        - '(?i)\bkubectl\b.*--context[= ]\S*(?:prod|production)\b'
+        - '(?i)\b(?:AWS_PROFILE|ENV|NODE_ENV|RAILS_ENV|DJANGO_ENV)=(?:prod|production)\b'
+        - '(?i)\bwrangler\b.*--env[= ](?:prod|production)\b'
+
+    - id: credential-change
+      reason: >-
+        Rotating or issuing a credential invalidates whatever was using the old one, and the new
+        one has to reach every consumer before anything notices.
+      commands:
+        - '(?i)\baws\s+iam\s+(?:create|delete|update)-access-key\b'
+        - '(?i)\bgcloud\s+iam\s+service-accounts\s+keys\s+(?:create|delete)\b'
+        - '(?i)\b(?:gh|glab)\s+secret\s+(?:set|delete)\b'
+        - '(?i)\bkubectl\s+(?:create|delete|replace)\s+secret\b'
+        - '(?i)\bvault\s+(?:kv\s+)?(?:put|delete|destroy)\b'
+
+    - id: history-rewrite
+      reason: >-
+        Rewriting published history breaks every clone that has the old commits, and the fix is
+        manual for each one.
+      commands:
+        # RE2 has no lookahead, so --force-with-lease is excluded by requiring
+        # whitespace or end of segment after --force rather than by negating it.
+        - '(?i)\bgit\s+push\b.*--force(?:\s|$)'
+        - '(?i)\bgit\s+push\b.*--mirror\b'
+        - '(?i)\bgit\s+filter-branch\b|\bgit\s+filter-repo\b'
+        - '(?i)\bbfg\b.*\.jar\b'
+
+    - id: infrastructure-destruction
+      reason: >-
+        This tears down infrastructure other things are running on. What comes back after a
+        re-apply is a new resource, not the one that was there.
+      commands:
+        - '(?i)\bterraform\s+destroy\b|\btofu\s+destroy\b'
+        - '(?i)\bpulumi\s+destroy\b'
+        - '(?i)\bkubectl\s+delete\s+(?:namespace|ns|deployment|statefulset|pvc|persistentvolumeclaim)\b'
+        - '(?i)\baws\s+(?:s3\s+rb|rds\s+delete-db-instance|ec2\s+terminate-instances)\b'
+        - '(?i)\bgcloud\s+\S+\s+delete\b'
+        - '(?i)\bdocker\s+(?:system\s+prune\s+.*--volumes|volume\s+rm)\b'
+
+    - id: publication
+      reason: >-
+        Publishing puts something where other people will fetch it. A version that reached a
+        registry cannot be unreleased, only superseded.
+      commands:
+        - '(?i)\bnpm\s+publish\b|\byarn\s+publish\b|\bpnpm\s+publish\b'
+        - '(?i)\b(?:twine\s+upload|python\s+-m\s+twine\s+upload)\b'
+        - '(?i)\bcargo\s+publish\b|\bgem\s+push\b'
+        - '(?i)\bgh\s+release\s+create\b'
+        - '(?i)\bdocker\s+push\b'
