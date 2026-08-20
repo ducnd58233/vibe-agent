@@ -1,0 +1,202 @@
+# Graph path fixtures: given these outcomes, which nodes does a run visit?
+#
+# Routing evals grade a model's choice of asset. These grade the graph, with no
+# model in the loop, so they run in CI on every change. An edge that starts
+# firing on the default path is one line of YAML, and nothing else in the suite
+# would notice.
+#
+# Reading a path: the first entry is the initial node, then one entry per step,
+# being where the run sits after that step. A step that leaves the run where it
+# was repeats the node rather than hiding it.
+#
+# Every check names its source, because run state refuses evidence without
+# provenance. A fixture that omitted it would describe a state the runtime
+# cannot reach.
+#
+# Reference: ../references/loop-and-graph-engineering.md
+
+apiVersion: vibe-agent/v1
+kind: GraphPathEvals
+
+metadata:
+  description: Node paths through goal-delivery for the outcomes a real run produces.
+
+spec:
+  scenarios:
+    - name: gated happy path reaches done
+      graph: goal-delivery
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {} # spec is an artifact node; the fallback edge carries it
+        - check: {name: spec_approved, passed: true, source: human_event}
+        - {} # plan
+        - check: {name: plan_approved, passed: true, source: human_event}
+        - {} # build
+        - check: {name: unit, passed: true, source: exit_code}
+        - check: {name: e2e, passed: true, source: exit_code}
+        - check: {name: slop, passed: true, source: exit_code}
+        - result: {changes_requested: false}
+        - check: {name: pr_open, passed: true, source: exit_code}
+        - check: {name: ci, passed: true, source: ci_api}
+        - check: {name: reviews, passed: true, source: human_event}
+        - check: {name: ship, passed: true, source: human_event}
+        - check: {name: merge_approved, passed: true, source: human_event}
+        - check: {name: tasks_remaining, passed: false, source: exit_code}
+      expect:
+        status: done
+        path:
+          - intake
+          - spec
+          - approve_spec
+          - plan
+          - approve_plan
+          - build
+          - test
+          - e2e
+          - slop
+          - review
+          - open_pr
+          - pr_checks
+          - external_reviews
+          - ship
+          - approve_merge
+          - task_complete
+          - done
+
+    - name: research flag routes through research
+      graph: goal-delivery
+      flags: {research_required: true}
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {}
+      expect:
+        status: running
+        path: [intake, research, spec]
+
+    - name: a rejected spec goes back to spec
+      graph: goal-delivery
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {}
+        - check: {name: spec_approved, passed: false, source: human_event}
+      expect:
+        status: running
+        path: [intake, spec, approve_spec, spec]
+
+    - name: a rejected plan goes back to plan
+      graph: goal-delivery
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {}
+        - check: {name: spec_approved, passed: true, source: human_event}
+        - {}
+        - check: {name: plan_approved, passed: false, source: human_event}
+      expect:
+        status: running
+        path: [intake, spec, approve_spec, plan, approve_plan, plan]
+
+    - name: failing unit tests return to build
+      graph: goal-delivery
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {}
+        - check: {name: spec_approved, passed: true, source: human_event}
+        - {}
+        - check: {name: plan_approved, passed: true, source: human_event}
+        - {}
+        - check: {name: unit, passed: false, source: exit_code}
+      expect:
+        status: running
+        path: [intake, spec, approve_spec, plan, approve_plan, build, test, build]
+
+    - name: a skipped e2e check still opens its gate
+      graph: goal-delivery
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {}
+        - check: {name: spec_approved, passed: true, source: human_event}
+        - {}
+        - check: {name: plan_approved, passed: true, source: human_event}
+        - {}
+        - check: {name: unit, passed: true, source: exit_code}
+        - check: {name: e2e, skipped: true, source: exit_code}
+      expect:
+        status: running
+        path: [intake, spec, approve_spec, plan, approve_plan, build, test, e2e, slop]
+
+    - name: review findings return to build
+      graph: goal-delivery
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {}
+        - check: {name: spec_approved, passed: true, source: human_event}
+        - {}
+        - check: {name: plan_approved, passed: true, source: human_event}
+        - {}
+        - check: {name: unit, passed: true, source: exit_code}
+        - check: {name: e2e, passed: true, source: exit_code}
+        - check: {name: slop, passed: true, source: exit_code}
+        - result: {changes_requested: true}
+      expect:
+        status: running
+        path: [intake, spec, approve_spec, plan, approve_plan, build, test, e2e, slop, review, build]
+
+    - name: a remaining task returns to build rather than ending
+      graph: goal-delivery
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {}
+        - check: {name: spec_approved, passed: true, source: human_event}
+        - {}
+        - check: {name: plan_approved, passed: true, source: human_event}
+        - {}
+        - check: {name: unit, passed: true, source: exit_code}
+        - check: {name: e2e, passed: true, source: exit_code}
+        - check: {name: slop, passed: true, source: exit_code}
+        - result: {changes_requested: false}
+        - check: {name: pr_open, passed: true, source: exit_code}
+        - check: {name: ci, passed: true, source: ci_api}
+        - check: {name: reviews, passed: true, source: human_event}
+        - check: {name: ship, passed: true, source: human_event}
+        - check: {name: merge_approved, passed: true, source: human_event}
+        - check: {name: tasks_remaining, passed: true, source: exit_code}
+      expect:
+        status: running
+        path:
+          - intake
+          - spec
+          - approve_spec
+          - plan
+          - approve_plan
+          - build
+          - test
+          - e2e
+          - slop
+          - review
+          - open_pr
+          - pr_checks
+          - external_reviews
+          - ship
+          - approve_merge
+          - task_complete
+          - build
+
+    # The third blocker at one node ends the run where it stands. The run never
+    # moves to the `failed` node: Advance returns terminal before resolving an
+    # edge, so `build -> failed when blocked` does not carry it. That is why the
+    # coverage note reports `failed` uncovered, and the note is accurate rather
+    # than a gap in these fixtures.
+    - name: three blockers at build end the run in place
+      graph: goal-delivery
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {}
+        - check: {name: spec_approved, passed: true, source: human_event}
+        - {}
+        - check: {name: plan_approved, passed: true, source: human_event}
+        - blocker: dependency will not install
+        - blocker: dependency will not install
+        - blocker: dependency will not install
+      expect:
+        status: failed
+        path: [intake, spec, approve_spec, plan, approve_plan, build, build, build, build]

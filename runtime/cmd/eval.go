@@ -119,12 +119,16 @@ var routerFiles = []string{
 
 func evalCommand(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("eval needs a subcommand; the only one is `routing`")
+		return fmt.Errorf("eval needs a subcommand: routing or graph")
 	}
-	if args[0] != "routing" {
-		return fmt.Errorf("unknown eval %q; the only one is `routing`", args[0])
+	switch args[0] {
+	case "routing":
+		return routingEvalCommand(args[1:])
+	case "graph":
+		return graphEvalCommand(args[1:])
+	default:
+		return fmt.Errorf("unknown eval %q; try routing or graph", args[0])
 	}
-	return routingEvalCommand(args[1:])
 }
 
 func routingEvalCommand(args []string) error {
