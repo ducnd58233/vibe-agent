@@ -21,7 +21,11 @@ on:
       - 'runtime/**'
       - 'vibe-checks.yaml'
       - '.gitignore'
-      - '.github/workflows/ai-agents-router.yml'
+      # Every workflow, not just this one. Naming a single file meant a change
+      # to the release workflow opened a pull request with no check on it at
+      # all - which is how a version-derivation bug reached a published
+      # release: nothing ran on the commit that introduced it.
+      - '.github/workflows/**'
       # Host config. These were left out, so a change to a permission rule, a
       # hook wiring, or a rules file opened a pull request with no required
       # check on it at all: #74 changed permissions for two hosts and CI never
