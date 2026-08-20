@@ -20,6 +20,13 @@ own `AGENTS.md`. It does ship infrastructure: validation scripts under [`scripts
 control plane under [`runtime/`](runtime). When editing `runtime/`, read [`runtime/AGENTS.md`](runtime/AGENTS.md)
 for Go module boundaries, shared infra, and web UI rules.
 
+The runtime owns the **outer loop**: which phase runs next, on what evidence, with which gates.
+It also owns a **bounded inner loop** for headless steps, added under `docs/harness-autonomy/SPEC.md`
+decision D2. That reverses an earlier decision to decline inner-loop ownership, and the scope is
+narrow on purpose: it runs mechanical steps such as fixing a linter error without a host session,
+and it does not replace Claude Code, Codex, Cursor, or opencode for interactive work. Sandboxed
+execution stays declined; isolation comes from the host or from CI.
+
 **Stance:** favor reusable patterns, explicit routing, stable permission boundaries, progressive
 disclosure, and minimal duplication across tools. Every rule below follows from those five.
 </scope>
@@ -157,9 +164,24 @@ Follow links from those files only as the task requires.
   behavior, and the memory contract: [`commands/goal.md`](.ai-agents/commands/goal.md) section
   "Runtime is required".
 - **Branch and PR.** One planned task, one branch, one PR. Same-task follow-ups stay on that branch;
-  unrelated work needs a new one. `/build` never merges to `main`. Merge only after `/ship` returns
-  **GO** and the human explicitly approves. See
+  unrelated work needs a new one. `/build` never merges to `main`. See
   [`git-workflow-and-versioning`](.ai-agents/skills/git-workflow-and-versioning/SKILL.md).
+- **Merge approval.** By default, merge only after `/ship` returns **GO** and the human explicitly
+  approves. `auto` mode is the one exception, and it is off unless a workspace turns it on. It may
+  record its own merge approval when **every** condition below holds, and stops for a person when
+  any one of them does not:
+
+  1. The workspace opted in, by a `.agent-state/auto.yaml` a person answered. An absent file means no.
+  2. Required PR checks passed, sourced from the CI API rather than from reading logs.
+  3. Every test the spec names passed, including end-to-end where it is in scope.
+  4. The linter is clean with no rule suppressed, no baseline widened, and no test skipped to get there.
+  5. `/ship` returned **GO**.
+  6. The diff touches nothing on the danger list: migrations, data destruction, production writes,
+     credential changes, history rewrites, infrastructure destruction, or outward publication.
+
+  This loosens a boundary this file used to state without exception. It is written here rather than
+  left to a mode flag because a reader of this rule has to be able to see what changed and when it
+  applies. Spec: `docs/harness-autonomy/SPEC.md`, decision D3.
 - **Evidence.** `/goal` records verification under `tmp/<slug>/` when that path is gitignored in the
   workspace, redacted before write. See
   [`goal-verification-records`](.ai-agents/references/goal-verification-records.md).
@@ -176,3 +198,4 @@ Follow links from those files only as the task requires.
   already in git; remove stray tracked paths with `git rm --cached` (keep the local copy). Do not use
   `git add -f` to bypass ignore for workspace-local deliverables.
 </delivery_gates>
+
