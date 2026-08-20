@@ -94,7 +94,7 @@ var Kept = []Keep{{
 }}
 
 func (k Keep) matches(path, symbol string) bool {
-	return symbol == k.Symbol && strings.HasSuffix(filepath.ToSlash(path), k.Suffix)
+	return symbol == k.Symbol && strings.HasSuffix(slashed(path), k.Suffix)
 }
 
 // Scanner runs the reachability analysis over a Go module.
@@ -170,7 +170,12 @@ func parse(out, module string) []domain.Finding {
 		if match == nil {
 			continue
 		}
-		path, symbol := filepath.ToSlash(match[1]), strings.TrimSpace(match[3])
+		// Normalised by hand rather than through filepath, because filepath is
+		// OS-dependent in exactly the wrong direction here: the tool emits
+		// backslashes when it runs on Windows, and FromSlash and ToSlash are
+		// both no-ops on Linux, so a Windows-shaped path survived the join
+		// intact. CI found that; Windows never would have.
+		path, symbol := slashed(match[1]), strings.TrimSpace(match[3])
 		if kept(path, symbol) {
 			continue
 		}
@@ -179,7 +184,7 @@ func parse(out, module string) []domain.Finding {
 			continue
 		}
 		findings = append(findings, domain.Finding{
-			Path:     filepath.ToSlash(filepath.Join(module, filepath.FromSlash(path))),
+			Path:     slashed(module) + "/" + path,
 			Line:     line,
 			Rule:     Rule,
 			Severity: Severity,
@@ -189,6 +194,11 @@ func parse(out, module string) []domain.Finding {
 		})
 	}
 	return findings
+}
+
+// slashed puts a path in slash form whatever platform produced it.
+func slashed(p string) string {
+	return strings.TrimSuffix(strings.ReplaceAll(p, `\`, "/"), "/")
 }
 
 func kept(path, symbol string) bool {
