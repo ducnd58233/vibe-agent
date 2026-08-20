@@ -53,6 +53,17 @@ if [ -n "$(staged '.ai-agents' '.claude' '.cursor' '.codex' '.opencode')" ]; the
     sh scripts/check-generated-views.sh
     sh scripts/check-workspace-install.sh
     sh scripts/check-xml-tags.sh
+    # Frontmatter is how a host finds an asset at all. A command file without it
+    # is invisible to the picker, and nothing else here notices: the routers
+    # link it, the tags parse, and the generated view copies it faithfully. This
+    # was added after exactly that reached CI.
+    python3 scripts/check-frontmatter.py
+fi
+
+# Schemas describe files the runtime refuses to load when they disagree, so a
+# mismatch is found at the moment somebody needed the file to work.
+if [ -n "$(staged 'schemas' 'vibe-checks.yaml')" ]; then
+    python3 scripts/check-schemas.py
 fi
 
 # Remaining Python hook scripts may own local contract tests. The runtime-owned

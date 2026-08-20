@@ -1,3 +1,7 @@
+---
+description: Unattended delivery loop - /goal with the approval gates answered by evidence, behind a workspace opt-in
+---
+
 Drive one objective to a merged pull request without stopping for a person, except where a written rule says stop.
 
 <context>
