@@ -33,6 +33,10 @@ type Outcome struct {
 	Check *NamedCheck
 	// Blocker, when set, records a failure at this node for the stop rule.
 	Blocker string
+	// BlockerClass says what kind of failure it was. Optional: a caller that
+	// does not know should say nothing rather than guess, because a wrong
+	// class is worse than none when the point is to count them.
+	BlockerClass state.FailureClass
 }
 
 // NamedCheck is one check result plus the key it belongs under.
@@ -113,7 +117,7 @@ func (r *Runner) Advance(run *state.Run, outcome Outcome) (*Transition, error) {
 	}
 
 	if outcome.Blocker != "" {
-		if r.recordBlocker(run, run.CurrentNode, outcome.Blocker, now) >= MaxBlockerAttempts {
+		if r.recordBlocker(run, run.CurrentNode, outcome.Blocker, outcome.BlockerClass, now) >= MaxBlockerAttempts {
 			run.Status = state.StatusFailed
 			run.UpdatedAt = now
 			return &Transition{
@@ -146,8 +150,9 @@ func (r *Runner) Advance(run *state.Run, outcome Outcome) (*Transition, error) {
 	}
 
 	run.Iteration++
-	if run.Iteration > run.MaxTransitions {
+	if exceeded := exceededBudget(run, now); exceeded != "" {
 		run.Status = state.StatusBudgetExceeded
+		run.StoppedBy = exceeded
 		run.UpdatedAt = now
 		return &Transition{
 			From: run.CurrentNode, To: run.CurrentNode,
@@ -273,7 +278,7 @@ func (r *Runner) runtimeGuard(run *state.Run, key string) bool {
 		}
 		return false
 	case "budget_exceeded":
-		return run.Iteration >= run.MaxTransitions
+		return run.Iteration >= run.MaxTransitions || exceededBudget(run, r.now()) != ""
 	default:
 		return false
 	}
@@ -294,18 +299,45 @@ func clearBlockersAt(blockers []state.Blocker, node string) []state.Blocker {
 	return out
 }
 
-func (r *Runner) recordBlocker(run *state.Run, node, reason string, now time.Time) int {
+func (r *Runner) recordBlocker(run *state.Run, node, reason string, class state.FailureClass, now time.Time) int {
 	for i := range run.Blockers {
 		if run.Blockers[i].Node == node && run.Blockers[i].Reason == reason {
 			run.Blockers[i].Attempts++
 			run.Blockers[i].At = now
+			// A repeat may arrive better classified than the first sighting.
+			if class != "" {
+				run.Blockers[i].Class = class
+			}
 			return run.Blockers[i].Attempts
 		}
 	}
 	run.Blockers = append(run.Blockers, state.Blocker{
-		Node: node, Reason: reason, Attempts: 1, At: now,
+		Node: node, Reason: reason, Class: class, Attempts: 1, At: now,
 	})
 	return 1
+}
+
+// exceededBudget names the limit a run has passed, or "" while it is inside all
+// of them.
+//
+// Three limits, one status. Transitions bound how many steps a run may take,
+// tokens bound what it may cost, and wallclock bounds how long it may hold a
+// branch open. A zero budget is no budget: adding a limit should not
+// retroactively stop runs nobody set one for.
+func exceededBudget(run *state.Run, now time.Time) string {
+	if run.Iteration > run.MaxTransitions {
+		return "transitions"
+	}
+	if run.TokenBudget > 0 && run.TokensUsed > run.TokenBudget {
+		return "tokens"
+	}
+	if run.WallclockSeconds > 0 {
+		deadline := run.CreatedAt.Add(time.Duration(run.WallclockSeconds) * time.Second)
+		if now.After(deadline) {
+			return "wallclock"
+		}
+	}
+	return ""
 }
 
 func terminalStatus(status graph.TerminalStatus) state.Status {

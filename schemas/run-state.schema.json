@@ -66,6 +66,25 @@
       "minimum": 1,
       "description": "Copied from the graph at run start so the budget is auditable from state alone."
     },
+    "tokenBudget": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Host-reported tokens this run may cost before it stops. Zero is no limit, so adding the field does not retroactively bound runs nobody set one for."
+    },
+    "wallclockSeconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "How long after createdAt the run may keep going. Zero is no limit."
+    },
+    "tokensUsed": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Tokens the session log has reported so far. Filled by the surface that reads the log; the runner owns no source of tokens."
+    },
+    "stoppedBy": {
+      "enum": ["transitions", "tokens", "wallclock"],
+      "description": "Which limit ended the run. Three budgets share the budget_exceeded status, and that status alone does not say which one was hit."
+    },
     "branch": {
       "type": ["string", "null"],
       "description": "Task branch for the current task. One planned task, one branch, one PR."
@@ -179,6 +198,10 @@
         "reason": {
           "type": "string",
           "minLength": 1
+        },
+        "class": {
+          "enum": ["context", "tool", "permission", "test", "ambiguity", "model"],
+          "description": "What kind of failure this was, from the set the harness responsibility checklist uses. Optional: a blocker recorded before the field existed has none, and refusing those would strand the runs it was added to help."
         },
         "attempts": {
           "type": "integer",

@@ -39,6 +39,49 @@ func (s CheckSource) valid() bool {
 	return false
 }
 
+// FailureClass says what kind of thing went wrong.
+//
+// The set is closed, and it is the one from the responsibility checklist in
+// references/agent-harness-engineering.md, so a recorded failure lines up with
+// the question an audit already asks. Without it every failure was a sentence,
+// and a sentence cannot be counted: "repeated failures produce generic retries"
+// is the failure mode the checklist names, and having no class is how a system
+// arrives there.
+type FailureClass string
+
+const (
+	// FailureContext is missing, stale, or flooded context: the agent did not
+	// have what it needed to be right.
+	FailureContext FailureClass = "context"
+	// FailureTool is a tool or command that broke, was absent, or misbehaved.
+	FailureTool FailureClass = "tool"
+	// FailurePermission is a boundary refusing the action, correctly or not.
+	FailurePermission FailureClass = "permission"
+	// FailureTest is the work being wrong, reported by a check.
+	FailureTest FailureClass = "test"
+	// FailureAmbiguity is the request not having one reading.
+	FailureAmbiguity FailureClass = "ambiguity"
+	// FailureModel is the model getting it wrong with everything else in place.
+	FailureModel FailureClass = "model"
+)
+
+// FailureClasses lists the set, for a usage string or a validation message.
+func FailureClasses() []FailureClass {
+	return []FailureClass{
+		FailureContext, FailureTool, FailurePermission,
+		FailureTest, FailureAmbiguity, FailureModel,
+	}
+}
+
+func (c FailureClass) valid() bool {
+	switch c {
+	case FailureContext, FailureTool, FailurePermission,
+		FailureTest, FailureAmbiguity, FailureModel:
+		return true
+	}
+	return false
+}
+
 // Status is where a run stands.
 type Status string
 
@@ -86,6 +129,10 @@ func (c Check) validate(name string) error {
 type Blocker struct {
 	Node   string `json:"node"`
 	Reason string `json:"reason"`
+	// Class is what kind of failure this was. Optional, because a blocker
+	// recorded before the set existed has none, and refusing to load those
+	// would strand the runs this field was added to help.
+	Class FailureClass `json:"class,omitempty"`
 	// Attempts drives the stop rule: three cycles on the same blocker ends the
 	// run and reports root cause instead of retrying a fourth time.
 	Attempts int       `json:"attempts"`
@@ -111,6 +158,21 @@ type Run struct {
 	Status         Status `json:"status"`
 	Iteration      int    `json:"iteration"`
 	MaxTransitions int    `json:"maxTransitions"`
+
+	// TokenBudget and WallclockSeconds are the other two ways a run can cost
+	// more than it is worth. Zero means no limit, which is the existing
+	// behavior and stays the default: a budget nobody set should not stop
+	// anything.
+	//
+	// TokensUsed is filled by the surface that has the session log, not by the
+	// runner, which owns no source of tokens.
+	TokenBudget      int `json:"tokenBudget,omitempty"`
+	WallclockSeconds int `json:"wallclockSeconds,omitempty"`
+	TokensUsed       int `json:"tokensUsed,omitempty"`
+
+	// StoppedBy names which limit ended the run, because three of them share
+	// one status and "budget_exceeded" alone does not say which.
+	StoppedBy string `json:"stoppedBy,omitempty"`
 
 	Branch    *string `json:"branch"`
 	PR        *string `json:"pr"`
@@ -232,6 +294,9 @@ func (r *Run) Validate() error {
 	if r.MaxTransitions < 1 {
 		return fmt.Errorf("maxTransitions must be at least 1, got %d", r.MaxTransitions)
 	}
+	if r.TokenBudget < 0 || r.WallclockSeconds < 0 || r.TokensUsed < 0 {
+		return fmt.Errorf("budgets and usage must not be negative")
+	}
 	for name := range r.Flags {
 		if !namePattern.MatchString(name) {
 			return fmt.Errorf("flag name %q must be lowercase with underscores", name)
@@ -251,6 +316,9 @@ func (r *Run) Validate() error {
 		}
 		if blocker.Attempts < 1 {
 			return fmt.Errorf("blocker %d needs at least one attempt, got %d", i, blocker.Attempts)
+		}
+		if blocker.Class != "" && !blocker.Class.valid() {
+			return fmt.Errorf("blocker %d has class %q, which is not one of the six", i, blocker.Class)
 		}
 	}
 	return nil

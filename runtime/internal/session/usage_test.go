@@ -29,3 +29,59 @@ func TestParseUsageReadsSplitAndTotal(t *testing.T) {
 		t.Fatalf("camel = %+v", camel)
 	}
 }
+
+// The runtime owns no model call, so a session log is the only place a token
+// figure exists. Summing it is what makes a token budget enforceable at all.
+func TestTokensUsedSumsWhatTheHostsReported(t *testing.T) {
+	path := LogPath(t.TempDir(), "demo")
+	records := []Record{
+		{Type: TypeTranscriptMessage, Source: SourcePrint, Role: "assistant", Body: "one",
+			Usage: &Usage{Input: 100, Output: 50}},
+		{Type: TypeTranscriptMessage, Source: SourcePrint, Role: "assistant", Body: "two",
+			Usage: &Usage{Total: 30}},
+		// No usage at all: hosts disagree about which turns carry counts, and a
+		// log full of untotalled turns is normal rather than broken.
+		{Type: TypePromptSubmit, Source: SourceHook, Body: "three"},
+	}
+	for _, record := range records {
+		if _, err := Append(path, record); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	total, err := TokensUsed(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 180 {
+		t.Errorf("total = %d, want 180 (100+50 then 30)", total)
+	}
+}
+
+// A cache read is the cost being avoided rather than paid, so it stays out.
+func TestTokensUsedLeavesCacheReadsOut(t *testing.T) {
+	path := LogPath(t.TempDir(), "demo")
+	if _, err := Append(path, Record{
+		Type: TypeTranscriptMessage, Source: SourcePrint, Role: "assistant", Body: "cached",
+		Usage: &Usage{Input: 10, Output: 5, CacheRead: 9000},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	total, err := TokensUsed(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 15 {
+		t.Errorf("total = %d, want 15", total)
+	}
+}
+
+func TestTokensUsedOnAnAbsentLogIsZero(t *testing.T) {
+	total, err := TokensUsed(LogPath(t.TempDir(), "nothing-here"))
+	if err != nil {
+		t.Fatalf("an absent log errored: %v", err)
+	}
+	if total != 0 {
+		t.Errorf("total = %d, want 0", total)
+	}
+}
