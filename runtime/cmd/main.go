@@ -37,6 +37,7 @@ Usage:
   vibe-agent fetch <url|path> [--budget <tokens>] [--json] [--refresh]
   vibe-agent slop audit [path] [--format text|json] [--workers N] [--fail-on score]
   vibe-agent mcp serve
+  vibe-agent run extend --slug <slug> --budget <n> --reason <text>
   vibe-agent auto --goal "<text>" [--slug <slug>] [--task-source <name>]
   vibe-agent auto gate --slug <slug>
   vibe-agent auto merge --slug <slug>
@@ -74,6 +75,10 @@ source for model assertion, so nothing can mark its own work complete.
 A blocker may carry a failure class: context, tool, permission, test,
 ambiguity, or model. It is the set the harness responsibility checklist uses,
 so a recorded failure answers a question an audit already asks.
+
+"run extend" raises a healthy run's transition ceiling. Separate from resume,
+which undoes a stop: a run at 99 of 100 with work left has not stopped, and the
+only way to give it room used to be to let it break first and undo the break.
 
 A run stops on whichever of three budgets it passes first: transitions,
 host-reported tokens, or wallclock. Zero is no limit, and "run status" names

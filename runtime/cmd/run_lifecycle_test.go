@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -198,6 +199,103 @@ func TestResumeRaisesTheBudgetThatStoppedTheRun(t *testing.T) {
 		}
 		if got := testCase.check(reload(t, root, "demo")); got != testCase.want {
 			t.Errorf("%s: budget = %d, want %d", testCase.stoppedBy, got, testCase.want)
+		}
+	}
+}
+
+// runningRun writes a healthy run near its ceiling, which is the state that had
+// no supported way forward.
+func runningRun(t *testing.T, root, slug string) *state.Run {
+	t.Helper()
+	run, err := state.NewRun(slug, "extend test", "goal-delivery", 100,
+		time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "build"
+	run.Status = state.StatusRunning
+	run.Iteration = 99
+	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
+		t.Fatal(err)
+	}
+	return run
+}
+
+// The finding: the only way to give a healthy run room was to let it break
+// first and then undo the break.
+func TestARunningRunCanBeExtendedWithoutFailingFirst(t *testing.T) {
+	root := t.TempDir()
+	runningRun(t, root, "healthy")
+
+	if err := runExtend([]string{"--workspace", root, "--slug", "healthy",
+		"--reason", "eight tasks left", "--budget", "200"}); err != nil {
+		t.Fatalf("extend: %v", err)
+	}
+
+	after := reload(t, root, "healthy")
+	if after.MaxTransitions != 300 {
+		t.Errorf("MaxTransitions = %d, want 300", after.MaxTransitions)
+	}
+	if after.Status != state.StatusRunning {
+		t.Errorf("status = %q, want the run left running", after.Status)
+	}
+	if after.Iteration != 99 {
+		t.Errorf("iteration = %d, want it untouched", after.Iteration)
+	}
+}
+
+// A ceiling raised without a reason is a ceiling nobody chose.
+func TestExtendDemandsASlugAReasonAndABudget(t *testing.T) {
+	root := t.TempDir()
+	runningRun(t, root, "healthy")
+
+	for _, args := range [][]string{
+		{"--workspace", root, "--reason", "why", "--budget", "10"},
+		{"--workspace", root, "--slug", "healthy", "--budget", "10"},
+		{"--workspace", root, "--slug", "healthy", "--reason", "why"},
+		{"--workspace", root, "--slug", "healthy", "--reason", "why", "--budget", "-5"},
+	} {
+		if err := runExtend(args); err == nil {
+			t.Errorf("extend accepted %v", args)
+		}
+	}
+}
+
+// Extend and resume are different jobs. Sending a stopped run here would skip
+// the blocker clearing and leave a run that looks extended and is still stopped.
+func TestExtendRefusesAStoppedRunAndNamesResume(t *testing.T) {
+	root := t.TempDir()
+	stoppedRun(t, root, "broken", state.StatusFailed)
+
+	err := runExtend([]string{"--workspace", root, "--slug", "broken",
+		"--reason", "carry on", "--budget", "50"})
+	if err == nil {
+		t.Fatal("extend accepted a stopped run")
+	}
+	if !strings.Contains(err.Error(), "run resume") {
+		t.Errorf("the refusal does not point at resume: %v", err)
+	}
+}
+
+// The decision has to be in the log, or a ceiling appears in the manifest with
+// no account of where it came from.
+func TestExtendRecordsTheDecision(t *testing.T) {
+	root := t.TempDir()
+	runningRun(t, root, "healthy")
+
+	if err := runExtend([]string{"--workspace", root, "--slug", "healthy",
+		"--reason", "eight tasks left", "--budget", "200"}); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, err := os.ReadFile(state.EventLogPath(root, "healthy"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	log := string(raw)
+	for _, want := range []string{"run_extended", "eight tasks left", "300"} {
+		if !strings.Contains(log, want) {
+			t.Errorf("the event log does not contain %q:\n%s", want, log)
 		}
 	}
 }

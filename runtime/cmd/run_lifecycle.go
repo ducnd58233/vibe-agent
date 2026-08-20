@@ -274,3 +274,78 @@ func raiseBudget(run *state.Run, by int) (int, string) {
 		return by, "transitions"
 	}
 }
+
+// runExtend raises a healthy run's transition ceiling.
+//
+// A separate verb from resume, and the separation is the point. Resume undoes a
+// stop: it clears the blocker count, restores a status, and refuses a run that
+// has not stopped. A run at 99 of 100 with eight tasks left has not stopped, and
+// the only supported way to give it room was to let it break first and then undo
+// the break. That is a worse record of what happened as well as a worse
+// experience: the manifest ends up saying a run failed and was resumed, when it
+// was neither.
+//
+// Transitions only. A run heading for a token or wallclock ceiling is a
+// different need, and nothing has shown that need yet; adding the knob now would
+// be the shape this audit exists to find.
+func runExtend(args []string) error {
+	flags := newFlagSet("run extend")
+	paths := addRootFlags(flags)
+	slug := flags.String("slug", "", "goal slug (required)")
+	reason := flags.String("reason", "", "why this run needs more room (required)")
+	budget := flags.Int("budget", 0, "raise the transition ceiling by this many (required)")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	switch {
+	case *slug == "":
+		return fmt.Errorf("run extend needs --slug")
+	case *reason == "":
+		return fmt.Errorf("run extend needs --reason; a ceiling raised without one is a ceiling nobody chose")
+	case *budget <= 0:
+		return fmt.Errorf("run extend needs --budget to say by how many transitions")
+	}
+
+	workspaceRoot, _, err := paths.resolve()
+	if err != nil {
+		return err
+	}
+	manifest := state.ManifestPath(workspaceRoot, *slug)
+	current, err := state.Load(manifest)
+	if err != nil {
+		return err
+	}
+
+	// A stopped run is resume's job. Sending it here would skip the blocker
+	// clearing and the status restore, and leave a run that looks extended and
+	// is still stopped.
+	if resumableStatus(current.Status) {
+		return fmt.Errorf("run is %s, which is a stop; use `run resume --slug %s --reason ... --budget %d`",
+			current.Status, *slug, *budget)
+	}
+
+	before := current.MaxTransitions
+	current.MaxTransitions += *budget
+	current.UpdatedAt = time.Now().UTC()
+
+	payload, err := json.Marshal(map[string]any{
+		"reason": *reason, "from": before, "to": current.MaxTransitions,
+	})
+	if err != nil {
+		return fmt.Errorf("encode extend event: %w", err)
+	}
+	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, *slug),
+		state.Event{Type: "run_extended", Node: current.CurrentNode, At: current.UpdatedAt, Payload: payload},
+	); err != nil {
+		return err
+	}
+	if err := state.Save(manifest, current); err != nil {
+		return err
+	}
+
+	fmt.Printf("extended %s\n", *slug)
+	fmt.Printf("  transitions %d -> %d\n", before, current.MaxTransitions)
+	fmt.Printf("  iteration   %d/%d\n", current.Iteration, current.MaxTransitions)
+	fmt.Printf("  reason      %s\n", *reason)
+	return nil
+}
