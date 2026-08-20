@@ -25,19 +25,10 @@
       "Bash(./scripts/link-ai-agents.sh*)",
       "Bash(powershell -ExecutionPolicy Bypass -File scripts/link-ai-agents.ps1*)",
       "WebSearch",
-      "WebFetch(domain:docs.anthropic.com)",
-      "WebFetch(domain:support.claude.com)",
-      "WebFetch(domain:platform.openai.com)",
-      "WebFetch(domain:openai.github.io)",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:api.github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:json.schemastore.org)",
       "mcp__ide__*",
       "mcp__chrome-devtools__*",
       "mcp__playwright__*",
       "mcp__mobile__*",
-      "WebFetch(domain:cursor.com)",
       "Bash(vibe-agent *)",
       "Read(schemas/**)",
       "Edit(schemas/**)",
@@ -104,7 +95,8 @@
       "Bash(curl http://127.0.0.1:*)",
       "Bash(curl http://localhost:*)",
       "Bash(curl -* http://127.0.0.1:*)",
-      "Bash(curl -* http://localhost:*)"
+      "Bash(curl -* http://localhost:*)",
+      "WebFetch"
     ],
     "deny": [
       "Read(.env*)",
@@ -135,7 +127,6 @@
     ],
     "ask": [
       "NotebookEdit(*)",
-      "WebFetch(domain:*)",
       "mcp__*",
       "Bash(rm *)",
       "Bash(rmdir *)",
