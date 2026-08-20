@@ -5,8 +5,12 @@
 // fire. An MCP tool call is model-decided, so it is best effort by nature. That
 // is why this is the fallback surface and not the primary one.
 //
-// Six tools, not thirty. A long tool list makes routing worse, and every
+// A short tool list, not thirty. A long one makes routing worse, and every
 // verifier exposed separately would be an invitation to call them out of order.
+//
+// vibe_fetch is the one entry that is not control-plane bookkeeping. It earns
+// its slot by returning tokens rather than spending them, which is the thing a
+// short list exists to protect.
 package mcp
 
 import (

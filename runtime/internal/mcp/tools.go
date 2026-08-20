@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkpoint"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
@@ -70,6 +72,21 @@ func Tools(deps Deps) []Tool {
 			Description: "Load the workspace rules, the active run, and relevant memories. Call before starting work.",
 			InputSchema: schema(`{"type":"object","properties":{"slug":{"type":"string","description":"Goal slug, when one is already chosen"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return bootstrap(deps, raw) },
+		},
+		{
+			// The eighth tool, on a ground none of the other seven share.
+			//
+			// Every other tool here is control-plane bookkeeping and costs a
+			// slot in the list to buy nothing back. This one returns tokens
+			// rather than spending them: a page arrives clipped to a budget and
+			// cached, instead of whole and again next time. It defends the thing
+			// a short tool list exists to protect, which is the argument for its
+			// place in a list that is deliberately short.
+			Name: "vibe_fetch",
+			Description: "Fetch a URL or local path as text, clipped to a token budget and cached. " +
+				"Prefer this over an unbudgeted fetch: it is the same document for a fraction of the context.",
+			InputSchema: schema(`{"type":"object","required":["source"],"properties":{"source":{"type":"string","description":"URL or path"},"budget":{"type":"integer","minimum":1,"description":"Approximate token budget for the returned text"},"refresh":{"type":"boolean","description":"Bypass the cache"}}}`),
+			Handler:     func(raw json.RawMessage) (any, error) { return fetchSource(deps, raw) },
 		},
 		{
 			Name:        "vibe_memory_search",
@@ -498,3 +515,56 @@ func relativeIfPresent(root, path string) string {
 	}
 	return filepath.ToSlash(path)
 }
+
+// DefaultFetchBudget matches the CLI's, so the same source costs the same
+// whichever surface asked for it.
+const DefaultFetchBudget = 4000
+
+// fetchSource returns a document already clipped to a budget.
+//
+// Clipped here rather than by the caller, because the point of the tool is that
+// the untrimmed text never reaches a context window. Handing back everything
+// and trusting the reader to stop would be the behaviour this exists to
+// replace.
+func fetchSource(deps Deps, raw json.RawMessage) (any, error) {
+	var args struct {
+		Source  string `json:"source"`
+		Budget  int    `json:"budget"`
+		Refresh bool   `json:"refresh"`
+	}
+	if err := json.Unmarshal(raw, &args); err != nil {
+		return nil, fmt.Errorf("vibe_fetch: %w", err)
+	}
+	if strings.TrimSpace(args.Source) == "" {
+		return nil, fmt.Errorf("vibe_fetch needs a source")
+	}
+	budget := args.Budget
+	if budget <= 0 {
+		budget = DefaultFetchBudget
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), fetchTimeout)
+	defer cancel()
+
+	document, cached, err := fetch.Get(ctx, deps.WorkspaceRoot, args.Source, fetch.Options{Refresh: args.Refresh})
+	if err != nil {
+		// An error the model can act on, not a panic: it says which source and
+		// what went wrong, so the next move can be a different URL rather than
+		// the same one again.
+		return nil, fmt.Errorf("vibe_fetch %s: %w", args.Source, err)
+	}
+
+	clipped, omitted := fetch.Clip(document.Text, budget)
+	return map[string]any{
+		"source":       args.Source,
+		"title":        document.Title,
+		"text":         clipped,
+		"cached":       cached,
+		"omittedLines": omitted,
+		"tokens":       fetch.EstimateTokens(clipped),
+	}, nil
+}
+
+// fetchTimeout bounds one call. A tool that hangs is worse than one that fails,
+// because the model has no way to tell the difference from the inside.
+const fetchTimeout = 60 * time.Second

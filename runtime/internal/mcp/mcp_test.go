@@ -73,20 +73,28 @@ func toolText(t *testing.T, reply map[string]any) string {
 	return text(t, object(t, content[0], "content[0]")["text"], "content[0].text")
 }
 
-// Seven tools, deliberately. A long tool list makes routing worse.
-func TestSurfaceIsExactlySevenTools(t *testing.T) {
+// A short list, deliberately. A long tool list makes routing worse, so every
+// entry carries the reason it is worth a slot and adding one means writing that
+// reason down. A name with no reason fails, which is the rule made checkable
+// rather than left in a comment.
+func TestEveryToolOnTheSurfaceEarnsItsSlot(t *testing.T) {
 	server := NewServer("test", newDeps(t))
-	want := map[string]bool{
-		"vibe_bootstrap": true, "vibe_memory_search": true, "vibe_memory_propose": true,
-		"vibe_run_start": true, "vibe_run_status": true, "vibe_checkpoint": true,
-		"vibe_verify": true,
+	want := map[string]string{
+		"vibe_bootstrap":      "the entry point; without it a session works from a memorised asset list",
+		"vibe_memory_search":  "what earlier runs established, so this one does not re-derive it",
+		"vibe_memory_propose": "the only way a memory is written, and it still needs confirming",
+		"vibe_run_start":      "hosts without hooks have no other way to begin a run",
+		"vibe_run_status":     "the node and its evidence, which is the one thing never to infer",
+		"vibe_checkpoint":     "records evidence; the verifiers stay behind vibe_verify on purpose",
+		"vibe_verify":         "runs what the check plan declares, so the command is not chosen at the keyboard",
+		"vibe_fetch":          "the only tool here that returns tokens rather than spending them",
 	}
 	if len(server.Tools) != len(want) {
 		t.Errorf("got %d tools, want %d", len(server.Tools), len(want))
 	}
 	for _, tool := range server.Tools {
-		if !want[tool.Name] {
-			t.Errorf("unexpected tool %q", tool.Name)
+		if want[tool.Name] == "" {
+			t.Errorf("tool %q is on the surface with no reason recorded; add one here or take it off", tool.Name)
 		}
 		if tool.Description == "" {
 			t.Errorf("tool %q has no description", tool.Name)
@@ -359,4 +367,84 @@ func text(t *testing.T, value any, what string) string {
 		t.Fatalf("%s is %T, want a string", what, value)
 	}
 	return narrowed
+}
+
+// The eighth tool exists so Codex and opencode, which have no hooks, can reach
+// the one runtime capability that returns tokens rather than spending them.
+func TestFetchIsExposedAsATool(t *testing.T) {
+	tools := Tools(Deps{WorkspaceRoot: t.TempDir()})
+	var found *Tool
+	for i := range tools {
+		if tools[i].Name == "vibe_fetch" {
+			found = &tools[i]
+			break
+		}
+	}
+	if found == nil {
+		t.Fatal("vibe_fetch is not in the tool list")
+	}
+	for _, want := range []string{"source", "budget", "refresh"} {
+		if !strings.Contains(string(found.InputSchema), want) {
+			t.Errorf("schema does not name %q: %s", want, found.InputSchema)
+		}
+	}
+	if !strings.Contains(found.Description, "budget") {
+		t.Errorf("the description does not say it budgets: %q", found.Description)
+	}
+}
+
+// Clipped by the tool, not by the caller. The point is that the untrimmed text
+// never reaches a context window.
+func TestFetchClipsToTheBudget(t *testing.T) {
+	root := t.TempDir()
+	long := strings.Repeat("a line of text that goes on and on\n", 400)
+	path := filepath.Join(root, "long.md")
+	if err := os.WriteFile(path, []byte(long), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := fetchSource(Deps{WorkspaceRoot: root}, json.RawMessage(
+		`{"source":`+quote(path)+`,"budget":50}`))
+	if err != nil {
+		t.Fatalf("fetchSource: %v", err)
+	}
+	result, ok := out.(map[string]any)
+	if !ok {
+		t.Fatalf("result is %T, want a map", out)
+	}
+	text, _ := result["text"].(string)
+	if text == "" {
+		t.Fatal("no text returned")
+	}
+	if len(text) >= len(long) {
+		t.Error("the text was not clipped")
+	}
+	if omitted, _ := result["omittedLines"].(int); omitted <= 0 {
+		t.Error("clipping happened but omittedLines did not say so")
+	}
+}
+
+// An error a model can act on, not a panic. It has to name the source, or the
+// next move is the same call again.
+func TestAFailedFetchReturnsAnActionableError(t *testing.T) {
+	_, err := fetchSource(Deps{WorkspaceRoot: t.TempDir()}, json.RawMessage(
+		`{"source":"./does-not-exist-anywhere.md"}`))
+	if err == nil {
+		t.Fatal("a missing source returned no error")
+	}
+	if !strings.Contains(err.Error(), "does-not-exist-anywhere") {
+		t.Errorf("the error does not name the source: %v", err)
+	}
+}
+
+func TestFetchRefusesAnEmptySource(t *testing.T) {
+	if _, err := fetchSource(Deps{WorkspaceRoot: t.TempDir()}, json.RawMessage(`{"source":"  "}`)); err == nil {
+		t.Error("an empty source was accepted")
+	}
+}
+
+// quote renders a path as a JSON string, so a Windows separator survives.
+func quote(s string) string {
+	out, _ := json.Marshal(s)
+	return string(out)
 }
