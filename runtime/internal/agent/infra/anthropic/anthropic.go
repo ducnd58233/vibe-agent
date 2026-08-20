@@ -83,6 +83,16 @@ type Transport struct {
 }
 
 // New builds a transport from the environment.
+//
+// `deadcode -test ./...` reports this as unreachable and that is correct: nothing
+// outside this package imports it, because no command drives the model yet.
+// auto.md says so in as many words - auto is a route through the graph, and the
+// host coding agent still runs every agent node.
+//
+// Kept deliberately. This is the seam that half exists, not dead weight, and the
+// audit's own rule is that a shape becomes a finding when it has cost something
+// or can be shown to. An unwired seam a command file describes as unwired has
+// cost nothing. Whoever wires it should delete this paragraph, not the function.
 func New() (*Transport, error) {
 	key := strings.TrimSpace(os.Getenv(KeyVariable))
 	if key == "" {

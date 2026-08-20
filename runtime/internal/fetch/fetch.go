@@ -34,10 +34,9 @@ const (
 	StatusAsset = domain.StatusAsset
 )
 
-// CacheDir and AssetDir are where this module writes, exposed for the messages
-// that tell a reader where a document went.
+// CacheDir is where this module writes, exposed for the messages that tell a
+// reader where a document went.
 func CacheDir(workspaceRoot string) string { return persistence.CacheDir(workspaceRoot) }
-func AssetDir(workspaceRoot string) string { return persistence.AssetDir(workspaceRoot) }
 
 // Advise turns a dead end into a next step: a browser-driving tool, or a text
 // route the origin publishes itself.
