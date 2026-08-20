@@ -4,7 +4,12 @@
   "title": "WorkflowGraph",
   "description": "Declarative outer-loop workflow for the vibe-agent runtime. Edge conditions are named boolean guards resolved from run state, not expressions.",
   "type": "object",
-  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
   "additionalProperties": false,
   "properties": {
     "apiVersion": {
@@ -15,7 +20,10 @@
     },
     "metadata": {
       "type": "object",
-      "required": ["id", "description"],
+      "required": [
+        "id",
+        "description"
+      ],
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -30,7 +38,12 @@
     },
     "spec": {
       "type": "object",
-      "required": ["initial", "maxTransitions", "nodes", "edges"],
+      "required": [
+        "initial",
+        "maxTransitions",
+        "nodes",
+        "edges"
+      ],
       "additionalProperties": false,
       "properties": {
         "initial": {
@@ -48,7 +61,10 @@
           "description": "Every guard name usable in edges[].when. Declaring them up front lets the validator reject typos statically.",
           "items": {
             "type": "object",
-            "required": ["name", "description"],
+            "required": [
+              "name",
+              "description"
+            ],
             "additionalProperties": false,
             "properties": {
               "name": {
@@ -59,7 +75,12 @@
                 "minLength": 1
               },
               "source": {
-                "enum": ["flag", "check", "result", "runtime"],
+                "enum": [
+                  "flag",
+                  "check",
+                  "result",
+                  "runtime"
+                ],
                 "default": "flag",
                 "description": "flag reads run state flags[]; check reads checks[].passed; result reads the outcome recorded for the node that just ran; runtime is maintained by the runner itself (budget, repeated-blocker count) and is not produced by any node."
               },
@@ -77,12 +98,24 @@
               {
                 "$comment": "Only a check can be skipped. An omitted source defaults to flag, so opting in has to state it.",
                 "if": {
-                  "required": ["acceptsSkipped"],
-                  "properties": { "acceptsSkipped": { "const": true } }
+                  "required": [
+                    "acceptsSkipped"
+                  ],
+                  "properties": {
+                    "acceptsSkipped": {
+                      "const": true
+                    }
+                  }
                 },
                 "then": {
-                  "required": ["source"],
-                  "properties": { "source": { "const": "check" } }
+                  "required": [
+                    "source"
+                  ],
+                  "properties": {
+                    "source": {
+                      "const": "check"
+                    }
+                  }
                 }
               }
             ]
@@ -104,7 +137,10 @@
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": ["from", "to"],
+            "required": [
+              "from",
+              "to"
+            ],
             "additionalProperties": false,
             "properties": {
               "from": {
@@ -115,7 +151,9 @@
               },
               "resets": {
                 "type": "array",
-                "items": { "type": "string" },
+                "items": {
+                  "type": "string"
+                },
                 "description": "Checks this transition clears. A check is evidence about something, and some things are true of a run while others are true of one task inside it. Every name must be a check some node writes."
               },
               "when": {
@@ -148,10 +186,18 @@
     },
     "node": {
       "type": "object",
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
         "type": {
-          "enum": ["agent", "artifact", "verifier", "human_gate", "terminal"]
+          "enum": [
+            "agent",
+            "artifact",
+            "verifier",
+            "human_gate",
+            "terminal"
+          ]
         },
         "description": {
           "type": "string"
@@ -172,7 +218,9 @@
             }
           },
           "then": {
-            "required": ["command"],
+            "required": [
+              "command"
+            ],
             "additionalProperties": false,
             "properties": {
               "type": true,
@@ -198,7 +246,10 @@
             }
           },
           "then": {
-            "required": ["command", "outputs"],
+            "required": [
+              "command",
+              "outputs"
+            ],
             "additionalProperties": false,
             "properties": {
               "type": true,
@@ -227,14 +278,23 @@
             }
           },
           "then": {
-            "required": ["verifier", "check"],
+            "required": [
+              "verifier",
+              "check"
+            ],
             "additionalProperties": false,
             "properties": {
               "type": true,
               "description": true,
               "timeoutSeconds": true,
               "verifier": {
-                "enum": ["command", "files", "git", "screen", "tasks"],
+                "enum": [
+                  "command",
+                  "files",
+                  "git",
+                  "screen",
+                  "tasks"
+                ],
                 "description": "Verifier implementation that produces the evidence. screen proves an app rendered rather than that a command exited; tasks reads the machine-readable task list a plan produced."
               },
               "check": {
@@ -257,7 +317,10 @@
             }
           },
           "then": {
-            "required": ["check", "prompt"],
+            "required": [
+              "check",
+              "prompt"
+            ],
             "additionalProperties": false,
             "properties": {
               "type": true,
@@ -274,6 +337,10 @@
               "guards": {
                 "type": "string",
                 "description": "Irreversible action this gate sits in front of, for audit. Gates precede the action, never follow it."
+              },
+              "skipWhen": {
+                "$ref": "#/$defs/guardRef",
+                "description": "Guard name; when true the gate is passed without a person and the check records skipped, not passed. Use a positive flag: a flag absent from run state reads as false, so the gate holds in any session that does not set it."
               }
             }
           }
@@ -287,14 +354,20 @@
             }
           },
           "then": {
-            "required": ["status"],
+            "required": [
+              "status"
+            ],
             "additionalProperties": false,
             "properties": {
               "type": true,
               "description": true,
               "timeoutSeconds": false,
               "status": {
-                "enum": ["done", "failed", "cancelled"]
+                "enum": [
+                  "done",
+                  "failed",
+                  "cancelled"
+                ]
               }
             }
           }

@@ -141,9 +141,6 @@ func (g *Graph) validateNodes() ProblemsError {
 			if !identifierPattern.MatchString(node.Check) {
 				problems = append(problems, fmt.Sprintf("verifier node %q needs a check key", id))
 			}
-			if node.SkipWhen != "" && !conditionPattern.MatchString(node.SkipWhen) {
-				problems = append(problems, fmt.Sprintf("verifier node %q has skipWhen %q, which is not a guard name", id, node.SkipWhen))
-			}
 		case NodeHumanGate:
 			if !identifierPattern.MatchString(node.Check) {
 				problems = append(problems, fmt.Sprintf("human gate %q needs a check key", id))
@@ -154,6 +151,32 @@ func (g *Graph) validateNodes() ProblemsError {
 		case NodeTerminal:
 			if !node.Status.valid() {
 				problems = append(problems, fmt.Sprintf("terminal node %q has unknown status %q", id, node.Status))
+			}
+		}
+
+		// skipWhen used to be checked for shape inside the verifier case only,
+		// which meant a human gate could carry a malformed condition and the
+		// only complaint would come later, from the guard-declared pass, or not
+		// at all. Both node types that may skip are checked here, in one place.
+		if node.SkipWhen != "" {
+			switch node.Type {
+			case NodeVerifier, NodeHumanGate:
+				if !conditionPattern.MatchString(node.SkipWhen) {
+					problems = append(problems, fmt.Sprintf("node %q has skipWhen %q, which is not a guard name", id, node.SkipWhen))
+				}
+				// A negated condition on a gate skips it by default. Guards
+				// resolve from run state, and a flag nobody set reads as false,
+				// so "!something" is true in a fresh run and the gate is gone
+				// before anything had a chance to set anything. Positive only,
+				// on the node type where getting this wrong means an
+				// irreversible step ran with no one asked.
+				if _, negated := node.SkipCondition(); negated && node.Type == NodeHumanGate {
+					problems = append(problems, fmt.Sprintf(
+						"human gate %q has skipWhen %q; a negated condition holds in a fresh run, so the gate would be skipped by default. Name a flag that has to be set instead",
+						id, node.SkipWhen))
+				}
+			default:
+				problems = append(problems, fmt.Sprintf("node %q is a %s and may not declare skipWhen; only verifiers and human gates skip", id, node.Type))
 			}
 		}
 	}

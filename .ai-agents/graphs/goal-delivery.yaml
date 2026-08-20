@@ -24,15 +24,43 @@ spec:
       description: Intake found facts that are missing from the repo and need outside sources.
       source: flag
 
+    - name: auto
+      description: >-
+        Auto mode is running this delivery. Set once by `vibe-agent auto`, never
+        by a node. It routes the run through the extra steps auto needs -
+        simplify, lint, grouped commits, and the post-merge CI watch - and it
+        leaves every other walk exactly as it was, because a flag absent from
+        run state reads as false.
+      source: flag
+
+    - name: spec_unambiguous
+      description: >-
+        Auto mode read the spec and found no open question in it. Set by the
+        auto runner, and only in auto mode: this is half of the pair the user
+        asked for, where a person is needed for an ambiguous spec and for
+        nothing else at this gate. Absent means false, so the gate holds in
+        every session that does not set it.
+      source: flag
+
+    - name: plan_unambiguous
+      description: The same, for the plan and its task list.
+      source: flag
+
     - name: spec_approved
-      description: Human accepted docs/<slug>/SPEC.md.
+      description: >-
+        Human accepted docs/<slug>/SPEC.md, or auto mode skipped the gate
+        because the spec held no open question. acceptsSkipped is what
+        distinguishes the two: a skipped gate is recorded skipped, never passed,
+        so run state still says which of them happened.
       source: check
       reads: spec_approved
+      acceptsSkipped: true
 
     - name: plan_approved
-      description: Human accepted docs/<slug>/PLAN.md and TASKS.md.
+      description: Human accepted docs/<slug>/PLAN.md and TASKS.md, or auto mode skipped the gate. See spec_approved.
       source: check
       reads: plan_approved
+      acceptsSkipped: true
 
     - name: unit_passed
       description: Unit and integration commands from the spec exited 0.
@@ -54,6 +82,26 @@ spec:
       # every existing workspace at a gate it has no check for. Skipping is the
       # tracked statement that this workspace has no slop threshold; it is
       # recorded as skipped rather than passed, so nothing claims an audit ran.
+      acceptsSkipped: true
+
+    - name: lint_ok
+      description: >-
+        The linter is clean with nothing suppressed. Reachable only on the auto
+        path, so this needs no flag of its own; it accepts a skip for the reason
+        slop_ok does, because a workspace that declares no lint check must not
+        stall at a gate it cannot answer.
+      source: check
+      reads: lint
+      acceptsSkipped: true
+
+    - name: main_ci_passed
+      description: >-
+        CI on the default branch is green after the merge landed. The user asked
+        for merge, wait, fix CI, and this is the wait: a squash onto main is a
+        commit no pull request ever built. Accepts a skip for the reason lint_ok
+        does.
+      source: check
+      reads: main_ci
       acceptsSkipped: true
 
     - name: e2e_ok
@@ -110,6 +158,7 @@ spec:
       description: Restate the objective, list unknowns, ask focused questions, agree the slug and the measurable done line.
       check: intake_confirmed
       prompt: Objective, assumptions, slug, and the measurable done line are agreed. Confirm to proceed.
+      skipWhen: auto
 
     research:
       type: agent
@@ -129,6 +178,7 @@ spec:
       description: Spec checkpoint before any planning or code.
       check: spec_approved
       prompt: Review docs/${slug}/SPEC.md. Approve to plan, or send it back.
+      skipWhen: spec_unambiguous
 
     plan:
       type: artifact
@@ -144,6 +194,7 @@ spec:
       description: Plan checkpoint before the first branch is cut.
       check: plan_approved
       prompt: Review docs/${slug}/PLAN.md and TASKS.md. Approve to start building.
+      skipWhen: plan_unambiguous
 
     build:
       type: agent
@@ -175,6 +226,35 @@ spec:
         raising it is a reviewed diff rather than an argument.
       verifier: command
       check: slop
+
+    simplify:
+      type: agent
+      description: >-
+        Remove what the implementation no longer needs. It sits after unit tests
+        pass because a refactor with no passing suite behind it is a rewrite, and
+        before e2e because the broader suites should run on the code that ships.
+        Reachable only from the auto edge out of test.
+      command: code-simplify
+
+    lint:
+      type: verifier
+      description: >-
+        The linter, with nothing suppressed. A rule switched off for one file is
+        the failure this node exists to catch, so the check runs the workspace's
+        declared lint command rather than one chosen at the keyboard.
+      verifier: command
+      check: lint
+
+    commit:
+      type: agent
+      description: >-
+        Group the work into small commits that each say what changed and why,
+        following the git rules /build already carries. It names that command
+        because the rules live there and duplicating them here would let the two
+        drift; only the committing half applies at this node, not another round
+        of implementation. On the auto path only, because a person building by
+        hand is already committing as they go.
+      command: build
 
     review:
       type: agent
@@ -213,6 +293,17 @@ spec:
       check: merge_approved
       prompt: /ship returned GO. Approve merging this task branch to main.
       guards: merge task branch to main
+
+    merge_ci:
+      type: verifier
+      description: >-
+        Watch CI on the default branch after the merge landed. A squash onto main
+        is a commit no pull request ever built, so green on the PR is not green on
+        main. A failure here routes back to build, which is the fix-forward half
+        of merge, wait, fix CI.
+      verifier: command
+      check: main_ci
+      timeoutSeconds: 3600
 
     task_complete:
       type: verifier
@@ -269,12 +360,33 @@ spec:
     - from: build
       to: test
 
-    - from: test
-      to: e2e
-      when: unit_passed
+    # Order carries the meaning here. The failure route is tried first, so the
+    # auto branch below is only ever reached with unit tests already passing:
+    # that is what "simplify sits behind the tests" means in a graph. The
+    # fallback keeps the manual walk byte-for-byte what it was.
     - from: test
       to: build
       when: "!unit_passed"
+    - from: test
+      to: simplify
+      when: auto
+    - from: test
+      to: e2e
+
+    # simplify, lint, and commit are reachable only from the auto edge above, so
+    # none of them carries a flag of its own. Structure, not a condition on every
+    # node, is what keeps them off the manual path.
+    - from: simplify
+      to: lint
+
+    - from: lint
+      to: build
+      when: "!lint_ok"
+    - from: lint
+      to: commit
+
+    - from: commit
+      to: e2e
 
     - from: e2e
       to: slop
@@ -325,12 +437,22 @@ spec:
       to: build
       when: "!ship_go"
 
-    - from: approve_merge
-      to: task_complete
-      when: merge_approved
+    # Same ordering rule: refuse first, then the auto branch, then the walk that
+    # was already here.
     - from: approve_merge
       to: build
       when: "!merge_approved"
+    - from: approve_merge
+      to: merge_ci
+      when: auto
+    - from: approve_merge
+      to: task_complete
+
+    - from: merge_ci
+      to: build
+      when: "!main_ci_passed"
+    - from: merge_ci
+      to: task_complete
 
     - from: task_complete
       to: build
@@ -343,9 +465,11 @@ spec:
       # plan, is not listed here.
       resets:
         - unit
+        - lint
         - e2e
         - slop
         - pr_open
+        - main_ci
         - ci
         - reviews
         - ship

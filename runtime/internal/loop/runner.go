@@ -52,6 +52,11 @@ type Transition struct {
 	Via      string // guard that fired, or "" for the fallback
 	Terminal bool
 	Status   state.Status
+	// Skipped reports that the destination was a gate the graph declared
+	// skippable and the run walked through it. The caller shows it, because a
+	// gate passed without a person is worth reading in the transition rather
+	// than only in the manifest.
+	Skipped bool
 }
 
 // Runner advances runs. It holds no per-run state; everything lives in the
@@ -83,10 +88,50 @@ func (r *Runner) Enter(run *state.Run) error {
 	run.MaxTransitions = r.Graph.Spec.MaxTransitions
 	run.GraphID = r.Graph.Metadata.ID
 	run.UpdatedAt = r.now()
-	if node, ok := r.Graph.Node(run.CurrentNode); ok && node.Type == graph.NodeHumanGate {
-		run.Status = state.StatusAwaitingHuman
+	if _, err := r.enterGate(run, run.CurrentNode, run.UpdatedAt); err != nil {
+		return err
 	}
 	return nil
+}
+
+// enterGate settles the run's status on arrival at a node, and reports whether
+// a human gate was skipped.
+//
+// Enter and Advance both arrive at nodes, and only one of them used to know
+// what a gate meant. Keeping the answer here is what stops a graph whose first
+// node is a skippable gate from parking a run that the same graph would have
+// walked through anywhere else.
+func (r *Runner) enterGate(run *state.Run, nodeID string, now time.Time) (bool, error) {
+	node, ok := r.Graph.Node(nodeID)
+	if !ok || node.Type != graph.NodeHumanGate {
+		run.Status = state.StatusRunning
+		return false, nil
+	}
+
+	// A gate the graph declares skippable is passed without a person, and
+	// recorded as skipped rather than passed. That distinction is the whole
+	// point: run state still says which gates a human answered and which ones
+	// auto mode walked through, and a guard only treats the two alike where it
+	// declares acceptsSkipped.
+	//
+	// The condition is a positive flag in every case, which the validator
+	// enforces for this node type. A flag absent from run state reads as false,
+	// so a session that sets nothing gets the gate.
+	reason, skip := r.SkipReason(run, nodeID)
+	if !skip {
+		run.Status = state.StatusAwaitingHuman
+		return false, nil
+	}
+	if err := run.SetCheckAt(node.Check, state.Check{
+		Skipped: true,
+		Source:  state.SourceFileAssert,
+		Ref:     reason,
+		At:      now,
+	}, now); err != nil {
+		return false, err
+	}
+	run.Status = state.StatusRunning
+	return true, nil
 }
 
 // Advance applies an outcome and moves the run to the next node.
@@ -173,8 +218,21 @@ func (r *Runner) Advance(run *state.Run, outcome Outcome) (*Transition, error) {
 		transition.Status = terminalStatus(next.Status)
 		run.Status = transition.Status
 	case graph.NodeHumanGate:
-		run.Status = state.StatusAwaitingHuman
-		transition.Status = state.StatusAwaitingHuman
+		// A gate the graph declares skippable is passed without a person, and
+		// recorded as skipped rather than passed. That distinction is the whole
+		// point: run state still says which gates a human answered and which
+		// ones auto mode walked through, and a guard only treats the two alike
+		// where it declares acceptsSkipped.
+		//
+		// The condition is a positive flag in every case, never a negated one.
+		// A flag absent from run state reads as false, so a session that sets
+		// nothing gets the gate, which is the direction a gate has to fail in.
+		skipped, err := r.enterGate(run, edge.To, now)
+		if err != nil {
+			return nil, err
+		}
+		transition.Skipped = skipped
+		transition.Status = run.Status
 	default:
 		run.Status = state.StatusRunning
 		transition.Status = state.StatusRunning
