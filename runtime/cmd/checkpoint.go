@@ -96,6 +96,11 @@ func checkpointCommand(args []string) error {
 			via = "(fallback)"
 		}
 		fmt.Printf("%s -> %s via %s\n", result.Transition.From, result.Transition.To, via)
+		if result.Transition.Skipped {
+			// A gate nobody answered is worth a line of its own. Run state
+			// records it as skipped rather than passed, and so does this.
+			fmt.Printf("  gate       skipped, not approved: the graph declares this gate skippable and the run's flags say so\n")
+		}
 	}
 	fmt.Printf("  status     %s\n", current.Status)
 	fmt.Printf("  iteration  %d/%d\n", current.Iteration, current.MaxTransitions)

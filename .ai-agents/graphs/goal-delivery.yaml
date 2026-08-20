@@ -451,6 +451,24 @@ spec:
     - from: merge_ci
       to: build
       when: "!main_ci_passed"
+      # This is the only edge back to build that crosses the merge. Everything
+      # else routing to build is mid-cycle and has nothing stale behind it;
+      # here the previous task's merge approval is still recorded, so without
+      # this the fix-forward branch would reach approve_merge on a pass a
+      # person gave to a different diff, and pre-tool-use would stop refusing
+      # pushes to a protected branch. Same reason as the task_complete edge
+      # below, same list.
+      resets:
+        - unit
+        - lint
+        - e2e
+        - slop
+        - pr_open
+        - ci
+        - reviews
+        - ship
+        - merge_approved
+        - main_ci
     - from: merge_ci
       to: task_complete
 

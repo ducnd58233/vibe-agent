@@ -243,3 +243,65 @@ func TestASkippedSpecGateLeadsToPlan(t *testing.T) {
 		t.Errorf("a skipped spec gate led to %q, want plan", transition.To)
 	}
 }
+
+// The fix-forward edge out of merge_ci is the only route back to build that
+// crosses a merge. Without resets the next approve_merge opens on a pass a
+// person gave to a different diff, and pre-tool-use stops refusing pushes to a
+// protected branch, its rule being that no active run has recorded
+// merge_approved.
+func TestFixingForwardAfterAMergeDropsTheMergeApproval(t *testing.T) {
+	runner := newRunner(t)
+	run := newRun(t, runner)
+	run.CurrentNode = "merge_ci"
+	run.Status = state.StatusRunning
+	run.Flags = map[string]bool{"auto": true}
+	for _, name := range []string{"merge_approved", "ship", "ci", "reviews", "unit", "lint", "pr_open"} {
+		if err := run.SetCheckAt(name, approve(name).Check, at()); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	advance(t, runner, run, Outcome{Check: fail("main_ci")})
+
+	for _, name := range []string{"merge_approved", "ship", "ci", "reviews", "unit", "lint", "pr_open"} {
+		if check, recorded := run.Checks[name]; recorded && check.Passed {
+			t.Errorf("check %q survived the fix-forward edge; the next merge would open on it", name)
+		}
+	}
+}
+
+// The same list as the task_complete edge, because the two cross the same
+// boundary. Comparing them is what keeps one from drifting behind the other.
+func TestBothEdgesLeavingAMergeResetTheSameChecks(t *testing.T) {
+	runner := newRunner(t)
+
+	collect := func(from string) map[string]bool {
+		for _, edge := range runner.Graph.OutgoingEdges(from) {
+			if edge.To != "build" || len(edge.Resets) == 0 {
+				continue
+			}
+			out := map[string]bool{}
+			for _, name := range edge.Resets {
+				out[name] = true
+			}
+			return out
+		}
+		t.Fatalf("no resetting edge from %q to build", from)
+		return nil
+	}
+
+	afterMerge, afterTask := collect("merge_ci"), collect("task_complete")
+	for name := range afterTask {
+		if name == "tasks_remaining" {
+			continue // the task list is re-read at that node; it is not per-task evidence
+		}
+		if !afterMerge[name] {
+			t.Errorf("task_complete resets %q and merge_ci does not", name)
+		}
+	}
+	for name := range afterMerge {
+		if !afterTask[name] {
+			t.Errorf("merge_ci resets %q and task_complete does not", name)
+		}
+	}
+}

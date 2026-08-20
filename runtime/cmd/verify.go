@@ -98,6 +98,11 @@ func verifyCommand(args []string) error {
 			via = "(fallback)"
 		}
 		fmt.Printf("  %s -> %s via %s\n", applied.Transition.From, applied.Transition.To, via)
+		if applied.Transition.Skipped {
+			// A gate nobody answered is worth a line of its own. Run state
+			// records it as skipped rather than passed, and so does this.
+			fmt.Printf("  gate       skipped, not approved: the graph declares this gate skippable and the run's flags say so\n")
+		}
 	}
 	fmt.Printf("  status     %s\n", applied.Run.Status)
 	if node, ok := applied.Graph.Node(applied.Run.CurrentNode); ok {
