@@ -114,11 +114,11 @@
                 "$ref": "#/$defs/identifier"
               },
               "resets": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "Checks this transition clears. A check is evidence about something, and some things are true of a run while others are true of one task inside it. Every name must be a check some node writes."
-          },
-          "when": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Checks this transition clears. A check is evidence about something, and some things are true of a run while others are true of one task inside it. Every name must be a check some node writes."
+              },
+              "when": {
                 "$ref": "#/$defs/guardRef",
                 "description": "Guard name, optionally negated with a leading '!'. Absent means unconditional. At most one unconditional edge may leave a node."
               }

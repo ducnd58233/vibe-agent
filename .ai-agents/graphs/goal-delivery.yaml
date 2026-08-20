@@ -350,6 +350,7 @@ spec:
         - reviews
         - ship
         - merge_approved
+        - tasks_remaining
     - from: task_complete
       to: done
       when: "!tasks_remaining"

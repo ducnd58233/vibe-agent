@@ -77,6 +77,7 @@ func TestASecondTaskCannotMergeOnTheFirstTasksApproval(t *testing.T) {
 	// task starts with something already proven that it has not proven.
 	for _, name := range []string{
 		"unit", "e2e", "slop", "pr_open", "ci", "reviews", "ship", "merge_approved",
+		"tasks_remaining",
 	} {
 		if _, held := run.Checks[name]; held {
 			t.Errorf("check %q survived into the next task", name)
