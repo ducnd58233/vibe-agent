@@ -1,0 +1,2 @@
+func readTranscript(path string) (map[string]struct{}, []string) {
+func handle(v interface{}) error {

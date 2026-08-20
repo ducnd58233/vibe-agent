@@ -1,0 +1,3 @@
+picked: the repository scored 3 after slop began honoring .gitignore and
+skipping prose-only debug/duplicate noise (2026-08). A change that
+logCall: '(?:console.(?:log|info|warn|error|debug|trace))'
