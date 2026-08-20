@@ -449,7 +449,7 @@ func sessionContext(req Request) string {
 		for _, run := range active {
 			lines = append(lines, fmt.Sprintf(
 				"  %s at node %s (%s, iteration %d/%d). Do not infer or manually advance workflow state; ask the runtime.",
-				run.Slug, orDash(run.CurrentNode), run.Status, run.Iteration, run.MaxTransitions))
+				run.Slug, orNotEntered(run.CurrentNode), run.Status, run.Iteration, run.MaxTransitions))
 		}
 	} else {
 		// Name the state rather than leave it to be inferred from silence.
@@ -482,7 +482,7 @@ func steerMessage(req Request) string {
 	run := active[0]
 	return fmt.Sprintf(
 		"Resume run %s (goal: %s). It is at node %s. Read the run state with the runtime before doing anything else, and do not restart it or advance it by inference.",
-		run.Slug, run.Goal, orDash(run.CurrentNode))
+		run.Slug, run.Goal, orNotEntered(run.CurrentNode))
 }
 
 // promptContext rides along with every prompt: the run the workspace is in the
@@ -496,7 +496,7 @@ func promptContext(req Request, prompt string) string {
 
 	if active := activeRuns(req.WorkspaceRoot); len(active) > 0 {
 		for _, run := range active {
-			line := fmt.Sprintf("Run %s is at node %s (%s).", run.Slug, orDash(run.CurrentNode), run.Status)
+			line := fmt.Sprintf("Run %s is at node %s (%s).", run.Slug, orNotEntered(run.CurrentNode), run.Status)
 			if node, ok := nodeFor(req, run); ok && node.Description != "" {
 				line += " " + node.Description
 			}
@@ -621,18 +621,18 @@ func reminderLine(run *state.Run) string {
 		if blocker.Node != run.CurrentNode {
 			return fmt.Sprintf(
 				"Run %s is still at node %s. Record evidence with vibe-agent checkpoint rather than assuming the step is done.",
-				run.Slug, orDash(run.CurrentNode))
+				run.Slug, orNotEntered(run.CurrentNode))
 		}
 		return fmt.Sprintf("Run %s is blocked at %s: %s (attempt %d).",
 			run.Slug, blocker.Node, blocker.Reason, blocker.Attempts)
 	}
 	if run.Status == state.StatusAwaitingHuman {
 		return fmt.Sprintf("Run %s is waiting on a human decision at node %s.",
-			run.Slug, orDash(run.CurrentNode))
+			run.Slug, orNotEntered(run.CurrentNode))
 	}
 	return fmt.Sprintf(
 		"Run %s is still at node %s. Record evidence with vibe-agent checkpoint rather than assuming the step is done.",
-		run.Slug, orDash(run.CurrentNode))
+		run.Slug, orNotEntered(run.CurrentNode))
 }
 
 func nodeFor(req Request, run *state.Run) (graph.Node, bool) {
@@ -707,7 +707,14 @@ func presentFiles(root string, names ...string) []string {
 	return present
 }
 
-func orDash(value string) string {
+// orNotEntered fills a blank with the words a reader needs, not a dash.
+//
+// It was called orNotEntered, the same name cmd/common.go uses for a function that
+// really does return a dash. One name over two behaviours is worse than two
+// copies of one: both compile, both are used, and the difference only shows in
+// rendered text, so a reader who learns it in one file is quietly wrong in the
+// other.
+func orNotEntered(value string) string {
 	if value == "" {
 		return "(not entered)"
 	}

@@ -408,7 +408,7 @@ func blockedReason(action string, runs []*state.Run) string {
 		fmt.Sprintf("Blocked: %s is the irreversible step of the delivery graph, and no active run has passed %s.", action, mergeApprovedCheck),
 	}
 	for _, run := range runs {
-		lines = append(lines, fmt.Sprintf("  run %s is at node %s: %s", run.Slug, orDash(run.CurrentNode), missingEvidence(run)))
+		lines = append(lines, fmt.Sprintf("  run %s is at node %s: %s", run.Slug, orNotEntered(run.CurrentNode), missingEvidence(run)))
 	}
 	lines = append(lines,
 		"Finish the run through /ship, then record the human approval:",

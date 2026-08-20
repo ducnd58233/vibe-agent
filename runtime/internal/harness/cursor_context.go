@@ -69,7 +69,7 @@ func cursorNodeReminder(req Request) string {
 	return fmt.Sprintf(
 		"Run %s is at node %s. Cursor receives no prompt-time injection, so this arrives here instead. "+
 			"Ask the runtime for run state; do not infer or manually advance it.",
-		run.Slug, orDash(run.CurrentNode))
+		run.Slug, orNotEntered(run.CurrentNode))
 }
 
 // joinNonEmpty joins the parts that have something to say.
