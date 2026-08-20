@@ -71,18 +71,6 @@ func LiteralPatterns() []*regexp.Regexp {
 	return literalPatterns
 }
 
-// ContextualPatterns returns keyword-adjacent shapes for memory rejection and
-// output redaction.
-func ContextualPatterns() []*regexp.Regexp {
-	return contextualPatterns
-}
-
-// FormatPatterns returns format-specific shapes for memory rejection and output
-// redaction (not used by the harness write gate).
-func FormatPatterns() []*regexp.Regexp {
-	return formatRedactPatterns
-}
-
 // CompilePatterns builds regexes from pattern specs. Invalid specs panic at init.
 func CompilePatterns(specs []string) []*regexp.Regexp {
 	return mustCompile(specs)

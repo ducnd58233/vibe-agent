@@ -55,16 +55,6 @@ func (t *ScriptedTransport) Calls() int {
 	return len(t.Sent)
 }
 
-// LastSent returns the conversation from the most recent call.
-func (t *ScriptedTransport) LastSent() agent.Conversation {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if len(t.Sent) == 0 {
-		return agent.Conversation{}
-	}
-	return t.Sent[len(t.Sent)-1]
-}
-
 // EchoDispatcher answers every tool call with a fixed body, recording what it
 // was asked. Failing is opt-in per tool name.
 type EchoDispatcher struct {

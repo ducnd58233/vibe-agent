@@ -7,8 +7,6 @@
 // parser rather than an interpreter, and lets a typo be a static error.
 package domain
 
-import "fmt"
-
 // APIVersion and Kind are the only values this loader accepts.
 const (
 	APIVersion = "vibe-agent/v1"
@@ -242,18 +240,6 @@ func (g *Graph) OutgoingEdges(from string) []Edge {
 		}
 	}
 	return append(conditional, fallback...)
-}
-
-// TerminalStatusOf returns the end status of a terminal node.
-func (g *Graph) TerminalStatusOf(id string) (TerminalStatus, error) {
-	node, ok := g.Spec.Nodes[id]
-	if !ok {
-		return "", fmt.Errorf("no node %q", id)
-	}
-	if node.Type != NodeTerminal {
-		return "", fmt.Errorf("node %q is %s, not terminal", id, node.Type)
-	}
-	return node.Status, nil
 }
 
 func splitCondition(condition string) (string, bool) {
