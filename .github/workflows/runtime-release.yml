@@ -44,6 +44,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The version bump reads the commits since the last stable tag, and
+          # the default --depth=1 leaves only HEAD in the clone. git log
+          # tag..HEAD then resolves to nothing and the bump silently falls back
+          # to patch - which looked correct exactly once, on a run whose HEAD
+          # happened to be a feat commit, and reported 0.1.1-dev the next time.
+          fetch-depth: 0
 
       - uses: actions/setup-go@v5
         with:
@@ -81,8 +88,16 @@ jobs:
               major=$(echo "$semver" | cut -d. -f1)
               minor=$(echo "$semver" | cut -d. -f2)
               patch=$(echo "$semver" | cut -d. -f3)
+              # Fail loudly rather than bump quietly. A shallow clone cannot
+              # resolve this range, and the fallback it lands on - patch - is a
+              # plausible answer, which is what made the bug survive a release.
+              if ! git merge-base --is-ancestor "$latest" HEAD 2>/dev/null; then
+                echo "::error::${latest} is not an ancestor of HEAD. The clone is"                      "probably shallow; the release job needs fetch-depth: 0." >&2
+                exit 1
+              fi
               subjects=$(git log --format=%s "${latest}..HEAD")
               bodies=$(git log --format=%B "${latest}..HEAD")
+              echo "bump input: $(printf '%s' "$subjects" | grep -c . ) commits since ${latest}" >&2
               if printf '%s' "$subjects" | grep -qE '^[a-z]+(\([^)]*\))?!:'                  || printf '%s' "$bodies" | grep -q 'BREAKING CHANGE'; then
                 major=$((major + 1)); minor=0; patch=0
               elif printf '%s' "$subjects" | grep -qE '^feat(\([^)]*\))?:'; then
