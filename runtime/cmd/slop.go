@@ -11,6 +11,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/slopaudit"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/slopaudit/app"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/slopaudit/domain"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/slopaudit/infra/deadcode"
 )
 
 const (
@@ -38,6 +39,11 @@ func slopAuditCommand(args []string) error {
 	failOn := flags.Int("fail-on", unsetFailOn, "exit non-zero when score is greater than this value")
 	asJSON := flags.Bool("json", false, "emit the report as JSON")
 	format := flags.String("format", slopFormatText, "output format: text or json")
+	// Off by default. The rest of the audit is a file walk over any language;
+	// this one shells out to the Go toolchain and fetches a pinned tool on
+	// first use, so it is asked for rather than paid for by everybody.
+	deadCode := flags.Bool("deadcode", false, "also report functions no control flow can reach (Go module only)")
+	moduleDir := flags.String("module", "runtime", "where go.mod lives relative to the target, for --deadcode")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -56,7 +62,7 @@ func slopAuditCommand(args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), slopAuditTimeout)
 	defer cancel()
 
-	report := slopaudit.Audit(ctx, target, slopaudit.Options{Workers: *workers})
+	report := slopaudit.Audit(ctx, target, slopaudit.Options{Workers: *workers, DeadCode: *deadCode, ModuleDir: *moduleDir})
 	if *asJSON || *format == slopFormatJSON {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
@@ -67,6 +73,19 @@ func slopAuditCommand(args []string) error {
 		printSlopReport(report)
 	}
 
+	// Presence, not density. The score is weighted findings per thousand lines,
+	// which answers how noisy code is; one unreachable exported function is a
+	// defect whether the repository is a thousand lines or a hundred thousand,
+	// and at the second size the density rounds it away. Leaving this to
+	// --fail-on would have produced a check that passes exactly where it matters
+	// most.
+	if unreachable := deadcode.Findings(report.Findings); len(unreachable) > 0 {
+		for _, finding := range unreachable {
+			fmt.Fprintf(os.Stderr, "  %s:%d  %s\n", finding.Path, finding.Line, finding.Message)
+		}
+		return fmt.Errorf("%d unreachable function(s); remove them, or keep one deliberately in deadcode.Kept",
+			len(unreachable))
+	}
 	if *failOn != unsetFailOn && report.Score > *failOn {
 		return fmt.Errorf("slop score %d exceeds --fail-on %d", report.Score, *failOn)
 	}
