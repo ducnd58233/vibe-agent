@@ -235,8 +235,13 @@ const idleThreshold = 72 * time.Hour
 
 // idleRun reports a run that has sat too long, or "" for one that has not.
 //
-// Terminal runs are never idle: a run that finished is finished, and saying so
-// every time doctor runs would bury the ones that are actually waiting.
+// A run that finished is finished, and saying so every time doctor runs would
+// bury the ones actually waiting. So done, failed, and cancelled are exempt.
+//
+// budget_exceeded is deliberately not, even though the runner treats it as
+// terminal. It is the one stop a person can undo - `run resume` raises the
+// budget and carries on - so it is a run waiting for a decision rather than a
+// run that reached one, which is exactly the shape this note exists to find.
 func idleRun(current *state.Run, now time.Time) string {
 	switch current.Status {
 	case state.StatusDone, state.StatusFailed, state.StatusCancelled:

@@ -29,6 +29,10 @@ func TestIdleRunNotesOnlyWhatIsWaiting(t *testing.T) {
 		{"closed long ago", state.StatusCancelled, 30 * 24 * time.Hour, false},
 		{"done long ago", state.StatusDone, 30 * 24 * time.Hour, false},
 		{"failed long ago", state.StatusFailed, 30 * 24 * time.Hour, false},
+		// The runner calls this terminal, and it is the one stop a person can
+		// undo: run resume raises the budget and carries on. So it is a run
+		// waiting for a decision, which is what the note is looking for.
+		{"stopped on a budget", state.StatusBudgetExceeded, 5 * 24 * time.Hour, true},
 	}
 
 	for _, testCase := range cases {
