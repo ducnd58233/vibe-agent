@@ -88,10 +88,15 @@ Each vertical slice delivers working, testable functionality.
 
 ### Step 4: Write Tasks
 
+Every task carries a status, a description, and its own acceptance criteria. A task missing any of
+the three is not a task yet: a status-less task cannot be reported on, a description-less task gets
+reinterpreted by whoever picks it up, and a criteria-less task is finished whenever somebody says
+so.
+
 Each task follows this structure:
 
 ```markdown
-## Task [N]: [Short descriptive title]
+### T[N]: [Short descriptive title]  [queued]
 
 **Description:** One paragraph explaining what this task accomplishes.
 
@@ -135,6 +140,55 @@ Add explicit checkpoints:
 ```
 </procedure>
 
+## Task status (MUST)
+
+<rules>
+
+**This section is canonical.** [`plan.md`](../../commands/plan.md), [`build.md`](../../commands/build.md),
+[`goal.md`](../../commands/goal.md), and [`auto.md`](../../commands/auto.md) point here rather than
+restating it, so the rule lives in one place instead of five that drift.
+
+### One list, two files, one vocabulary
+
+A task list is written twice, and both copies are part of the same edit:
+
+| File | Read by | Status lives in |
+|---|---|---|
+| `docs/<slug>/TASKS.md` | a person | the task heading: `### T1: Title  [queued]` |
+| `docs/<slug>/tasks.json` | the runtime | the `status` field |
+
+The vocabulary is the one [`schemas/tasks.schema.json`](../../../schemas/tasks.schema.json) already
+defines, lowercase, in both files:
+
+`queued` · `in_progress` · `blocked` · `done` · `canceled`
+
+Lowercase and identical on both sides on purpose. A heading that says `[DONE]` beside a field that
+says `done` is two spellings of one fact, which is how a reader ends up trusting the wrong one.
+
+### Check the list before starting
+
+Read `tasks.json` before picking up work, every time:
+
+- A task already `done` is **not** restarted. If it needs more work, that is a new task or a fix on
+  its existing branch, not a status reversal.
+- A task `blocked` needs its blocker named and resolved, or the task re-planned. Starting it anyway
+  produces work that cannot land.
+- Take the first `queued` task whose dependencies are all `done`.
+
+### Update the status when it changes, before the verifier reads it
+
+Set `in_progress` when work starts and `done` when the acceptance criteria pass, in **both** files,
+and tick the acceptance checkboxes as they are met.
+
+Timing is load-bearing, not tidiness. The `task_complete` verifier reads `tasks.json` to decide
+whether another task remains. Marking a task `done` **after** that verifier has run means the graph
+saw a task that was already finished and sent the run back through a full build cycle for nothing.
+That has happened, and it costs a complete loop each time.
+
+A `canceled` task carries a note saying why. So does a `blocked` one. "The count reflects what is
+actually outstanding" is the whole reason the field exists.
+</rules>
+
 ## Task Sizing Guidelines
 
 <rules>
@@ -174,23 +228,26 @@ If a task is L or larger, it should be broken into smaller tasks. An agent perfo
 
 ## Task List
 
+The plan lists the tasks; TASKS.md carries each one in full. Tick a box here when that task's
+status reaches `done` in both TASKS.md and tasks.json.
+
 ### Phase 1: Foundation
-- [ ] Task 1: ...
-- [ ] Task 2: ...
+- [ ] T1: ...
+- [ ] T2: ...
 
 ### Checkpoint: Foundation
 - [ ] Tests pass, builds clean
 
 ### Phase 2: Core Features
-- [ ] Task 3: ...
-- [ ] Task 4: ...
+- [ ] T3: ...
+- [ ] T4: ...
 
 ### Checkpoint: Core Features
 - [ ] End-to-end flow works
 
 ### Phase 3: Polish
-- [ ] Task 5: ...
-- [ ] Task 6: ...
+- [ ] T5: ...
+- [ ] T6: ...
 
 ### Checkpoint: Complete
 - [ ] All acceptance criteria met
@@ -232,6 +289,8 @@ When multiple agents or sessions are available:
 
 - Starting implementation without a written task list
 - Tasks that say "implement the feature" without acceptance criteria
+- A task with no status marker, or a status that differs between TASKS.md and tasks.json
+- Marking a task done after the verifier that reads the list has already run
 - No verification steps in the plan
 - All tasks are XL-sized
 - No checkpoints between tasks
@@ -244,7 +303,8 @@ When multiple agents or sessions are available:
 
 Before starting implementation, confirm:
 
-- [ ] Every task has acceptance criteria
+- [ ] Every task has a status marker, a description, and its own acceptance criteria
+- [ ] Every task's status uses the schema vocabulary, lowercase, in TASKS.md and tasks.json alike
 - [ ] Every task has a verification step
 - [ ] Task dependencies are identified and ordered correctly
 - [ ] No task touches more than ~5 files

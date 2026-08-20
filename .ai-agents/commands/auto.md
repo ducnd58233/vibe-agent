@@ -50,6 +50,27 @@ Then run `vibe-agent doctor` and start /auto again.
    file still says `merge: false`, has not agreed to it. Absence is a no.
 </required>
 
+## The task list (MUST)
+
+<required>
+
+Everything [`goal.md`](goal.md) says in its **The task list (MUST)** section applies here unchanged,
+and unattended running makes it matter more rather than less: nobody is watching to notice that a
+task was ticked late or not at all.
+
+Two consequences specific to this mode:
+
+- **A stale list stalls or loops the run.** `task_complete` decides on `tasks.json`. With a person
+  driving, a wrong answer there gets spotted; with auto driving, the run simply walks another build
+  cycle for a task that is already finished, and keeps doing it.
+- **`auto gate` reads the plan document.** A task without acceptance criteria gives the spec and
+  plan gates nothing to test, and a plan that still says `TBD` keeps the gate closed - which is the
+  gate working, not a fault to route around.
+
+Canonical rules: [`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md),
+section **Task status (MUST)**.
+</required>
+
 ## The opt-in
 
 <procedure>
