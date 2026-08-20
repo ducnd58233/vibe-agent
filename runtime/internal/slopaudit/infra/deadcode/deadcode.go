@@ -1,4 +1,16 @@
-// Package deadcode reports functions no control flow can reach.
+// Package deadcode reports Go functions no control flow can reach.
+//
+// Go only, and that is a decision rather than a stage. There is no
+// language-agnostic reachability tool: knip does mark-and-sweep over a
+// TypeScript project and needs its node_modules, vulture reads a Python AST and
+// reports confidence rather than reachability, and rustc has its own built in.
+// Each is a different question with a different toolchain behind it, and an
+// adapter per ecosystem is machinery for languages this repository does not
+// contain.
+//
+// A target with no Go module reports nothing. That is correct, and it is also
+// indistinguishable from a clean one, which is why the flag says so and this
+// paragraph exists.
 //
 // It answers a question golangci-lint's `unused` deliberately will not: whether
 // an *exported* function is dead. The maintainers decline that because an

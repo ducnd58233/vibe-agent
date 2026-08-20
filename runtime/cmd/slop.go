@@ -42,7 +42,7 @@ func slopAuditCommand(args []string) error {
 	// Off by default. The rest of the audit is a file walk over any language;
 	// this one shells out to the Go toolchain and fetches a pinned tool on
 	// first use, so it is asked for rather than paid for by everybody.
-	deadCode := flags.Bool("deadcode", false, "also report functions no control flow can reach (Go module only)")
+	deadCode := flags.Bool("deadcode", false, "also report functions no control flow can reach; Go only, and silent on a target with no Go module")
 	moduleDir := flags.String("module", "runtime", "where go.mod lives relative to the target, for --deadcode")
 	if err := flags.Parse(args); err != nil {
 		return err
