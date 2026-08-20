@@ -25,7 +25,10 @@ const usage = `vibe-agent - outer-loop control plane
 Usage:
   vibe-agent run start --slug <slug> --goal <text> [--graph <id>]
   vibe-agent run status --slug <slug> [--json]
+  vibe-agent run list [--status <status>]
   vibe-agent run flag --slug <slug> (--set|--clear) <guard> [--note <text>]
+  vibe-agent run resume --slug <slug> --reason <text> [--budget <n>]
+  vibe-agent run abort --slug <slug> --reason <text>
   vibe-agent verify --slug <slug> [--dry-run]
   vibe-agent checkpoint --slug <slug> --check <name> --source <source> [--passed|--failed|--skipped]
   vibe-agent graph validate [--graph <id>]

@@ -13,17 +13,23 @@ import (
 
 func runCommand(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("run needs a subcommand: start, status, or flag")
+		return fmt.Errorf("run needs a subcommand: start, status, list, flag, resume, or abort")
 	}
 	switch args[0] {
 	case "start":
 		return runStart(args[1:])
 	case "status":
 		return runStatus(args[1:])
+	case "list":
+		return runList(args[1:])
 	case "flag":
 		return runFlag(args[1:])
+	case "resume":
+		return runResume(args[1:])
+	case "abort":
+		return runAbort(args[1:])
 	default:
-		return fmt.Errorf("unknown run subcommand %q; try start, status, or flag", args[0])
+		return fmt.Errorf("unknown run subcommand %q; try start, status, list, flag, resume, or abort", args[0])
 	}
 }
 
