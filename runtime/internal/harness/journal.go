@@ -262,7 +262,7 @@ func failureContext(slug, node, command string, result response) string {
 		return fmt.Sprintf("%s %s outside any run", command, exitedPhrase(result.exit()))
 	}
 	return fmt.Sprintf("%s %s during run %s at node %s",
-		command, exitedPhrase(result.exit()), slug, orDash(node))
+		command, exitedPhrase(result.exit()), slug, orNotEntered(node))
 }
 
 // failureTags labels the memory so retrieval can narrow by run.
