@@ -43,6 +43,8 @@ func doctorCommand(args []string) error {
 	// wiring for opening the toolkit itself and reaches nothing here.
 	checkHookWiring(report, workspaceRoot)
 	checkCheckPlan(report, workspaceRoot, toolkitRoot)
+	checkHumanVerifiers(workspaceRoot)
+	checkTaskFiles(report, workspaceRoot)
 	checkMemory(report, workspaceRoot)
 	checkRunState(report, workspaceRoot)
 	checkWebState(report, workspaceRoot)

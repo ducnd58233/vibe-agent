@@ -137,6 +137,7 @@ spec:
       outputs:
         - docs/${slug}/PLAN.md
         - docs/${slug}/TASKS.md
+        - docs/${slug}/tasks.json
 
     approve_plan:
       type: human_gate

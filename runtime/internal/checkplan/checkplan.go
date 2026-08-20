@@ -89,8 +89,16 @@ func (e Entry) Human() bool { return e.Verifier == HumanVerifier }
 // human-decided check is complete with no command, since the person is the
 // mechanism.
 func (e Entry) runnable() bool {
-	return e.Human() || e.Command != "" || len(e.Paths) > 0 || e.Screen != nil
+	return e.Human() || selfConfiguring[e.Verifier] ||
+		e.Command != "" || len(e.Paths) > 0 || e.Screen != nil
 }
+
+// selfConfiguring names the verifiers that find their own input from the
+// workspace root and the run's slug, so an entry naming one needs no command,
+// path, or screen. The names are carried here for the same reason
+// HumanVerifier is: this package validates a plan, and a plan that declares
+// nothing runnable is the defect it exists to catch.
+var selfConfiguring = map[string]bool{"tasks": true}
 
 // Spec is the plan itself.
 type Spec struct {

@@ -27,6 +27,11 @@ const (
 	// nothing reported it. Derived state has one home.
 	SDDCacheDirName = "sdd-cache"
 
+	// DocsDirName holds one directory per slug: the spec, plan, task list, and
+	// research a run produced. Tracked or ignored by the workspace's own
+	// choice, unlike the two above, which are always ignored.
+	DocsDirName = "docs"
+
 	// EnvSDDCacheDir hands the resolved cache directory to the hook scripts.
 	// They cannot import this constant, so the runtime passes it instead of
 	// each side keeping its own copy of the layout.
@@ -46,6 +51,11 @@ func RunsDir(workspaceRoot string) string {
 // SDDCacheDir is where the WebFetch cache lives for a workspace.
 func SDDCacheDir(workspaceRoot string) string {
 	return filepath.Join(StateDir(workspaceRoot), SDDCacheDirName)
+}
+
+// DocsDir is where a slug's written deliverables live.
+func DocsDir(workspaceRoot, slug string) string {
+	return filepath.Join(workspaceRoot, DocsDirName, slug)
 }
 
 // RunDir is one run's directory, by slug.
