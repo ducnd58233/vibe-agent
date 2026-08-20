@@ -99,12 +99,15 @@ not a judgement call about the prompt.
 Being honest about the seam rather than describing a mode that does not exist yet.
 
 **Live today:** the opt-in file, `vibe-agent auto init`, `doctor` reporting the opt-in state, the
-danger gate's mechanism, and every verifier `/goal` already runs.
+danger list refused before anything runs, every verifier `/goal` already runs, and the graph itself
+- the `auto` flag routes through `simplify`, `lint`, `commit`, and a watch on the default branch
+after the merge lands, and the `intake`, `approve_spec`, and `approve_plan` gates skip when the
+run's flags say a person is not needed. A skipped gate records `skipped`, never `passed`, so run
+state still says which gates a person answered.
 
-**Not yet:** the graph edges that skip the approval gates, and a single `vibe-agent auto --goal`
-entry point. Until they land, use [`goal.md`](goal.md) and answer the gates yourself. This file
-describes the contract those pieces will implement, so the contract is reviewable before the
-machinery arrives.
+**Not yet:** a single `vibe-agent auto --goal` entry point that sets those flags and drives the
+loop. Until it lands, use [`goal.md`](goal.md) and answer the gates yourself. This file describes
+the contract that entry point implements, so the contract is reviewable before it arrives.
 </context>
 
 ## Routing & discovery
