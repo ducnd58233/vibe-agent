@@ -98,7 +98,13 @@ jobs:
               subjects=$(git log --format=%s "${latest}..HEAD")
               bodies=$(git log --format=%B "${latest}..HEAD")
               echo "bump input: $(printf '%s' "$subjects" | grep -c . ) commits since ${latest}" >&2
-              if printf '%s' "$subjects" | grep -qE '^[a-z]+(\([^)]*\))?!:'                  || printf '%s' "$bodies" | grep -q 'BREAKING CHANGE'; then
+              # BREAKING CHANGE is a footer, so it is anchored at the start of
+              # a line and followed by a colon. Matching it anywhere in a body
+              # made the rule match its own documentation: the commit that
+              # introduced this block explains "a bang or a BREAKING CHANGE
+              # body bumps", and that sentence published a 1.0.0-dev off a
+              # repository with no breaking change in it.
+              if printf '%s' "$subjects" | grep -qE '^[a-z]+(\([^)]*\))?!:'                  || printf '%s' "$bodies" | grep -qE '^BREAKING[ -]CHANGE:'; then
                 major=$((major + 1)); minor=0; patch=0
               elif printf '%s' "$subjects" | grep -qE '^feat(\([^)]*\))?:'; then
                 minor=$((minor + 1)); patch=0
