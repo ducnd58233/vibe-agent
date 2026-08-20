@@ -1,7 +1,6 @@
 package view
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
@@ -217,22 +216,4 @@ func GraphTypeLabels() []string {
 		out = append(out, string(t))
 	}
 	return out
-}
-
-// FormatGraphEdges renders outgoing edges for inspector Schema HTML.
-func FormatGraphEdges(edges []GraphEdgeRow) string {
-	if len(edges) == 0 {
-		return "(no outgoing edges)"
-	}
-	var b strings.Builder
-	b.WriteString("<ul class=\"edge-list\">")
-	for _, edge := range edges {
-		when := edge.When
-		if when == "" {
-			when = "(fallback)"
-		}
-		fmt.Fprintf(&b, "<li><code>%s</code> when <code>%s</code></li>", edge.To, when)
-	}
-	b.WriteString("</ul>")
-	return b.String()
 }

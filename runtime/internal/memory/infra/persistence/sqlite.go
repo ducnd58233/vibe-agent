@@ -243,24 +243,6 @@ func (s *Store) Invalidate(ctx context.Context, id string, at time.Time) error {
 	return nil
 }
 
-// SetStatus changes a memory's status, for example retiring a stale fact.
-func (s *Store) SetStatus(ctx context.Context, id string, status domain.Status, now time.Time) error {
-	if !status.Valid() {
-		return fmt.Errorf("status %q is not known", status)
-	}
-	result, err := s.db.ExecContext(ctx,
-		`UPDATE memories SET status = ?, updated_at = ? WHERE id = ?`,
-		string(status), now.UTC().Format(time.RFC3339Nano), id)
-	if err != nil {
-		return fmt.Errorf("update memory status: %w", err)
-	}
-	affected, _ := result.RowsAffected()
-	if affected == 0 {
-		return sql.ErrNoRows
-	}
-	return nil
-}
-
 // RecordUse counts a successful reuse, which feeds promotion proposals.
 func (s *Store) RecordUse(ctx context.Context, id string, now time.Time) error {
 	_, err := s.db.ExecContext(ctx,
