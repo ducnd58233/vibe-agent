@@ -131,3 +131,56 @@ func TestSessionShowMissingLogIsNotAnError(t *testing.T) {
 		t.Fatalf("output = %q", out.String())
 	}
 }
+
+// A trace is read to find out what happened. Every entry saying "tool" or
+// "hook" cannot answer that, and it is what the log said before: the tool and
+// event names were last in the detail fallback, behind Body, so any payload
+// with a body at all hid the one field naming the tool.
+func TestATraceLineNamesTheToolOrTheHook(t *testing.T) {
+	cases := []struct {
+		name  string
+		event session.Event
+		want  string
+	}{
+		{
+			name: "a tool call names the tool, not the category",
+			event: session.Event{
+				Sequence: 1, Type: session.TypeToolUse, Source: session.SourceHook,
+				Payload: []byte(`{"tool":"Bash","command":"go test ./...","body":"some body"}`),
+			},
+			want: "Bash",
+		},
+		{
+			name: "a hook names the event",
+			event: session.Event{
+				Sequence: 2, Type: session.TypePreTool, Source: session.SourceHook,
+				Payload: []byte(`{"event":"PreToolUse","body":"some body"}`),
+			},
+			want: "PreToolUse",
+		},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			line := formatSessionLine(testCase.event)
+			if !strings.Contains(line, testCase.want) {
+				t.Errorf("line does not name %q: %s", testCase.want, line)
+			}
+		})
+	}
+}
+
+// A line with neither name still has to say something, or the column goes blank
+// and the trace is worse than it was.
+func TestALineWithNoToolOrEventFallsBackToTheKind(t *testing.T) {
+	line := formatSessionLine(session.Event{
+		Sequence: 3, Type: session.TypeTranscriptMessage, Source: session.SourceTranscript,
+		Role: "assistant", Payload: []byte(`{"body":"ready"}`),
+	})
+	if strings.Contains(line, "  ") {
+		t.Errorf("the name column is empty: %q", line)
+	}
+	if !strings.Contains(line, "ready") {
+		t.Errorf("the body was lost: %q", line)
+	}
+}
