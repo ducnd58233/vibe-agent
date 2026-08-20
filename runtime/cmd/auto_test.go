@@ -145,6 +145,9 @@ func TestAnAmbiguousSpecLeavesTheGateClosed(t *testing.T) {
 
 	run := reload(t, root, "spec-open")
 	run.CurrentNode = "approve_spec"
+	// A run parked at a gate is awaiting_human. Setting the node without the
+	// status would be a state the loop never produces.
+	run.Status = state.StatusAwaitingHuman
 	writeSpec(t, root, "spec-open", "# Spec\n\n## Open questions\n\n- Which store backs the queue?\n")
 	if err := state.Save(state.ManifestPath(root, "spec-open"), run); err != nil {
 		t.Fatal(err)
@@ -165,6 +168,9 @@ func TestASettledSpecOpensTheGateAsASkip(t *testing.T) {
 
 	run := reload(t, root, "spec-settled")
 	run.CurrentNode = "approve_spec"
+	// A run parked at a gate is awaiting_human. Setting the node without the
+	// status would be a state the loop never produces.
+	run.Status = state.StatusAwaitingHuman
 	writeSpec(t, root, "spec-settled", "# Spec\n\n## Open questions\n\n- None.\n")
 	if err := state.Save(state.ManifestPath(root, "spec-settled"), run); err != nil {
 		t.Fatal(err)

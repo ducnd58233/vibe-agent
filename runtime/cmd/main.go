@@ -39,6 +39,7 @@ Usage:
   vibe-agent mcp serve
   vibe-agent auto --goal "<text>" [--slug <slug>] [--task-source <name>]
   vibe-agent auto gate --slug <slug>
+  vibe-agent auto merge --slug <slug>
   vibe-agent auto init [--workspace <dir>]
   vibe-agent guards <list|init> [--workspace <dir>] [--force]
   vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|post-tool-use-failure|stop|subagent-stop> [--client claude|cursor]
@@ -87,6 +88,11 @@ a second implementation of it.
 the flag only when the document declares nothing open, and the gate it opens
 records skipped rather than approved, because nobody was asked. Text search is
 not a promise the document is complete, and the recorded state says so.
+
+"auto merge" records the merge approval the opt-in file already gave. It is
+file_assert and not human_event: nobody is being asked now, and someone did
+answer once, in a diff that can be read. A workspace that has not opted in
+gets a refusal instead.
 
 "auto init" writes the opt-in a workspace answers before auto mode may merge
 its own pull request. A missing file, or merge left false, means auto stops at
