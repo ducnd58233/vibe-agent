@@ -613,25 +613,29 @@ install_runtime() {
     return 0
   fi
 
-  local before=""
+  # Install only when there is nothing to replace.
+  #
+  # This used to refresh whatever was on PATH, and refreshing means installing
+  # the *released* binary. Anyone developing this toolkit has to run this script
+  # after editing an asset, because on Windows it writes copies rather than
+  # symlinks, so the sequence was: build a dev runtime, edit an asset, link, and
+  # the dev runtime is gone. Every hook and every verify afterwards ran code that
+  # did not match the checkout, which looks like nothing at all until something
+  # inexplicable happens three commands later.
+  #
+  # The onboarding case is the one with value and it is kept: a fresh clone with
+  # no runtime gets one. Upgrading is a thing someone decides to do, and
+  # install-runtime.sh is already the documented way to do it.
   if command -v vibe-agent >/dev/null 2>&1; then
-    before="$(vibe-agent version 2>/dev/null || echo unknown)"
-    echo "Refreshing the runtime binary (installed: ${before})..."
-  else
-    echo "Installing the optional runtime binary..."
+    echo "Runtime already installed ($(vibe-agent version 2>/dev/null || echo unknown)); left alone."
+    echo "  upgrade deliberately with: bash $installer"
+    return 0
   fi
+  echo "Installing the optional runtime binary..."
 
   if bash "$installer"; then
-    # Report the change rather than only the fact of a download, so an unchanged
-    # version is visible as unchanged instead of looking like work was done.
     if command -v vibe-agent >/dev/null 2>&1; then
-      local after
-      after="$(vibe-agent version 2>/dev/null || echo unknown)"
-      if [[ -n "$before" && "$before" == "$after" ]]; then
-        echo "Runtime already current: ${after}"
-      elif [[ -n "$before" ]]; then
-        echo "Runtime updated: ${before} -> ${after}"
-      fi
+      echo "Runtime installed: $(vibe-agent version 2>/dev/null || echo unknown)"
     fi
     return 0
   fi
@@ -640,21 +644,47 @@ install_runtime() {
   return 0
 }
 
+# manifest_absent reports whether a manifest still needs writing, and counts
+# the ones left alone.
+#
+# A generator may bootstrap a file. It may not overwrite one somebody committed,
+# and all five of these are tracked: commit ddfc7ef deliberately added
+# description, version, author, license, homepage, and the asset paths to them.
+# Every link run stripped that back to a name and one line, so the tree was
+# dirty afterwards and the enrichment sat one careless `git add` away from being
+# committed out of existence. It was reverted by hand four times in one session.
+#
+# A consumer workspace with no manifests still gets all five, which is the case
+# this function was written for.
+manifest_absent() {
+  local path="$1"
+  if [[ -f "$path" ]]; then
+    kept=$(( kept + 1 ))
+    return 1
+  fi
+  mkdir -p "$(dirname "$path")"
+  written=$(( written + 1 ))
+  return 0
+}
+
 emit_plugin_manifests() {
   local workspace="$1"
   local plugin_name="vibe-agent"
   local plugin_desc="Domain-agnostic agent workflows: skills, commands, hooks, and delivery graphs."
+  local written=0 kept=0
 
   # Claude Code plugin
-  mkdir -p "$workspace/.claude-plugin"
-  cat > "$workspace/.claude-plugin/plugin.json" <<EOF
+  if manifest_absent "$workspace/.claude-plugin/plugin.json"; then
+    cat > "$workspace/.claude-plugin/plugin.json" <<EOF
 {
   "name": "$plugin_name",
   "description": "$plugin_desc"
 }
 EOF
+  fi
 
-  cat > "$workspace/.claude-plugin/marketplace.json" <<EOF
+  if manifest_absent "$workspace/.claude-plugin/marketplace.json"; then
+    cat > "$workspace/.claude-plugin/marketplace.json" <<EOF
 {
   "name": "$plugin_name",
   "owner": {
@@ -669,35 +699,41 @@ EOF
   ]
 }
 EOF
+  fi
 
   # Codex plugin
-  mkdir -p "$workspace/.codex-plugin"
-  cat > "$workspace/.codex-plugin/plugin.json" <<EOF
+  if manifest_absent "$workspace/.codex-plugin/plugin.json"; then
+    cat > "$workspace/.codex-plugin/plugin.json" <<EOF
 {
   "name": "$plugin_name",
   "description": "Domain-agnostic agent workflows: skills and hooks for Codex."
 }
 EOF
+  fi
 
   # Cursor plugin (host-specific)
-  mkdir -p "$workspace/.cursor-plugin"
-  cat > "$workspace/.cursor-plugin/plugin.json" <<EOF
+  if manifest_absent "$workspace/.cursor-plugin/plugin.json"; then
+    cat > "$workspace/.cursor-plugin/plugin.json" <<EOF
 {
   "\$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "$plugin_name",
   "description": "Domain-agnostic agent workflows for Cursor Agent Plugins."
 }
 EOF
+  fi
 
   # Agent Plugins 1.0.0 (root, portable)
-  cat > "$workspace/plugin.json" <<EOF
+  if manifest_absent "$workspace/plugin.json"; then
+    cat > "$workspace/plugin.json" <<EOF
 {
   "\$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "$plugin_name",
   "description": "$plugin_desc"
 }
 EOF
-  echo "Plugin manifests emitted under $workspace"
+  fi
+
+  echo "Plugin manifests under $workspace: $written written, $kept left alone (already present)"
 }
 
 install_local_git_exclude "$WORKSPACE"
