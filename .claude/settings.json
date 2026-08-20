@@ -8,6 +8,7 @@
     "pr": ""
   },
   "permissions": {
+    "$comment": "Precedence is deny, then ask, then allow: ask beats allow. A blanket mcp__* sat in ask and made every mcp__ allow rule below dead, so the four named servers prompted on every call and the list read as a curated allowlist it was not. Removed rather than narrowed: an MCP tool matching no rule already prompts by default, which is the behaviour the blanket entry was there to get. The same shape is why WebFetch(domain:*) left ask in #74.",
     "allow": [
       "Read(*)",
       "Grep(*)",
@@ -127,7 +128,6 @@
     ],
     "ask": [
       "NotebookEdit(*)",
-      "mcp__*",
       "Bash(rm *)",
       "Bash(rmdir *)",
       "Bash(shred *)",
