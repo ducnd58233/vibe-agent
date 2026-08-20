@@ -22,7 +22,20 @@
 set -euo pipefail
 
 REPO="${VIBE_REPO:-ducnd58233/vibe-agent}"
-VERSION="${1:-latest}"
+VERSION="latest"
+CHANNEL="auto"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --channel) CHANNEL="${2:-}"; shift 2 ;;
+    --channel=*) CHANNEL="${1#*=}"; shift ;;
+    -*) die "unknown option: $1" ;;
+    *) VERSION="$1"; shift ;;
+  esac
+done
+case "$CHANNEL" in
+  auto|stable|rolling|source) ;;
+  *) die "unknown channel: $CHANNEL (auto, stable, rolling, or source)" ;;
+esac
 INSTALL_DIR="${VIBE_INSTALL_DIR:-$HOME/.local/bin}"
 BINARY="vibe-agent"
 
@@ -153,6 +166,12 @@ resolve_release() {
     return 0
   fi
 
+  if [ "$CHANNEL" = "rolling" ]; then
+    echo "channel rolling: the build from main" >&2
+    fetch_release tags/runtime/latest
+    return 0
+  fi
+
   echo "looking for a published release" >&2
   local json
   if json="$(fetch_release latest)" && [ -n "$json" ]; then
@@ -164,6 +183,28 @@ resolve_release() {
   fetch_release tags/runtime/latest
   return 0
 }
+
+# own_checkout reports whether this script is running inside a git clone of the
+# toolkit itself rather than a consumer workspace that vendored it.
+#
+# Both have scripts/ and one may have runtime/. Only the clone has both a
+# runtime module and its own .git, and that pair is the question being asked:
+# is the source of this binary sitting right here.
+own_checkout() {
+  [ -f "${RUNTIME_DIR}/go.mod" ] && [ -e "${SCRIPT_DIR}/../.git" ]
+}
+
+# Somebody running this from the toolkit's own checkout is asking to install
+# this toolkit. Downloading a release there answers a different question, and
+# answers it badly: /releases/latest skips prereleases, so a clone of main got a
+# binary older than the source it was standing in. That is not hypothetical - it
+# replaced a working build with one three weeks stale.
+if [ "$VERSION" = "latest" ] && [ "$CHANNEL" = "auto" ] && own_checkout; then
+  build_from_source "Running inside the toolkit's own checkout, so building what is here."
+fi
+if [ "$CHANNEL" = "source" ]; then
+  build_from_source "Channel source requested."
+fi
 
 release_json="$(resolve_release)" || true
 if [ -z "$release_json" ]; then

@@ -432,7 +432,15 @@ mv "$MANIFEST.tmp" "$MANIFEST"
 # Install the binary too, mirroring link-ai-agents.sh. Linking .ai-agents into
 # ~/.vibe-agent is what lets the runtime find its graphs, and that is worth
 # nothing if the runtime is not on PATH: `vibe-agent doctor` would simply not be
-# a command. Downloads a published release, falling back to a build from source.
+# a command.
+#
+# Inside the toolkit's own checkout it builds from source; anywhere else it
+# downloads a published release. That order matters: /releases/latest skips
+# prereleases, so running this from a clone of main used to install a binary
+# older than the source it was standing in.
+#
+# For a consumer who wants main's build without cloning:
+#   sh scripts/install-runtime.sh --channel rolling
 #
 # Skipped by VIBE_SKIP_RUNTIME, and in CI where a network download would make an
 # unrelated outage look like a broken installer.
