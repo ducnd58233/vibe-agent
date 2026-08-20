@@ -1,0 +1,84 @@
+# Shapes that make a check pass without making the code pass it.
+#
+# A third data file, and the reason is the input rather than the subject.
+# guards-default.yaml reads one file's content and reports. danger-default.yaml
+# reads one action and refuses. This reads a *pair* - what a line was and what
+# it is about to become - because the question here is not "does this file
+# contain a suppression" but "is this edit adding one". Nearly every repository
+# has suppressions it decided on deliberately, and a rule that fired on those
+# would be switched off within a day.
+#
+# So the count is what matters. An edit that leaves as many as it found is
+# moving code; an edit that leaves more is switching a rule off. A pattern that
+# cannot be counted this way, because widening it is a number rather than a
+# line, is listed under thresholds instead.
+#
+# Patterns are RE2, matched per line, against the text going in and the text
+# coming out.
+#
+# A consumer repository extends this through .ai-agents/suppression.yaml. It may
+# add shapes and cannot remove one, for the reason the danger list cannot be
+# shortened: a workspace quietly dropping the rule that notices skipped tests is
+# the event the rule exists for.
+
+apiVersion: vibe-agent/v1
+kind: SuppressionPlan
+
+spec:
+  shapes:
+    - id: linter-directive
+      reason: >-
+        A linter directive silences the tool rather than answering it. The finding is still
+        there; the only thing that changed is who can see it.
+      patterns:
+        - '(?i)//\s*nolint\b'
+        - '(?i)#\s*nosec\b'
+        - '(?i)#\s*noqa\b'
+        - '(?i)//\s*eslint-disable(?:-next-line|-line)?\b'
+        - '(?i)/\*\s*eslint-disable\b'
+        - '(?i)//\s*@ts-(?:ignore|expect-error|nocheck)\b'
+        - '(?i)#\s*type:\s*ignore\b'
+        - '(?i)#\s*pylint:\s*disable\b'
+        - '(?i)#\[allow\('
+        - '(?i)//\s*swiftlint:disable\b'
+        - '(?i)@Suppress(?:Warnings)?\s*\('
+
+    - id: disabled-rule
+      reason: >-
+        Turning a rule off in configuration is the same act as silencing it in the file, one
+        directory wider. What used to be checked no longer is, everywhere.
+      # A bare `rules:` key was in this list and is not any more. Adding one is
+      # how a config starts enabling rules, so the pattern fired on the opposite
+      # of what it was looking for, in every eslint and golangci file there is.
+      patterns:
+        - '(?i)^\s*-?\s*disable(?:-all)?:\s*(?:true|\[|-|\w)'
+        - '(?i)\bexclude-rules\b'
+        - '(?i)\bskip-(?:dirs|files)\b'
+
+    - id: skipped-test
+      reason: >-
+        A skipped test reports success without running. The suite goes green, and the thing it
+        was asked about was never asked.
+      patterns:
+        - '(?i)\bt\.Skip(?:Now|f)?\s*\('
+        - '(?i)\b(?:it|describe|test)\.skip\s*\('
+        - '(?i)\bx(?:it|describe)\s*\('
+        - '(?i)@pytest\.mark\.skip\b'
+        - '(?i)@(?:Disabled|Ignore)\b'
+
+  # Widening rather than adding. These are numbers a check compares against, so
+  # the rule is not "there is one more of these" but "the number moved the way
+  # that makes failing harder".
+  thresholds:
+    - id: slop-baseline
+      reason: >-
+        The slop threshold is a "do not get worse" line. Raising it is a decision about what the
+        repository will accept, which is a reviewed diff rather than a step in making a check pass.
+      pattern: '--fail-on[= ]"?(\d+)"?'
+      direction: increase
+
+    - id: coverage-floor
+      reason: >-
+        Lowering a coverage floor makes the same suite pass with less of the code exercised.
+      pattern: '(?i)(?:min-coverage|coverage-threshold|--cov-fail-under)[= ]"?(\d+)"?'
+      direction: decrease
