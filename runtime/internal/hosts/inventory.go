@@ -54,23 +54,40 @@ func Inventory() []Entry {
 	return out
 }
 
-// EvalRunnerNames are preset keys used by `eval routing --runner`.
+// evalAlias maps the names `eval routing --runner` accepts to catalog ids.
+//
+// Only aliases live here: a name that already is a catalog id needs no row, and
+// listing it would be a second place for the same fact to drift from.
+var evalAlias = map[string]string{"cursor": "cursor-agent"}
+
+// EvalRunnerNames are the preset keys `eval routing --runner` accepts.
+//
+// Written out rather than derived, because these are the names a person types
+// and one of them deliberately differs from its catalog id: the runner is
+// called cursor and the binary is cursor-agent. Deriving the list would rename
+// a flag value to match an internal id, which is the tail wagging the dog.
+//
+// A test asserts every name here resolves through EvalHost, so the two lists
+// cannot drift apart without something failing.
 func EvalRunnerNames() []string {
 	return []string{"codex", "claude", "cursor", "opencode"}
 }
 
 // EvalHost returns the host entry for an eval runner name.
+//
+// By id, not by position. This used to switch on the name and return
+// catalog[0] through catalog[3], so the catalog's order was a contract that
+// nothing stated and nothing checked: inserting a host at the front, or sorting
+// the list, silently remapped every lookup to the wrong runner. Nothing would
+// have failed loudly - eval would just have spawned the wrong CLI.
 func EvalHost(name string) (Host, bool) {
-	switch name {
-	case "codex":
-		return catalog[0], true
-	case "claude":
-		return catalog[1], true
-	case "cursor", "cursor-agent":
-		return catalog[2], true
-	case "opencode":
-		return catalog[3], true
-	default:
-		return Host{}, false
+	if alias, ok := evalAlias[name]; ok {
+		name = alias
 	}
+	for _, host := range catalog {
+		if host.ID == name {
+			return host, true
+		}
+	}
+	return Host{}, false
 }
