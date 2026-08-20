@@ -1,0 +1,3 @@
+t.Fatal("short placeholder value should not match contextual pattern")
+t.Fatalf("missing parse error finding: %+v", result.Findings)
+t.Errorf("TODO marker was not reported")

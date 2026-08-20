@@ -1,7 +1,6 @@
 package source
 
 import (
-	"bufio"
 	"context"
 	"io/fs"
 	"os"
@@ -44,11 +43,32 @@ func isProseLanguage(language string) bool {
 	return ok
 }
 
+// dataLanguages hold configuration and data, never a call. Running the debug
+// rule over them scored the word "debug" wherever it appeared in a description
+// or a regex, which is how this repository's own vibe-checks.yaml came to be
+// flagged for a sentence about skipping prose-only debug noise.
+var dataLanguages = map[string]struct{}{
+	"YAML": {}, "JSON": {}, "TOML": {}, "INI": {}, "JSON5": {}, "JSONLD": {},
+}
+
+func isDataLanguage(language string) bool {
+	_, ok := dataLanguages[language]
+	return ok
+}
+
 var (
 	emptyBraceFunction = regexp.MustCompile(`(?i)\b(func|function|fn|def|class|interface|method)\b[^\n{}]*\{\s*\}`)
 	emptyPythonBody    = regexp.MustCompile(`(?i)^\s*(async\s+)?def\s+\w+\([^)]*\):\s*$`)
 	ignoredCall        = regexp.MustCompile(`(^|[^[:alnum:]_])_\s*=\s*[[:alnum:]_\.]+\s*\(`)
 	unfinishedMarker   = regexp.MustCompile(`(?i)\b(todo|fixme|hack|placeholder)\b|not implemented|unimplemented`)
+	// A brace pair directly after struct or interface is a Go type literal.
+	// map[string]struct{} in a signature is not an empty body, and the rule
+	// reported one because "func" appeared earlier on the same line.
+	typeLiteralBrace = regexp.MustCompile(`(?i)\b(struct|interface)\{\s*\}`)
+	// t.Fatal and friends are assertions. Their message describes what went
+	// wrong, so a test about placeholder handling read as unfinished code.
+	// The receiver list is deliberately short: log.Fatal must keep matching.
+	testAssertionCall  = regexp.MustCompile(`(?i)\b(t|b|tb|f|m)\.(fatal|fatalf|error|errorf|skip|skipf)\b`)
 	swallowedErrBlock  = regexp.MustCompile(`(?m)if\s+err\s*!=\s*nil\s*\{\s*\}`)
 	swallowedErrReturn = regexp.MustCompile(`(?m)if\s+err\s*!=\s*nil\s*\{\s*return\s*\}`)
 	aiTellInComment    = regexp.MustCompile(`(?i)\b(ensure|enhance|leverage|utilize|seamless|robust|comprehensive|delve)\b`)
@@ -292,8 +312,8 @@ func (s *Scanner) lineFindings(path, language string, lines []string) []domain.F
 func fileFindings(path, text string, lines []string) []domain.Finding {
 	var findings []domain.Finding
 	searchText := maskQuotedText(text)
-	if emptyBraceFunction.MatchString(searchText) {
-		findings = append(findings, finding(path, firstMatchLine(searchText, emptyBraceFunction), domain.RuleEmptyFunction, domain.SeverityHigh, "empty declaration body"))
+	if index := emptyDeclarationIndex(searchText); index >= 0 {
+		findings = append(findings, finding(path, lineOfIndex(searchText, index), domain.RuleEmptyFunction, domain.SeverityHigh, "empty declaration body"))
 	}
 	if strings.HasSuffix(strings.ToLower(filepath.Base(path)), ".go") {
 		findings = append(findings, swallowedErrorFindings(path, searchText)...)
@@ -346,6 +366,9 @@ func hasUnfinishedMarker(lower string) bool {
 }
 
 func hasDebugOutput(language, lower string) bool {
+	if isDataLanguage(language) {
+		return false
+	}
 	if !strings.Contains(lower, "debug") && !strings.Contains(lower, "todo") && !strings.Contains(lower, "temporary") {
 		return false
 	}
@@ -367,7 +390,38 @@ func hasPlaceholderAbort(lower string) bool {
 	if !hasUnfinishedMarker(lower) {
 		return false
 	}
+	if testAssertionCall.MatchString(lower) {
+		return false
+	}
 	return strings.Contains(lower, "panic") || strings.Contains(lower, "throw") || strings.Contains(lower, "raise") || strings.Contains(lower, "fatal")
+}
+
+// emptyDeclarationIndex returns the offset of the first genuinely empty
+// declaration body, or -1.
+//
+// Type literals are masked rather than skipped. Discarding a match that ends in
+// one loses the body behind it: in `func f() interface{} {}` the regex stops at
+// the first brace pair, so rejecting that match hid a real empty function.
+// Masking leaves the braces the declaration actually owns.
+func emptyDeclarationIndex(text string) int {
+	masked := maskTypeLiterals(text)
+	loc := emptyBraceFunction.FindStringIndex(masked)
+	if loc == nil {
+		return -1
+	}
+	return loc[0]
+}
+
+// maskTypeLiterals blanks the braces of struct{} and interface{}, keeping the
+// text the same length so offsets still point into the original.
+func maskTypeLiterals(text string) string {
+	return typeLiteralBrace.ReplaceAllStringFunc(text, func(match string) string {
+		return strings.Repeat(" ", len(match))
+	})
+}
+
+func lineOfIndex(text string, index int) int {
+	return strings.Count(text[:index], "\n") + 1
 }
 
 func maskQuotedText(text string) string {
@@ -411,15 +465,7 @@ func firstMatchLine(text string, pattern *regexp.Regexp) int {
 	if loc == nil {
 		return 1
 	}
-	reader := bufio.NewReader(strings.NewReader(text[:loc[0]]))
-	line := 1
-	for {
-		_, err := reader.ReadString('\n')
-		if err != nil {
-			return line
-		}
-		line++
-	}
+	return lineOfIndex(text, loc[0])
 }
 
 func syntaxFinding(path string, parsed syntax.Result) domain.Finding {

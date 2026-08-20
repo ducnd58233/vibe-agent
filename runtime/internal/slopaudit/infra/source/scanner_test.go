@@ -4,87 +4,23 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/slopaudit/domain"
 )
 
 func TestScannerFindsSignalsAcrossLanguages(t *testing.T) {
-	dir := t.TempDir()
-	files := map[string]string{
-		"main.go": `package main
-import "fmt"
-func Work() {
-	_ = risky()
-	fmt.Println("debug temporary")
-	panic("TODO not implemented")
-}
-func Empty() {}
-func risky() error { return nil }
-func Swallow() error {
-	_, err := fmt.Println("x")
-	if err != nil {
-	}
-	return nil
-}
-`,
-		"app.ts": `export function run() {
-  console.log("debug temporary")
-  throw new Error("TODO not implemented")
-}
-export function empty() {}
-`,
-		"job.py": `def empty_job():
-    pass
-
-def work():
-    print("debug temporary")
-    raise Exception("not implemented")
-`,
-		"Button.tsx": `export function Button() {
-  console.log("debug temporary")
-  return <button>Save</button>
-}
-`,
-		"styles.scss": `.button {
-  color: red;
-  // TODO remove temporary style
-}
-`,
-		"service.php": `<?php
-function empty_service() {}
-`,
-		"worker.rs": `fn empty_worker() {}
-`,
-		"kernel.zig": `fn emptyKernel() void {}
-`,
-		"Panel.vue": `<template><div>ok</div></template>
-<script setup>
-console.log("debug temporary")
-</script>
-`,
-		"Dockerfile": `FROM scratch
-# TODO replace temporary image
-`,
-		"deploy.yaml": `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: temporary
-`,
-	}
-	for name, body := range files {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
+	dir := filepath.Join("testdata", "languages")
+	want := fixtureCount(t, dir)
 
 	result, err := NewScanner(2).Scan(context.Background(), dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if result.Summary.FilesScanned != len(files) {
-		t.Fatalf("files scanned = %d, want %d", result.Summary.FilesScanned, len(files))
+	if result.Summary.FilesScanned != want {
+		t.Fatalf("files scanned = %d, want %d", result.Summary.FilesScanned, want)
 	}
 	if result.Summary.TreeSitterParsed < 3 {
 		t.Fatalf("tree-sitter parsed = %d, want at least Go, TSX, and YAML", result.Summary.TreeSitterParsed)
@@ -186,22 +122,7 @@ func TestScannerReportsTreeSitterParseErrors(t *testing.T) {
 }
 
 func TestScannerFindsAITellCommentAndSwallowedError(t *testing.T) {
-	dir := t.TempDir()
-	body := `package main
-
-// Ensure robust seamless handling
-func Work() error {
-	err := run()
-	if err != nil {
-	}
-	return nil
-}
-func run() error { return nil }
-`
-	path := filepath.Join(dir, "main.go")
-	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	dir := filepath.Join("testdata", "ai-tell")
 
 	result, err := NewScanner(1).Scan(context.Background(), dir)
 	if err != nil {
@@ -216,5 +137,110 @@ func run() error { return nil }
 	}
 	if !seen[domain.RuleSwallowedError] {
 		t.Fatalf("missing swallowed_error: %+v", result.Findings)
+	}
+}
+
+// fixtureCount reports how many fixture files a directory holds.
+//
+// The fixtures live under testdata/ because a walk skips that directory by
+// enry's vendor rules, so the repository's own audit does not score them. They
+// used to be raw string literals in this file, and the line rules read string
+// bodies, so the audit counted four high-severity placeholder aborts and a
+// debug print against fixtures that were doing exactly their job.
+//
+// A scan still reaches them because the skip applies to directories the walk
+// descends into, not to the directory a scan is pointed at.
+func fixtureCount(t *testing.T, dir string) int {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := 0
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			files++
+		}
+	}
+	if files == 0 {
+		t.Fatalf("no fixtures in %s", dir)
+	}
+	return files
+}
+
+// fixtureLines reads sample lines from testdata.
+//
+// They are files rather than string literals for the same reason the language
+// fixtures are: the repository audits itself, so a sample written to prove a
+// rule fires is caught by that rule when it sits in this file. testdata is
+// excluded from a walk, so the samples stay readable without being scored.
+//
+// This comment learned it the hard way: naming the sample verbatim here made
+// the explanation a finding of its own.
+func fixtureLines(t *testing.T, name string) []string {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Clean(filepath.Join("testdata", "lines", name+".txt")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	for _, line := range strings.Split(string(raw), "\n") {
+		if trimmed := strings.TrimRight(line, "\r"); strings.TrimSpace(trimmed) != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+// A data language has no debug print call to leave behind. Running the rule
+// there scored the word "debug" in a YAML description, which is how the
+// repository's own vibe-checks.yaml came to be flagged for a sentence about
+// skipping prose-only debug noise.
+func TestADataLanguageHasNoDebugOutput(t *testing.T) {
+	for _, language := range []string{"YAML", "JSON", "TOML", "INI"} {
+		for _, line := range fixtureLines(t, "data-language-prose") {
+			if hasDebugOutput(language, strings.ToLower(line)) {
+				t.Errorf("%s: prose or a pattern was read as a debug call: %s", language, line)
+			}
+		}
+	}
+
+	// The languages that do have one keep it.
+	for _, line := range fixtureLines(t, "debug-calls") {
+		if !hasDebugOutput("Go", strings.ToLower(line)) {
+			t.Errorf("a real Go debug print stopped being detected: %s", line)
+		}
+	}
+}
+
+// struct{} and interface{} are type literals, not empty declaration bodies. The
+// regex read the {} in a map[string]struct{} signature as an empty function
+// because "func" appeared earlier on the line.
+func TestAnEmptyTypeLiteralIsNotAnEmptyDeclaration(t *testing.T) {
+	for _, line := range fixtureLines(t, "type-literals") {
+		if emptyDeclarationIndex(line) >= 0 {
+			t.Errorf("read a type literal as an empty declaration: %s", line)
+		}
+	}
+	for _, line := range fixtureLines(t, "empty-declarations") {
+		if emptyDeclarationIndex(line) < 0 {
+			t.Errorf("stopped detecting a genuinely empty declaration: %s", line)
+		}
+	}
+}
+
+// t.Fatal is an assertion, and its message describes what went wrong. Counting
+// it as an abort verb turned a test about placeholder handling into a
+// high-severity finding about unfinished code.
+func TestATestAssertionIsNotAPlaceholderAbort(t *testing.T) {
+	for _, line := range fixtureLines(t, "test-assertions") {
+		if hasPlaceholderAbort(strings.ToLower(line)) {
+			t.Errorf("read a test assertion as a placeholder abort: %s", line)
+		}
+	}
+	for _, line := range fixtureLines(t, "placeholder-aborts") {
+		if !hasPlaceholderAbort(strings.ToLower(line)) {
+			t.Errorf("stopped detecting a real placeholder abort: %s", line)
+		}
 	}
 }

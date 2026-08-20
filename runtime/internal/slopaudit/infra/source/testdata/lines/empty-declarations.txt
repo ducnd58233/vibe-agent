@@ -1,0 +1,5 @@
+func Empty() {}
+export function empty() {}
+interface Marker {}
+func f() interface{} {}
+func g() map[string]struct{} {}
