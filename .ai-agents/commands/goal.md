@@ -50,7 +50,7 @@ mode this rule exists to remove: it is the model marking its own work complete.
 
 | Part | Owns | Command surface |
 |---|---|---|
-| **graph** | Which node runs next and on what evidence. [`graphs/goal-delivery.yaml`](../graphs/goal-delivery.yaml), 17 nodes | `vibe-agent graph` |
+| **graph** | Which node runs next and on what evidence. [`graphs/goal-delivery.yaml`](../graphs/goal-delivery.yaml); `graph validate` reports its size | `vibe-agent graph` |
 | **runtime** | Run state, evidence provenance, refusals | `run start`, `run status`, `run flag`, `checkpoint`, `verify` |
 | **loop** | Re-entry until a terminal node, and the three-strike stop | Automatic; `MaxBlockerAttempts = 3` |
 | **memory** | What earlier runs learned, recalled every phase | `memory list`, `memory confirm`, `memory forget` |
