@@ -365,7 +365,7 @@ func autoMergeCommand(args []string) error {
 	if err := current.SetCheckAt("merge_approved", state.Check{
 		Passed: true,
 		Source: state.SourceFileAssert,
-		Ref:    autoconfig.Path(workspaceRoot),
+		Ref:    approvalRef(workspaceRoot, config),
 		At:     now,
 	}, now); err != nil {
 		return err
@@ -380,7 +380,7 @@ func autoMergeCommand(args []string) error {
 	// in front of an irreversible step: the transition least worth leaving out.
 	transitionPayload, err := json.Marshal(map[string]any{
 		"from": transition.From, "to": transition.To, "via": transition.Via,
-		"key": "auto-merge-" + *slug, "approval": autoconfig.Path(workspaceRoot),
+		"key": "auto-merge-" + *slug, "approval": approvalRef(workspaceRoot, config),
 	})
 	if err != nil {
 		return fmt.Errorf("encode transition: %w", err)
@@ -398,4 +398,20 @@ func autoMergeCommand(args []string) error {
 	fmt.Printf("  approval %s\n", autoconfig.Path(workspaceRoot))
 	fmt.Println("  recorded as file_assert, not human_event: nobody was asked now, and someone answered once in a diff")
 	return nil
+}
+
+// approvalRef is what the merge approval records as its evidence.
+//
+// The path alone said where the answer lived, not what it was. The opt-in file
+// is gitignored, so there is no diff to fall back on: a manifest that names a
+// path reads as "a person answered yes" while the file can say something else
+// by the time anyone opens it. A run was aborted on exactly that uncertainty,
+// and the answer turned out to be legitimate - which is the point, because
+// nothing in the record could say so either way.
+//
+// So the reference carries the answer and a fingerprint of the bytes it was
+// read from, on one line somebody can read.
+func approvalRef(workspaceRoot string, config *autoconfig.Config) string {
+	return fmt.Sprintf("%s merge=%t sha256=%s",
+		autoconfig.Path(workspaceRoot), config.MayMerge(), config.Digest())
 }

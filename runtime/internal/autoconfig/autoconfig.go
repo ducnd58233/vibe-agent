@@ -10,6 +10,8 @@
 package autoconfig
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,6 +52,10 @@ type Config struct {
 	APIVersion string `yaml:"apiVersion"`
 	Kind       string `yaml:"kind"`
 	Spec       Spec   `yaml:"spec"`
+
+	// digest fingerprints the bytes this was read from. Unexported and set only
+	// by Load, so it cannot be filled in by anything that did not read a file.
+	digest string
 }
 
 // Path is where the opt-in lives for a workspace.
@@ -97,7 +103,37 @@ func Load(workspaceRoot string) (*Config, bool, error) {
 	if err != nil {
 		return nil, true, err
 	}
+	config.digest = digestOf(raw)
 	return config, true, nil
+}
+
+// Digest is a short fingerprint of the bytes this config was read from.
+//
+// It exists so an approval can record what it was answering rather than only
+// where the answer lived. The opt-in file is gitignored, so there is no diff to
+// fall back on: an approval that names a path says a person answered yes, while
+// the file can say something else by the time anyone reads the manifest. That
+// gap is not hypothetical - a run was aborted on it - and the evidence has to
+// carry the answer itself to close it.
+//
+// Set by Load from the bytes it parsed, in the same call, because reading the
+// file a second time to fingerprint it would leave exactly the window this is
+// about. Empty on a config built any other way, which is honest: nothing was
+// read, so nothing can be fingerprinted.
+func (c *Config) Digest() string {
+	if c == nil {
+		return ""
+	}
+	return c.digest
+}
+
+// digestLength keeps the reference to one readable line. A prefix answers the
+// only question asked of it, which is whether these are the same bytes.
+const digestLength = 16
+
+func digestOf(raw []byte) string {
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])[:digestLength]
 }
 
 // Template is what `auto init` writes.
