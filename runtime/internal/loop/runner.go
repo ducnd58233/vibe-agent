@@ -94,6 +94,31 @@ func (r *Runner) Enter(run *state.Run) error {
 	return nil
 }
 
+// SettleGate re-asks the gate the run is parked at, and reports whether it now
+// skips.
+//
+// enterGate answers on arrival, which is the only moment that existed until a
+// flag could be set while a run was already waiting. That is exactly what
+// answering a gate from a document does: the run parks, something reads the
+// artifact, the flag goes on. Without this the flag was set and nothing looked
+// at it again, so the run walked back to the artifact node and round again.
+//
+// It is safe to call on any node: one that is not a gate, or a gate whose
+// condition still does not hold, leaves the run where it is.
+func (r *Runner) SettleGate(run *state.Run) (bool, error) {
+	if run.Status != state.StatusAwaitingHuman {
+		return false, nil
+	}
+	node, ok := r.Graph.Node(run.CurrentNode)
+	if !ok || node.Type != graph.NodeHumanGate {
+		return false, nil
+	}
+	if _, skip := r.SkipReason(run, run.CurrentNode); !skip {
+		return false, nil
+	}
+	return r.enterGate(run, run.CurrentNode, r.now())
+}
+
 // enterGate settles the run's status on arrival at a node, and reports whether
 // a human gate was skipped.
 //
