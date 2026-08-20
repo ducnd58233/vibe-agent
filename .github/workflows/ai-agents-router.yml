@@ -22,6 +22,17 @@ on:
       - 'vibe-checks.yaml'
       - '.gitignore'
       - '.github/workflows/ai-agents-router.yml'
+      # Host config. These were left out, so a change to a permission rule, a
+      # hook wiring, or a rules file opened a pull request with no required
+      # check on it at all: #74 changed permissions for two hosts and CI never
+      # ran. They are the directories where a mistake is silent - a permission
+      # that no longer applies, or a hook that stops firing, produces no error
+      # anywhere - which is the argument for covering them, not against.
+      - '.claude/**'
+      - '.cursor/**'
+      - '.codex/**'
+      - '.opencode/**'
+      - 'opencode.json'
   pull_request:
     paths: *paths
 
