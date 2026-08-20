@@ -374,6 +374,22 @@ func autoMergeCommand(args []string) error {
 	if err != nil {
 		return err
 	}
+
+	// The journal is the account of how a run got where it is. Every other path
+	// that moves a run appends one, and this moved a run past the gate standing
+	// in front of an irreversible step: the transition least worth leaving out.
+	transitionPayload, err := json.Marshal(map[string]any{
+		"from": transition.From, "to": transition.To, "via": transition.Via,
+		"key": "auto-merge-" + *slug, "approval": autoconfig.Path(workspaceRoot),
+	})
+	if err != nil {
+		return fmt.Errorf("encode transition: %w", err)
+	}
+	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, *slug),
+		state.Event{Type: "transition", Node: transition.To, At: current.UpdatedAt, Payload: transitionPayload},
+	); err != nil {
+		return err
+	}
 	if err := state.Save(state.ManifestPath(workspaceRoot, *slug), current); err != nil {
 		return err
 	}
