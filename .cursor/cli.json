@@ -1,0 +1,17 @@
+{
+  "$comment": "Permissions for cursor-agent, the Cursor CLI. Separate from .cursor/hooks.json, which wires the vibe-agent control plane, and from .cursor/rules, which is prose. Cursor has allow and deny only, with no ask tier, so a rule here either grants or refuses. Deny wins.",
+  "permissions": {
+    "allow": [
+      "WebFetch(*)"
+    ],
+    "deny": [
+      "Read(.env*)",
+      "Read(**/.env*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/id_rsa*)",
+      "Shell(rm)",
+      "Shell(shred)"
+    ]
+  }
+}
