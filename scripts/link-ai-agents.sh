@@ -733,11 +733,7 @@ EOF
 EOF
   fi
 
-  if (( kept > 0 )); then
-    echo "Plugin manifests under $workspace: $written written, $kept left alone (already present)"
-  else
-    echo "Plugin manifests emitted under $workspace"
-  fi
+  echo "Plugin manifests under $workspace: $written written, $kept left alone (already present)"
 }
 
 install_local_git_exclude "$WORKSPACE"
