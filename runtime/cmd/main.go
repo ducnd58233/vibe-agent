@@ -37,6 +37,8 @@ Usage:
   vibe-agent fetch <url|path> [--budget <tokens>] [--json] [--refresh]
   vibe-agent slop audit [path] [--format text|json] [--workers N] [--fail-on score]
   vibe-agent mcp serve
+  vibe-agent auto --goal "<text>" [--slug <slug>] [--task-source <name>]
+  vibe-agent auto gate --slug <slug>
   vibe-agent auto init [--workspace <dir>]
   vibe-agent guards <list|init> [--workspace <dir>] [--force]
   vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|post-tool-use-failure|stop|subagent-stop> [--client claude|cursor]
@@ -75,6 +77,16 @@ so a recorded failure answers a question an audit already asks.
 A run stops on whichever of three budgets it passes first: transitions,
 host-reported tokens, or wallclock. Zero is no limit, and "run status" names
 the one that ended it.
+
+"auto" starts a run on the auto path from one objective: it derives the slug,
+sets the flag the graph routes on, and skips the intake gate. The host coding
+agent still runs every agent node; auto is a route through the same graph, not
+a second implementation of it.
+
+"auto gate" answers the spec or plan gate from what the document says. It sets
+the flag only when the document declares nothing open, and the gate it opens
+records skipped rather than approved, because nobody was asked. Text search is
+not a promise the document is complete, and the recorded state says so.
 
 "auto init" writes the opt-in a workspace answers before auto mode may merge
 its own pull request. A missing file, or merge left false, means auto stops at
