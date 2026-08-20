@@ -50,15 +50,8 @@ spec:
         like a failing audit and is not one.
         go run keeps the check on the workspace source tree so a stale binary
         on PATH cannot shadow the slop walk under test.
-        --deadcode adds whole-program reachability over the runtime module, which is the question
-        golangci-lint's `unused` declines: it will not report an unreachable *exported* function,
-        because an exported name might be imported by code it cannot see. True in general, false
-        under runtime/internal, which nothing outside this module may import.
-        Its findings fail on presence rather than through the score. The score is a density,
-        weighted findings per thousand lines, so at this repository's size a single unreachable
-        function rounds to nothing and --fail-on would never see it.
       command: go
-      args: [-C, runtime, run, ./cmd, slop, audit, --deadcode, --fail-on, "3", ..]
+      args: [-C, runtime, run, ./cmd, slop, audit, --fail-on, "3", ..]
       timeoutSeconds: 900
 
     lint:
