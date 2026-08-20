@@ -200,3 +200,67 @@ spec:
       expect:
         status: failed
         path: [intake, spec, approve_spec, plan, approve_plan, build, build, build, build]
+
+    # The gate in front of the irreversible action is earned per task. Before
+    # task_complete reset the per-task checks, the second cycle sailed through
+    # approve_merge on the first cycle's approval, and pre-tool-use stopped
+    # refusing pushes to a protected branch for the same reason.
+    - name: a second task stops at the merge gate again
+      graph: goal-delivery
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {} # spec
+        - check: {name: spec_approved, passed: true, source: human_event}
+        - {} # plan
+        - check: {name: plan_approved, passed: true, source: human_event}
+        - {} # build
+        - check: {name: unit, passed: true, source: exit_code}
+        - check: {name: e2e, passed: true, source: exit_code}
+        - check: {name: slop, passed: true, source: exit_code}
+        - result: {changes_requested: false}
+        - check: {name: pr_open, passed: true, source: exit_code}
+        - check: {name: ci, passed: true, source: ci_api}
+        - check: {name: reviews, passed: true, source: human_event}
+        - check: {name: ship, passed: true, source: human_event}
+        - check: {name: merge_approved, passed: true, source: human_event}
+        - check: {name: tasks_remaining, passed: true, source: exit_code}
+        - {} # build
+        - check: {name: unit, passed: true, source: exit_code}
+        - check: {name: e2e, passed: true, source: exit_code}
+        - check: {name: slop, passed: true, source: exit_code}
+        - result: {changes_requested: false}
+        - check: {name: pr_open, passed: true, source: exit_code}
+        - check: {name: ci, passed: true, source: ci_api}
+        - check: {name: reviews, passed: true, source: human_event}
+        - check: {name: ship, passed: true, source: human_event}
+        - {} # approve_merge with no fresh approval
+      expect:
+        status: running
+        path:
+          - intake
+          - spec
+          - approve_spec
+          - plan
+          - approve_plan
+          - build
+          - test
+          - e2e
+          - slop
+          - review
+          - open_pr
+          - pr_checks
+          - external_reviews
+          - ship
+          - approve_merge
+          - task_complete
+          - build
+          - test
+          - e2e
+          - slop
+          - review
+          - open_pr
+          - pr_checks
+          - external_reviews
+          - ship
+          - approve_merge
+          - build

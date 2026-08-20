@@ -447,3 +447,34 @@ func TestCursorGetsADenyForACredentialToo(t *testing.T) {
 		t.Fatalf("expected deny, got %v", decision["permission"])
 	}
 }
+
+// The push guard reads "no active run has recorded merge_approved". That check
+// used to survive its own task, so one approval left every later push to a
+// protected branch unguarded for the life of the run.
+//
+// The graph clears it when a task cycle restarts. This is the half of that fix
+// which lives here: once the check is gone, the guard refuses again.
+func TestAPushIsRefusedAgainOnceTheApprovalIsCleared(t *testing.T) {
+	root := workspaceWithRun(t, approved)
+	onBranch(t, root, "main")
+
+	if blocked, _ := attempt(t, root, "git push origin main"); blocked != nil {
+		t.Fatalf("an approved run could not push: %s", blocked.Reason)
+	}
+
+	// The next task begins. task_complete -> build resets the per-task checks.
+	cleared := workspaceWithRun(t, func(run *state.Run) {
+		approved(run)
+		delete(run.Checks, mergeApprovedCheck)
+		run.CurrentNode = "build"
+	})
+	onBranch(t, cleared, "main")
+
+	blocked, _ := attempt(t, cleared, "git push origin main")
+	if blocked == nil {
+		t.Fatal("a push to main was allowed with no approval recorded")
+	}
+	if !strings.Contains(strings.ToLower(blocked.Reason), "main") {
+		t.Errorf("reason = %q, want it to name the branch", blocked.Reason)
+	}
+}

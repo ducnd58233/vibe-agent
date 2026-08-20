@@ -171,6 +171,15 @@ type Edge struct {
 	From string `yaml:"from"`
 	To   string `yaml:"to"`
 	When string `yaml:"when"`
+	// Resets names the checks this transition clears.
+	//
+	// A check is evidence about something, and some things are true of a run
+	// while others are true of one task inside it. Nothing distinguished them:
+	// a transition cleared blockers and left every check standing, so a second
+	// task began with the first task's tests, review, and merge approval
+	// already recorded. The approval is the one that matters, because the gate
+	// it opens is the only one in front of an irreversible action.
+	Resets []string `yaml:"resets"`
 }
 
 // Negated reports whether the condition is inverted, and returns the bare name.

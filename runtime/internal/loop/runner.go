@@ -162,6 +162,7 @@ func (r *Runner) Advance(run *state.Run, outcome Outcome) (*Transition, error) {
 
 	transition := &Transition{From: run.CurrentNode, To: edge.To, Via: guardName}
 	run.Blockers = clearBlockersAt(run.Blockers, transition.From)
+	clearChecks(run, edge.Resets)
 	run.CurrentNode = edge.To
 	run.UpdatedAt = now
 
@@ -297,6 +298,17 @@ func clearBlockersAt(blockers []state.Blocker, node string) []state.Blocker {
 		}
 	}
 	return out
+}
+
+// clearChecks drops the evidence a transition declares stale.
+//
+// Deleting rather than marking failed: a check that is absent has not been
+// answered, while a check recorded as failed is an answer, and the two route
+// differently through guards that read them.
+func clearChecks(run *state.Run, names []string) {
+	for _, name := range names {
+		delete(run.Checks, name)
+	}
 }
 
 func (r *Runner) recordBlocker(run *state.Run, node, reason string, class state.FailureClass, now time.Time) int {
