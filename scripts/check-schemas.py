@@ -272,6 +272,7 @@ def main() -> int:
     fixtures = check_go_fixtures(root, schemas["run-state"])
     failures += fixtures[0]
     failures += check_workspace_plan(root, schemas["check-plan"])
+    failures += check_auto_template(root, schemas["auto"])
 
     print()
     if failures:
@@ -302,6 +303,40 @@ def check_workspace_plan(root: Path, plan_schema: dict) -> int:
     instance = yaml.safe_load(path.read_text(encoding="utf-8"))
     errors = list(Draft202012Validator(plan_schema).iter_errors(instance))
     label = "vibe-checks.yaml validates against check-plan.schema.json"
+    if not errors:
+        print(f"  ok    {label}")
+        return 0
+    print(f"  FAIL  {label}", file=sys.stderr)
+    for error in errors[:3]:
+        print(f"          {list(error.path)}: {error.message}", file=sys.stderr)
+    return 1
+
+
+def check_auto_template(root: Path, auto_schema: dict) -> int:
+    """Validate the template `auto init` writes against the auto schema.
+
+    The template is a Go string and the schema is JSON, so nothing otherwise
+    stops them describing different files. A workspace would then get an opt-in
+    the runtime accepts and this checker rejects, or the reverse, and the
+    disagreement would only surface when somebody tried to merge.
+    """
+    source = root / "runtime" / "internal" / "autoconfig" / "autoconfig.go"
+    if not source.is_file():
+        print(f"  FAIL  {source} is missing", file=sys.stderr)
+        return 1
+
+    text = source.read_text(encoding="utf-8")
+    marker = "const Template = `"
+    start = text.find(marker)
+    if start < 0:
+        print("  FAIL  autoconfig.go has no Template const to check", file=sys.stderr)
+        return 1
+    start += len(marker)
+    end = text.find("`", start)
+    template = text[start:end]
+
+    label = "auto init template validates against auto.schema.json"
+    errors = list(Draft202012Validator(auto_schema).iter_errors(yaml.safe_load(template)))
     if not errors:
         print(f"  ok    {label}")
         return 0
