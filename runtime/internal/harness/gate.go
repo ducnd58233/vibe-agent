@@ -207,6 +207,9 @@ func verdict(req Request, body payload) *BlockError {
 	if blocked := credentialVerdict(body); blocked != nil {
 		return blocked
 	}
+	if blocked := suppressionVerdict(req, body); blocked != nil {
+		return blocked
+	}
 	return stateWriteVerdict(req, body)
 }
 

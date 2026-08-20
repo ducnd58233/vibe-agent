@@ -218,6 +218,10 @@ type payload struct {
 		// it.
 		Content   string `json:"content"`
 		NewString string `json:"new_string"`
+		// OldString is what Edit is replacing. The suppression gate needs both
+		// halves: a rule it already had is not a rule it just added, and
+		// without the before there is no way to tell a move from an addition.
+		OldString string `json:"old_string"`
 	} `json:"tool_input"`
 	Command  string `json:"command"`
 	FilePath string `json:"file_path"`
