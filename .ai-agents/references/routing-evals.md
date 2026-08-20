@@ -65,6 +65,43 @@ For skill and agent behavioral evaluation more broadly, see
 | Isolated five-axis code review persona | agent | [`code-reviewer.md`](../agents/code-reviewer.md) |
 | Audit the agent/skill system itself | agent | [`agent-systems-auditor.md`](../agents/agent-systems-auditor.md) |
 | Hand coverage gaps to an isolated testing specialist | agent | [`test-engineer.md`](../agents/test-engineer.md) |
+| Serve a trained model behind an inference API with monitoring | agent | [`ai-engineer.md`](../agents/ai-engineer.md) |
+| Triage recent papers and turn a method into an experiment plan | agent | [`ai-researcher.md`](../agents/ai-researcher.md) |
+| Design module boundaries and data flow before a large feature | agent | [`architect-planner.md`](../agents/architect-planner.md) |
+| Isolated persona to compare options and report tradeoffs with citations | agent | [`data-analyst.md`](../agents/data-analyst.md) |
+| Isolated persona for index choice, explain plans, and lock contention | agent | [`database-query-auditor.md`](../agents/database-query-auditor.md) |
+| Review pipeline, infra, alerting, and launch readiness risks | agent | [`devops-sre-auditor.md`](../agents/devops-sre-auditor.md) |
+| Check UI fidelity, accessibility, and token usage against the handoff | agent | [`product-design-reviewer.md`](../agents/product-design-reviewer.md) |
+| Write exploratory charters and a browser matrix for release signoff | agent | [`qa-tester.md`](../agents/qa-tester.md) |
+| Isolated persona to gather and verify sources on a scoped topic | agent | [`research-investigator.md`](../agents/research-investigator.md) |
+| Validate the citations in a finished report and flag unsupported claims | agent | [`source-auditor.md`](../agents/source-auditor.md) |
+| Turn collected evidence into a cited comparison table | command | [`analyze.md`](../commands/analyze.md) |
+| Run the slash command that reduces complexity with tests still green | command | [`code-simplify.md`](../commands/code-simplify.md) |
+| Build UI registry-first with render evidence and anti-slop gates | command | [`design.md`](../commands/design.md) |
+| Drive one objective end to end through the delivery pipeline | command | [`goal.md`](../commands/goal.md) |
+| Turn an approved specification into ordered tasks with acceptance criteria | command | [`plan.md`](../commands/plan.md) |
+| Write the structured work definition before any implementation | command | [`spec.md`](../commands/spec.md) |
+| Start from a failing case, or run focused proof for a fix | command | [`test.md`](../commands/test.md) |
+| Design the guides, sensors, and boundaries around a coding agent | skill | [`agent-harness-engineering`](../skills/agent-harness-engineering/SKILL.md) |
+| Plan a reproduction and design ablations from a paper | skill | [`ai-research-methodology`](../skills/ai-research-methodology/SKILL.md) |
+| Structure services, queues, and transactional boundaries on the server | skill | [`backend-engineering`](../skills/backend-engineering/SKILL.md) |
+| Drive a real page and read console and network while verifying | skill | [`browser-testing-with-devtools`](../skills/browser-testing-with-devtools/SKILL.md) |
+| What to look for when judging a change beyond correctness | skill | [`code-review-and-quality`](../skills/code-review-and-quality/SKILL.md) |
+| Principles for reducing nesting and duplication while refactoring | skill | [`code-simplification`](../skills/code-simplification/SKILL.md) |
+| Handle races, backpressure, and socket fan-out safely | skill | [`concurrency-realtime-systems`](../skills/concurrency-realtime-systems/SKILL.md) |
+| Apply SOLID, DRY, KISS, and YAGNI to a module boundary | skill | [`engineering-principles`](../skills/engineering-principles/SKILL.md) |
+| Build accessible components, state, and rendering in the browser | skill | [`frontend-ui-engineering`](../skills/frontend-ui-engineering/SKILL.md) |
+| The rules behind driving one outcome across many sessions | skill | [`goal-driven-delivery`](../skills/goal-driven-delivery/SKILL.md) |
+| Check assumptions and keep the diff surgical on a risky change | skill | [`karpathy-guardrails`](../skills/karpathy-guardrails/SKILL.md) |
+| Split a large change into ordered, verifiable pieces | skill | [`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md) |
+| Set up tokens, components, and a registry for a shared visual language | skill | [`product-design-systems`](../skills/product-design-systems/SKILL.md) |
+| Decide coverage across manual, automation, and regression layers | skill | [`qa-testing-strategy`](../skills/qa-testing-strategy/SKILL.md) |
+| Keep tokens out of bundles, logs, storage, and responses while writing | skill | [`secure-by-default`](../skills/secure-by-default/SKILL.md) |
+| Threat-model an existing surface and close authorization holes | skill | [`security-and-hardening`](../skills/security-and-hardening/SKILL.md) |
+| Why the written definition comes before code, and what it holds | skill | [`spec-driven-development`](../skills/spec-driven-development/SKILL.md) |
+| Manage services, users, cron, and disk on a Linux host | skill | [`system-administration-ops`](../skills/system-administration-ops/SKILL.md) |
+| Match an implemented screen to the handoff pixel for pixel | skill | [`ui-design-fidelity`](../skills/ui-design-fidelity/SKILL.md) |
+| Figure out which asset to load for the work in front of me | skill | [`using-agent-skills`](../skills/using-agent-skills/SKILL.md) |
 </references>
 
 ## Model-graded run
