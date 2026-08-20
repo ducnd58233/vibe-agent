@@ -9,8 +9,9 @@ import (
 	"strings"
 	"time"
 
+	agent "github.com/ducnd58233/vibe-agent/runtime/internal/agent/domain"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/agent/infra/hostrunner"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/redact"
 )
@@ -183,6 +184,15 @@ func printFailureChatBody(ctx context.Context, err error) string {
 }
 
 func printFailureStderr(err error) string {
+	// The runner captures stderr itself, which empties ExitError.Stderr. Both
+	// are read because a failure can arrive from either shape depending on who
+	// spawned the process.
+	var execErr *hostrunner.ExecError
+	if errors.As(err, &execErr) {
+		if text := strings.TrimSpace(execErr.Stderr); text != "" {
+			return text
+		}
+	}
 	var exit *exec.ExitError
 	if !errors.As(err, &exit) {
 		return ""
@@ -255,22 +265,18 @@ func runHostPrint(ctx context.Context, host hosts.Host, prompt string, opts host
 	if len(parts) == 0 {
 		return "", fmt.Errorf("empty host command")
 	}
-	args := hosts.PrintArgv(host, opts)
-	if host.PromptAsArg {
-		args = append(args, prompt)
-	}
-	cmd, err := safexec.CommandContext(ctx, parts[0], args...)
+	// No timeout: host response time varies by model and load, and a fixed one
+	// here turns a slow answer into a failed one.
+	runner := hostrunner.New(hostrunner.Spec{
+		Binary:      parts[0],
+		Args:        hosts.PrintArgv(host, opts),
+		PromptAsArg: host.PromptAsArg,
+	})
+	response, err := runner.Run(ctx, agent.Request{Prompt: prompt, Model: opts.Model, Mode: opts.Mode})
 	if err != nil {
 		return "", err
 	}
-	if !host.PromptAsArg {
-		cmd.Stdin = strings.NewReader(prompt)
-	}
-	out, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
+	return response.Text, nil
 }
 
 func parsePrintLines(raw string) []string {

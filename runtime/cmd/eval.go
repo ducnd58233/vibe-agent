@@ -12,8 +12,9 @@ import (
 	"sync"
 	"time"
 
+	agent "github.com/ducnd58233/vibe-agent/runtime/internal/agent/domain"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/agent/infra/hostrunner"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/markdown"
 )
 
@@ -363,35 +364,23 @@ func finalJSONAgentMessage(raw string) string {
 // kilobytes, which is comfortable on a pipe and close to the command-line limit
 // on Windows.
 func commandAsker(runner runnerSpec, timeout time.Duration) asker {
-	parts := strings.Fields(runner.Command)
 	return func(ctx context.Context, prompt string) (string, error) {
-		if len(parts) == 0 {
+		spec, err := hostrunner.FromCommand(runner.Command, runner.PromptAsArg)
+		if err != nil {
 			return "", fmt.Errorf("empty --runner")
 		}
+		// The deadline stays here rather than inside the runner because
+		// runnerError reads ctx.Err() to say "runner timed out" instead of
+		// reporting the raw exit status, and that reading needs the context
+		// this function owns.
 		ctx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
-		args := append([]string{}, parts[1:]...)
-		if runner.PromptAsArg {
-			args = append(args, prompt)
+
+		response, runErr := hostrunner.New(spec).Run(ctx, agent.Request{Prompt: prompt})
+		if runErr != nil {
+			return "", runnerError(ctx.Err(), runErr, response.Stderr, response.Text)
 		}
-		cmd, err := safexec.CommandContext(ctx, parts[0], args...)
-		if err != nil {
-			return "", err
-		}
-		if !runner.PromptAsArg {
-			cmd.Stdin = strings.NewReader(prompt)
-		}
-		// The runner's own diagnostics are captured rather than passed through.
-		// A host that warns about unrelated settings on every call would bury
-		// the result under one copy of the warning per trial, and the warning is
-		// still wanted when the call actually fails.
-		var complaints strings.Builder
-		cmd.Stderr = &complaints
-		out, err := cmd.Output()
-		if err != nil {
-			return "", runnerError(ctx.Err(), err, complaints.String(), string(out))
-		}
-		return string(out), nil
+		return response.Text, nil
 	}
 }
 
