@@ -319,3 +319,41 @@ func TestATransportFailureNamesTheTransport(t *testing.T) {
 		t.Errorf("error = %q, want it to name the transport", err)
 	}
 }
+
+// A zero-value Budget reads as "no limits", and pause_turn continues a turn
+// without adding a message, so a transport that keeps pausing would spin
+// forever on a struct someone left empty.
+func TestAnUnboundedBudgetStillStops(t *testing.T) {
+	paused := agent.Reply{StopReason: agent.StopPauseTurn}
+	replies := make([]agent.Reply, DefaultMaxTurns+10)
+	for i := range replies {
+		replies[i] = paused
+	}
+	transport := &testutil.ScriptedTransport{Replies: replies}
+	loop := &Loop{Transport: transport}
+
+	outcome, err := loop.Run(context.Background(), ask("search"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if outcome.StoppedBy != "turns" {
+		t.Errorf("stoppedBy = %q, want turns", outcome.StoppedBy)
+	}
+	if outcome.Turns != DefaultMaxTurns {
+		t.Errorf("turns = %d, want %d", outcome.Turns, DefaultMaxTurns)
+	}
+}
+
+// An explicit budget is not overridden by the default.
+func TestAnExplicitBudgetIsLeftAlone(t *testing.T) {
+	transport := &testutil.ScriptedTransport{Replies: []agent.Reply{finished("done")}}
+	loop := &Loop{Transport: transport, Budget: Budget{MaxTokens: 1_000_000}}
+
+	outcome, err := loop.Run(context.Background(), ask("hello"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !outcome.Done() {
+		t.Errorf("outcome = %+v; an explicit token budget was overridden by a turn default", outcome)
+	}
+}

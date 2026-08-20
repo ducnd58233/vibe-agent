@@ -27,6 +27,23 @@ type Budget struct {
 	Deadline  time.Time
 }
 
+// DefaultMaxTurns bounds a budget that bounds nothing.
+//
+// A zero-value Budget reads as "no limits", and the one stop reason that
+// continues a turn without adding a message is pause_turn, so a transport that
+// keeps pausing would spin forever on a struct someone left empty. A loop with
+// no ceiling is the failure mode that runs all night, and defaulting is
+// cheaper than a knob nobody remembers to set.
+const DefaultMaxTurns = 50
+
+// withDefaults fills in the ceiling that stops an unbounded loop.
+func (b Budget) withDefaults() Budget {
+	if b.MaxTurns == 0 && b.MaxTokens == 0 && b.Deadline.IsZero() {
+		b.MaxTurns = DefaultMaxTurns
+	}
+	return b
+}
+
 func (b Budget) exceeded(turns int, usage agent.Usage, now time.Time) string {
 	switch {
 	case b.MaxTurns > 0 && turns >= b.MaxTurns:
@@ -89,9 +106,10 @@ func (l *Loop) Run(ctx context.Context, conversation agent.Conversation) (Outcom
 		return Outcome{}, fmt.Errorf("loop has no transport")
 	}
 
+	budget := l.Budget.withDefaults()
 	outcome := Outcome{Messages: append([]agent.Message{}, conversation.Messages...)}
 	for {
-		if stoppedBy := l.Budget.exceeded(outcome.Turns, outcome.Usage, l.now()); stoppedBy != "" {
+		if stoppedBy := budget.exceeded(outcome.Turns, outcome.Usage, l.now()); stoppedBy != "" {
 			outcome.StoppedBy = stoppedBy
 			return outcome, nil
 		}
