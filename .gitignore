@@ -14,6 +14,7 @@
 /.codex/agents/
 /.codex/prompts/
 /.codex/commands/
+/.codex/skills/
 # Goal verification artifacts from /goal (local only; see .ai-agents/references/goal-verification-records.md)
 # Run state lives at tmp/<slug>/manifest.json with the event log at tmp/<slug>/events.ndjson.
 /tmp/

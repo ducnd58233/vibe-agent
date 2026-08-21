@@ -147,6 +147,10 @@ link_skill_tree "$WORKSPACE/.cursor/commands" "$ASSETS/commands"
 link_skill_tree "$WORKSPACE/.opencode/agents" "$ASSETS/agents"
 link_skill_tree "$WORKSPACE/.opencode/commands" "$ASSETS/commands"
 link_skill_tree "$WORKSPACE/.agents/commands" "$ASSETS/commands"
+# Muse Code scans repo-local .codex/skills and .claude/skills. The second was
+# already written, so this is the one directory that stood between a whole host
+# and the assets it already knows how to read.
+link_skill_tree "$WORKSPACE/.codex/skills" "$ASSETS/skills"
 
 convert_command_body_for_codex_skill() {
   local assets_ref="$1"
@@ -527,6 +531,7 @@ install_local_git_exclude() {
     "/.agents/skills/"
     "/.agents/commands/"
     "/.codex/agents/"
+    "/.codex/skills/"
   )
   local -a missing=()
   local rule
