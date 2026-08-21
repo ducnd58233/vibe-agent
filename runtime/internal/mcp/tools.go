@@ -52,7 +52,7 @@ func (d Deps) now() time.Time {
 	return d.Now().UTC()
 }
 
-// NewServer builds the stdio server with the seven-tool surface.
+// NewServer builds the stdio server with the eight-tool surface.
 func NewServer(version string, deps Deps) *Server {
 	return &Server{
 		Name:    "vibe-agent",
@@ -69,7 +69,7 @@ func Tools(deps Deps) []Tool {
 	return []Tool{
 		{
 			Name:        "vibe_bootstrap",
-			Description: "Load the workspace rules, the active run, and relevant memories. Call before starting work.",
+			Description: "Call once at the start of a session to load workspace rules, the active run, and relevant memories. Do not call again mid-session once you already have this context.",
 			InputSchema: schema(`{"type":"object","properties":{"slug":{"type":"string","description":"Goal slug, when one is already chosen"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return bootstrap(deps, raw) },
 		},
@@ -83,38 +83,38 @@ func Tools(deps Deps) []Tool {
 			// a short tool list exists to protect, which is the argument for its
 			// place in a list that is deliberately short.
 			Name: "vibe_fetch",
-			Description: "Fetch a URL or local path as text, clipped to a token budget and cached. " +
-				"Prefer this over an unbudgeted fetch: it is the same document for a fraction of the context.",
+			Description: "Call to read a URL or local path as text clipped to a token budget and cached. " +
+				"Do not call again for a source already fetched this session unless you need a refresh.",
 			InputSchema: schema(`{"type":"object","required":["source"],"properties":{"source":{"type":"string","description":"URL or path"},"budget":{"type":"integer","minimum":1,"description":"Approximate token budget for the returned text"},"refresh":{"type":"boolean","description":"Bypass the cache"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return fetchSource(deps, raw) },
 		},
 		{
 			Name:        "vibe_memory_search",
-			Description: "Search confirmed project memory. Results are supporting context, not authority.",
+			Description: "Call to check what earlier work already established before repeating research. Do not call for this run's own state; use vibe_run_status instead.",
 			InputSchema: schema(`{"type":"object","required":["query"],"properties":{"query":{"type":"string"},"kinds":{"type":"array","items":{"type":"string","enum":["semantic","episodic","correction","preference"]}},"limit":{"type":"integer","minimum":1,"maximum":25}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return searchMemory(deps, raw) },
 		},
 		{
 			Name:        "vibe_memory_propose",
-			Description: "Propose an evidence-backed memory. It is stored as proposed; only a verifier result or a human confirms it.",
+			Description: "Call after establishing something evidence-backed worth remembering across runs. Do not call with a claim that has no cited evidence; it will be rejected.",
 			InputSchema: schema(`{"type":"object","required":["kind","content","evidence","sourceType"],"properties":{"kind":{"type":"string","enum":["semantic","episodic","correction","preference"]},"content":{"type":"string"},"evidence":{"type":"array","minItems":1,"items":{"type":"string"}},"sourceType":{"type":"string","enum":["command_result","file_content","ci_api","human_statement","review_comment"]},"sourceRef":{"type":"string"},"confidence":{"type":"number","minimum":0,"maximum":1},"tags":{"type":"array","items":{"type":"string"}}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return proposeMemory(deps, raw) },
 		},
 		{
 			Name:        "vibe_run_start",
-			Description: "Create a run from a workflow graph.",
+			Description: "Call to create a run when none exists yet for this objective. Do not call when a run for this slug is already active; use vibe_run_status instead.",
 			InputSchema: schema(`{"type":"object","required":["slug","goal"],"properties":{"slug":{"type":"string"},"goal":{"type":"string"},"graph":{"type":"string","default":"goal-delivery"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return runStart(deps, raw) },
 		},
 		{
 			Name:        "vibe_run_status",
-			Description: "Current node, required action, blockers, and what completing this node requires.",
+			Description: "Call to see the current node, required action, and blockers. Do not call to advance the run; use vibe_checkpoint or vibe_verify instead.",
 			InputSchema: schema(`{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return runStatus(deps, raw) },
 		},
 		{
 			Name:        "vibe_checkpoint",
-			Description: "Record evidence for the current node and advance the graph. Evidence must come from a command exit code, a file assertion, a CI response, or a human approval. A verifier node's check cannot be recorded here; call vibe_verify.",
+			Description: "Call to record evidence (exit code, file assertion, CI response, or human approval) and advance the graph. Do not call for a verifier node's check; call vibe_verify instead.",
 			InputSchema: schema(`{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"},"check":{"type":"object","required":["name","passed","source"],"properties":{"name":{"type":"string"},"passed":{"type":"boolean"},"skipped":{"type":"boolean"},"source":{"type":"string","enum":["exit_code","file_assert","ci_api","human_event"]},"ref":{"type":"string"}}},"result":{"type":"object","additionalProperties":{"type":"boolean"}},"blocker":{"type":"string"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return runCheckpoint(deps, raw) },
 		},
@@ -123,7 +123,7 @@ func Tools(deps Deps) []Tool {
 			// vibe-checks.yaml declares for the current node's check and records
 			// what happened. A caller cannot supply the outcome or the command.
 			Name:        "vibe_verify",
-			Description: "Run the current verifier node's check as declared in vibe-checks.yaml and record what it found. This is the only way a verifier node advances. Takes no verdict: the result is the verifier's.",
+			Description: "Call at a verifier node to run its declared check and record the real result. Do not call with a verdict already decided; this tool produces its own and takes none as input.",
 			InputSchema: schema(`{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"},"check":{"type":"string","description":"Fail unless the current node writes this check"},"dryRun":{"type":"boolean","description":"Report what would run without running it"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return runVerify(deps, raw) },
 		},
@@ -148,7 +148,9 @@ func bootstrap(deps Deps, raw json.RawMessage) (any, error) {
 
 	if args.Slug != "" {
 		if run, err := state.Load(state.ManifestPath(deps.WorkspaceRoot, args.Slug)); err == nil {
-			out["run"] = summarize(run)
+			runSummary := summarize(run)
+			runSummary["goal"] = run.Goal
+			out["run"] = runSummary
 		}
 	}
 	if store := deps.read(); store != nil {
@@ -278,7 +280,9 @@ func runStart(deps Deps, raw json.RawMessage) (any, error) {
 	if err := state.Save(manifest, run); err != nil {
 		return nil, err
 	}
-	return describe(loaded, run), nil
+	out := describe(loaded, run)
+	out["goal"] = run.Goal
+	return out, nil
 }
 
 func runStatus(deps Deps, raw json.RawMessage) (any, error) {
@@ -426,6 +430,15 @@ func describe(loaded *graph.Graph, run *state.Run) map[string]any {
 		return out
 	}
 
+	if node.Check != "" {
+		if check, ok := run.Checks[node.Check]; ok {
+			out["currentNodeCheck"] = map[string]any{
+				"name": node.Check, "passed": check.Passed, "skipped": check.Skipped,
+				"source": string(check.Source), "ref": check.Ref,
+			}
+		}
+	}
+
 	action := map[string]any{"kind": string(node.Type), "description": node.Description}
 	switch node.Type {
 	case graph.NodeAgent:
@@ -454,23 +467,21 @@ func describe(loaded *graph.Graph, run *state.Run) map[string]any {
 	return out
 }
 
+// summarize is the envelope every tool response shares: run identity and
+// position, plus a check count rather than the full history. It deliberately
+// omits the goal - that text does not change between calls on the same run, so
+// repeating it on every status/checkpoint/verify response would spend tokens
+// for no new information. bootstrap and runStart, the two calls a caller makes
+// before it has necessarily seen the goal, add it back explicitly.
 func summarize(run *state.Run) map[string]any {
-	checks := map[string]any{}
-	for name, check := range run.Checks {
-		checks[name] = map[string]any{
-			"passed": check.Passed, "skipped": check.Skipped,
-			"source": string(check.Source), "ref": check.Ref,
-		}
-	}
 	out := map[string]any{
-		"runId":       run.RunID,
-		"slug":        run.Slug,
-		"goal":        run.Goal,
-		"currentNode": run.CurrentNode,
-		"status":      string(run.Status),
-		"iteration":   run.Iteration,
-		"budget":      run.MaxTransitions,
-		"checks":      checks,
+		"runId":         run.RunID,
+		"slug":          run.Slug,
+		"currentNode":   run.CurrentNode,
+		"status":        string(run.Status),
+		"iteration":     run.Iteration,
+		"budget":        run.MaxTransitions,
+		"checksSummary": checksSummary(run.Checks),
 	}
 	if len(run.Blockers) > 0 {
 		blockers := make([]map[string]any, 0, len(run.Blockers))
@@ -482,6 +493,29 @@ func summarize(run *state.Run) map[string]any {
 		out["blockers"] = blockers
 	}
 	return out
+}
+
+// checksSummary counts a run's recorded checks by outcome, instead of
+// serializing every one of them by name on every call. A caller that needs the
+// full detail behind one check gets it from currentNodeCheck (describe) or
+// from the check/passed/evidence fields checkpoint and verify already return
+// for the check they just recorded.
+func checksSummary(checks map[string]state.Check) map[string]any {
+	summary := map[string]int{"total": len(checks)}
+	for _, check := range checks {
+		switch {
+		case check.Skipped:
+			summary["skipped"]++
+		case check.Passed:
+			summary["passed"]++
+		default:
+			summary["failed"]++
+		}
+	}
+	return map[string]any{
+		"total": summary["total"], "passed": summary["passed"],
+		"skipped": summary["skipped"], "failed": summary["failed"],
+	}
 }
 
 func renderHits(hits []memory.Hit) []map[string]any {

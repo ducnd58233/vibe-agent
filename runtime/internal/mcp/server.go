@@ -165,7 +165,7 @@ func (s *Server) callTool(req request, reply response) response {
 			reply.Result = toolResult(fmt.Sprintf("error: %v", err), true)
 			return reply
 		}
-		encoded, err := json.MarshalIndent(result, "", "  ")
+		encoded, err := json.Marshal(result)
 		if err != nil {
 			observability.LogError(s.Log, "mcp encode result", err)
 			reply.Error = &rpcError{codeInternal, "encode result: " + err.Error()}
