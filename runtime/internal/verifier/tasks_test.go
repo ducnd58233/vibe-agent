@@ -25,7 +25,7 @@ func workspaceWithTasks(t *testing.T, body string) string {
 
 func TestTasksPassesWhileWorkRemains(t *testing.T) {
 	root := workspaceWithTasks(t, `{
-	  "schemaVersion": 1, "slug": "demo",
+	  "schemaVersion": 1, "slug": "demo", "date": "2026-08-21", "version": 1,
 	  "tasks": [
 	    {"id": "T1", "title": "shipped", "status": "done"},
 	    {"id": "T2", "title": "still open", "status": "blocked"}
@@ -49,7 +49,7 @@ func TestTasksPassesWhileWorkRemains(t *testing.T) {
 
 func TestTasksFailsWhenEveryTaskIsSettled(t *testing.T) {
 	root := workspaceWithTasks(t, `{
-	  "schemaVersion": 1, "slug": "demo",
+	  "schemaVersion": 1, "slug": "demo", "date": "2026-08-21", "version": 1,
 	  "tasks": [
 	    {"id": "T1", "title": "shipped", "status": "done"},
 	    {"id": "T2", "title": "dropped", "status": "canceled"}

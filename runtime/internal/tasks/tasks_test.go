@@ -8,6 +8,8 @@ import (
 const valid = `{
   "schemaVersion": 1,
   "slug": "demo",
+  "date": "2026-08-21",
+  "version": 1,
   "tasks": [
     {"id": "T1", "title": "first", "status": "done"},
     {"id": "T2", "title": "second", "status": "queued", "dependsOn": ["T1"]}
@@ -24,6 +26,20 @@ func TestParseAcceptsAWellFormedList(t *testing.T) {
 	}
 	if remaining := file.Remaining(); len(remaining) != 1 || remaining[0].ID != "T2" {
 		t.Errorf("remaining = %+v, want only T2", remaining)
+	}
+}
+
+func TestParseRefusesMissingDate(t *testing.T) {
+	raw := strings.Replace(valid, `"date": "2026-08-21",`, ``, 1)
+	if _, err := Parse([]byte(raw)); err == nil {
+		t.Fatal("a task list without date parsed")
+	}
+}
+
+func TestParseRefusesMissingVersion(t *testing.T) {
+	raw := strings.Replace(valid, `"version": 1,`, ``, 1)
+	if _, err := Parse([]byte(raw)); err == nil {
+		t.Fatal("a task list without version parsed")
 	}
 }
 

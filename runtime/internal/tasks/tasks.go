@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/runpath"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/validate"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
@@ -66,8 +67,8 @@ type Task struct {
 type File struct {
 	SchemaVersion int    `json:"schemaVersion"`
 	Slug          string `json:"slug"`
-	Date          string `json:"date,omitempty"`
-	Version       int    `json:"version,omitempty"`
+	Date          string `json:"date"`
+	Version       int    `json:"version"`
 	Tasks         []Task `json:"tasks"`
 }
 
@@ -103,6 +104,15 @@ func Parse(raw []byte) (*File, error) {
 	}
 	if file.SchemaVersion != SchemaVersion {
 		return nil, fmt.Errorf("%s: schemaVersion %d, want %d", FileName, file.SchemaVersion, SchemaVersion)
+	}
+	if !validate.Slug(file.Slug) {
+		return nil, fmt.Errorf("%s: slug %q must be lowercase kebab-case", FileName, file.Slug)
+	}
+	if !validate.Date(file.Date) {
+		return nil, fmt.Errorf("%s: date %q is not YYYY-MM-DD", FileName, file.Date)
+	}
+	if file.Version < 1 {
+		return nil, fmt.Errorf("%s: version must be >= 1, got %d", FileName, file.Version)
 	}
 	if len(file.Tasks) == 0 {
 		return nil, fmt.Errorf("%s: no tasks; an empty list would end a run rather than describe one", FileName)
