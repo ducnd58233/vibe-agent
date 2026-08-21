@@ -1,8 +1,6 @@
 package persistence
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -16,14 +14,11 @@ func TestListReturnsSlugsWithManifest(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := Save(ManifestPath(root, slug), run); err != nil {
+		path, _ := indexedPaths(t, root, slug)
+		if err := Save(path, run); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := os.MkdirAll(filepath.Join(RunsDir(root), "no-manifest"), 0o750); err != nil {
-		t.Fatal(err)
-	}
-
 	got, err := List(root)
 	if err != nil {
 		t.Fatal(err)

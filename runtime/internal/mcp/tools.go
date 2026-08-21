@@ -266,21 +266,25 @@ func runStart(deps Deps, raw json.RawMessage) (any, error) {
 		return nil, err
 	}
 
-	manifest := state.ManifestPath(deps.WorkspaceRoot, args.Slug)
-	if _, err := os.Stat(manifest); err == nil {
-		return nil, fmt.Errorf("a run already exists at %s", manifest)
-	}
-
-	run, err := state.NewRun(args.Slug, args.Goal, loaded.Metadata.ID, loaded.Spec.MaxTransitions, deps.now())
+	now := deps.now()
+	entry, err := state.PrepareStart(deps.WorkspaceRoot, args.Slug, now)
 	if err != nil {
 		return nil, err
 	}
+
+	run, err := state.NewRun(args.Slug, args.Goal, loaded.Metadata.ID, loaded.Spec.MaxTransitions, now)
+	if err != nil {
+		return nil, err
+	}
+	run.Date = entry.Date
+	run.Version = entry.Version
 	runner := &loop.Runner{Graph: loaded, Now: deps.now}
 	if err := runner.Enter(run); err != nil {
 		return nil, err
 	}
+	manifest := state.ManifestPath(deps.WorkspaceRoot, args.Slug)
 	if _, err := state.AppendEvent(state.EventLogPath(deps.WorkspaceRoot, args.Slug),
-		state.Event{Type: "run_started", Node: run.CurrentNode, At: deps.now()}); err != nil {
+		state.Event{Type: "run_started", Node: run.CurrentNode, At: now}); err != nil {
 		return nil, err
 	}
 	if err := state.Save(manifest, run); err != nil {

@@ -75,7 +75,7 @@ tmp/
 
 <context>
 
-After every **verification** step (unit test, E2E, PR check poll, external review snapshot), append or update `tmp/<slug>/RECORD.md` and save raw logs under the matching subfolder. Do not claim pass/fail without a saved artifact or command output file.
+After every **verification** step (unit test, E2E, PR check poll, external review snapshot), append or update `.agent-state/runs/<date>/<slug>/<version>/RECORD.md` and save raw logs under the matching subfolder. Do not claim pass/fail without a saved artifact or command output file.
 </context>
 
 ## External PR review wait (after PR is open)
@@ -117,9 +117,9 @@ Ask the human to confirm CI and external reviews are complete, or paste review U
 | Kubernetes manifests | Only when repo documents local/minikube/kind flow; record `kubectl` / test job logs |
 | Mobile (RN/Flutter/native) | Simulator/emulator smoke per stack profile |
 
-Read [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) and the spec testing section before choosing commands. Record commands, versions, and logs under `tmp/<slug>/`.
+Read [`stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md) and the spec testing section before choosing commands. Record commands, versions, and logs under `.agent-state/runs/<date>/<slug>/<version>/`.
 
-**Do not skip E2E** because unit tests passed. **Do not claim** E2E pass without saved output or report paths in `tmp/<slug>/`.
+**Do not skip E2E** because unit tests passed. **Do not claim** E2E pass without saved output or report paths in `.agent-state/runs/<date>/<slug>/<version>/`.
 </verification>
 
 ## Gitignore
@@ -130,6 +130,8 @@ Add to workspace root `.gitignore`:
 
 ```gitignore
 # Goal verification artifacts (local only)
+/.agent-state/
+# Legacy until migrate empties tmp:
 /tmp/
 ```
 

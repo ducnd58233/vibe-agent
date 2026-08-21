@@ -11,7 +11,7 @@ import (
 )
 
 func TestAppendEventNumbersSequentiallyFromOne(t *testing.T) {
-	path := EventLogPath(t.TempDir(), "slug")
+	_, path := indexedPaths(t, t.TempDir(), "slug")
 
 	for i := 0; i < 3; i++ {
 		if _, err := AppendEvent(path, domain.Event{Type: "node_entered", Node: "build", At: fixedTime()}); err != nil {
@@ -36,7 +36,7 @@ func TestAppendEventNumbersSequentiallyFromOne(t *testing.T) {
 // The log is evidence. Rewriting it would let a later run erase what an
 // earlier one recorded, which defeats the point of provenance.
 func TestAppendEventOnlyAppends(t *testing.T) {
-	path := EventLogPath(t.TempDir(), "slug")
+	_, path := indexedPaths(t, t.TempDir(), "slug")
 
 	if _, err := AppendEvent(path, domain.Event{Type: "first", At: fixedTime()}); err != nil {
 		t.Fatalf("AppendEvent: %v", err)
@@ -60,7 +60,7 @@ func TestAppendEventOnlyAppends(t *testing.T) {
 }
 
 func TestAppendEventWritesOneJSONObjectPerLine(t *testing.T) {
-	path := EventLogPath(t.TempDir(), "slug")
+	_, path := indexedPaths(t, t.TempDir(), "slug")
 
 	payload := json.RawMessage(`{"exitCode":0,"command":"go test ./..."}`)
 	if _, err := AppendEvent(path, domain.Event{Type: "verifier_ran", Node: "test", Payload: payload, At: fixedTime()}); err != nil {
@@ -87,14 +87,14 @@ func TestAppendEventWritesOneJSONObjectPerLine(t *testing.T) {
 }
 
 func TestAppendEventRejectsAnEmptyType(t *testing.T) {
-	path := EventLogPath(t.TempDir(), "slug")
+	_, path := indexedPaths(t, t.TempDir(), "slug")
 	if _, err := AppendEvent(path, domain.Event{At: fixedTime()}); err == nil {
 		t.Error("AppendEvent accepted an event with no type")
 	}
 }
 
 func TestAppendEventReturnsTheStoredEvent(t *testing.T) {
-	path := EventLogPath(t.TempDir(), "slug")
+	_, path := indexedPaths(t, t.TempDir(), "slug")
 	stored, err := AppendEvent(path, domain.Event{Type: "node_entered", Node: "build", At: fixedTime()})
 	if err != nil {
 		t.Fatalf("AppendEvent: %v", err)
@@ -108,7 +108,7 @@ func TestAppendEventReturnsTheStoredEvent(t *testing.T) {
 }
 
 func TestAppendEventDefaultsMissingTimestamp(t *testing.T) {
-	path := EventLogPath(t.TempDir(), "slug")
+	_, path := indexedPaths(t, t.TempDir(), "slug")
 	before := time.Now().UTC().Add(-time.Second)
 	stored, err := AppendEvent(path, domain.Event{Type: "node_entered"})
 	if err != nil {
@@ -120,7 +120,7 @@ func TestAppendEventDefaultsMissingTimestamp(t *testing.T) {
 }
 
 func TestReadEventsOnMissingLogReturnsNothing(t *testing.T) {
-	events, err := ReadEvents(EventLogPath(t.TempDir(), "never-written"))
+	events, err := ReadEvents(filepath.Join(t.TempDir(), "never-written", "events.ndjson"))
 	if err != nil {
 		t.Fatalf("ReadEvents on a missing log should not error: %v", err)
 	}

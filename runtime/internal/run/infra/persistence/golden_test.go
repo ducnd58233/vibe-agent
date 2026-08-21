@@ -26,7 +26,7 @@ func TestFreshRunMatchesGolden(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	path := ManifestPath(dir, run.Slug)
+	path, _ := indexedPaths(t, dir, run.Slug)
 	if err := Save(path, run); err != nil {
 		t.Fatalf("Save: %v", err)
 	}

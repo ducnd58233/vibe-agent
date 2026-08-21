@@ -10,6 +10,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/auto"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/autoconfig"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 // toolkitRoot is this checkout, which is where the delivery graph lives. The
@@ -150,6 +151,7 @@ func TestAnAmbiguousSpecLeavesTheGateClosed(t *testing.T) {
 	// status would be a state the loop never produces.
 	run.Status = state.StatusAwaitingHuman
 	writeSpec(t, root, "spec-open", "# Spec\n\n## Open questions\n\n- Which store backs the queue?\n")
+	testutil.EnsureRunIndex(t, root, "spec-open")
 	if err := state.Save(state.ManifestPath(root, "spec-open"), run); err != nil {
 		t.Fatal(err)
 	}
@@ -173,6 +175,7 @@ func TestASettledSpecOpensTheGateAsASkip(t *testing.T) {
 	// status would be a state the loop never produces.
 	run.Status = state.StatusAwaitingHuman
 	writeSpec(t, root, "spec-settled", "# Spec\n\n## Open questions\n\n- None.\n")
+	testutil.EnsureRunIndex(t, root, "spec-settled")
 	if err := state.Save(state.ManifestPath(root, "spec-settled"), run); err != nil {
 		t.Fatal(err)
 	}
@@ -208,6 +211,7 @@ func TestAutoGateRefusesANodeItHasNoDocumentFor(t *testing.T) {
 
 	run := reload(t, root, "wrong-node")
 	run.CurrentNode = "approve_merge"
+	testutil.EnsureRunIndex(t, root, "wrong-node")
 	if err := state.Save(state.ManifestPath(root, "wrong-node"), run); err != nil {
 		t.Fatal(err)
 	}

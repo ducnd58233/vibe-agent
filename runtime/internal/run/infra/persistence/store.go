@@ -28,19 +28,23 @@ const RunsDirName = workspace.RunsDirName
 // RunsDir is where every run's directory sits.
 func RunsDir(workspaceRoot string) string { return workspace.RunsDir(workspaceRoot) }
 
-// RunDir is where a slug's state and evidence live.
-// Prefer the indexed versioned path; fall back to the legacy flat path so
-// unmigrated workspaces keep loading until the migrate task runs.
+// RunDir is where a slug's state and evidence live under
+// .agent-state/runs/<date>/<slug>/<version>/. Missing index means no run yet.
 func RunDir(workspaceRoot, slug string) string {
-	if dir, err := runpath.RunDir(workspaceRoot, slug); err == nil {
-		return dir
+	dir, err := runpath.RunDir(workspaceRoot, slug)
+	if err != nil {
+		return ""
 	}
-	return workspace.RunDir(workspaceRoot, slug)
+	return dir
 }
 
-// ManifestPath is the run-state file for a slug.
+// ManifestPath is the run-state file for a slug. Empty when no run is indexed.
 func ManifestPath(workspaceRoot, slug string) string {
-	return filepath.Join(RunDir(workspaceRoot, slug), "manifest.json")
+	dir := RunDir(workspaceRoot, slug)
+	if dir == "" {
+		return ""
+	}
+	return filepath.Join(dir, "manifest.json")
 }
 
 // Load reads and validates a manifest.
@@ -104,14 +108,21 @@ func Save(path string, run *domain.Run) error {
 	return nil
 }
 
-// EventLogPath is the event log for a slug.
+// EventLogPath is the event log for a slug. Empty when no run is indexed.
 func EventLogPath(workspaceRoot, slug string) string {
-	return filepath.Join(RunDir(workspaceRoot, slug), domain.EventLogName)
+	dir := RunDir(workspaceRoot, slug)
+	if dir == "" {
+		return ""
+	}
+	return filepath.Join(dir, domain.EventLogName)
 }
 
 // AppendEvent adds one line to the log and returns the stored event, including
 // the sequence number it was given.
 func AppendEvent(path string, event domain.Event) (domain.Event, error) {
+	if path == "" {
+		return domain.Event{}, errors.New("event log path is empty")
+	}
 	if event.Type == "" {
 		return domain.Event{}, errors.New("event type must not be empty")
 	}
@@ -150,8 +161,11 @@ func AppendEvent(path string, event domain.Event) (domain.Event, error) {
 	return event, nil
 }
 
-// ReadEvents returns every event in the log. A missing log is not an error.
+// ReadEvents returns every event in the log. A missing or empty path is not an error.
 func ReadEvents(path string) ([]domain.Event, error) {
+	if path == "" {
+		return nil, nil
+	}
 	file, err := os.Open(filepath.Clean(path))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -219,11 +233,15 @@ func PrepareStart(workspaceRoot, slug string, now time.Time) (runpath.Entry, err
 	if err := os.MkdirAll(docs, 0o750); err != nil {
 		return runpath.Entry{}, fmt.Errorf("create docs directory: %w", err)
 	}
+	runs := workspace.RunDirAt(workspaceRoot, entry.Date, entry.Slug, entry.Version)
+	if err := os.MkdirAll(runs, 0o750); err != nil {
+		return runpath.Entry{}, fmt.Errorf("create run directory: %w", err)
+	}
 	return entry, nil
 }
 
-// List returns slugs that have a readable manifest. Versioned trees,
-// run-index pointers, and legacy flat dirs are all considered.
+// List returns slugs that have a readable manifest under .agent-state/runs/
+// or a run-index pointer to one.
 func List(workspaceRoot string) ([]string, error) {
 	seen := map[string]bool{}
 
@@ -245,29 +263,6 @@ func List(workspaceRoot string) ([]string, error) {
 
 	if err := walkVersionedRuns(workspaceRoot, seen); err != nil {
 		return nil, err
-	}
-
-	// Legacy flat tmp/<slug>/manifest.json until migrate.
-	entries, err := os.ReadDir(RunsDir(workspaceRoot))
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("list runs: %w", err)
-		}
-	} else {
-		for _, entry := range entries {
-			if !entry.IsDir() || validate.Date(entry.Name()) {
-				continue
-			}
-			slug := entry.Name()
-			if !validate.Slug(slug) || seen[slug] {
-				continue
-			}
-			flat := filepath.Join(RunsDir(workspaceRoot), slug, "manifest.json")
-			if _, err := Load(flat); err != nil {
-				continue
-			}
-			seen[slug] = true
-		}
 	}
 
 	slugs := make([]string, 0, len(seen))

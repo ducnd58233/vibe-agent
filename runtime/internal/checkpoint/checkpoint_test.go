@@ -13,6 +13,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shipdecision"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 // graphDir points at the toolkit's own graphs, so these tests exercise the
@@ -35,6 +36,7 @@ func workspace(t *testing.T) string {
 	if err := loop.New(loaded).Enter(run); err != nil {
 		t.Fatalf("enter: %v", err)
 	}
+	testutil.EnsureRunIndex(t, root, "demo")
 	if err := state.Save(state.ManifestPath(root, "demo"), run); err != nil {
 		t.Fatalf("save: %v", err)
 	}
@@ -225,6 +227,7 @@ func workspaceAuto(t *testing.T) string {
 	if err := run.SetFlagAt("auto", true, at()); err != nil {
 		t.Fatalf("SetFlagAt: %v", err)
 	}
+	testutil.EnsureRunIndex(t, root, "demo")
 	if err := state.Save(state.ManifestPath(root, "demo"), run); err != nil {
 		t.Fatalf("save: %v", err)
 	}

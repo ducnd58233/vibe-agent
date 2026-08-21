@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 // Cursor gets no prompt-time injection, so postToolUse is the only place a
@@ -63,6 +64,7 @@ func TestCursorIsToldWhenTheNodeChanges(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 	run.CurrentNode = "review"
+	testutil.EnsureRunIndex(t, root, "demo")
 	if err := state.Save(state.ManifestPath(root, "demo"), run); err != nil {
 		t.Fatalf("Save: %v", err)
 	}

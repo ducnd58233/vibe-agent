@@ -10,6 +10,7 @@ import (
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/runpath"
 )
 
 func shell(script string) (string, []string) {
@@ -71,6 +72,10 @@ func TestCommandIgnoresOutputWhenDecidingTheVerdict(t *testing.T) {
 
 func TestCommandCapturesOutputToTheEvidenceTree(t *testing.T) {
 	root := t.TempDir()
+	now := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
+	if _, err := runpath.Allocate(root, "demo", now); err != nil {
+		t.Fatal(err)
+	}
 	name, args := shell("echo hello from the verifier")
 	result, err := Command{}.Verify(t.Context(), Request{
 		Check: "unit", WorkspaceRoot: root, Slug: "demo", LogDir: "unit",
@@ -79,7 +84,7 @@ func TestCommandCapturesOutputToTheEvidenceTree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Verify: %v", err)
 	}
-	expected := filepath.Join(root, "tmp", "demo", "unit", "unit.log")
+	expected := filepath.Join(root, ".agent-state", "runs", "2026-08-21", "demo", "1", "unit", "unit.log")
 	contents, err := os.ReadFile(filepath.Clean(expected))
 	if err != nil {
 		t.Fatalf("log not written where goal-verification-records.md says: %v", err)

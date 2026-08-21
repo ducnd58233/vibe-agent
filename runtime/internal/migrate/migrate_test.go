@@ -83,6 +83,17 @@ func TestApplyMovesAndRenames(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(wantDocs, "tasks-2026-08-20.json")); err != nil {
 		t.Fatalf("dated tasks missing: %v", err)
 	}
+	wantRuns := workspace.RunDirAt(root, "2026-08-20", "demo", 1)
+	if _, err := os.Stat(filepath.Join(wantRuns, "manifest.json")); err != nil {
+		t.Fatalf("run evidence missing under .agent-state/runs: %v", err)
+	}
+	if _, err := os.Stat(tmp); !os.IsNotExist(err) {
+		t.Fatal("legacy flat tmp/demo should have moved")
+	}
+	if _, err := os.Stat(filepath.Join(root, "tmp")); !os.IsNotExist(err) {
+		t.Fatal("empty workspace-root tmp/ should be removed after migrate")
+	}
+
 	entry, err := runpath.Resolve(root, "demo")
 	if err != nil {
 		t.Fatal(err)
@@ -100,5 +111,31 @@ func TestApplyMovesAndRenames(t *testing.T) {
 		if plan.Slug == "demo" && plan.SkipReason == "" {
 			t.Fatalf("second plan tried to move demo again: %+v", plan)
 		}
+	}
+}
+
+func TestApplyMovesVersionedTmpIntoAgentStateRuns(t *testing.T) {
+	root := t.TempDir()
+	from := filepath.Join(root, "tmp", "2026-08-20", "demo", "2")
+	if err := os.MkdirAll(from, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(from, "manifest.json"), []byte(`{"schemaVersion":1}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
+	plans, err := migrate.PlanWorkspace(root, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := migrate.Apply(root, plans, migrate.Options{Now: now}); err != nil {
+		t.Fatal(err)
+	}
+	want := workspace.RunDirAt(root, "2026-08-20", "demo", 2)
+	if _, err := os.Stat(filepath.Join(want, "manifest.json")); err != nil {
+		t.Fatalf("versioned migrate missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "tmp")); !os.IsNotExist(err) {
+		t.Fatal("empty workspace-root tmp/ should be removed after migrate")
 	}
 }

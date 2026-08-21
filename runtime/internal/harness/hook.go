@@ -643,7 +643,7 @@ func nodeFor(req Request, run *state.Run) (graph.Node, bool) {
 	return loaded.Node(run.CurrentNode)
 }
 
-// activeRuns finds manifests under tmp/ that have not finished. An unreadable
+// activeRuns finds manifests under .agent-state/runs/ that have not finished.
 // or invalid manifest is skipped rather than reported: a hook is not the place
 // to fail a session over a stale file.
 func activeRuns(workspaceRoot string) []*state.Run {

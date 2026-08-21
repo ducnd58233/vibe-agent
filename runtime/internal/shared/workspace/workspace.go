@@ -18,14 +18,15 @@ import (
 )
 
 const (
-	// StateDirName holds state derived from a checkout: caches and databases
-	// that can be deleted and rebuilt. Gitignored.
+	// StateDirName holds state derived from a checkout: caches, databases, and
+	// run evidence. Gitignored.
 	StateDirName = ".agent-state"
 
-	// RunsDirName holds one directory per run: manifest, event log, evidence.
-	// Gitignored, and kept apart from StateDirName because a run's record is
-	// evidence a person reads, not a cache a tool rebuilds.
-	RunsDirName = "tmp"
+	// RunsDirName is the subdirectory under StateDirName for one directory per
+	// run: manifest, event log, evidence. Kept as its own folder so caches
+	// (fetch, sdd-cache, memory) are not mixed with evidence a person reads.
+	// Layout: .agent-state/runs/<date>/<slug>/<version>/.
+	RunsDirName = "runs"
 
 	// SDDCacheDirName holds the source-driven WebFetch cache. It used to sit
 	// under .claude/, hardcoded in the two Python hooks, so a Cursor or
@@ -34,8 +35,8 @@ const (
 	SDDCacheDirName = "sdd-cache"
 
 	// DocsDirName holds written deliverables: specs, plans, task lists.
-	// Tracked or ignored by the workspace's own choice, unlike the two above,
-	// which are always ignored. Layout is docs/<date>/<slug>/<version>/.
+	// Tracked or ignored by the workspace's own choice, unlike StateDirName,
+	// which is always ignored. Layout is docs/<date>/<slug>/<version>/.
 	DocsDirName = "docs"
 
 	// RunIndexDirName holds one JSON pointer per slug under StateDirName so
@@ -53,9 +54,9 @@ func StateDir(workspaceRoot string) string {
 	return filepath.Join(workspaceRoot, StateDirName)
 }
 
-// RunsDir is where every run's directory sits.
+// RunsDir is where every run's versioned directory sits.
 func RunsDir(workspaceRoot string) string {
-	return filepath.Join(workspaceRoot, RunsDirName)
+	return filepath.Join(StateDir(workspaceRoot), RunsDirName)
 }
 
 // SDDCacheDir is where the WebFetch cache lives for a workspace.
@@ -115,13 +116,7 @@ func DocsArtifact(stem, date string) (string, error) {
 }
 
 // DocsDir is the legacy flat docs path (docs/<slug>/). Prefer DocsDirAt.
-// Kept until callers move to the run index in the wiring task.
+// Kept for docs migrate only; new work uses DocsDirAt.
 func DocsDir(workspaceRoot, slug string) string {
 	return filepath.Join(workspaceRoot, DocsDirName, slug)
-}
-
-// RunDir is the legacy flat run path (tmp/<slug>/). Prefer RunDirAt.
-// Kept until callers move to the run index in the wiring task.
-func RunDir(workspaceRoot, slug string) string {
-	return filepath.Join(RunsDir(workspaceRoot), slug)
 }

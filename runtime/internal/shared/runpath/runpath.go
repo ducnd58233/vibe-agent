@@ -1,10 +1,9 @@
-// Package runpath resolves and allocates versioned docs/tmp directories.
+// Package runpath resolves and allocates versioned docs and run directories.
 //
-// Layout: {docs,tmp}/<YYYY-MM-DD>/<slug>/<version>/. Version numbers are global
+// Layout: docs/<YYYY-MM-DD>/<slug>/<version>/ and
+// .agent-state/runs/<YYYY-MM-DD>/<slug>/<version>/. Version numbers are global
 // per slug. The current revision is recorded under
 // .agent-state/run-index/<slug>.json so CLI and web do not scan on every call.
-//
-// These helpers never fall back to the legacy flat {docs,tmp}/<slug>/ tree.
 package runpath
 
 import (
@@ -108,7 +107,7 @@ func LoadIndex(workspaceRoot, slug string) (Entry, error) {
 }
 
 // Resolve returns the current entry for a slug: index first, else scan disk for
-// the highest version under tmp/ and docs/. Never reads the flat <slug>/ layout.
+// the highest version under .agent-state/runs and docs/.
 func Resolve(workspaceRoot, slug string) (Entry, error) {
 	if !validate.Slug(slug) {
 		return Entry{}, fmt.Errorf("slug %q is not usable", slug)
@@ -126,7 +125,7 @@ func Resolve(workspaceRoot, slug string) (Entry, error) {
 }
 
 // Allocate picks today's date and the next global version for the slug, writes
-// the index, and returns the entry. It does not create the docs/tmp directories.
+// the index, and returns the entry. It does not create the docs or runs dirs.
 func Allocate(workspaceRoot, slug string, now time.Time) (Entry, error) {
 	if !validate.Slug(slug) {
 		return Entry{}, fmt.Errorf("slug %q is not usable", slug)
@@ -148,9 +147,9 @@ func Allocate(workspaceRoot, slug string, now time.Time) (Entry, error) {
 	return entry, nil
 }
 
-// Begin starts a new revision for a slug: refuses if one already exists
-// (indexed or legacy flat), then Allocate writes the index and returns the
-// entry. Callers create directories by saving the manifest into RunDirAt.
+// Begin starts a new revision for a slug: refuses if one already exists, then
+// Allocate writes the index and returns the entry. Callers create directories by
+// saving the manifest into RunDirAt.
 func Begin(workspaceRoot, slug string, now time.Time) (Entry, error) {
 	if !validate.Slug(slug) {
 		return Entry{}, fmt.Errorf("slug %q is not usable", slug)
@@ -161,19 +160,17 @@ func Begin(workspaceRoot, slug string, now time.Time) (Entry, error) {
 	} else if !errors.Is(err, ErrNotFound) {
 		return Entry{}, err
 	}
-	flatManifest := filepath.Join(workspace.RunDir(workspaceRoot, slug), "manifest.json")
-	if _, err := os.Stat(flatManifest); err == nil {
-		return Entry{}, fmt.Errorf("a legacy flat run already exists at %s; migrate it before starting again",
-			filepath.Join(workspace.RunsDirName, slug))
-	}
 	return Allocate(workspaceRoot, slug, now)
 }
 
 func scanHighest(workspaceRoot, slug string) (Entry, bool) {
 	best := Entry{Slug: slug, Version: 0}
 	found := false
-	for _, rootName := range []string{workspace.RunsDirName, workspace.DocsDirName} {
-		root := filepath.Join(workspaceRoot, rootName)
+	roots := []string{
+		workspace.RunsDir(workspaceRoot),
+		filepath.Join(workspaceRoot, workspace.DocsDirName),
+	}
+	for _, root := range roots {
 		dates, err := os.ReadDir(root)
 		if err != nil {
 			continue

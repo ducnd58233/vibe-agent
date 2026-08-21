@@ -6,6 +6,7 @@ import (
 	"time"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 // workspaceWithActiveRun seeds the one condition the state-write guard needs:
@@ -19,6 +20,7 @@ func workspaceWithActiveRun(t *testing.T) string {
 	}
 	run.CurrentNode = "build"
 	run.Status = state.StatusRunning
+	testutil.EnsureRunIndex(t, root, "demo")
 	if err := state.Save(state.ManifestPath(root, "demo"), run); err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +33,7 @@ func workspaceWithActiveRun(t *testing.T) string {
 // it matters.
 func TestVerdictAgreesWithTheHookPathOnTheSameCall(t *testing.T) {
 	root := workspaceWithActiveRun(t)
-	target := jsonPath(root, "tmp", "demo", "manifest.json")
+	target := jsonPath(root, ".agent-state", "runs", "2026-08-21", "demo", "1", "manifest.json")
 
 	// The hook half, as a host would send it.
 	viaHook := runHook(t, Request{
@@ -85,7 +87,7 @@ func TestVerdictAllowsWhatTheHookAllows(t *testing.T) {
 // is, and the seam has to carry that too.
 func TestVerdictRefusesAShellWriteToRunState(t *testing.T) {
 	root := workspaceWithActiveRun(t)
-	target := jsonPath(root, "tmp", "demo", "manifest.json")
+	target := jsonPath(root, ".agent-state", "runs", "2026-08-21", "demo", "1", "manifest.json")
 
 	blocked := Verdict(root, ToolCall{Name: "Bash", Command: "echo {} > " + target})
 	if blocked == nil {

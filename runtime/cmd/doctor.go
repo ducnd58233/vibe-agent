@@ -295,9 +295,12 @@ func checkGitignore(report *diagnostics, workspaceRoot string) {
 		return // no .gitignore is a consumer choice, not a runtime problem
 	}
 	content := string(raw)
-	report.check("tmp/ is gitignored", strings.Contains(content, "/tmp/"),
-		"add /tmp/ so run evidence is not committed")
 	report.check(workspace.StateDirName+"/ is gitignored",
 		strings.Contains(content, "/"+workspace.StateDirName+"/"),
-		"add /"+workspace.StateDirName+"/ so derived state is not committed")
+		"add /"+workspace.StateDirName+"/ so run evidence and derived state are not committed")
+	tmpRoot := filepath.Join(workspaceRoot, "tmp")
+	if st, err := os.Stat(tmpRoot); err == nil && st.IsDir() {
+		report.check("workspace-root tmp/ has been migrated", false,
+			"run: vibe-agent migrate docs-tmp  (runtime no longer reads tmp/; evidence lives under .agent-state/runs/)")
+	}
 }

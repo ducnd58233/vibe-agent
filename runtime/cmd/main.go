@@ -56,8 +56,9 @@ Usage:
   vibe-agent eval routing [--trials N] [--jobs N] [--runner codex|claude|cursor|opencode|all] [--only <text>]
   vibe-agent version
 
-Run state is written to tmp/<slug>/manifest.json with an append-only log at
-tmp/<slug>/events.ndjson, both under the workspace root and both gitignored.
+Run state is written to .agent-state/runs/<date>/<slug>/<version>/manifest.json
+with an append-only log at events.ndjson under that directory (gitignored).
+Use vibe-agent migrate docs-tmp once to move an old workspace-root tmp/ tree.
 
 
 "fetch" reads a URL or a file and prints the text without the markup, scripts,

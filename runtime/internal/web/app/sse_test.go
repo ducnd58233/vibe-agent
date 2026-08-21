@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 func TestSessionEventsStreamReturnsSSE(t *testing.T) {
@@ -41,6 +42,7 @@ func TestSessionEventsStreamAfterAppend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	testutil.EnsureRunIndex(t, root, slug)
 	path := session.LogPath(root, slug)
 	ctx, cancel := context.WithTimeout(context.Background(), 2500*time.Millisecond)
 	defer cancel()

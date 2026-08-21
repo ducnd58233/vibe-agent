@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 )
 
@@ -50,9 +50,7 @@ func TestActiveWorkspaceCookieChangesSessionList(t *testing.T) {
 	rootA := t.TempDir()
 	rootB := t.TempDir()
 	slug := "ws-b-session"
-	if err := os.MkdirAll(filepath.Join(rootB, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
+	testutil.EnsureRunIndex(t, rootB, slug)
 	run, err := state.NewRun(slug, "goal", "goal-delivery", 50, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)

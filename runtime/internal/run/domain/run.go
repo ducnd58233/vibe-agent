@@ -1,8 +1,9 @@
 // Package state persists one goal run.
 //
-// Run state lives at tmp/<slug>/manifest.json beside the human-readable
-// RECORD.md, and the append-only event log at tmp/<slug>/events.ndjson. Both
-// are gitignored. The shapes match schemas/run-state.schema.json.
+// Run state lives at .agent-state/runs/<date>/<slug>/<version>/manifest.json
+// beside the human-readable RECORD.md, and the append-only event log at
+// events.ndjson. Both are gitignored under .agent-state/. Legacy tmp/ trees
+// The shapes match schemas/run-state.schema.json.
 //
 // The rule this package exists to enforce: a check is passed only when real
 // evidence produced it. There is no provenance value for model assertion, so
@@ -154,9 +155,10 @@ type Run struct {
 	Slug          string `json:"slug"`
 	Goal          string `json:"goal"`
 
-	// Date and Version locate the run under tmp/<date>/<slug>/<version>/.
-	// Empty date and zero version are allowed for manifests written before
-	// that layout; new starts always set both.
+	// Date and Version locate the run under
+	// .agent-state/runs/<date>/<slug>/<version>/. Empty date and zero version
+	// are allowed for manifests written before that layout; new starts always
+	// set both.
 	Date    string `json:"date,omitempty"`
 	Version int    `json:"version,omitempty"`
 
