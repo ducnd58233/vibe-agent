@@ -51,6 +51,7 @@ Usage:
   vibe-agent session list
   vibe-agent session show --slug <slug|ambient>
   vibe-agent web [--port 3080] [--open]
+  vibe-agent migrate docs-tmp [--dry-run] [--workspace <dir>]
   vibe-agent doctor
   vibe-agent eval routing [--trials N] [--jobs N] [--runner codex|claude|cursor|opencode|all] [--only <text>]
   vibe-agent version
@@ -205,6 +206,8 @@ func run(args []string) error {
 		return sessionCommand(args[1:])
 	case "web":
 		return webCommand(args[1:])
+	case "migrate":
+		return migrateCommand(args[1:])
 	case "doctor":
 		return doctorCommand(args[1:])
 	case "eval":
