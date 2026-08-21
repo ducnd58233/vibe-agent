@@ -105,6 +105,11 @@ CLAUDE_HOME="$HOME_DIR/.claude"
 CURSOR_HOME="$HOME_DIR/.cursor"
 CODEX_HOME="${CODEX_HOME:-$HOME_DIR/.codex}"
 AGENTS_HOME="$HOME_DIR/.agents"
+# Kimi Code CLI reads skills from ~/.config/agents/skills, in the same SKILL.md
+# layout the others take. A second destination rather than a moved one, because
+# ~/.agents is what Codex and Cursor read and moving it would trade one host for
+# two.
+KIMI_SKILLS_HOME="${XDG_CONFIG_HOME:-$HOME_DIR/.config}/agents"
 OPENCODE_HOME="${XDG_CONFIG_HOME:-$HOME_DIR/.config}/opencode"
 
 # A manifest records what this script owns, so --uninstall removes exactly that
@@ -369,6 +374,7 @@ for dir in "$ASSETS"/skills/*/; do
   name="$(basename "$dir")"
   link_or_copy "$dir" "$CLAUDE_HOME/skills/$PREFIX$name"
   link_or_copy "$dir" "$AGENTS_HOME/skills/$PREFIX$name"
+  link_or_copy "$dir" "$KIMI_SKILLS_HOME/skills/$PREFIX$name"
 done
 
 # Commands. No shared convention exists, so each tool gets its own.
@@ -380,6 +386,7 @@ for file in "$ASSETS"/commands/*.md; do
   link_or_copy "$file" "$CURSOR_HOME/commands/$PREFIX$name.md"
   link_or_copy "$file" "$OPENCODE_HOME/commands/$PREFIX$name.md"
   write_command_skill "$file" "$AGENTS_HOME/skills/$PREFIX$name/SKILL.md" "$PREFIX$name"
+  write_command_skill "$file" "$KIMI_SKILLS_HOME/skills/$PREFIX$name/SKILL.md" "$PREFIX$name"
 done
 
 # Subagents, rewritten because the frontmatter carries the identity.
@@ -484,6 +491,7 @@ install_runtime() {
 echo ""
 echo "Installed $installed entries: $linked symlinked, $copied copied."
 echo "  skills      $CLAUDE_HOME/skills, $AGENTS_HOME/skills   (all four tools; Codex command adapters in $AGENTS_HOME/skills)"
+echo "  kimi        $KIMI_SKILLS_HOME/skills                  (Kimi Code CLI reads this path)"
 echo "  commands    claude, cursor, opencode                  (as /${PREFIX}<name> where supported)"
 echo "  codex       $AGENTS_HOME/skills/${PREFIX}<name>       (Codex form: \$${PREFIX}<name>)"
 echo "  subagents   generated with name: ${PREFIX}<name>"
