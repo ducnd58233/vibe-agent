@@ -60,7 +60,7 @@ func groundingReport(body payload) string {
 		return ""
 	}
 
-	observed, texts := readTranscript(transcript)
+	observed, texts, whole := readTranscript(transcript)
 	if len(texts) == 0 {
 		return ""
 	}
@@ -76,20 +76,19 @@ func groundingReport(body payload) string {
 	if len(unsupported) == 0 {
 		return ""
 	}
-	return groundingMessage(unsupported)
+	return groundingMessage(unsupported, whole)
 }
 
 // readTranscript walks the JSONL transcript for paths the agent touched and for
 // the assistant text it produced.
-func readTranscript(path string) (map[string]struct{}, []string) {
+func readTranscript(path string) (observed map[string]struct{}, texts []string, whole bool) {
 	file, err := os.Open(filepath.Clean(path))
 	if err != nil {
-		return nil, nil
+		return nil, nil, false
 	}
 	defer func() { _ = file.Close() }()
 
-	observed := map[string]struct{}{}
-	var texts []string
+	observed = map[string]struct{}{}
 
 	scanner := bufio.NewScanner(file)
 	// Transcript lines carry whole tool results and outgrow the default 64KB.
@@ -105,7 +104,12 @@ func readTranscript(path string) (map[string]struct{}, []string) {
 		}
 		walkTranscript(entry, observed, &texts)
 	}
-	return observed, texts
+	// A scan that stopped on an error ends the loop exactly as a clean
+	// end-of-file does. Without this the caller cannot tell a whole transcript
+	// from most of one, and the report it builds is evidence a gate reads: a
+	// grounding decision made on a partial file is the failure this control
+	// plane exists to prevent, arriving through the back door.
+	return observed, texts, scanner.Err() == nil
 }
 
 // walkTranscript collects from arbitrary nested JSON, because the transcript
@@ -209,7 +213,7 @@ func normalizePath(value string) string {
 	return strings.TrimPrefix(cleaned, "./")
 }
 
-func groundingMessage(unsupported []string) string {
+func groundingMessage(unsupported []string, whole bool) string {
 	shown := unsupported
 	extra := 0
 	if len(shown) > maxReported {
@@ -226,8 +230,20 @@ func groundingMessage(unsupported []string) string {
 	if extra > 0 {
 		text.WriteString("\n  - ... and " + strconv.Itoa(extra) + " more")
 	}
-	text.WriteString("\nVerify each one was actually opened. If a path could not be read, report it " +
-		"as `ACCESS-FAILED: <path>` rather than describing its contents. Paths being proposed " +
-		"rather than inspected are expected here and can be ignored.")
+	text.WriteString("\nVerify each one was actually opened. If a path could not be read, report it ")
+	text.WriteString("as `ACCESS-FAILED: <path>` rather than describing its contents. Paths being ")
+	text.WriteString("proposed rather than inspected are expected here and can be ignored.")
+
+	// Said plainly, because a partial read makes this finding unreliable in the
+	// direction that matters. `observed` is the set of paths the transcript
+	// proved were opened; a truncated read means some proof went unread, so a
+	// path can be listed above precisely because the evidence for it was in the
+	// part that did not load. A reader who does not know that will chase a
+	// citation that was fine.
+	if !whole {
+		text.WriteString("\n\nThe transcript could not be read to the end, so this list may name ")
+		text.WriteString("paths whose evidence was in the part that did not load. Treat it as a ")
+		text.WriteString("prompt to check rather than a finding.")
+	}
 	return text.String()
 }

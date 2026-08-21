@@ -784,7 +784,11 @@ func TestPrintFailureChatBody(t *testing.T) {
 	}
 	deadline, cancel := context.WithTimeout(ctx, time.Nanosecond)
 	defer cancel()
-	time.Sleep(time.Millisecond)
+	// Wait for the deadline rather than sleeping past it. A sleep is a guess
+	// about scheduling, and under a full parallel suite the timer had not fired
+	// when the assertion ran, so a killed-after-timeout was classified as a
+	// plain exit error. The product logic was right; the test was racing it.
+	<-deadline.Done()
 	if got := printFailureChatBody(deadline, &exec.ExitError{}); got != session.HostStatusTimeout {
 		t.Fatalf("killed after timeout = %q", got)
 	}
