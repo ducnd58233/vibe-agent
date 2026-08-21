@@ -497,13 +497,34 @@ func TestTaskPacketPicksTheRightNextTask(t *testing.T) {
 		root := t.TempDir()
 		writeTaskList(t, root, "demo", date, 1, `{
 			"schemaVersion":1,"slug":"demo","date":"`+date+`","version":1,
-			"tasks":[{"id":"T1","title":"first","status":"done"}]}`, "")
+			"tasks":[{"id":"T1","title":"first","status":"done"}]}`,
+			"## T1: first  [done]\n\n**Acceptance criteria:**\n- [x] shipped\n")
 		out, err := taskPacket(Deps{WorkspaceRoot: root}, json.RawMessage(`{"slug":"demo"}`))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if status := object(t, out, "taskPacket result")["status"]; status != "all_done" {
 			t.Errorf("status = %v, want all_done", status)
+		}
+	})
+
+	t.Run("done with open acceptance boxes is not finished", func(t *testing.T) {
+		root := t.TempDir()
+		writeTaskList(t, root, "demo", date, 1, `{
+			"schemaVersion":1,"slug":"demo","date":"`+date+`","version":1,
+			"tasks":[{"id":"T1","title":"first","status":"done"}]}`,
+			"## T1: first  [done]\n\n**Acceptance criteria:**\n- [ ] still open\n")
+		out, err := taskPacket(Deps{WorkspaceRoot: root}, json.RawMessage(`{"slug":"demo"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		result := object(t, out, "taskPacket result")
+		if result["status"] != "task_ready" {
+			t.Fatalf("status = %v, want task_ready while AC is open", result["status"])
+		}
+		task := object(t, result["task"], "task")
+		if task["id"] != "T1" {
+			t.Errorf("picked %v, want T1", task["id"])
 		}
 	})
 

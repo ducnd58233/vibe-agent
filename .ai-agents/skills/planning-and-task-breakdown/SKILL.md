@@ -180,10 +180,15 @@ Read `tasks.json` before picking up work, every time:
 Set `in_progress` when work starts and `done` when the acceptance criteria pass, in **both** files,
 and tick the acceptance checkboxes as they are met.
 
-Timing is load-bearing, not tidiness. The `task_complete` verifier reads `tasks.json` to decide
-whether another task remains. Marking a task `done` **after** that verifier has run means the graph
-saw a task that was already finished and sent the run back through a full build cycle for nothing.
-That has happened, and it costs a complete loop each time.
+**Enforced:** a task with `status: done` in `tasks.json` does **not** settle for `task_complete`
+(or for `vibe-agent doctor`) while any checkbox under that task's **Acceptance criteria** section in
+`TASKS.md` is still `[ ]`, or while that section/prose is missing. Goal and auto share this verifier.
+Tick every AC box before marking `done`.
+
+Timing is load-bearing, not tidiness. The `task_complete` verifier reads `tasks.json` (and TASKS
+prose for acceptance boxes) to decide whether another task remains. Marking a task `done` **after**
+that verifier has run means the graph saw a task that was already finished and sent the run back
+through a full build cycle for nothing. That has happened, and it costs a complete loop each time.
 
 A `canceled` task carries a note saying why. So does a `blocked` one. "The count reflects what is
 actually outstanding" is the whole reason the field exists.

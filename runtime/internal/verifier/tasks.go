@@ -13,10 +13,9 @@ import (
 // Tasks answers whether a slug still has work planned.
 //
 // It replaces the one human verifier in the delivery plan that was human only
-// because nothing had given it a machine-readable input. A person reading
-// TASKS.md against the agreed scope is a judgement call; "does any task have a
-// status other than done or canceled" is a fact about a file, which is what
-// file_assert means.
+// because nothing had given it a machine-readable input. Status alone is not
+// enough: a task marked done still remains while any acceptance-criteria
+// checkbox in TASKS.md is open, so goal and auto cannot close on a false done.
 //
 // A missing task list is an error rather than "nothing remains". Treating an
 // absent file as an empty one would end a run on a file somebody forgot to
@@ -36,7 +35,12 @@ func (Tasks) Verify(_ context.Context, req Request) (Result, error) {
 		return Result{}, fmt.Errorf("read %s: %w", relativeTo(req.WorkspaceRoot, path), err)
 	}
 
-	remaining := file.Remaining()
+	prose, proseErr := tasks.LoadProse(req.WorkspaceRoot, req.Slug)
+	if proseErr != nil {
+		return Result{}, fmt.Errorf("read TASKS prose: %w", proseErr)
+	}
+
+	remaining := file.RemainingAgainstProse(prose)
 	result := Result{
 		Check: state.Check{
 			Passed: len(remaining) > 0,
@@ -53,7 +57,13 @@ func (Tasks) Verify(_ context.Context, req Request) (Result, error) {
 
 	names := make([]string, 0, len(remaining))
 	for _, task := range remaining {
-		names = append(names, fmt.Sprintf("%s (%s)", task.ID, task.Status))
+		label := fmt.Sprintf("%s (%s)", task.ID, task.Status)
+		if task.Status == tasks.StatusDone {
+			if reason := tasks.AcceptanceIncomplete(prose, task.ID); reason != "" {
+				label = fmt.Sprintf("%s (%s; %s)", task.ID, task.Status, reason)
+			}
+		}
+		names = append(names, label)
 	}
 	result.Summary = fmt.Sprintf("%d of %d tasks remain", len(remaining), len(file.Tasks))
 	result.Detail = strings.Join(names, ", ")

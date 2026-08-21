@@ -1,14 +1,12 @@
 // Package tasks reads the machine-readable task list a plan produces.
 //
 // TASKS.md stays the file a person reads and reviews in a pull request. This is
-// the file a verifier reads, and it exists because "is another task left" was
-// the one human verifier in the delivery plan that was human only because
-// nothing had given it a machine-readable input. The other two, an external
-// review and a ship decision, are genuine judgement calls.
+// the file a verifier reads. A task marked done settles only when every
+// acceptance-criteria checkbox in that TASKS section is checked; status alone
+// is not enough.
 //
-// The two files are expected to agree. Nothing here enforces that: doctor
-// reports a disagreement in counts and does not refuse, because the prose file
-// legitimately carries context the JSON does not.
+// The two files are expected to agree on task identity and status. Doctor notes
+// a heading-count mismatch and refuses open acceptance boxes on an active run.
 package tasks
 
 import (

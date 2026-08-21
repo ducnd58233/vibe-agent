@@ -129,10 +129,8 @@ spec:
     tasks_remaining:
       verifier: tasks
       description: >-
-        Reads docs/<slug>/tasks.json and passes while any task has a status
-        other than done or canceled. This was a human verifier, and it was the
-        only one of the three that was human because nothing had given it a
-        machine-readable input rather than because the question needs judgement.
-        TASKS.md stays the file a person reviews; doctor reports when the two
-        disagree on count and does not refuse, because the prose file carries
-        context the JSON does not.
+        Reads docs/<slug>/tasks.json and the matching TASKS.md. Passes while any
+        task is not settled, including a task marked done whose acceptance-
+        criteria checkboxes are still open or whose TASKS prose is missing.
+        Goal and auto share this check. Doctor refuses the same incomplete-done
+        case. TASKS.md stays the file a person reviews for the full criteria.
