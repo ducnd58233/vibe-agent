@@ -337,9 +337,12 @@ func report(name, file string, findings []string, subject string) string {
 	var text strings.Builder
 	fmt.Fprintf(&text, "%s flagged %d %s in %s:", name, len(findings), subject, file)
 	for _, finding := range findings {
-		text.WriteString("\n  - " + finding)
+		text.WriteString("\n  - ")
+		text.WriteString(finding)
 	}
-	text.WriteString("\nIf a line is deliberate, mark it with a `" + guardMarker(name) + "` comment and say why.")
+	text.WriteString("\nIf a line is deliberate, mark it with a `")
+	text.WriteString(guardMarker(name))
+	text.WriteString("` comment and say why.")
 	return text.String()
 }
 
