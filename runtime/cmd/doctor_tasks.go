@@ -42,12 +42,12 @@ func checkHumanVerifiers(workspaceRoot string) {
 	fmt.Printf("  note  %d check(s) answered by a person: %s\n", len(human), strings.Join(human, ", "))
 }
 
-// checkTaskFiles validates every task list in the workspace and reports where
-// one disagrees with the prose file it mirrors.
+// checkTaskFiles validates every task list in the workspace and refuses a done
+// status whose TASKS.md acceptance checkboxes are still open.
 //
-// The disagreement is a note, not a failure. TASKS.md legitimately carries
-// context the JSON does not, and refusing on a count would make the prose file
-// answer to the machine one rather than the other way round.
+// Count mismatch between prose headings and JSON tasks stays a note: TASKS.md
+// may carry extra context. Incomplete acceptance criteria is a failure, because
+// that is how a run was ending while work boxes remained unticked.
 func checkTaskFiles(report *diagnostics, workspaceRoot string) {
 	slugs, err := state.List(workspaceRoot)
 	if err != nil {
@@ -66,23 +66,70 @@ func checkTaskFiles(report *diagnostics, workspaceRoot string) {
 			report.check("task list "+slug+" loads and validates", false, loadErr.Error())
 			continue
 		}
+		prosePath := tasks.ProsePath(workspaceRoot, slug)
+		prose := ""
+		if prosePath == "" {
+			fmt.Printf("  note  %s has no TASKS prose beside its task list\n", slug)
+		} else {
+			raw, readErr := os.ReadFile(filepath.Clean(prosePath))
+			if readErr != nil {
+				report.check("task list "+slug+" TASKS prose is readable", false, readErr.Error())
+				continue
+			}
+			prose = string(raw)
+			if headings := len(taskHeading.FindAllString(prose, -1)); headings != len(file.Tasks) {
+				fmt.Printf("  note  %s: TASKS prose names %d task(s), %s holds %d; the prose file may carry context the list does not\n",
+					slug, headings, filepath.Base(path), len(file.Tasks))
+			}
+		}
+
+		remaining := file.RemainingAgainstProse(prose)
 		checked++
 		report.check(fmt.Sprintf("task list %s loads and validates (%d tasks, %d remaining)",
-			slug, len(file.Tasks), len(file.Remaining())), true, "")
+			slug, len(file.Tasks), len(remaining)), true, "")
 
-		prose := resolveGateDoc(workspaceRoot, slug, "TASKS", file.Date)
-		raw, readErr := os.ReadFile(filepath.Clean(prose))
-		if readErr != nil {
-			fmt.Printf("  note  %s has no TASKS prose beside its task list\n", slug)
+		// Open acceptance boxes beside a done status are a hard failure when
+		// prose exists. Missing prose stays a note: older runs may lack TASKS.md,
+		// while task_complete still refuses to settle done without proof.
+		if prosePath == "" {
 			continue
 		}
-		if headings := len(taskHeading.FindAllString(string(raw), -1)); headings != len(file.Tasks) {
-			fmt.Printf("  note  %s: TASKS prose names %d task(s), %s holds %d; the prose file may carry context the list does not\n",
-				slug, headings, filepath.Base(path), len(file.Tasks))
+		if incomplete := file.IncompleteDone(prose); len(incomplete) > 0 {
+			ids := make([]string, 0, len(incomplete))
+			for _, task := range incomplete {
+				ids = append(ids, task.ID)
+			}
+			msg := fmt.Sprintf("%s marked done with open or missing acceptance criteria: %s",
+				slug, strings.Join(ids, ", "))
+			// Active delivery must not ignore open AC boxes. Finished runs keep
+			// a note so historical task lists do not fail doctor forever.
+			if runIsActive(workspaceRoot, slug) {
+				report.check(
+					fmt.Sprintf("task list %s done tasks have acceptance checkboxes checked", slug),
+					false,
+					msg,
+				)
+				continue
+			}
+			fmt.Printf("  note  %s\n", msg)
 		}
 	}
 	if checked == 0 {
 		fmt.Printf("  note  no %s in this workspace; tasks_remaining needs one where a graph reads it\n", tasks.FileName)
+	}
+}
+
+// runIsActive reports whether a slug still sits in an open delivery loop.
+func runIsActive(workspaceRoot, slug string) bool {
+	run, err := state.Load(state.ManifestPath(workspaceRoot, slug))
+	if err != nil {
+		return false
+	}
+	switch run.Status {
+	case state.StatusRunning, state.StatusAwaitingHuman:
+		return true
+	default:
+		return false
 	}
 }
 

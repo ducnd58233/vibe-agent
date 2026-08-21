@@ -39,9 +39,17 @@ func taskPacket(deps Deps, raw json.RawMessage) (any, error) {
 
 	next := nextActionableTask(file.Tasks)
 	if next == nil {
+		// A JSON-all-done list can still have open acceptance boxes; those are
+		// not finished for the delivery loop either.
+		prose, _ := tasks.LoadProse(deps.WorkspaceRoot, args.Slug)
+		if remaining := file.RemainingAgainstProse(prose); len(remaining) > 0 {
+			next = &remaining[0]
+		}
+	}
+	if next == nil {
 		return map[string]any{
 			"status": "all_done",
-			"note":   "every task is done or canceled",
+			"note":   "every task is done or canceled with acceptance criteria checked",
 		}, nil
 	}
 
