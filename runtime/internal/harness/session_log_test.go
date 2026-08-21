@@ -90,6 +90,39 @@ func TestUserPromptSubmitSkippedWhenComposerAlreadyLogged(t *testing.T) {
 	}
 }
 
+func TestUserPromptSubmitSkippedWhenComposerLoggedEarlierNotLast(t *testing.T) {
+	root := workspaceWithRun(t)
+	logPath := session.LogPath(root, "demo")
+	if _, err := session.Append(logPath, session.Record{
+		Type:   session.TypePromptSubmit,
+		Source: session.SourcePrint,
+		Client: "claude",
+		Body:   "hello from composer",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// A second, distinct prompt_submit lands after the composer's, matching a
+	// real /auto run: the host session's own resume/system prompt is logged by
+	// the hook before this same-turn duplicate check ever runs.
+	if _, err := session.Append(logPath, session.Record{
+		Type:   session.TypePromptSubmit,
+		Source: session.SourceHook,
+		Client: "claude",
+		Body:   "Resume run demo. It is at node spec.",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	invoke(t, Request{
+		Event: EventUserPromptSubmit, Client: ClientClaude,
+		WorkspaceRoot: root,
+		Stdin:         strings.NewReader(`{"prompt":"hello from composer"}`),
+	})
+	events := sessionLog(t, root)
+	if len(events) != 2 {
+		t.Fatalf("duplicate prompt_submit must still be skipped when it is not the most recent one, events = %+v", events)
+	}
+}
+
 func TestPrefixShapedPromptSubmitDoesNotRecordSession(t *testing.T) {
 	root := workspaceWithRun(t)
 	dump := "User: earlier turn\nAssistant: Host produced no output.\n\nplease continue"
