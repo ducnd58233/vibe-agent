@@ -144,7 +144,7 @@
       ],
       "properties": {
         "verifier": {
-          "enum": ["command", "files", "git", "screen", "tasks", "shipdecision", "human"],
+          "enum": ["command", "files", "git", "screen", "tasks", "shipdecision", "reviewbots", "human"],
           "description": "Overrides the graph node's verifier kind. `human` means no runtime verifier can produce this check and a person decides it, which is the only route by which caller-supplied evidence reaches a verifier node. `tasks` and `shipdecision` find their own input from the workspace root and the run's slug, so they need no command, path, or screen."
         },
         "auto": {
@@ -205,7 +205,7 @@
       ],
       "properties": {
         "verifier": {
-          "enum": ["command", "files", "git", "screen", "tasks", "shipdecision"]
+          "enum": ["command", "files", "git", "screen", "tasks", "shipdecision", "reviewbots"]
         },
         "command": {
           "type": "string",

@@ -236,6 +236,10 @@ def cases(schemas: dict[str, dict]) -> list[tuple[dict, str, dict, bool]]:
          }}), False),
         (plan, "plan rejects an auto entry with nothing runnable",
          plan_with({"verifier": "human", "auto": {"description": "forgot a verifier"}}), False),
+        (plan, "plan accepts a reviewbots auto entry with a command",
+         plan_with({"verifier": "human", "auto": {
+             "verifier": "reviewbots", "command": "gh", "args": ["pr", "checks"],
+         }}), True),
     ]
 
 
