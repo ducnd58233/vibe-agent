@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,18 +81,26 @@ func autoRepo(t *testing.T, optIn bool) string {
 // settledDocs writes the artifacts the gates read, with nothing left open.
 func settledDocs(t *testing.T, root, slug string, done bool) {
 	t.Helper()
-	docs := filepath.Join(root, "docs", slug)
-	write(t, filepath.Join(docs, "SPEC.md"), "# Spec\n\n## Open questions\n\n- None.\n")
-	write(t, filepath.Join(docs, "PLAN.md"), "# Plan\n\n## Open questions\n\n- None.\n")
-	write(t, filepath.Join(docs, "TASKS.md"), "# Tasks\n\n- T1 the only task\n")
+	current, err := state.Load(state.ManifestPath(root, slug))
+	if err != nil {
+		t.Fatalf("load run for docs: %v", err)
+	}
+	docs := filepath.Join(root, "docs", current.Date, slug, fmt.Sprintf("%d", current.Version))
+	spec := fmt.Sprintf("SPEC-%s.md", current.Date)
+	plan := fmt.Sprintf("PLAN-%s.md", current.Date)
+	tasksMD := fmt.Sprintf("TASKS-%s.md", current.Date)
+	tasksJSON := fmt.Sprintf("tasks-%s.json", current.Date)
+	write(t, filepath.Join(docs, spec), "# Spec\n\n## Open questions\n\n- None.\n")
+	write(t, filepath.Join(docs, plan), "# Plan\n\n## Open questions\n\n- None.\n")
+	write(t, filepath.Join(docs, tasksMD), "# Tasks\n\n- T1 the only task\n")
 
 	status := "queued"
 	if done {
 		status = "done"
 	}
-	write(t, filepath.Join(docs, "tasks.json"),
-		`{"schemaVersion":1,"slug":"`+slug+`","tasks":[`+
-			`{"id":"T1","title":"the only task","status":"`+status+`"}]}`)
+	write(t, filepath.Join(docs, tasksJSON),
+		fmt.Sprintf(`{"schemaVersion":1,"slug":%q,"date":%q,"version":%d,"tasks":[{"id":"T1","title":"the only task","status":%q}]}`,
+			slug, current.Date, current.Version, status))
 }
 
 // drive walks the run forward, verifying at verifier nodes and stepping through
@@ -244,7 +253,9 @@ func TestAnAmbiguousSpecStopsTheAutoRun(t *testing.T) {
 	run := cli{t, buildBinary(t), root, toolkitRoot(t)}
 	run.mustRun("auto", "--goal", "make webhook delivery idempotent", "--slug", "ambiguous")
 	settledDocs(t, root, "ambiguous", true)
-	write(t, filepath.Join(root, "docs", "ambiguous", "SPEC.md"),
+	current := manifest(t, root, "ambiguous")
+	write(t, filepath.Join(root, "docs", current.Date, "ambiguous", fmt.Sprintf("%d", current.Version),
+		fmt.Sprintf("SPEC-%s.md", current.Date)),
 		"# Spec\n\n## Open questions\n\n- Which store backs the queue?\n")
 
 	final := drive(t, run, "ambiguous", 20)

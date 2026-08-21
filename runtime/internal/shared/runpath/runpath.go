@@ -148,6 +148,27 @@ func Allocate(workspaceRoot, slug string, now time.Time) (Entry, error) {
 	return entry, nil
 }
 
+// Begin starts a new revision for a slug: refuses if one already exists
+// (indexed or legacy flat), then Allocate writes the index and returns the
+// entry. Callers create directories by saving the manifest into RunDirAt.
+func Begin(workspaceRoot, slug string, now time.Time) (Entry, error) {
+	if !validate.Slug(slug) {
+		return Entry{}, fmt.Errorf("slug %q is not usable", slug)
+	}
+	if entry, err := Resolve(workspaceRoot, slug); err == nil {
+		return Entry{}, fmt.Errorf("a run already exists for %q at %s", slug,
+			workspace.RunDirAt(workspaceRoot, entry.Date, entry.Slug, entry.Version))
+	} else if !errors.Is(err, ErrNotFound) {
+		return Entry{}, err
+	}
+	flatManifest := filepath.Join(workspace.RunDir(workspaceRoot, slug), "manifest.json")
+	if _, err := os.Stat(flatManifest); err == nil {
+		return Entry{}, fmt.Errorf("a legacy flat run already exists at %s; migrate it before starting again",
+			filepath.Join(workspace.RunsDirName, slug))
+	}
+	return Allocate(workspaceRoot, slug, now)
+}
+
 func scanHighest(workspaceRoot, slug string) (Entry, bool) {
 	best := Entry{Slug: slug, Version: 0}
 	found := false

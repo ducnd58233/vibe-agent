@@ -154,15 +154,18 @@ func runStart(args []string) error {
 
 	// Refuse rather than overwrite: a second start would silently discard the
 	// evidence the first one recorded.
-	manifest := state.ManifestPath(workspaceRoot, *slug)
-	if _, err := os.Stat(manifest); err == nil {
-		return fmt.Errorf("a run already exists at %s; use `run status` or remove it first", manifest)
-	}
-
-	current, err := state.NewRun(*slug, *goal, loaded.Metadata.ID, loaded.Spec.MaxTransitions, time.Now())
+	now := time.Now().UTC()
+	entry, err := state.PrepareStart(workspaceRoot, *slug, now)
 	if err != nil {
 		return err
 	}
+
+	current, err := state.NewRun(*slug, *goal, loaded.Metadata.ID, loaded.Spec.MaxTransitions, now)
+	if err != nil {
+		return err
+	}
+	current.Date = entry.Date
+	current.Version = entry.Version
 	current.TokenBudget = *tokenBudget
 	current.WallclockSeconds = int(wallclock.Seconds())
 	if err := loop.New(loaded).Enter(current); err != nil {
@@ -173,6 +176,7 @@ func runStart(args []string) error {
 	if err != nil {
 		return fmt.Errorf("encode start event: %w", err)
 	}
+	manifest := state.ManifestPath(workspaceRoot, *slug)
 	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, *slug),
 		state.Event{Type: "run_started", Node: current.CurrentNode, At: current.CreatedAt, Payload: payload},
 	); err != nil {
