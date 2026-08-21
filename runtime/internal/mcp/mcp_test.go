@@ -757,7 +757,10 @@ func TestFetchCheckShorthandReadsVerifierLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("fetchSource check: %v", err)
 	}
-	result := out.(map[string]any)
+	result, ok := out.(map[string]any)
+	if !ok {
+		t.Fatalf("result is %T, want a map", out)
+	}
 	text, _ := result["text"].(string)
 	if !strings.Contains(text, "TAIL-MARKER") {
 		t.Fatalf("check: fetch missed log tail: %q", text)
