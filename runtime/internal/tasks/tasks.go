@@ -17,19 +17,17 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/runpath"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
 // SchemaVersion is the only version this loader accepts.
 const SchemaVersion = 1
 
-// FileName is the task list's name inside a slug's docs directory.
+// FileName is the undated legacy basename. Prefer DocsArtifact("tasks", date).
 const FileName = "tasks.json"
 
 // Status is how far a task has got.
-//
-// Five, not more. `ready` and `awaiting_user` are derivable from dependencies
-// and from run state, and a status nothing reads is a status that goes stale.
 type Status string
 
 const (
@@ -48,8 +46,7 @@ func (s Status) valid() bool {
 	return false
 }
 
-// Settled reports whether a task needs no further work. Only these two end a
-// task: a blocked task is still in scope, which is the point of the state.
+// Settled reports whether a task needs no further work.
 func (s Status) Settled() bool {
 	return s == StatusDone || s == StatusCanceled
 }
@@ -69,11 +66,32 @@ type Task struct {
 type File struct {
 	SchemaVersion int    `json:"schemaVersion"`
 	Slug          string `json:"slug"`
+	Date          string `json:"date,omitempty"`
+	Version       int    `json:"version,omitempty"`
 	Tasks         []Task `json:"tasks"`
 }
 
-// Path is where a slug's task list lives, beside the TASKS.md it mirrors.
+// Path is where a slug's task list lives. Prefer the dated basename under the
+// versioned docs dir; fall back to undated names and the flat docs tree.
 func Path(workspaceRoot, slug string) string {
+	if entry, err := runpath.Resolve(workspaceRoot, slug); err == nil {
+		dir := workspace.DocsDirAt(workspaceRoot, entry.Date, entry.Slug, entry.Version)
+		dated, err := workspace.DocsArtifact("tasks", entry.Date)
+		if err == nil {
+			candidate := filepath.Join(dir, dated)
+			if _, err := os.Stat(candidate); err == nil {
+				return candidate
+			}
+		}
+		legacy := filepath.Join(dir, FileName)
+		if _, err := os.Stat(legacy); err == nil {
+			return legacy
+		}
+		if dated != "" {
+			return filepath.Join(dir, dated)
+		}
+		return legacy
+	}
 	return filepath.Join(workspace.DocsDir(workspaceRoot, slug), FileName)
 }
 

@@ -340,19 +340,8 @@ func checkHookWiring(report *diagnostics, workspaceRoot string) {
 // this workspace drives the control plane and therefore wants the hooks that
 // record it.
 func hasRunState(workspaceRoot string) bool {
-	entries, err := os.ReadDir(state.RunsDir(workspaceRoot))
-	if err != nil {
-		return false
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		if _, err := os.Stat(state.ManifestPath(workspaceRoot, entry.Name())); err == nil {
-			return true
-		}
-	}
-	return false
+	slugs, err := state.List(workspaceRoot)
+	return err == nil && len(slugs) > 0
 }
 
 // checkOutcomePair reports a config that registers one half of a tool call's

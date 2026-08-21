@@ -3,7 +3,6 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
@@ -27,14 +26,17 @@ func StartDeliveryRun(workspaceRoot, toolkitRoot, slug, goal, graphID string) er
 	if err != nil {
 		return err
 	}
-	manifest := state.ManifestPath(workspaceRoot, slug)
-	if _, err := os.Stat(manifest); err == nil {
-		return fmt.Errorf("run already exists")
-	}
-	current, err := state.NewRun(slug, goal, loaded.Metadata.ID, loaded.Spec.MaxTransitions, time.Now().UTC())
+	now := time.Now().UTC()
+	entry, err := state.PrepareStart(workspaceRoot, slug, now)
 	if err != nil {
 		return err
 	}
+	current, err := state.NewRun(slug, goal, loaded.Metadata.ID, loaded.Spec.MaxTransitions, now)
+	if err != nil {
+		return err
+	}
+	current.Date = entry.Date
+	current.Version = entry.Version
 	if err := loop.New(loaded).Enter(current); err != nil {
 		return err
 	}
@@ -47,5 +49,5 @@ func StartDeliveryRun(workspaceRoot, toolkitRoot, slug, goal, graphID string) er
 	); err != nil {
 		return err
 	}
-	return state.Save(manifest, current)
+	return state.Save(state.ManifestPath(workspaceRoot, slug), current)
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/runpath"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/validate"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
@@ -127,11 +128,6 @@ func autoStartCommand(args []string) error {
 		return err
 	}
 
-	manifest := state.ManifestPath(workspaceRoot, name)
-	if _, statErr := os.Stat(manifest); statErr == nil {
-		return fmt.Errorf("a run already exists at %s; use `run status` or pass a different --slug", manifest)
-	}
-
 	// Text from a task tracker is a description of work someone filed, not an
 	// instruction addressed to this process. It is wrapped where it enters, so
 	// everything downstream reads it already marked.
@@ -140,11 +136,17 @@ func autoStartCommand(args []string) error {
 		recorded = auto.Task(*source, *goal)
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
+	entry, err := state.PrepareStart(workspaceRoot, name, now)
+	if err != nil {
+		return err
+	}
 	current, err := state.NewRun(name, recorded, loaded.Metadata.ID, loaded.Spec.MaxTransitions, now)
 	if err != nil {
 		return err
 	}
+	current.Date = entry.Date
+	current.Version = entry.Version
 	current.TokenBudget = config.Spec.Budgets.Tokens
 	current.WallclockSeconds = config.Spec.Budgets.WallclockSeconds
 	if err := current.SetFlagAt("auto", true, now); err != nil {
@@ -160,6 +162,7 @@ func autoStartCommand(args []string) error {
 	if err != nil {
 		return fmt.Errorf("encode start event: %w", err)
 	}
+	manifest := state.ManifestPath(workspaceRoot, name)
 	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, name),
 		state.Event{Type: "run_started", Node: current.CurrentNode, At: current.CreatedAt, Payload: payload},
 	); err != nil {
@@ -197,8 +200,34 @@ type gate struct {
 }
 
 var gateArtifact = map[string]gate{
-	"approve_spec": {flag: "spec_unambiguous", check: "spec_approved", files: []string{"SPEC.md"}},
-	"approve_plan": {flag: "plan_unambiguous", check: "plan_approved", files: []string{"PLAN.md", "TASKS.md"}},
+	"approve_spec": {flag: "spec_unambiguous", check: "spec_approved", files: []string{"SPEC"}},
+	"approve_plan": {flag: "plan_unambiguous", check: "plan_approved", files: []string{"PLAN", "TASKS"}},
+}
+
+// resolveGateDoc picks the dated basename when the run has a date, else the
+// undated legacy name, under the resolved docs directory.
+func resolveGateDoc(workspaceRoot, slug, stem, date string) string {
+	dir := workspace.DocsDir(workspaceRoot, slug)
+	if entry, err := runpath.Resolve(workspaceRoot, slug); err == nil {
+		dir = workspace.DocsDirAt(workspaceRoot, entry.Date, entry.Slug, entry.Version)
+		if date == "" {
+			date = entry.Date
+		}
+	}
+	if date != "" {
+		if name, err := workspace.DocsArtifact(stem, date); err == nil {
+			dated := filepath.Join(dir, name)
+			if _, err := os.Stat(dated); err == nil {
+				return dated
+			}
+			undated := filepath.Join(dir, stem+".md")
+			if _, err := os.Stat(undated); err == nil {
+				return undated
+			}
+			return dated
+		}
+	}
+	return filepath.Join(dir, stem+".md")
 }
 
 // autoGateCommand answers the gate a run sits at, from what the document says.
@@ -236,8 +265,10 @@ func autoGateCommand(args []string) error {
 	}
 
 	var findings []auto.Ambiguity
-	for _, file := range answerable.files {
-		path := filepath.Join(workspace.DocsDir(workspaceRoot, *slug), file)
+	var resolved []string
+	for _, stem := range answerable.files {
+		path := resolveGateDoc(workspaceRoot, *slug, stem, current.Date)
+		resolved = append(resolved, filepath.Base(path))
 		document, readErr := os.ReadFile(filepath.Clean(path))
 		if readErr != nil {
 			return fmt.Errorf("read %s: %w", path, readErr)
@@ -263,7 +294,7 @@ func autoGateCommand(args []string) error {
 	}
 	payload, err := json.Marshal(map[string]any{
 		"flag": answerable.flag, "value": true,
-		"note": "auto gate found nothing open in " + strings.Join(answerable.files, ", "),
+		"note": "auto gate found nothing open in " + strings.Join(resolved, ", "),
 	})
 	if err != nil {
 		return fmt.Errorf("encode flag event: %w", err)

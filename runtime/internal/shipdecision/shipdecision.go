@@ -16,6 +16,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/run/infra/persistence"
 )
 
 // Specialist is one review lane's own verdict, e.g. "code-reviewer -> PASS".
@@ -115,7 +117,7 @@ func Parse(r io.Reader) (*Decision, error) {
 
 // Path is where /ship writes its decision for a run.
 func Path(workspaceRoot, slug string) string {
-	return filepath.Join(workspaceRoot, "tmp", slug, "ship", "DECISION.md")
+	return filepath.Join(persistence.RunDir(workspaceRoot, slug), "ship", "DECISION.md")
 }
 
 // Load reads and parses the decision file for a run.

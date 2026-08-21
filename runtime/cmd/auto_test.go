@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -222,11 +223,13 @@ func TestAutoGateRefusesANodeItHasNoDocumentFor(t *testing.T) {
 
 func writeSpec(t *testing.T, root, slug, body string) {
 	t.Helper()
-	dir := filepath.Join(root, "docs", slug)
+	run := reload(t, root, slug)
+	dir := filepath.Join(root, "docs", run.Date, slug, fmt.Sprintf("%d", run.Version))
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "SPEC.md"), []byte(body), 0o600); err != nil {
+	name := fmt.Sprintf("SPEC-%s.md", run.Date)
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -324,7 +324,19 @@ func TestAVendoredToolkitsOwnConfigIsNotTheWorkspaceWiring(t *testing.T) {
 }`)
 	// A run in flight is what makes the gap actionable rather than a preference:
 	// the loop is being driven and nothing is recording it.
-	writeConfig(t, workspace, filepath.Join("tmp", "demo", "manifest.json"), `{"slug":"demo"}`)
+	writeConfig(t, workspace, filepath.Join("tmp", "demo", "manifest.json"), `{
+  "schemaVersion": 1,
+  "runId": "run_fixture",
+  "graphId": "goal-delivery",
+  "slug": "demo",
+  "goal": "fixture",
+  "currentNode": "build",
+  "status": "running",
+  "iteration": 1,
+  "maxTransitions": 50,
+  "createdAt": "2026-08-18T10:00:00Z",
+  "updatedAt": "2026-08-18T10:00:00Z"
+}`)
 	t.Setenv("PATH", t.TempDir())
 
 	report := &diagnostics{}

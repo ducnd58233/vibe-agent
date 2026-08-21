@@ -185,26 +185,20 @@ func checkMemory(report *diagnostics, workspaceRoot string) {
 // checkRunState loads every manifest under tmp/, so a run that would fail to
 // resume is found now rather than mid-delivery.
 func checkRunState(report *diagnostics, workspaceRoot string) {
-	entries, err := os.ReadDir(state.RunsDir(workspaceRoot))
+	slugs, err := state.List(workspaceRoot)
 	if err != nil {
-		return // no runs yet is not a problem
+		return
 	}
 	now := time.Now()
 	var stale []string
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		path := state.ManifestPath(workspaceRoot, entry.Name())
-		if _, err := os.Stat(path); err != nil {
-			continue
-		}
+	for _, slug := range slugs {
+		path := state.ManifestPath(workspaceRoot, slug)
 		current, err := state.Load(path)
 		if err != nil {
-			report.check("run state "+entry.Name()+" is valid", false, err.Error())
+			report.check("run state "+slug+" is valid", false, err.Error())
 			continue
 		}
-		report.check("run state "+entry.Name()+" is valid", true, "")
+		report.check("run state "+slug+" is valid", true, "")
 		if idle := idleRun(current, now); idle != "" {
 			stale = append(stale, idle)
 		}

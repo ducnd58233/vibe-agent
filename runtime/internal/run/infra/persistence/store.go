@@ -17,22 +17,24 @@ import (
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/run/domain"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/runpath"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/validate"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
 // RunsDirName is the workspace directory holding every run's state and evidence.
-//
-// The name was written out at six call sites across five packages, each rebuilding
-// the same path by hand. Renaming the directory would have moved one of them and
-// left the rest reading somewhere nothing is written, which fails as an empty
-// result rather than an error.
 const RunsDirName = workspace.RunsDirName
 
 // RunsDir is where every run's directory sits.
 func RunsDir(workspaceRoot string) string { return workspace.RunsDir(workspaceRoot) }
 
-// RunDir is where a slug's state and evidence live, relative to the workspace root.
+// RunDir is where a slug's state and evidence live.
+// Prefer the indexed versioned path; fall back to the legacy flat path so
+// unmigrated workspaces keep loading until the migrate task runs.
 func RunDir(workspaceRoot, slug string) string {
+	if dir, err := runpath.RunDir(workspaceRoot, slug); err == nil {
+		return dir
+	}
 	return workspace.RunDir(workspaceRoot, slug)
 }
 
@@ -83,8 +85,6 @@ func Save(path string, run *domain.Run) error {
 		return fmt.Errorf("create temp manifest: %w", err)
 	}
 	tempName := temp.Name()
-	// A no-op once the rename succeeds, and unactionable if it does not: the
-	// temp file is already orphaned by then.
 	defer func() { _ = os.Remove(tempName) }()
 
 	if _, err := temp.Write(encoded); err != nil {
@@ -111,10 +111,6 @@ func EventLogPath(workspaceRoot, slug string) string {
 
 // AppendEvent adds one line to the log and returns the stored event, including
 // the sequence number it was given.
-//
-// Sequence is derived by counting existing lines rather than tracked in memory,
-// so two processes writing the same log cannot silently agree on a number.
-// Concurrent writers can still collide; the runner is single-writer per run.
 func AppendEvent(path string, event domain.Event) (domain.Event, error) {
 	if event.Type == "" {
 		return domain.Event{}, errors.New("event type must not be empty")
@@ -154,8 +150,7 @@ func AppendEvent(path string, event domain.Event) (domain.Event, error) {
 	return event, nil
 }
 
-// ReadEvents returns every event in the log. A missing log is not an error: a
-// run that has recorded nothing yet has no events.
+// ReadEvents returns every event in the log. A missing log is not an error.
 func ReadEvents(path string) ([]domain.Event, error) {
 	file, err := os.Open(filepath.Clean(path))
 	if err != nil {
@@ -212,26 +207,106 @@ func countLines(path string) (int, error) {
 	return count, nil
 }
 
-// List returns slugs that have a readable manifest under tmp/. A missing runs
-// directory is treated as empty rather than an error.
+// PrepareStart allocates a new versioned revision for the slug and creates the
+// matching docs directory. Callers must set Date and Version on the Run from
+// the returned entry before Save.
+func PrepareStart(workspaceRoot, slug string, now time.Time) (runpath.Entry, error) {
+	entry, err := runpath.Begin(workspaceRoot, slug, now)
+	if err != nil {
+		return runpath.Entry{}, err
+	}
+	docs := workspace.DocsDirAt(workspaceRoot, entry.Date, entry.Slug, entry.Version)
+	if err := os.MkdirAll(docs, 0o750); err != nil {
+		return runpath.Entry{}, fmt.Errorf("create docs directory: %w", err)
+	}
+	return entry, nil
+}
+
+// List returns slugs that have a readable manifest. Versioned trees,
+// run-index pointers, and legacy flat dirs are all considered.
 func List(workspaceRoot string) ([]string, error) {
+	seen := map[string]bool{}
+
+	indexDir := workspace.RunIndexDir(workspaceRoot)
+	if entries, err := os.ReadDir(indexDir); err == nil {
+		for _, entry := range entries {
+			if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+				continue
+			}
+			slug := entry.Name()[:len(entry.Name())-len(".json")]
+			if !validate.Slug(slug) {
+				continue
+			}
+			if _, err := Load(ManifestPath(workspaceRoot, slug)); err == nil {
+				seen[slug] = true
+			}
+		}
+	}
+
+	if err := walkVersionedRuns(workspaceRoot, seen); err != nil {
+		return nil, err
+	}
+
+	// Legacy flat tmp/<slug>/manifest.json until migrate.
 	entries, err := os.ReadDir(RunsDir(workspaceRoot))
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("list runs: %w", err)
 		}
-		return nil, fmt.Errorf("list runs: %w", err)
+	} else {
+		for _, entry := range entries {
+			if !entry.IsDir() || validate.Date(entry.Name()) {
+				continue
+			}
+			slug := entry.Name()
+			if !validate.Slug(slug) || seen[slug] {
+				continue
+			}
+			flat := filepath.Join(RunsDir(workspaceRoot), slug, "manifest.json")
+			if _, err := Load(flat); err != nil {
+				continue
+			}
+			seen[slug] = true
+		}
 	}
-	slugs := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		if _, err := Load(ManifestPath(workspaceRoot, entry.Name())); err != nil {
-			continue
-		}
-		slugs = append(slugs, entry.Name())
+
+	slugs := make([]string, 0, len(seen))
+	for slug := range seen {
+		slugs = append(slugs, slug)
 	}
 	sort.Strings(slugs)
 	return slugs, nil
+}
+
+func walkVersionedRuns(workspaceRoot string, seen map[string]bool) error {
+	root := RunsDir(workspaceRoot)
+	dates, err := os.ReadDir(root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("list runs: %w", err)
+	}
+	for _, dateEnt := range dates {
+		if !dateEnt.IsDir() || !validate.Date(dateEnt.Name()) {
+			continue
+		}
+		slugs, err := os.ReadDir(filepath.Join(root, dateEnt.Name()))
+		if err != nil {
+			continue
+		}
+		for _, slugEnt := range slugs {
+			if !slugEnt.IsDir() || !validate.Slug(slugEnt.Name()) {
+				continue
+			}
+			slug := slugEnt.Name()
+			if seen[slug] {
+				continue
+			}
+			if _, err := Load(ManifestPath(workspaceRoot, slug)); err == nil {
+				seen[slug] = true
+			}
+		}
+	}
+	return nil
 }

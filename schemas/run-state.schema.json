@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ducnd58233/vibe-agent/schemas/run-state.schema.json",
   "title": "RunState",
-  "description": "Machine-readable state for one goal run. Written to tmp/<slug>/manifest.json beside the human-readable RECORD.md. Gitignored.",
+  "description": "Machine-readable state for one goal run. Written to tmp/<date>/<slug>/<version>/manifest.json beside the human-readable RECORD.md. Gitignored.",
   "type": "object",
   "required": [
     "schemaVersion",
@@ -35,7 +35,17 @@
     "slug": {
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
-      "description": "Matches docs/<slug>/ and tmp/<slug>/ for the same goal."
+      "description": "Matches docs/<date>/<slug>/<version>/ and tmp/<date>/<slug>/<version>/ for the same goal."
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "Calendar day of this revision directory. Required for new runs."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Global revision number for the slug. Required for new runs."
     },
     "goal": {
       "type": "string",

@@ -11,7 +11,7 @@ import (
 
 // LogPath is the append-only session log for a slug.
 func LogPath(workspaceRoot, slug string) string {
-	return filepath.Join(workspace.RunDir(workspaceRoot, slug), LogName)
+	return filepath.Join(state.RunDir(workspaceRoot, slug), LogName)
 }
 
 // Append redacts and stores one session gesture.

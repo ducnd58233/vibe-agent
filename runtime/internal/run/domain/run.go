@@ -154,6 +154,12 @@ type Run struct {
 	Slug          string `json:"slug"`
 	Goal          string `json:"goal"`
 
+	// Date and Version locate the run under tmp/<date>/<slug>/<version>/.
+	// Empty date and zero version are allowed for manifests written before
+	// that layout; new starts always set both.
+	Date    string `json:"date,omitempty"`
+	Version int    `json:"version,omitempty"`
+
 	CurrentNode    string `json:"currentNode"`
 	Status         Status `json:"status"`
 	Iteration      int    `json:"iteration"`
@@ -281,6 +287,14 @@ func (r *Run) Validate() error {
 	}
 	if !validate.Slug(r.Slug) {
 		return fmt.Errorf("slug %q must be lowercase kebab-case", r.Slug)
+	}
+	if r.Date != "" || r.Version != 0 {
+		if !validate.Date(r.Date) {
+			return fmt.Errorf("date %q is not YYYY-MM-DD", r.Date)
+		}
+		if r.Version < 1 {
+			return fmt.Errorf("version must be >= 1, got %d", r.Version)
+		}
 	}
 	if r.RunID == "" || r.GraphID == "" || r.Goal == "" {
 		return fmt.Errorf("runId, graphId, and goal are all required")

@@ -229,9 +229,17 @@ func TestConsumerRepoRunsAGoalToCompletion(t *testing.T) {
 		t.Fatalf("run did not start at intake:\n%s", out)
 	}
 
-	manifest := filepath.Join(root, "tmp", "webhook-idempotency", "manifest.json")
-	if _, err := os.Stat(manifest); err != nil {
+	current, err := state.Load(state.ManifestPath(root, "webhook-idempotency"))
+	if err != nil {
 		t.Fatalf("state was not written into the consumer workspace: %v", err)
+	}
+	if current.Date == "" || current.Version < 1 {
+		t.Fatalf("new run missing date/version: date=%q version=%d", current.Date, current.Version)
+	}
+	manifest := filepath.Join(root, "tmp", current.Date, "webhook-idempotency",
+		fmt.Sprintf("%d", current.Version), "manifest.json")
+	if _, err := os.Stat(manifest); err != nil {
+		t.Fatalf("versioned manifest missing at %s: %v", manifest, err)
 	}
 
 	// Walk the delivery loop on evidence alone, exactly as a host would.
@@ -314,7 +322,8 @@ func TestConsumerRepoRunsAGoalToCompletion(t *testing.T) {
 		t.Errorf("e2e source = %v, want exit_code from the verifier", e2e["source"])
 	}
 
-	events := filepath.Join(root, "tmp", "webhook-idempotency", "events.ndjson")
+	events := filepath.Join(root, "tmp", current.Date, "webhook-idempotency",
+		fmt.Sprintf("%d", current.Version), "events.ndjson")
 	raw, err := os.ReadFile(filepath.Clean(events))
 	if err != nil {
 		t.Fatalf("event log missing: %v", err)
@@ -944,11 +953,12 @@ func waitForHTTPAbsent(t *testing.T, ctx context.Context, url, absent string) {
 
 func writeWebFixtureSession(t *testing.T, root, slug string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
+	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
+	entry, err := state.PrepareStart(root, slug, stamp)
+	if err != nil {
 		t.Fatal(err)
 	}
 	path := session.LogPath(root, slug)
-	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
 	records := []session.Record{
 		{Type: session.TypeSessionStart, Source: session.SourceHook, Client: "cursor", Event: "SessionStart"},
 		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "cursor", Body: "plan with key " + e2eWebSecret},
@@ -964,6 +974,8 @@ func writeWebFixtureSession(t *testing.T, root, slug string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	run.Date = entry.Date
+	run.Version = entry.Version
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
