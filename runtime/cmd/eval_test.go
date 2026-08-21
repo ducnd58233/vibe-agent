@@ -78,7 +78,7 @@ func TestAllRunnerPresetIncludesKnownHosts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveRunners: %v", err)
 	}
-	if got := runnerNames(runners); got != "codex, claude, cursor, opencode" {
+	if got := runnerNames(runners); got != "codex, claude, cursor, opencode, kimi, muse, antigravity" {
 		t.Errorf("runnerNames = %q", got)
 	}
 }

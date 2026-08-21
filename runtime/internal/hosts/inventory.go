@@ -28,6 +28,18 @@ var catalog = []Host{
 	{ID: "claude", Binary: "claude", EvalCommand: "claude -p"},
 	{ID: "cursor-agent", Binary: "cursor-agent", EvalCommand: "cursor-agent --print --output-format stream-json --mode ask --trust", PromptAsArg: true},
 	{ID: "opencode", Binary: "opencode", EvalCommand: "opencode run", PromptAsArg: true},
+
+	// Three hosts nobody here has run. Listed so Inventory answers "not on
+	// PATH" rather than saying nothing, which is the difference between a host
+	// that is absent and one this build has never heard of.
+	//
+	// Their eval commands come from vendor documentation and are recorded as
+	// unverified in host-hook-contracts.md. None is wired to a hook: reading a
+	// schema is not watching it fire, and a refusal path nobody has watched
+	// refuse anything is the defect class this repository has hit most.
+	{ID: "kimi", Binary: "kimi", EvalCommand: "kimi --print", PromptAsArg: true},
+	{ID: "muse", Binary: "muse", EvalCommand: "muse exec --json", PromptAsArg: true},
+	{ID: "antigravity", Binary: "antigravity", EvalCommand: "antigravity exec", PromptAsArg: true},
 }
 
 var lookPath = safexec.LookPath
@@ -70,7 +82,7 @@ var evalAlias = map[string]string{"cursor": "cursor-agent"}
 // A test asserts every name here resolves through EvalHost, so the two lists
 // cannot drift apart without something failing.
 func EvalRunnerNames() []string {
-	return []string{"codex", "claude", "cursor", "opencode"}
+	return []string{"codex", "claude", "cursor", "opencode", "kimi", "muse", "antigravity"}
 }
 
 // EvalHost returns the host entry for an eval runner name.
