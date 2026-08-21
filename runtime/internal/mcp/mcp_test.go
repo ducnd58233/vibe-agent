@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
@@ -781,4 +782,166 @@ func TestFetchCheckShorthandReadsVerifierLog(t *testing.T) {
 func quote(s string) string {
 	out, _ := json.Marshal(s)
 	return string(out)
+}
+
+func TestInitializeDeclaresListChanged(t *testing.T) {
+	server := NewServer("test", newDeps(t))
+	replies := exchange(t, server, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`)
+	caps := object(t, object(t, replies[0]["result"], "result")["capabilities"], "capabilities")
+	toolsCap := object(t, caps["tools"], "tools")
+	if toolsCap["listChanged"] != true {
+		t.Fatalf("listChanged = %v, want true", toolsCap["listChanged"])
+	}
+}
+
+func TestToolsListIsFullWithNoActiveRun(t *testing.T) {
+	server := NewServer("test", newDeps(t))
+	replies := exchange(t, server,
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`,
+	)
+	tools := list(t, object(t, replies[1]["result"], "result")["tools"], "tools")
+	if len(tools) != len(server.Tools) {
+		t.Fatalf("listed %d, want full %d", len(tools), len(server.Tools))
+	}
+}
+
+func toolNames(t *testing.T, tools []any) map[string]bool {
+	t.Helper()
+	out := map[string]bool{}
+	for _, raw := range tools {
+		name, _ := object(t, raw, "tool")["name"].(string)
+		out[name] = true
+	}
+	return out
+}
+
+func TestToolsListNarrowsCheckpointAndVerify(t *testing.T) {
+	deps := newDeps(t)
+	server := NewServer("test", deps)
+	exchange(t, server, call("vibe_run_start", map[string]any{
+		"slug": "narrow", "goal": "narrow tools/list",
+	}))
+	// intake is a human_gate -> checkpoint only
+	replies := exchange(t, server, `{"jsonrpc":"2.0","id":3,"method":"tools/list"}`)
+	names := toolNames(t, list(t, object(t, replies[0]["result"], "result")["tools"], "tools"))
+	if !names["vibe_checkpoint"] || names["vibe_verify"] {
+		t.Fatalf("at human_gate: checkpoint=%v verify=%v", names["vibe_checkpoint"], names["vibe_verify"])
+	}
+	if !names["vibe_repo_map"] || !names["vibe_fetch"] {
+		t.Fatal("other tools must stay listed")
+	}
+
+	// Move to a verifier node (test) via empty checkpoint through the graph until test is hard;
+	// instead load a fixture run parked at unit by writing status through checkpoint to test.
+	// Simpler: set Session slug and write a run manifest at a verifier node via PrepareStart + Save.
+	root := deps.WorkspaceRoot
+	entry, err := state.PrepareStart(root, "verify-node", at())
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := graph.LoadByID(graph.DefaultDir(deps.ToolkitRoot), "goal-delivery")
+	if err != nil {
+		t.Fatal(err)
+	}
+	run, err := state.NewRun("verify-node", "goal", loaded.Metadata.ID, loaded.Spec.MaxTransitions, at())
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.Date = entry.Date
+	run.Version = entry.Version
+	run.CurrentNode = "test"
+	run.Status = state.StatusRunning
+	if err := state.Save(state.ManifestPath(root, "verify-node"), run); err != nil {
+		t.Fatal(err)
+	}
+	server.Session.Touch("verify-node")
+	replies = exchange(t, server, `{"jsonrpc":"2.0","id":4,"method":"tools/list"}`)
+	names = toolNames(t, list(t, object(t, replies[0]["result"], "result")["tools"], "tools"))
+	if names["vibe_checkpoint"] || !names["vibe_verify"] {
+		t.Fatalf("at verifier: checkpoint=%v verify=%v", names["vibe_checkpoint"], names["vibe_verify"])
+	}
+
+	run.CurrentNode = "done"
+	run.Status = state.StatusDone
+	if err := state.Save(state.ManifestPath(root, "verify-node"), run); err != nil {
+		t.Fatal(err)
+	}
+	replies = exchange(t, server, `{"jsonrpc":"2.0","id":5,"method":"tools/list"}`)
+	names = toolNames(t, list(t, object(t, replies[0]["result"], "result")["tools"], "tools"))
+	if names["vibe_checkpoint"] || names["vibe_verify"] {
+		t.Fatalf("at terminal both should be absent: %v", names)
+	}
+}
+
+func TestListChangedNotificationOnRealTransitionOnly(t *testing.T) {
+	deps := newDeps(t)
+	server := NewServer("test", deps)
+	exchange(t, server,
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`,
+		call("vibe_run_start", map[string]any{"slug": "notify", "goal": "emit list_changed"}),
+	)
+	// Real checkpoint from intake (empty outcome advances via !research_required path needs research flag;
+	// intake with auto? Use checkpoint with no check - from intake, need research_required false.
+	// Enter leaves at intake awaiting_human for non-auto. run_start Enter on non-auto parks at intake.
+	// Checkpoint without check from awaiting intake may fail. Set auto flag like CLI auto does.
+	run, err := state.Load(state.ManifestPath(deps.WorkspaceRoot, "notify"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := run.SetFlagAt("auto", true, at()); err != nil {
+		t.Fatal(err)
+	}
+	// Re-enter gate so intake skips
+	loaded, err := graph.LoadByID(graph.DefaultDir(deps.ToolkitRoot), run.GraphID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loop.New(loaded).SettleGate(run); err != nil {
+		t.Fatal(err)
+	}
+	if err := state.Save(state.ManifestPath(deps.WorkspaceRoot, "notify"), run); err != nil {
+		t.Fatal(err)
+	}
+
+	replies := exchange(t, server, call("vibe_checkpoint", map[string]any{"slug": "notify"}))
+	var sawNotify bool
+	for _, reply := range replies {
+		if reply["method"] == "notifications/tools/list_changed" {
+			sawNotify = true
+		}
+	}
+	if !sawNotify {
+		t.Fatalf("expected list_changed after real transition, got %#v", replies)
+	}
+
+	// Duplicate: same empty checkpoint again may still advance; call with identical check.
+	// Force duplicate by replaying exact same evidence: first write a check then replay.
+	_ = exchange(t, server, call("vibe_checkpoint", map[string]any{
+		"slug":  "notify",
+		"check": map[string]any{"name": "dup", "passed": true, "source": "file_assert"},
+	}))
+	// Second identical
+	replies = exchange(t, server, call("vibe_checkpoint", map[string]any{
+		"slug":  "notify",
+		"check": map[string]any{"name": "dup", "passed": true, "source": "file_assert"},
+	}))
+	sawNotify = false
+	duplicateNoted := false
+	for _, reply := range replies {
+		if reply["method"] == "notifications/tools/list_changed" {
+			sawNotify = true
+		}
+		if reply["result"] != nil {
+			if strings.Contains(toolText(t, reply), `"duplicate":true`) {
+				duplicateNoted = true
+			}
+		}
+	}
+	if !duplicateNoted {
+		t.Fatal("second identical checkpoint should report duplicate")
+	}
+	if sawNotify {
+		t.Fatal("duplicate checkpoint must not emit list_changed")
+	}
 }

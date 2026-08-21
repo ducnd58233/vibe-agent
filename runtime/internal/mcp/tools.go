@@ -35,6 +35,9 @@ type Deps struct {
 	Memory *memory.Lazy
 	Now    func() time.Time
 	Log    observability.Logger
+	// Session tracks the active slug for tools/list narrowing. Shared with the
+	// Server so Serve can emit list_changed after a real transition.
+	Session *Session
 }
 
 // read returns the store for a retrieval, or nil where this workspace has none.
@@ -54,11 +57,16 @@ func (d Deps) now() time.Time {
 
 // NewServer builds the stdio server with the ten-tool surface.
 func NewServer(version string, deps Deps) *Server {
+	if deps.Session == nil {
+		deps.Session = &Session{}
+	}
 	return &Server{
 		Name:    "vibe-agent",
 		Version: version,
 		Tools:   Tools(deps),
 		Log:     deps.Log,
+		Deps:    deps,
+		Session: deps.Session,
 	}
 }
 
@@ -297,6 +305,7 @@ func runStart(deps Deps, raw json.RawMessage) (any, error) {
 	if err := state.Save(manifest, run); err != nil {
 		return nil, err
 	}
+	deps.Session.Touch(args.Slug)
 	out := describe(loaded, run)
 	out["goal"] = run.Goal
 	return out, nil
@@ -317,6 +326,7 @@ func runStatus(deps Deps, raw json.RawMessage) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	deps.Session.Touch(args.Slug)
 	return describe(loaded, run), nil
 }
 
@@ -359,6 +369,7 @@ func runVerify(deps Deps, raw json.RawMessage) (any, error) {
 		return nil, err
 	}
 
+	deps.Session.Touch(args.Slug)
 	applied := result.Applied
 	out := describe(applied.Graph, applied.Run)
 	out["check"] = result.Check
@@ -373,6 +384,7 @@ func runVerify(deps Deps, raw json.RawMessage) (any, error) {
 		out["note"] = "This exact evidence was the last checkpoint recorded, so nothing advanced."
 		return out, nil
 	}
+	deps.Session.NoteListChanged()
 	out["transition"] = map[string]any{
 		"from": applied.Transition.From, "to": applied.Transition.To,
 		"via": applied.Transition.Via, "terminal": applied.Transition.Terminal,
@@ -423,6 +435,7 @@ func runCheckpoint(deps Deps, raw json.RawMessage) (any, error) {
 	}
 
 	out := describe(result.Graph, result.Run)
+	deps.Session.Touch(args.Slug)
 	if result.Duplicate {
 		// A tool call that timed out after the write gets retried. Telling the
 		// caller its evidence was already recorded is more useful than either
@@ -431,6 +444,7 @@ func runCheckpoint(deps Deps, raw json.RawMessage) (any, error) {
 		out["note"] = "This exact evidence was the last checkpoint recorded, so nothing advanced."
 		return out, nil
 	}
+	deps.Session.NoteListChanged()
 	out["transition"] = map[string]any{
 		"from": result.Transition.From, "to": result.Transition.To,
 		"via": result.Transition.Via, "terminal": result.Transition.Terminal,
