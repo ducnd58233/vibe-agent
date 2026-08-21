@@ -94,6 +94,9 @@ jobs:
         with:
           go-version-file: runtime/go.mod
 
+      - name: Verify docs layout checker fixtures
+        run: bash scripts/check-docs-layout.sh
+
       # golangci-lint is installed on demand into runtime/bin by `make tools`.
       # Caching on the Makefile and go.sum means a run that changed neither
       # skips the install entirely.

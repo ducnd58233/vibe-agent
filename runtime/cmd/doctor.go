@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -13,6 +12,8 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/docmeta"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/app"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/persistence"
 )
@@ -46,6 +47,7 @@ func doctorCommand(args []string) error {
 	checkCheckPlan(report, workspaceRoot, toolkitRoot)
 	checkHumanVerifiers(workspaceRoot)
 	checkTaskFiles(report, workspaceRoot)
+	checkDocsLayout(report, workspaceRoot)
 	checkAutoOptIn(report, workspaceRoot)
 	checkMemory(report, workspaceRoot)
 	checkRunState(report, workspaceRoot)
@@ -167,6 +169,21 @@ func acceptsSkipped(loaded *graph.Graph, check string) bool {
 // the toolkit. The memory package states the rule it was breaking: reads never
 // create state, which is why recall opens the database only if it exists.
 // checkRepoMap beside it follows the same rule.
+func checkDocsLayout(report *diagnostics, workspaceRoot string) {
+	issues, err := docmeta.CheckWorkspace(workspaceRoot)
+	if err != nil {
+		report.check("docs layout", false, err.Error())
+		return
+	}
+	if len(issues) == 0 {
+		report.check("docs layout", true, "")
+		return
+	}
+	for _, issue := range issues {
+		report.check("docs layout", false, issue.String())
+	}
+}
+
 func checkMemory(report *diagnostics, workspaceRoot string) {
 	store, exists, err := openExistingMemory(workspaceRoot)
 	if err != nil {

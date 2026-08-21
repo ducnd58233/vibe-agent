@@ -10,7 +10,6 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/autoconfig"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/docmeta"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/tasks"
 )
 
@@ -76,14 +75,6 @@ func checkTaskFiles(report *diagnostics, workspaceRoot string) {
 		if readErr != nil {
 			fmt.Printf("  note  %s has no TASKS prose beside its task list\n", slug)
 			continue
-		}
-		if _, metaErr := docmeta.ParseFrontMatter(raw); metaErr != nil {
-			// T6 turns this into a hard doctor failure. Until then, migrate may
-			// leave older prose without front matter, and refusing the whole
-			// workspace would block delivery of the migrator itself.
-			fmt.Printf("  note  %s TASKS prose front matter: %v\n", slug, metaErr)
-		} else {
-			report.check("task prose "+slug+" front matter", true, "")
 		}
 		if headings := len(taskHeading.FindAllString(string(raw), -1)); headings != len(file.Tasks) {
 			fmt.Printf("  note  %s: TASKS prose names %d task(s), %s holds %d; the prose file may carry context the list does not\n",
