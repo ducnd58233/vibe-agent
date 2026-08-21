@@ -70,6 +70,19 @@ type Entry struct {
 
 	TimeoutSeconds int `yaml:"timeoutSeconds"`
 
+	// Auto, when set, is how this check is produced instead, but only on a run
+	// whose auto flag is set. It exists so a check can stay verifier: human by
+	// default — the only route by which a person's word reaches a verifier
+	// node — while an opted-in, auto-driven run gets a real, falsifiable
+	// alternative instead of a forged human_event. docs/auto-ship-reviews is
+	// the first user: `ship` and `reviews` stay human for /goal and gain an
+	// Auto entry that /auto alone can take.
+	//
+	// Nested one level only: Auto.Auto is rejected by validate, because a
+	// second level of fallback answers a question nobody asked and the
+	// resolution code does not walk it.
+	Auto *Entry `yaml:"auto,omitempty"`
+
 	// Description is for humans reading the plan. The runtime ignores it.
 	Description string `yaml:"description"`
 }
@@ -98,7 +111,7 @@ func (e Entry) runnable() bool {
 // path, or screen. The names are carried here for the same reason
 // HumanVerifier is: this package validates a plan, and a plan that declares
 // nothing runnable is the defect it exists to catch.
-var selfConfiguring = map[string]bool{"tasks": true}
+var selfConfiguring = map[string]bool{"tasks": true, "shipdecision": true}
 
 // Spec is the plan itself.
 type Spec struct {
@@ -217,25 +230,51 @@ func (p *Plan) validate() error {
 	}
 	for _, name := range p.Names() {
 		entry := p.Spec.Checks[name]
-		if !entry.runnable() {
-			return fmt.Errorf("check %q declares no command, paths, or screen; there is nothing to run", name)
+		if err := entry.validate(name); err != nil {
+			return err
 		}
-		if entry.Screen != nil && entry.Screen.Platform == "" {
-			return fmt.Errorf("check %q has a screen block with no platform; use %s or %s",
-				name, verifier.PlatformAndroid, verifier.PlatformIOS)
+		if entry.Auto != nil {
+			if entry.Auto.Auto != nil {
+				return fmt.Errorf("check %q's auto entry declares its own auto entry; one level of fallback only", name)
+			}
+			if !entry.Auto.Human() {
+				if err := entry.Auto.validate(name + ".auto"); err != nil {
+					return err
+				}
+			}
+			// An Auto entry declared verifier: human would defeat its own purpose
+			// (the fallback a human-only check gets on auto still requiring a
+			// human), so it is rejected rather than silently accepted.
+			if entry.Auto.Human() {
+				return fmt.Errorf("check %q's auto entry is itself verifier: human; that answers nothing an auto run could not already do", name)
+			}
 		}
-		// The schema requires a positive timeout and this loader did not, so a
-		// hand-written plan could set a negative one and get a bound in the past.
-		// Two statements of the same contract that disagree is the drift the
-		// cross-language check exists to catch; this closes it on the Go side.
-		if entry.TimeoutSeconds < 0 {
-			return fmt.Errorf("check %q has timeoutSeconds %d; a bound has to be positive",
-				name, entry.TimeoutSeconds)
-		}
-		if entry.Screen != nil && entry.Screen.SettleSeconds < 0 {
-			return fmt.Errorf("check %q has settleSeconds %d; a wait has to be positive",
-				name, entry.Screen.SettleSeconds)
-		}
+	}
+	return nil
+}
+
+// validate checks one entry's own shape. Named so the top-level plan
+// validation and the nested Auto entry validation share it instead of a
+// second copy that could drift from the first.
+func (e Entry) validate(name string) error {
+	if !e.runnable() {
+		return fmt.Errorf("check %q declares no command, paths, or screen; there is nothing to run", name)
+	}
+	if e.Screen != nil && e.Screen.Platform == "" {
+		return fmt.Errorf("check %q has a screen block with no platform; use %s or %s",
+			name, verifier.PlatformAndroid, verifier.PlatformIOS)
+	}
+	// The schema requires a positive timeout and this loader did not, so a
+	// hand-written plan could set a negative one and get a bound in the past.
+	// Two statements of the same contract that disagree is the drift the
+	// cross-language check exists to catch; this closes it on the Go side.
+	if e.TimeoutSeconds < 0 {
+		return fmt.Errorf("check %q has timeoutSeconds %d; a bound has to be positive",
+			name, e.TimeoutSeconds)
+	}
+	if e.Screen != nil && e.Screen.SettleSeconds < 0 {
+		return fmt.Errorf("check %q has settleSeconds %d; a wait has to be positive",
+			name, e.Screen.SettleSeconds)
 	}
 	return nil
 }

@@ -13,6 +13,8 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -109,4 +111,24 @@ func Parse(r io.Reader) (*Decision, error) {
 		return nil, fmt.Errorf("shipdecision: NO-GO decision carries no blockers, must carry at least one")
 	}
 	return d, nil
+}
+
+// Path is where /ship writes its decision for a run.
+func Path(workspaceRoot, slug string) string {
+	return filepath.Join(workspaceRoot, "tmp", slug, "ship", "DECISION.md")
+}
+
+// Load reads and parses the decision file for a run.
+//
+// A missing file reports through the returned error like any other open
+// failure (os.ErrNotExist) rather than a distinct sentinel. /ship simply not
+// having run yet is not this package's concern to name specially; the caller
+// deciding what a missing file means for a check is.
+func Load(workspaceRoot, slug string) (*Decision, error) {
+	f, err := os.Open(Path(workspaceRoot, slug))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	return Parse(f)
 }

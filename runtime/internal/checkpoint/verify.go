@@ -122,9 +122,18 @@ func Resolve(req VerifyRequest) (*Plan, error) {
 		return nil, err
 	}
 	if entry.Human() {
-		return nil, fmt.Errorf("check %q is declared %s in %s, so a person records it: "+
-			"vibe-agent checkpoint --slug %s --check %s --source %s --passed",
-			node.Check, checkplan.HumanVerifier, plan.Path(), req.Slug, node.Check, state.SourceHumanEvent)
+		// A run with the auto flag set and an Auto entry declared gets a real,
+		// falsifiable alternative instead of a person's word — never the other
+		// way around. A run without the flag, or a check with no Auto entry,
+		// hits the exact error below unchanged: this is the one branch that
+		// keeps /goal provably identical to before docs/auto-ship-reviews.
+		if run.Flags["auto"] && entry.Auto != nil {
+			entry = *entry.Auto
+		} else {
+			return nil, fmt.Errorf("check %q is declared %s in %s, so a person records it: "+
+				"vibe-agent checkpoint --slug %s --check %s --source %s --passed",
+				node.Check, checkplan.HumanVerifier, plan.Path(), req.Slug, node.Check, state.SourceHumanEvent)
+		}
 	}
 
 	kind := entry.Verifier
