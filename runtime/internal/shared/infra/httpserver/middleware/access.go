@@ -19,6 +19,14 @@ func (w *statusWriter) WriteHeader(code int) {
 	w.ResponseWriter.WriteHeader(code)
 }
 
+// Flush lets SSE handlers stream through AccessLog: wrapping ResponseWriter in
+// a struct hides http.Flusher unless the wrapper forwards it explicitly.
+func (w *statusWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 // AccessLog records one line per request with status and duration.
 func AccessLog(l observability.Logger) Middleware {
 	return func(next http.Handler) http.Handler {
