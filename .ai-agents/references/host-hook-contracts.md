@@ -177,3 +177,77 @@ Two rules govern this table:
 - No end-of-turn hook, so nothing can refuse to end a turn with a run mid-graph the way stop does on Claude and Cursor.
 
 </context>
+
+## antigravity
+
+<context>
+
+- **Config:** `.agents/hooks.json` in a workspace, `~/.gemini/config/hooks.json` globally. The workspace file wins where both exist.
+- **Source:** <https://antigravity.google/docs/hooks>
+- **Workspace root:** `workspacePaths` in the stdin payload, an array. Multi-repo workspaces are a stated feature, so it is a list rather than one path.
+- **Not installed here.** Every row below was read from the vendor's documentation and none of it was watched running. That is the whole reason the Verified column exists.
+
+| Host event key | vibe-agent event | Output keys the host reads | Inject | Refuse | Wired | Verified |
+|---|---|---|---|---|---|---|
+| `PreInvocation` | `user-prompt-submit` | `injectSteps[].ephemeralMessage`, `injectSteps[].userMessage`, `injectSteps[].toolCall` | yes | no | no | **UNVERIFIED** |
+| `PreToolUse` | `pre-tool-use` | `decision`, `reason`, `permissionOverrides` | no | yes | no | **UNVERIFIED** |
+| `PostToolUse` | `post-tool-use` | none documented | no | no | no | **UNVERIFIED** |
+| `PostInvocation` | none | none documented | no | no | no | **UNVERIFIED** |
+| `Stop` | `stop` | none documented | no | yes | no | **UNVERIFIED** |
+
+**Notes**
+
+- `decision` takes `allow`, `deny`, `ask`, `force_ask`, or `deny_unless_prior_grant`. The first three match what Cursor accepts, so the branch that already answers Cursor is the shape to reuse.
+- stdin on `PreToolUse` carries `toolCall.name`, `toolCall.args`, `stepIdx`, `conversationId`, `workspacePaths`, `transcriptPath`, `artifactDirectoryPath`, and `modelName`. A transcript path is present, which is what the grounding check needs.
+- This is the most complete published contract of the three, and it is still not wired. A refusal path nobody has watched refuse anything is the defect class this repository has hit most; the contract is written down here so whoever has the binary can wire it against something.
+- `.agents/` is already the workspace directory this toolkit writes skills and commands into, so assets reach Antigravity today without any change.
+
+</context>
+
+## kimi
+
+<context>
+
+- **Config:** `~/.kimi/config.toml`, with `~/.kimi/config.json` accepted and migrated. Skills at `~/.config/agents/skills/<name>/SKILL.md`.
+- **Source:** <https://moonshotai.github.io/kimi-cli/en/configuration/config-files.html> and <https://moonshotai.github.io/kimi-cli/en/customization/skills.html>
+- **Workspace root:** not documented. No project-scope config file is described.
+- **Not installed here.**
+
+| Host event key | vibe-agent event | Output keys the host reads | Inject | Refuse | Wired | Verified |
+|---|---|---|---|---|---|---|
+| `PreToolUse` | `pre-tool-use` | **undocumented** | no | unknown | no | **UNVERIFIED** |
+| `PostToolUse` | `post-tool-use` | **undocumented** | no | no | no | **UNVERIFIED** |
+| `Stop` | `stop` | **undocumented** | no | unknown | no | **UNVERIFIED** |
+
+**Notes**
+
+- Hooks are declared as a `[[hooks]]` array with `event`, `command`, an optional `matcher` regex, and an optional `timeout` in seconds defaulting to 30. That is the configuration shape.
+- **What a hook receives on stdin, and what it must print to refuse, is not published.** Recorded as undocumented rather than assumed: a refusal shape guessed from another host is how a gate comes to fail open while looking wired.
+- Skills use `SKILL.md` with optional `scripts/`, `references/`, and `assets/` beside it, which is the layout this toolkit already emits.
+
+</context>
+
+## muse
+
+<context>
+
+- **Config:** `~/.config/muse/settings.json`, which must carry `"schema_version": 1` and holds a `hooks` block. Skills are read from repo-local `.codex/skills` and `.claude/skills`.
+- **Source:** <https://dev.meta.ai/docs/muse-code>
+- **Workspace root:** the repository it is run in; skills are read repo-locally.
+- **Not installed here.**
+
+| Host event key | vibe-agent event | Output keys the host reads | Inject | Refuse | Wired | Verified |
+|---|---|---|---|---|---|---|
+| session start | `session-start` | **undocumented** | unknown | no | no | **UNVERIFIED** |
+| prompt submission | `user-prompt-submit` | **undocumented** | unknown | unknown | no | **UNVERIFIED** |
+| tool use | `pre-tool-use` | **undocumented** | no | unknown | no | **UNVERIFIED** |
+| permission request | `pre-tool-use` | **undocumented** | no | unknown | no | **UNVERIFIED** |
+| session stop | `stop` | **undocumented** | no | unknown | no | **UNVERIFIED** |
+
+**Notes**
+
+- The event names above are the lifecycle points described in prose. Their exact keys are not published, which is why none is written as a literal.
+- **Muse already reads this toolkit's skills.** It scans `.claude/skills`, which the link script writes, and ships `muse skills import --from claude`. It also scans `.codex/skills`, which the link script did not write until this change.
+- `muse exec` runs headlessly and streams JSONL, so an eval runner has something to talk to once someone has the binary.
+
+</context>
