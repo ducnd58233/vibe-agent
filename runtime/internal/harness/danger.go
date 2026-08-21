@@ -163,13 +163,23 @@ func dangerPlan(workspaceRoot string) []dangerCategory {
 // migration hidden behind && is still seen. The split over-approximates, which
 // for a guard means one extra fragment rather than one fewer.
 func dangerVerdict(req Request, body payload) *BlockError {
+	// The subject first, then the plan.
+	//
+	// Building the plan parses embedded YAML and compiles about three dozen
+	// patterns. The sync.OnceValue around it makes that free within a process,
+	// and every hook invocation is a new process, so the cache never gets a
+	// second call to serve. A tool call with nothing to match against was
+	// paying for the whole compilation and then matching it against nothing.
+	segments := shellSegments(body.shellCommand())
+	target := body.writeTarget()
+	if len(segments) == 0 && target == "" {
+		return nil
+	}
+
 	plan := dangerPlan(req.WorkspaceRoot)
 	if len(plan) == 0 {
 		return nil
 	}
-
-	segments := shellSegments(body.shellCommand())
-	target := body.writeTarget()
 
 	for _, category := range plan {
 		for _, pattern := range category.commands {

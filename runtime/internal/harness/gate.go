@@ -319,14 +319,33 @@ var shellWriters = map[string]bool{
 // With no active run there is nothing to protect, and refusing would break
 // every workspace that uses this toolkit without starting a state.
 func stateWriteVerdict(req Request, body payload) *BlockError {
+	// The payload question first, then the disk.
+	//
+	// activeRuns reads the runs directory and parses every non-terminal
+	// manifest, and this used to happen before asking whether the call writes
+	// anything at all. For a Read, a Grep, or a Glob the answer is no and the
+	// whole load was thrown away - on the path of every tool call, at a cost
+	// that grows with every run a workspace has ever started.
+	//
+	// shellVerdict above already works this way round: it decides the command
+	// is a push or a merge before it loads anything.
+	// Both subjects, because there are two ways to write a run file: a Write or
+	// Edit names one, and a shell command can redirect into one. Testing only
+	// the first would have let a redirect through, which is the reordering
+	// changing what the gate refuses rather than when it decides.
+	target := body.writeTarget()
+	command := body.shellCommand()
+	if target == "" && command == "" {
+		return nil
+	}
 	if len(activeRuns(req.WorkspaceRoot)) == 0 {
 		return nil
 	}
 
-	if target := body.writeTarget(); protectedRunFile(target, req.WorkspaceRoot) {
+	if protectedRunFile(target, req.WorkspaceRoot) {
 		return &BlockError{Reason: stateWriteReason(target)}
 	}
-	if target, found := shellWritesRunState(body.shellCommand(), req.WorkspaceRoot); found {
+	if target, found := shellWritesRunState(command, req.WorkspaceRoot); found {
 		return &BlockError{Reason: stateWriteReason(target)}
 	}
 	return nil
