@@ -893,6 +893,43 @@ func TestNewSessionRedirectsToChatView(t *testing.T) {
 	}
 }
 
+// Creating a session must land under tmp/<date>/<slug>/<version>/, not the
+// legacy flat tmp/<slug>/ tree.
+func TestNewSessionWritesVersionedRunDir(t *testing.T) {
+	root := t.TempDir()
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	form := strings.NewReader("slug=versioned-web&goal=Create+under+versioned+paths&graph=goal-delivery")
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/session/new", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+
+	today := time.Now().UTC().Format("2006-01-02")
+	manifest := filepath.Join(root, "tmp", today, "versioned-web", "1", "manifest.json")
+	if _, err := os.Stat(manifest); err != nil {
+		t.Fatalf("expected versioned manifest at %s: %v", manifest, err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "tmp", "versioned-web")); !os.IsNotExist(err) {
+		t.Fatal("must not create a flat tmp/versioned-web directory")
+	}
+
+	load := httptest.NewRecorder()
+	get := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/versioned-web", nil)
+	handler.ServeHTTP(load, get)
+	if load.Code != http.StatusOK {
+		t.Fatalf("load status = %d body = %s", load.Code, load.Body.String())
+	}
+	if !strings.Contains(load.Body.String(), "versioned-web") {
+		t.Fatal("session page must name the slug")
+	}
+}
+
 func TestChatQueryKeepsHumanGateVisible(t *testing.T) {
 	root, slug := writeFixtureSession(t)
 	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
