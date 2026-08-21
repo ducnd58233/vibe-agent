@@ -131,8 +131,9 @@ func HasPromptSubmitBody(logPath, body string) bool {
 		if events[i].Type != TypePromptSubmit {
 			continue
 		}
-		got := strings.TrimSpace(eventPayload(events[i]).Body)
-		return got == trimmed
+		if strings.TrimSpace(eventPayload(events[i]).Body) == trimmed {
+			return true
+		}
 	}
 	return false
 }
