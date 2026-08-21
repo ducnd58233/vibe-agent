@@ -62,6 +62,31 @@ which is a reviewed diff rather than a decision taken once in a conversation.
 
 Emit **Ship Decision: GO | NO-GO** with blockers, recommended fixes, acknowledged risks, **rollback plan**, and appended specialist reports.
 
+### Decision file (MUST, when running under a tracked `docs/<slug>/`)
+
+Write `tmp/<slug>/ship/DECISION.md` in this exact shape, so a verifier can read it later instead of
+a person re-deriving it from chat prose. One line per element, no other text:
+
+```text
+Ship Decision: GO
+Specialist: code-reviewer -> PASS
+Specialist: security-auditor -> PASS
+Specialist: test-engineer -> PASS
+```
+
+or, on NO-GO:
+
+```text
+Ship Decision: NO-GO
+BLOCKER: <one line per blocking finding>
+Specialist: code-reviewer -> FAIL
+```
+
+A GO line carries zero `BLOCKER:` lines; a NO-GO line carries at least one — the two must agree, or
+the file is not evidence of either state. Include a `Specialist:` line only for a lane that actually
+ran; skipping fan-out per this file's own triviality rule means zero `Specialist:` lines, not
+fabricated ones. Parsed by `runtime/internal/shipdecision`.
+
 ### Merge gate (MUST)
 
 `/ship` is the **only** command in the delivery pipeline that may **authorize** merging a task branch into `main` (or the team default branch).
