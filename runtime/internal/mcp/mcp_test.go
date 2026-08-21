@@ -197,7 +197,7 @@ func TestRunLifecycleThroughTools(t *testing.T) {
 	started := toolText(t, exchange(t, server, call("vibe_run_start", map[string]any{
 		"slug": "demo", "goal": "prove the tools work",
 	}))[0])
-	if !strings.Contains(started, `"currentNode": "intake"`) {
+	if !strings.Contains(started, `"currentNode":"intake"`) {
 		t.Fatalf("run did not start at intake: %s", started)
 	}
 	if !strings.Contains(started, "requiredAction") {
@@ -205,7 +205,7 @@ func TestRunLifecycleThroughTools(t *testing.T) {
 	}
 
 	status := toolText(t, exchange(t, server, call("vibe_run_status", map[string]any{"slug": "demo"}))[0])
-	if !strings.Contains(status, `"graph": "goal-delivery"`) {
+	if !strings.Contains(status, `"graph":"goal-delivery"`) {
 		t.Errorf("status does not name the graph: %s", status)
 	}
 
@@ -215,8 +215,74 @@ func TestRunLifecycleThroughTools(t *testing.T) {
 			"name": "intake_confirmed", "passed": true, "source": "human_event",
 		},
 	}))[0])
-	if !strings.Contains(advanced, `"to": "spec"`) {
+	if !strings.Contains(advanced, `"to":"spec"`) {
 		t.Errorf("checkpoint did not advance to spec: %s", advanced)
+	}
+}
+
+// The goal text does not change between calls on the same run. Repeating it on
+// every status/checkpoint/verify response spends tokens for no new
+// information; a caller who needs the text can call bootstrap or run_start.
+func TestGoalIsNotRepeatedOnEveryCall(t *testing.T) {
+	deps := newDeps(t)
+	server := NewServer("test", deps)
+
+	started := toolText(t, exchange(t, server, call("vibe_run_start", map[string]any{
+		"slug": "demo", "goal": "a goal that must not repeat forever",
+	}))[0])
+	if !strings.Contains(started, "a goal that must not repeat forever") {
+		t.Fatal("run_start does not report the goal it was given")
+	}
+
+	status := toolText(t, exchange(t, server, call("vibe_run_status", map[string]any{"slug": "demo"}))[0])
+	if strings.Contains(status, "a goal that must not repeat forever") {
+		t.Error("run_status repeats the full goal text; it should not")
+	}
+
+	advanced := toolText(t, exchange(t, server, call("vibe_checkpoint", map[string]any{
+		"slug": "demo",
+		"check": map[string]any{
+			"name": "intake_confirmed", "passed": true, "source": "human_event",
+		},
+	}))[0])
+	if strings.Contains(advanced, "a goal that must not repeat forever") {
+		t.Error("checkpoint repeats the full goal text; it should not")
+	}
+}
+
+// A long run accumulates many checks. Serializing the whole history on every
+// call repeats what earlier calls already reported; a count is enough unless a
+// caller asks for the full picture.
+func TestChecksAreCompactNotTheFullHistory(t *testing.T) {
+	deps := newDeps(t)
+	server := NewServer("test", deps)
+	exchange(t, server, call("vibe_run_start", map[string]any{"slug": "demo", "goal": "g"}))
+	advanced := toolText(t, exchange(t, server, call("vibe_checkpoint", map[string]any{
+		"slug": "demo",
+		"check": map[string]any{
+			"name": "intake_confirmed", "passed": true, "source": "human_event",
+		},
+	}))[0])
+	if strings.Contains(advanced, `"intake_confirmed":`) {
+		t.Errorf("response still serializes the full checks map by name: %s", advanced)
+	}
+	if !strings.Contains(advanced, "checksSummary") {
+		t.Errorf("response has no compact checks summary: %s", advanced)
+	}
+}
+
+// Every description follows one shape: when to call, when not to. A model
+// routing between tools reads this once per session; a consistent shape costs
+// less to parse than free prose that varies tool to tool.
+func TestDescriptionsStateWhenToCallAndWhenNotTo(t *testing.T) {
+	server := NewServer("test", newDeps(t))
+	for _, tool := range server.Tools {
+		if !strings.Contains(tool.Description, "Call") {
+			t.Errorf("tool %q description does not say when to call it: %q", tool.Name, tool.Description)
+		}
+		if !strings.Contains(tool.Description, "not call") {
+			t.Errorf("tool %q description does not say when not to call it: %q", tool.Name, tool.Description)
+		}
 	}
 }
 
@@ -248,7 +314,7 @@ func TestMemoryToolsRoundTripAndCarryTheDisclaimer(t *testing.T) {
 		"evidence":   []string{"make integration-test failed with connection refused"},
 		"sourceType": "command_result",
 	}))[0])
-	if !strings.Contains(proposed, `"verdict": "store"`) {
+	if !strings.Contains(proposed, `"verdict":"store"`) {
 		t.Fatalf("evidence-backed memory not stored: %s", proposed)
 	}
 	if !strings.Contains(proposed, "proposed") {
