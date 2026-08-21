@@ -252,7 +252,11 @@ func writeScreenshot(req Request, png []byte) (string, error) {
 	if req.Slug == "" || req.LogDir == "" || len(png) == 0 {
 		return "", nil
 	}
-	dir := filepath.Join(state.RunDir(req.WorkspaceRoot, req.Slug), req.LogDir)
+	runDir := state.RunDir(req.WorkspaceRoot, req.Slug)
+	if runDir == "" {
+		return "", fmt.Errorf("no run directory for slug %q", req.Slug)
+	}
+	dir := filepath.Join(runDir, req.LogDir)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return "", err
 	}

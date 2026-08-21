@@ -90,6 +90,9 @@ func TestApplyMovesAndRenames(t *testing.T) {
 	if _, err := os.Stat(tmp); !os.IsNotExist(err) {
 		t.Fatal("legacy flat tmp/demo should have moved")
 	}
+	if _, err := os.Stat(filepath.Join(root, "tmp")); !os.IsNotExist(err) {
+		t.Fatal("empty workspace-root tmp/ should be removed after migrate")
+	}
 
 	entry, err := runpath.Resolve(root, "demo")
 	if err != nil {
@@ -131,5 +134,8 @@ func TestApplyMovesVersionedTmpIntoAgentStateRuns(t *testing.T) {
 	want := workspace.RunDirAt(root, "2026-08-20", "demo", 2)
 	if _, err := os.Stat(filepath.Join(want, "manifest.json")); err != nil {
 		t.Fatalf("versioned migrate missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "tmp")); !os.IsNotExist(err) {
+		t.Fatal("empty workspace-root tmp/ should be removed after migrate")
 	}
 }

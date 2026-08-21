@@ -207,13 +207,16 @@ func planVersionedTmp(root string) ([]Plan, error) {
 }
 
 // Apply executes plans. Dry-run returns the same plans without writing.
-// When the target already exists, leftover source trees under tmp/ are removed
-// so doctor can pass after a partial migrate.
+// When the target already has a manifest, leftover source trees under tmp/ are
+// removed. After a successful pass, an empty workspace-root tmp/ is removed so
+// doctor can pass.
 func Apply(root string, plans []Plan, opts Options) error {
 	for _, plan := range plans {
 		if plan.SkipReason != "" {
 			if !opts.DryRun && strings.HasPrefix(filepath.ToSlash(plan.From), filepath.ToSlash(filepath.Join(root, sourceTmp))+"/") {
-				_ = os.RemoveAll(plan.From)
+				if _, err := os.Stat(filepath.Join(plan.To, "manifest.json")); err == nil {
+					_ = os.RemoveAll(plan.From)
+				}
 			}
 			continue
 		}
@@ -237,7 +240,42 @@ func Apply(root string, plans []Plan, opts Options) error {
 			return err
 		}
 	}
+	if !opts.DryRun {
+		if err := removeEmptyTmpRoot(root); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// removeEmptyTmpRoot deletes workspace-root tmp/ when it holds no files.
+func removeEmptyTmpRoot(root string) error {
+	base := filepath.Join(root, sourceTmp)
+	info, err := os.Stat(base)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	if !info.IsDir() {
+		return nil
+	}
+	hasFile := false
+	_ = filepath.WalkDir(base, func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if !d.IsDir() {
+			hasFile = true
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	if hasFile {
+		return nil
+	}
+	return os.RemoveAll(base)
 }
 
 func ensureIndex(root string, plan Plan) error {
