@@ -152,6 +152,19 @@ spec:
       description: Same blocker failed three ship cycles. Stops the run and reports root cause instead of retrying a fourth time. Maintained by the runner, not produced by any node.
       source: runtime
 
+    - name: human_redirect
+      description: >-
+        A live human message changed the objective mid-run. Set with
+        `vibe-agent run flag --set human_redirect --note <why>` by the host
+        agent that received the message - never inferred from wording, because
+        the trigger has to be a real human turn, not a guess about one. Read
+        from every in-flight node so the run does not keep walking a stale
+        objective until it happens to reach a gate. The host agent clears it
+        with `run flag --clear human_redirect` once intake has re-confirmed the
+        new objective, so a lingering flag cannot fire a second time on a later
+        visit to the same node.
+      source: flag
+
   nodes:
     intake:
       type: human_gate
@@ -324,6 +337,108 @@ spec:
   # Conditional edges are evaluated in order; an edge with no `when` is the
   # fallback and at most one may leave any node.
   edges:
+    # Redirect: a live human message changed the objective, so every in-flight
+    # node routes back to intake before its normal edges, on human_redirect
+    # alone. Listed first so they are tried before anything else for their
+    # node, regardless of where else that node's other edges appear below.
+    # Every check a prior walk could have earned resets, because the objective
+    # behind them may no longer be the one this run is delivering - the same
+    # reasoning task_complete's own reset list already uses one node down.
+    - from: research
+      to: intake
+      when: human_redirect
+      resets: &redirect_resets
+        - intake_confirmed
+        - spec_approved
+        - plan_approved
+        - unit
+        - e2e
+        - slop
+        - lint
+        - pr_open
+        - ci
+        - reviews
+        - ship
+        - merge_approved
+        - main_ci
+        - tasks_remaining
+    - from: spec
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: approve_spec
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: plan
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: approve_plan
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: build
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: test
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: e2e
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: slop
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: simplify
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: lint
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: commit
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: review
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: open_pr
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: pr_checks
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: external_reviews
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: ship
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: approve_merge
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: merge_ci
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: task_complete
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+
     - from: intake
       to: research
       when: research_required
