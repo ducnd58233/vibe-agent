@@ -21,6 +21,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/observability"
 )
 
@@ -42,6 +44,8 @@ type Server struct {
 	Version string
 	Tools   []Tool
 	Log     observability.Logger
+	Deps    Deps
+	Session *Session
 
 	mu sync.Mutex
 	// initialized guards tool calls until the host has completed the handshake.
@@ -109,6 +113,15 @@ func (s *Server) Serve(in io.Reader, out io.Writer) error {
 		if err := encoder.Encode(resp); err != nil {
 			return err
 		}
+		if s.Session != nil && s.Session.ConsumeListChanged() {
+			if err := encoder.Encode(map[string]any{
+				"jsonrpc": "2.0",
+				"method":  "notifications/tools/list_changed",
+				"params":  map[string]any{},
+			}); err != nil {
+				return err
+			}
+		}
 	}
 	return scanner.Err()
 }
@@ -123,13 +136,13 @@ func (s *Server) dispatch(req request) response {
 		s.mu.Unlock()
 		reply.Result = map[string]any{
 			"protocolVersion": ProtocolVersion,
-			"capabilities":    map[string]any{"tools": map[string]any{}},
+			"capabilities":    map[string]any{"tools": map[string]any{"listChanged": true}},
 			"serverInfo":      map[string]any{"name": s.Name, "version": s.Version},
 		}
 	case "notifications/initialized":
 		return reply
 	case "tools/list":
-		reply.Result = map[string]any{"tools": s.Tools}
+		reply.Result = map[string]any{"tools": s.listedTools()}
 	case "tools/call":
 		if s.Log != nil {
 			s.Log.Debug("mcp tools/call")
@@ -184,4 +197,44 @@ func toolResult(text string, isError bool) map[string]any {
 		"content": []map[string]any{{"type": "text", "text": text}},
 		"isError": isError,
 	}
+}
+
+// listedTools returns the tool surface narrowed for the active run's node, or
+// the full list when no slug has been touched yet.
+func (s *Server) listedTools() []Tool {
+	slug := ""
+	if s.Session != nil {
+		slug = s.Session.Slug()
+	}
+	if slug == "" {
+		return s.Tools
+	}
+	run, err := state.Load(state.ManifestPath(s.Deps.WorkspaceRoot, slug))
+	if err != nil {
+		return s.Tools
+	}
+	loaded, err := graph.LoadByID(graph.DefaultDir(s.Deps.ToolkitRoot), run.GraphID)
+	if err != nil {
+		return s.Tools
+	}
+	node, ok := loaded.Node(run.CurrentNode)
+	if !ok {
+		return s.Tools
+	}
+	allowed := map[string]bool{}
+	for _, name := range relevantToolsFor(node.Type) {
+		allowed[name] = true
+	}
+	out := make([]Tool, 0, len(s.Tools))
+	for _, tool := range s.Tools {
+		switch tool.Name {
+		case "vibe_checkpoint", "vibe_verify":
+			if allowed[tool.Name] {
+				out = append(out, tool)
+			}
+		default:
+			out = append(out, tool)
+		}
+	}
+	return out
 }

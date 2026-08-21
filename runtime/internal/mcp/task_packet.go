@@ -25,6 +25,7 @@ func taskPacket(deps Deps, raw json.RawMessage) (any, error) {
 	if strings.TrimSpace(args.Slug) == "" {
 		return nil, fmt.Errorf("vibe_task_packet needs a slug")
 	}
+	deps.Session.Touch(args.Slug)
 
 	file, err := tasks.Load(deps.WorkspaceRoot, args.Slug)
 	if err != nil {
