@@ -125,6 +125,16 @@ def base_plan() -> dict:
     }
 
 
+def base_tasks() -> dict:
+    return {
+        "schemaVersion": 1,
+        "slug": "sample",
+        "date": "2026-08-21",
+        "version": 1,
+        "tasks": [{"id": "T1", "title": "one", "status": "queued"}],
+    }
+
+
 def plan_with(entry: dict) -> dict:
     """A plan whose single check is the given entry."""
     instance = base_plan()
@@ -135,6 +145,7 @@ def plan_with(entry: dict) -> dict:
 def cases(schemas: dict[str, dict]) -> list[tuple[dict, str, dict, bool]]:
     graph, run, memory = schemas["workflow-graph"], schemas["run-state"], schemas["memory-record"]
     plan = schemas["check-plan"]
+    tasks = schemas["tasks"]
     return [
         (graph, "graph accepts a minimal valid document", base_graph(), True),
         (graph, "graph rejects an expression where a guard name belongs",
@@ -240,6 +251,16 @@ def cases(schemas: dict[str, dict]) -> list[tuple[dict, str, dict, bool]]:
          plan_with({"verifier": "human", "auto": {
              "verifier": "reviewbots", "command": "gh", "args": ["pr", "checks"],
          }}), True),
+
+        (tasks, "tasks accepts a minimal valid document", base_tasks(), True),
+        (tasks, "tasks rejects a document without date",
+         {k: v for k, v in base_tasks().items() if k != "date"}, False),
+        (tasks, "tasks rejects a document without version",
+         {k: v for k, v in base_tasks().items() if k != "version"}, False),
+        (tasks, "tasks rejects version zero",
+         merged(base_tasks(), version=0), False),
+        (tasks, "tasks rejects a bad date",
+         merged(base_tasks(), date="08-21-2026"), False),
     ]
 
 
