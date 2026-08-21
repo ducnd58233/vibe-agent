@@ -62,6 +62,13 @@ func projectTranscript(req Request, body payload, skipAssistantBody string) {
 		}
 		appendSession(req, record)
 	}
+	// A scan that stopped on an error ends the loop the way a clean end-of-file
+	// does, so the session log would simply hold fewer records with nothing
+	// saying why. Said out loud instead: a short transcript is a fact about the
+	// read, not about the session.
+	if err := scanner.Err(); err != nil && req.Log != nil {
+		req.Log.Debug("transcript read stopped early", "path", path, "error", err.Error())
+	}
 }
 
 func parseTranscriptLine(line string) (projectedMessage, bool) {
@@ -168,6 +175,9 @@ func assistantUsageFromTranscript(body payload, assistantText string) *session.U
 		}
 		return msg.usage
 	}
+	// Nil on a failed scan, which is what this already did and is the safe
+	// direction: a usage number taken from part of a transcript is a wrong
+	// number, and nil is the signal for "not reported" that callers handle.
 	return nil
 }
 
