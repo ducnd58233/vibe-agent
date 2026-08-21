@@ -48,16 +48,18 @@ spec:
 
     - name: spec_approved
       description: >-
-        Human accepted docs/<slug>/SPEC.md, or auto mode skipped the gate
-        because the spec held no open question. acceptsSkipped is what
-        distinguishes the two: a skipped gate is recorded skipped, never passed,
-        so run state still says which of them happened.
+        Human accepted docs/<date>/<slug>/<version>/SPEC-<date>.md, or auto mode
+        skipped the gate because the spec held no open question. acceptsSkipped
+        is what distinguishes the two: a skipped gate is recorded skipped, never
+        passed, so run state still says which of them happened.
       source: check
       reads: spec_approved
       acceptsSkipped: true
 
     - name: plan_approved
-      description: Human accepted docs/<slug>/PLAN.md and TASKS.md, or auto mode skipped the gate. See spec_approved.
+      description: >-
+        Human accepted docs/<date>/<slug>/<version>/PLAN-<date>.md and
+        TASKS-<date>.md, or auto mode skipped the gate. See spec_approved.
       source: check
       reads: plan_approved
       acceptsSkipped: true
@@ -184,13 +186,13 @@ spec:
       description: Structured specification before implementation.
       command: spec
       outputs:
-        - docs/${slug}/SPEC.md
+        - docs/${date}/${slug}/${version}/SPEC-${date}.md
 
     approve_spec:
       type: human_gate
       description: Spec checkpoint before any planning or code.
       check: spec_approved
-      prompt: Review docs/${slug}/SPEC.md. Approve to plan, or send it back.
+      prompt: Review docs/${date}/${slug}/${version}/SPEC-${date}.md. Approve to plan, or send it back.
       skipWhen: spec_unambiguous
 
     plan:
@@ -198,15 +200,15 @@ spec:
       description: Ordered tasks with acceptance criteria, one branch and one PR per task.
       command: plan
       outputs:
-        - docs/${slug}/PLAN.md
-        - docs/${slug}/TASKS.md
-        - docs/${slug}/tasks.json
+        - docs/${date}/${slug}/${version}/PLAN-${date}.md
+        - docs/${date}/${slug}/${version}/TASKS-${date}.md
+        - docs/${date}/${slug}/${version}/tasks-${date}.json
 
     approve_plan:
       type: human_gate
       description: Plan checkpoint before the first branch is cut.
       check: plan_approved
-      prompt: Review docs/${slug}/PLAN.md and TASKS.md. Approve to start building.
+      prompt: Review docs/${date}/${slug}/${version}/PLAN-${date}.md and TASKS-${date}.md. Approve to start building.
       skipWhen: plan_unambiguous
 
     build:
@@ -216,7 +218,7 @@ spec:
 
     test:
       type: verifier
-      description: Unit and integration commands from the spec. Logs recorded under tmp/<slug>/unit/.
+      description: Unit and integration commands from the spec. Logs recorded under tmp/<date>/<slug>/<version>/unit/.
       verifier: command
       check: unit
 
@@ -282,7 +284,7 @@ spec:
 
     pr_checks:
       type: verifier
-      description: Wait for required PR checks. Snapshot to tmp/<slug>/pr-checks/.
+      description: Wait for required PR checks. Snapshot to tmp/<date>/<slug>/<version>/pr-checks/.
       verifier: command
       check: ci
       timeoutSeconds: 3600
