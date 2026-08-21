@@ -95,7 +95,7 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	if strings.Contains(body, `data-pane="summary"`) {
 		t.Fatal("inspector panes should be a select, not a tab row")
 	}
-	if !strings.Contains(body, "docs/fixture-session/SPEC.md") {
+	if !strings.Contains(body, "Approve to plan") {
 		t.Fatal("expected expanded human_gate prompt on chat")
 	}
 	if strings.Contains(body, "Confirm this goal") {

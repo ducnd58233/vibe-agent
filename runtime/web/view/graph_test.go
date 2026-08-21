@@ -45,7 +45,7 @@ func TestProjectGraphCurrentNodeAwaiting(t *testing.T) {
 	if current.Check != "spec_approved" {
 		t.Fatalf("check = %q", current.Check)
 	}
-	if !strings.Contains(current.Prompt, "Review docs/") {
+	if !strings.Contains(current.Prompt, "Review the SPEC") {
 		t.Fatalf("prompt = %q", current.Prompt)
 	}
 }
