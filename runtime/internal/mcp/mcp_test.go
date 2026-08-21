@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -85,6 +86,7 @@ func TestEveryToolOnTheSurfaceEarnsItsSlot(t *testing.T) {
 		"vibe_memory_propose": "the only way a memory is written, and it still needs confirming",
 		"vibe_run_start":      "hosts without hooks have no other way to begin a run",
 		"vibe_run_status":     "the node and its evidence, which is the one thing never to infer",
+		"vibe_task_packet":    "the next actionable task in one call, instead of a manual re-read of tasks.json and TASKS.md",
 		"vibe_checkpoint":     "records evidence; the verifiers stay behind vibe_verify on purpose",
 		"vibe_verify":         "runs what the check plan declares, so the command is not chosen at the keyboard",
 		"vibe_fetch":          "the only tool here that returns tokens rather than spending them",
@@ -406,6 +408,115 @@ func TestProposingCreatesTheDatabase(t *testing.T) {
 	if _, err := os.Stat(memory.DBPath(root)); err != nil {
 		t.Errorf("a stored memory left no database at %s", memory.DBPath(root))
 	}
+}
+
+func writeTaskList(t *testing.T, root, slug, date string, version int, tasksJSON, tasksMD string) {
+	t.Helper()
+	dir := filepath.Join(root, "docs", date, slug, strconv.Itoa(version))
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "tasks-"+date+".json"), []byte(tasksJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if tasksMD != "" {
+		if err := os.WriteFile(filepath.Join(dir, "TASKS-"+date+".md"), []byte(tasksMD), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// vibe_task_packet answers "what's next" in one call instead of a manual
+// re-read of tasks.json and TASKS.md, and must never invent a task past what
+// the files actually say.
+func TestTaskPacketPicksTheRightNextTask(t *testing.T) {
+	const date = "2026-08-18"
+
+	t.Run("queued with satisfied deps", func(t *testing.T) {
+		root := t.TempDir()
+		writeTaskList(t, root, "demo", date, 1, `{
+			"schemaVersion":1,"slug":"demo","date":"`+date+`","version":1,
+			"tasks":[
+				{"id":"T1","title":"first","status":"done"},
+				{"id":"T2","title":"second","status":"queued","dependsOn":["T1"],"acceptance":"one line","branch":"feat/demo-t2"}
+			]}`, "## T2: second  [queued]\n\nFuller detail here.\n")
+		out, err := taskPacket(Deps{WorkspaceRoot: root}, json.RawMessage(`{"slug":"demo"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		result := object(t, out, "taskPacket result")
+		if result["status"] != "task_ready" {
+			t.Fatalf("status = %v", result["status"])
+		}
+		task := object(t, result["task"], "task")
+		if task["id"] != "T2" {
+			t.Errorf("picked task %v, want T2", task["id"])
+		}
+		if task["acceptanceDetail"] != "## T2: second  [queued]\n\nFuller detail here." {
+			t.Errorf("acceptanceDetail = %q", task["acceptanceDetail"])
+		}
+	})
+
+	t.Run("in progress task wins over a queued one", func(t *testing.T) {
+		root := t.TempDir()
+		writeTaskList(t, root, "demo", date, 1, `{
+			"schemaVersion":1,"slug":"demo","date":"`+date+`","version":1,
+			"tasks":[
+				{"id":"T1","title":"first","status":"in_progress"},
+				{"id":"T2","title":"second","status":"queued"}
+			]}`, "")
+		out, err := taskPacket(Deps{WorkspaceRoot: root}, json.RawMessage(`{"slug":"demo"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		task := object(t, object(t, out, "taskPacket result")["task"], "task")
+		if task["id"] != "T1" {
+			t.Errorf("picked task %v, want T1 (in progress)", task["id"])
+		}
+	})
+
+	t.Run("queued task blocked on an unsettled dependency is skipped", func(t *testing.T) {
+		root := t.TempDir()
+		writeTaskList(t, root, "demo", date, 1, `{
+			"schemaVersion":1,"slug":"demo","date":"`+date+`","version":1,
+			"tasks":[
+				{"id":"T1","title":"first","status":"queued"},
+				{"id":"T2","title":"second","status":"queued","dependsOn":["T1"]}
+			]}`, "")
+		out, err := taskPacket(Deps{WorkspaceRoot: root}, json.RawMessage(`{"slug":"demo"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		task := object(t, object(t, out, "taskPacket result")["task"], "task")
+		if task["id"] != "T1" {
+			t.Errorf("picked task %v, want T1 (T2 depends on it and is not settled)", task["id"])
+		}
+	})
+
+	t.Run("all tasks done", func(t *testing.T) {
+		root := t.TempDir()
+		writeTaskList(t, root, "demo", date, 1, `{
+			"schemaVersion":1,"slug":"demo","date":"`+date+`","version":1,
+			"tasks":[{"id":"T1","title":"first","status":"done"}]}`, "")
+		out, err := taskPacket(Deps{WorkspaceRoot: root}, json.RawMessage(`{"slug":"demo"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if status := object(t, out, "taskPacket result")["status"]; status != "all_done" {
+			t.Errorf("status = %v, want all_done", status)
+		}
+	})
+
+	t.Run("no tasks file yet", func(t *testing.T) {
+		root := t.TempDir()
+		out, err := taskPacket(Deps{WorkspaceRoot: root}, json.RawMessage(`{"slug":"demo"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if status := object(t, out, "taskPacket result")["status"]; status != "no_plan_yet" {
+			t.Errorf("status = %v, want no_plan_yet", status)
+		}
+	})
 }
 
 func object(t *testing.T, value any, what string) map[string]any {

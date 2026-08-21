@@ -52,7 +52,7 @@ func (d Deps) now() time.Time {
 	return d.Now().UTC()
 }
 
-// NewServer builds the stdio server with the eight-tool surface.
+// NewServer builds the stdio server with the nine-tool surface.
 func NewServer(version string, deps Deps) *Server {
 	return &Server{
 		Name:    "vibe-agent",
@@ -111,6 +111,12 @@ func Tools(deps Deps) []Tool {
 			Description: "Call to see the current node, required action, and blockers. Do not call to advance the run; use vibe_checkpoint or vibe_verify instead.",
 			InputSchema: schema(`{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return runStatus(deps, raw) },
+		},
+		{
+			Name:        "vibe_task_packet",
+			Description: "Call to get the next actionable task (acceptance, branch, files) in one call. Do not call before the plan node has run; there is no task list yet.",
+			InputSchema: schema(`{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"}}}`),
+			Handler:     func(raw json.RawMessage) (any, error) { return taskPacket(deps, raw) },
 		},
 		{
 			Name:        "vibe_checkpoint",
