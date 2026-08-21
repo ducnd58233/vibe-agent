@@ -164,10 +164,14 @@ func BuildSessionPage(logs sessionread.Reader, workspaceRoot, toolkitRoot, bindA
 	page.DefaultHostID, page.DefaultHostLabel = defaultComposeHost(page.ComposeHosts, events)
 	page.BusyHostLabel, page.BusyAfterSeq = busyComposeHost(events)
 	goal := ""
+	date := ""
+	version := 0
 	if run != nil {
 		goal = run.Goal
+		date = run.Date
+		version = run.Version
 	}
-	page.ChatPrompts = AwaitingChatPrompts(page.GraphNodes, slug, goal)
+	page.ChatPrompts = AwaitingChatPrompts(page.GraphNodes, slug, goal, date, version)
 	page.HasChatPrompts = len(page.ChatPrompts) > 0
 	page.ChatEmpty = !ChatHasProse(page.Events) && !page.HasChatPrompts
 	page.TurnCount = countTurns(page.Events)

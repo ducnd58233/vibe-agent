@@ -1,6 +1,7 @@
 package view
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
@@ -21,8 +22,10 @@ const confirmGoalTitle = "Confirm this goal"
 
 // AwaitingChatPrompts returns human_gate and verifier cards for the current node.
 // When goal is set, the intake card titles a confirm line and shows that goal,
-// not the graph YAML description. Later human_gate cards keep their YAML prompts.
-func AwaitingChatPrompts(rows []GraphNodeRow, slug, goal string) []ChatPrompt {
+// not the graph YAML description. Later human_gate cards keep their YAML prompts,
+// with ${date}/${slug}/${version} filled in from the run so a reader sees the
+// doc path this run actually writes to, not the graph's placeholder syntax.
+func AwaitingChatPrompts(rows []GraphNodeRow, slug, goal, date string, version int) []ChatPrompt {
 	goal = redact.Text(strings.TrimSpace(goal))
 	out := make([]ChatPrompt, 0)
 	for _, row := range rows {
@@ -34,7 +37,11 @@ func AwaitingChatPrompts(rows []GraphNodeRow, slug, goal string) []ChatPrompt {
 		default:
 			continue
 		}
-		prompt := strings.ReplaceAll(row.Prompt, "${slug}", slug)
+		prompt := strings.NewReplacer(
+			"${slug}", slug,
+			"${date}", date,
+			"${version}", strconv.Itoa(version),
+		).Replace(row.Prompt)
 		title := row.Description
 		if strings.TrimSpace(title) == "" {
 			title = row.ID

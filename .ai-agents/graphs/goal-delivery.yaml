@@ -192,7 +192,7 @@ spec:
       type: human_gate
       description: Spec checkpoint before any planning or code.
       check: spec_approved
-      prompt: Review the SPEC for this run under docs/<date>/<slug>/<version>/SPEC-<date>.md. Approve to plan, or send it back.
+      prompt: Review the SPEC for this run under docs/${date}/${slug}/${version}/SPEC-${date}.md. Approve to plan, or send it back.
       skipWhen: spec_unambiguous
 
     plan:
@@ -208,7 +208,7 @@ spec:
       type: human_gate
       description: Plan checkpoint before the first branch is cut.
       check: plan_approved
-      prompt: Review the PLAN and TASKS for this run under docs/<date>/<slug>/<version>/. Approve to start building.
+      prompt: Review the PLAN and TASKS for this run under docs/${date}/${slug}/${version}/. Approve to start building.
       skipWhen: plan_unambiguous
 
     build:

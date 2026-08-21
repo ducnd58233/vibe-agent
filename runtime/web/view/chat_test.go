@@ -16,8 +16,10 @@ func TestAwaitingChatPromptsIncludesHumanGate(t *testing.T) {
 	}
 	run.CurrentNode = "approve_spec"
 	run.Status = state.StatusAwaitingHuman
+	run.Date = "2026-08-18"
+	run.Version = 1
 	rows := ProjectGraph(g, run)
-	prompts := AwaitingChatPrompts(rows, "fixture-session", "")
+	prompts := AwaitingChatPrompts(rows, "fixture-session", "", run.Date, run.Version)
 	if len(prompts) != 1 {
 		t.Fatalf("prompts = %+v", prompts)
 	}
@@ -28,8 +30,11 @@ func TestAwaitingChatPromptsIncludesHumanGate(t *testing.T) {
 	if got.Check != "spec_approved" {
 		t.Fatalf("check = %q", got.Check)
 	}
-	if !strings.Contains(got.Prompt, "docs/<date>/<slug>/<version>/SPEC-<date>.md") {
+	if !strings.Contains(got.Prompt, "docs/2026-08-18/fixture-session/1/SPEC-2026-08-18.md") {
 		t.Fatalf("prompt = %q", got.Prompt)
+	}
+	if strings.ContainsAny(got.Prompt, "<>") {
+		t.Fatalf("prompt still has an unfilled placeholder, prompt = %q", got.Prompt)
 	}
 }
 
@@ -42,7 +47,7 @@ func TestAwaitingChatPromptsHumanGateShowsRunGoal(t *testing.T) {
 	run.CurrentNode = "intake"
 	run.Status = state.StatusAwaitingHuman
 	rows := ProjectGraph(g, run)
-	prompts := AwaitingChatPrompts(rows, "fixture-session", run.Goal)
+	prompts := AwaitingChatPrompts(rows, "fixture-session", run.Goal, run.Date, run.Version)
 	if len(prompts) != 1 {
 		t.Fatalf("prompts = %+v", prompts)
 	}
@@ -66,8 +71,10 @@ func TestAwaitingChatPromptsApproveSpecKeepsGraphPrompt(t *testing.T) {
 	}
 	run.CurrentNode = "approve_spec"
 	run.Status = state.StatusAwaitingHuman
+	run.Date = "2026-08-18"
+	run.Version = 2
 	rows := ProjectGraph(g, run)
-	prompts := AwaitingChatPrompts(rows, "fixture-session", run.Goal)
+	prompts := AwaitingChatPrompts(rows, "fixture-session", run.Goal, run.Date, run.Version)
 	if len(prompts) != 1 {
 		t.Fatalf("prompts = %+v", prompts)
 	}
@@ -75,7 +82,7 @@ func TestAwaitingChatPromptsApproveSpecKeepsGraphPrompt(t *testing.T) {
 	if got.Title == confirmGoalTitle {
 		t.Fatal("later human_gate cards must not reuse the intake confirm title")
 	}
-	if !strings.Contains(got.Prompt, "docs/<date>/<slug>/<version>/SPEC-<date>.md") {
+	if !strings.Contains(got.Prompt, "docs/2026-08-18/fixture-session/2/SPEC-2026-08-18.md") {
 		t.Fatalf("approve_spec must keep graph YAML, prompt = %q", got.Prompt)
 	}
 	if strings.Contains(got.Prompt, "unique-goal-xyz") {
@@ -93,7 +100,7 @@ func TestAwaitingChatPromptsRedactsSecretInGoal(t *testing.T) {
 	run.CurrentNode = "intake"
 	run.Status = state.StatusAwaitingHuman
 	rows := ProjectGraph(g, run)
-	prompts := AwaitingChatPrompts(rows, "fixture-session", run.Goal)
+	prompts := AwaitingChatPrompts(rows, "fixture-session", run.Goal, run.Date, run.Version)
 	if len(prompts) != 1 {
 		t.Fatalf("prompts = %+v", prompts)
 	}
@@ -111,7 +118,7 @@ func TestAwaitingChatPromptsIncludesCurrentVerifier(t *testing.T) {
 	run.CurrentNode = "test"
 	run.Status = state.StatusRunning
 	rows := ProjectGraph(g, run)
-	prompts := AwaitingChatPrompts(rows, "fixture-session", "unique-goal-xyz")
+	prompts := AwaitingChatPrompts(rows, "fixture-session", "unique-goal-xyz", run.Date, run.Version)
 	if len(prompts) != 1 || prompts[0].Type != "verifier" || prompts[0].CanDecide {
 		t.Fatalf("prompts = %+v", prompts)
 	}
