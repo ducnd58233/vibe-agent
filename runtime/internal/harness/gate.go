@@ -451,7 +451,58 @@ func irreversibleAction(command, workspaceRoot string) (string, bool) {
 // guard means it may look at one extra fragment, never one fewer.
 func shellSegments(command string) []string {
 	replacer := strings.NewReplacer("&&", "\n", "||", "\n", ";", "\n", "|", "\n")
-	return strings.Split(replacer.Replace(command), "\n")
+	return strings.Split(replacer.Replace(stripComments(command)), "\n")
+}
+
+// stripComments removes shell comments before anything matches against the text.
+//
+// A comment cannot execute, so matching one refuses a description of a command
+// rather than a command. Not theoretical: this gate refused a `cat` whose
+// trailing comment named a destructive statement, and refused the goal string
+// of the run that fixed it, because a pattern matched the words "truncate in
+// silence". A gate that fires on English is one people route around, and a gate
+// nobody trusts protects nothing.
+//
+// Quoted text stays in scope. Destructive commands are very often written
+// inside quotes, so the stripper has to know where a quote begins and ends
+// rather than cutting at the first hash it sees. Cutting blindly would lose
+// real commands: in `echo "issue #1" && rm -rf /data` the hash sits inside
+// quotes, and dropping the rest of the line would drop the command with it.
+//
+// A hash also only opens a comment at the start of a word, which is why
+// `foo#bar` survives whole.
+func stripComments(command string) string {
+	var out strings.Builder
+	out.Grow(len(command))
+
+	var quote rune // zero outside quotes, otherwise the opening quote
+	atWordStart := true
+	inComment := false
+
+	for _, r := range command {
+		switch {
+		case inComment:
+			// A comment ends at the newline, and the next line is a new command.
+			if r == '\n' {
+				inComment = false
+				out.WriteRune(r)
+				atWordStart = true
+			}
+			continue
+		case quote != 0:
+			if r == quote {
+				quote = 0
+			}
+		case r == '\'' || r == '"':
+			quote = r
+		case r == '#' && atWordStart:
+			inComment = true
+			continue
+		}
+		out.WriteRune(r)
+		atWordStart = r == ' ' || r == '\t' || r == '\n'
+	}
+	return out.String()
 }
 
 // gitPushTarget returns the protected branch a push would land on, if any.
