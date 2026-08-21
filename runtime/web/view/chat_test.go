@@ -28,7 +28,7 @@ func TestAwaitingChatPromptsIncludesHumanGate(t *testing.T) {
 	if got.Check != "spec_approved" {
 		t.Fatalf("check = %q", got.Check)
 	}
-	if !strings.Contains(got.Prompt, "docs/fixture-session/SPEC.md") {
+	if !strings.Contains(got.Prompt, "docs/<date>/<slug>/<version>/SPEC-<date>.md") {
 		t.Fatalf("prompt = %q", got.Prompt)
 	}
 }
@@ -75,7 +75,7 @@ func TestAwaitingChatPromptsApproveSpecKeepsGraphPrompt(t *testing.T) {
 	if got.Title == confirmGoalTitle {
 		t.Fatal("later human_gate cards must not reuse the intake confirm title")
 	}
-	if !strings.Contains(got.Prompt, "docs/fixture-session/SPEC.md") {
+	if !strings.Contains(got.Prompt, "docs/<date>/<slug>/<version>/SPEC-<date>.md") {
 		t.Fatalf("approve_spec must keep graph YAML, prompt = %q", got.Prompt)
 	}
 	if strings.Contains(got.Prompt, "unique-goal-xyz") {
