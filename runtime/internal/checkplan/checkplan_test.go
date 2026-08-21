@@ -214,3 +214,84 @@ func TestAnEntryWithNoTimeoutGetsTheDefault(t *testing.T) {
 		t.Errorf("Timeout() = %v, want %v; zero would expire before the check ran", got, DefaultTimeout)
 	}
 }
+
+// A well-formed Auto entry parses and stays reachable through Entry — the
+// caller deciding whether the auto flag applies is checkpoint.Resolve's job,
+// not this package's.
+func TestPlanAcceptsAWellFormedAutoEntry(t *testing.T) {
+	body := `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    ship:
+      verifier: human
+      auto:
+        verifier: shipdecision
+`
+	plan, err := Load(DefaultPath(write(t, body)))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	entry, err := plan.Entry("ship")
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	if entry.Auto == nil || entry.Auto.Verifier != "shipdecision" {
+		t.Fatalf("Auto = %+v, want a shipdecision entry", entry.Auto)
+	}
+}
+
+// An Auto entry declared verifier: human would defeat its own purpose: the
+// fallback a human-only check gets on auto still requiring a human. Reject it
+// at load time rather than let it silently behave like no fallback at all.
+func TestPlanRejectsAnAutoEntryThatIsAlsoHuman(t *testing.T) {
+	body := `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    ship:
+      verifier: human
+      auto:
+        verifier: human
+`
+	if _, err := Load(DefaultPath(write(t, body))); err == nil {
+		t.Fatal("an auto entry declared verifier: human was accepted")
+	}
+}
+
+// One level of fallback only. A nested auto entry answers a question nobody
+// asked and nothing in checkpoint.Resolve walks past the first level.
+func TestPlanRejectsANestedAutoEntry(t *testing.T) {
+	body := `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    ship:
+      verifier: human
+      auto:
+        verifier: shipdecision
+        auto:
+          verifier: shipdecision
+`
+	if _, err := Load(DefaultPath(write(t, body))); err == nil {
+		t.Fatal("a nested auto entry was accepted")
+	}
+}
+
+// The Auto entry is a full Entry, so its own shape rules still apply: a
+// command-kind auto entry with no command is exactly as invalid as a
+// top-level one would be.
+func TestPlanRejectsAnAutoEntryWithNothingRunnable(t *testing.T) {
+	body := `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    ship:
+      verifier: human
+      auto:
+        description: forgot to name a verifier, command, or paths
+`
+	if _, err := Load(DefaultPath(write(t, body))); err == nil {
+		t.Fatal("an auto entry with nothing runnable was accepted")
+	}
+}

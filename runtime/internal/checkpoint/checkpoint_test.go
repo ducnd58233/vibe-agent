@@ -1,7 +1,9 @@
 package checkpoint
 
 import (
+	"context"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -10,6 +12,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shipdecision"
 )
 
 // graphDir points at the toolkit's own graphs, so these tests exercise the
@@ -207,6 +210,142 @@ spec:
 		Outcome: unitPassed(), Now: at(),
 	}); err == nil {
 		t.Fatal("a human-declared check accepted exit_code from a caller")
+	}
+}
+
+// workspaceAuto is workspace with the run's auto flag set, for tests
+// exercising an Auto entry's fallback path (docs/auto-ship-reviews).
+func workspaceAuto(t *testing.T) string {
+	t.Helper()
+	root := workspace(t)
+	run, err := state.Load(state.ManifestPath(root, "demo"))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if err := run.SetFlagAt("auto", true, at()); err != nil {
+		t.Fatalf("SetFlagAt: %v", err)
+	}
+	if err := state.Save(state.ManifestPath(root, "demo"), run); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	return root
+}
+
+// Without the auto flag, a check declaring both verifier: human and an auto
+// entry must behave exactly as if the auto entry did not exist. This is the
+// test that keeps /goal provably unaffected by docs/auto-ship-reviews.
+func TestAutoEntryIsUnreachableWithoutTheAutoFlag(t *testing.T) {
+	root := workspace(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      verifier: human
+      auto:
+        verifier: shipdecision
+`)
+	atTestNode(t, root)
+
+	_, err := Resolve(VerifyRequest{WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo", Now: at()})
+	if err == nil {
+		t.Fatal("resolved without the auto flag; the auto entry must stay unreachable")
+	}
+	if !strings.Contains(err.Error(), "person records it") {
+		t.Errorf("wrong refusal without the auto flag: %v", err)
+	}
+}
+
+// With the auto flag set, the same check resolves through its Auto entry
+// instead of refusing.
+func TestAutoEntryIsUsedWhenTheAutoFlagIsSet(t *testing.T) {
+	root := workspaceAuto(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      verifier: human
+      auto:
+        verifier: shipdecision
+`)
+	atTestNode(t, root)
+
+	plan, err := Resolve(VerifyRequest{WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo", Now: at()})
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if plan.Kind != "shipdecision" {
+		t.Errorf("Kind = %q, want shipdecision", plan.Kind)
+	}
+}
+
+// End to end: on the auto path, a real DECISION.md saying GO is read by the
+// shipdecision verifier and genuinely advances the node — runtime-origin
+// evidence, not a caller's assertion.
+func TestVerifyRunsTheAutoEntrysVerifierAndAdvances(t *testing.T) {
+	root := workspaceAuto(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      verifier: human
+      auto:
+        verifier: shipdecision
+`)
+	atTestNode(t, root)
+
+	decisionPath := shipdecision.Path(root, "demo")
+	if err := os.MkdirAll(filepath.Dir(decisionPath), 0o750); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(decisionPath, []byte("Ship Decision: GO\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	result, err := Verify(context.Background(), VerifyRequest{WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo", Now: at()})
+	if err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	if !result.Verifier.Check.Passed {
+		t.Errorf("Passed = false, want true: %s", result.Verifier.Summary)
+	}
+	// workspaceAuto sets the auto flag, so the graph's auto edge out of `test`
+	// goes straight to `simplify` rather than `e2e` — this is the existing
+	// auto-path shortcut, not something this change alters.
+	if result.Applied.Transition == nil || result.Applied.Transition.To != "simplify" {
+		t.Fatalf("did not advance via the auto edge: %+v", result.Applied.Transition)
+	}
+}
+
+// A missing DECISION.md must not pass. The check has never run yet, and
+// fail-closed means that reports as not-passed, never a default GO.
+func TestVerifyFailsClosedOnAMissingDecisionFile(t *testing.T) {
+	root := workspaceAuto(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      verifier: human
+      auto:
+        verifier: shipdecision
+`)
+	atTestNode(t, root)
+
+	result, err := Verify(context.Background(), VerifyRequest{WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo", Now: at()})
+	if err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	if result.Verifier.Check.Passed {
+		t.Fatal("a missing decision file passed")
+	}
+	// Fail-closed means the run does not proceed forward, not that the graph
+	// freezes: the existing !unit_passed edge correctly routes back to `build`
+	// for a fix cycle, same as any other failing check at this node.
+	if result.Applied.Transition == nil || result.Applied.Transition.To != "build" {
+		t.Fatalf("did not route back to build on a missing decision file: %+v", result.Applied.Transition)
 	}
 }
 

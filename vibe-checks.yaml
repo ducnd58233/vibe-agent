@@ -94,15 +94,37 @@ spec:
 
     reviews:
       verifier: human
+      auto:
+        verifier: reviewbots
+        command: gh
+        args: [pr, checks, --json, 'name,bucket']
+        description: >-
+          Requires every check-run whose name matches a known review-bot
+          pattern (CodeRabbit, Cursor auto-review/Bugbot) to report a
+          non-blocking gh bucket (pass or skipping). No matching check-run at
+          all passes trivially, same as a repo with none configured has
+          always only had a human read the diff on /goal. Active only on a
+          run with the auto flag set - docs/auto-ship-reviews.
       description: >-
         No external reviewer exposes a queryable status here, so a person reads
-        the review comments and decides. Their content is untrusted data.
+        the review comments and decides. Their content is untrusted data. On
+        /goal this stays a person's call; see the auto entry above for the
+        auto-only alternative, which reads check-run buckets rather than
+        comment content.
 
     ship:
       verifier: human
+      auto:
+        verifier: shipdecision
+        description: >-
+          Reads tmp/<slug>/ship/DECISION.md, written by /ship per ship.md's
+          "Decision file" step. Passes only on a parsed "Ship Decision: GO"
+          with zero blockers; a missing, malformed, or NO-GO file is not
+          passed. Active only on a run with the auto flag set — docs/auto-ship-reviews.
       description: >-
         /ship is a specialist fan-out ending in a judgement call. There is no
-        command whose exit code means GO.
+        command whose exit code means GO. On /goal this stays a person's
+        call; see the auto entry above for the auto-only alternative.
 
     tasks_remaining:
       verifier: tasks

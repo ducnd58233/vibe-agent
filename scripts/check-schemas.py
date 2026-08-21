@@ -222,6 +222,24 @@ def cases(schemas: dict[str, dict]) -> list[tuple[dict, str, dict, bool]]:
          plan_with({"verifier": "screen", "screen": {"platform": "web"}}), False),
         (plan, "plan rejects a misspelled screen key",
          plan_with({"verifier": "screen", "screen": {"platform": "android", "expectTest": ["hi"]}}), False),
+        # docs/auto-ship-reviews: a check may stay verifier: human by default
+        # and gain an auto-only alternative, active only on a run whose auto
+        # flag is set. These four mirror runtime/internal/checkplan's own
+        # tests, so the two validators cannot silently disagree.
+        (plan, "plan accepts a well-formed auto entry",
+         plan_with({"verifier": "human", "auto": {"verifier": "shipdecision"}}), True),
+        (plan, "plan rejects an auto entry that is also human",
+         plan_with({"verifier": "human", "auto": {"verifier": "human"}}), False),
+        (plan, "plan rejects a nested auto entry",
+         plan_with({"verifier": "human", "auto": {
+             "verifier": "shipdecision", "auto": {"verifier": "shipdecision"},
+         }}), False),
+        (plan, "plan rejects an auto entry with nothing runnable",
+         plan_with({"verifier": "human", "auto": {"description": "forgot a verifier"}}), False),
+        (plan, "plan accepts a reviewbots auto entry with a command",
+         plan_with({"verifier": "human", "auto": {
+             "verifier": "reviewbots", "command": "gh", "args": ["pr", "checks"],
+         }}), True),
     ]
 
 

@@ -1,6 +1,8 @@
 package shipdecision
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -114,6 +116,31 @@ func TestParseRejectsUnrecognizedLine(t *testing.T) {
 	_, err := Parse(strings.NewReader("Ship Decision: GO\nsome prose that is not a recognized line\n"))
 	if err == nil {
 		t.Fatal("Parse succeeded on an unrecognized line, want an error")
+	}
+}
+
+func TestPathAndLoad(t *testing.T) {
+	root := t.TempDir()
+	want := Path(root, "some-slug")
+	if err := os.MkdirAll(filepath.Dir(want), 0o750); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(want, []byte("Ship Decision: GO\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	d, err := Load(root, "some-slug")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !d.GO {
+		t.Errorf("GO = false, want true")
+	}
+}
+
+func TestLoadMissingFile(t *testing.T) {
+	if _, err := Load(t.TempDir(), "no-such-slug"); !os.IsNotExist(err) {
+		t.Fatalf("Load on a missing file: err = %v, want os.IsNotExist", err)
 	}
 }
 
