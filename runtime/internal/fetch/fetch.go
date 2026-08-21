@@ -73,19 +73,47 @@ func EstimateTokens(text string) int {
 	return (len(text) + CharsPerToken - 1) / CharsPerToken
 }
 
-// Clip cuts text to a token budget at a line boundary, and reports what it left.
+// Clip cuts text to a token budget at a line boundary from the start, and
+// reports what it left.
 //
 // The remainder is a number rather than nothing: an agent told that 400 lines
 // remain asks for them, and one told nothing assumes it read the page.
 func Clip(text string, budget int) (clipped string, omittedLines int) {
+	return ClipFrom(text, budget, "head")
+}
+
+// ClipFrom cuts text to a token budget at a line boundary.
+// from is "head" (default) or "tail". Unknown values behave as "head".
+func ClipFrom(text string, budget int, from string) (clipped string, omittedLines int) {
 	if budget <= 0 || EstimateTokens(text) <= budget {
 		return text, 0
+	}
+	if from == "tail" {
+		return clipTail(text, budget)
 	}
 	head := text[:budget*CharsPerToken]
 	if cut := strings.LastIndexByte(head, '\n'); cut > 0 {
 		head = head[:cut]
 	}
 	return head, strings.Count(text[len(head):], "\n") + 1
+}
+
+func clipTail(text string, budget int) (string, int) {
+	limit := budget * CharsPerToken
+	if len(text) <= limit {
+		return text, 0
+	}
+	start := len(text) - limit
+	tail := text[start:]
+	if cut := strings.IndexByte(tail, '\n'); cut >= 0 && cut+1 < len(tail) {
+		tail = tail[cut+1:]
+		start = len(text) - len(tail)
+	}
+	omitted := strings.Count(text[:start], "\n")
+	if start > 0 && text[start-1] != '\n' {
+		omitted++
+	}
+	return tail, omitted
 }
 
 // DefaultTimeout is how long one retrieval may take.
