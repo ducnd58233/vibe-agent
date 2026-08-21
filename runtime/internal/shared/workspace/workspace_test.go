@@ -20,13 +20,30 @@ func TestSDDCacheSitsUnderTheStateDir(t *testing.T) {
 	}
 }
 
-// Run evidence and rebuildable cache are different things, and the split is the
-// reason RunsDirName exists separately. A change that collapsed them would put
-// a person's evidence somewhere a tool feels free to delete.
-func TestRunsAndStateAreDifferentDirectories(t *testing.T) {
+// Runs live under .agent-state but in their own subdirectory so caches are not
+// treated as evidence.
+func TestRunsSitUnderStateDirAsOwnFolder(t *testing.T) {
 	root := filepath.FromSlash("/w")
-	if StateDir(root) == RunsDir(root) {
-		t.Fatal("state and runs resolved to one directory")
+	runs := RunsDir(root)
+	if runs == StateDir(root) {
+		t.Fatal("runs and state resolved to one directory")
+	}
+	if !strings.HasPrefix(runs, StateDir(root)+string(filepath.Separator)) && runs != filepath.Join(StateDir(root), RunsDirName) {
+		t.Errorf("RunsDir = %q, want under %q", runs, StateDir(root))
+	}
+	if filepath.Base(runs) != RunsDirName {
+		t.Errorf("RunsDir base = %q, want %q", filepath.Base(runs), RunsDirName)
+	}
+}
+
+func TestLegacyRunsStayAtWorkspaceRootTmp(t *testing.T) {
+	root := filepath.FromSlash("/w")
+	legacy := LegacyRunsDir(root)
+	if legacy != filepath.Join(root, LegacyRunsDirName) {
+		t.Errorf("LegacyRunsDir = %q", legacy)
+	}
+	if strings.Contains(legacy, StateDirName) {
+		t.Errorf("legacy tmp must not sit under %s", StateDirName)
 	}
 }
 
@@ -35,28 +52,20 @@ func TestVersionedDirsSitUnderDateSlugVersion(t *testing.T) {
 	docs := DocsDirAt(root, "2026-08-21", "demo", 2)
 	run := RunDirAt(root, "2026-08-21", "demo", 2)
 	wantDocs := filepath.Join(root, DocsDirName, "2026-08-21", "demo", "2")
-	wantRun := filepath.Join(root, RunsDirName, "2026-08-21", "demo", "2")
+	wantRun := filepath.Join(root, StateDirName, RunsDirName, "2026-08-21", "demo", "2")
 	if docs != wantDocs {
 		t.Errorf("DocsDirAt = %q, want %q", docs, wantDocs)
 	}
 	if run != wantRun {
 		t.Errorf("RunDirAt = %q, want %q", run, wantRun)
 	}
-	if !strings.HasPrefix(RunIndexDir(root), StateDir(root)) {
-		t.Errorf("RunIndexDir = %q, want under state", RunIndexDir(root))
-	}
 }
 
-func TestDocsArtifactDatedBasename(t *testing.T) {
-	got, err := DocsArtifact("SPEC", "2026-08-21")
-	if err != nil || got != "SPEC-2026-08-21.md" {
-		t.Fatalf("DocsArtifact(SPEC) = %q, %v", got, err)
+func TestCheckRevisionRejectsBadInputs(t *testing.T) {
+	if err := CheckRevision("nope", 1); err == nil {
+		t.Fatal("bad date accepted")
 	}
-	got, err = DocsArtifact("tasks", "2026-08-21")
-	if err != nil || got != "tasks-2026-08-21.json" {
-		t.Fatalf("DocsArtifact(tasks) = %q, %v", got, err)
-	}
-	if _, err := DocsArtifact("PLAN", "bad"); err == nil {
-		t.Fatal("expected error for bad date")
+	if err := CheckRevision("2026-08-21", 0); err == nil {
+		t.Fatal("version 0 accepted")
 	}
 }

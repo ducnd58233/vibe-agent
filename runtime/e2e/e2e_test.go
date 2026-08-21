@@ -236,7 +236,7 @@ func TestConsumerRepoRunsAGoalToCompletion(t *testing.T) {
 	if current.Date == "" || current.Version < 1 {
 		t.Fatalf("new run missing date/version: date=%q version=%d", current.Date, current.Version)
 	}
-	manifest := filepath.Join(root, "tmp", current.Date, "webhook-idempotency",
+	manifest := filepath.Join(root, ".agent-state", "runs", current.Date, "webhook-idempotency",
 		fmt.Sprintf("%d", current.Version), "manifest.json")
 	if _, err := os.Stat(manifest); err != nil {
 		t.Fatalf("versioned manifest missing at %s: %v", manifest, err)
@@ -322,7 +322,7 @@ func TestConsumerRepoRunsAGoalToCompletion(t *testing.T) {
 		t.Errorf("e2e source = %v, want exit_code from the verifier", e2e["source"])
 	}
 
-	events := filepath.Join(root, "tmp", current.Date, "webhook-idempotency",
+	events := filepath.Join(root, ".agent-state", "runs", current.Date, "webhook-idempotency",
 		fmt.Sprintf("%d", current.Version), "events.ndjson")
 	raw, err := os.ReadFile(filepath.Clean(events))
 	if err != nil {

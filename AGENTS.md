@@ -118,7 +118,9 @@ path. When a rule already has a home, link to it instead of restating it.
   pre-migrate trees; run `vibe-agent migrate docs-tmp`). Confirm the slug with the user when it is
   not obvious.
 - **Verification evidence (MUST):** run state and logs live under
-  `tmp/<YYYY-MM-DD>/<slug>/<version>/` (when gitignored in the workspace), beside `manifest.json`.
+  `tmp/<YYYY-MM-DD>/<slug>/<version>/` is legacy only until migrate; the
+  canonical tree is `.agent-state/runs/<YYYY-MM-DD>/<slug>/<version>/` (when
+  gitignored in the workspace), beside `manifest.json`.
   Flat `tmp/<slug>/` is legacy only until migrate.
 - **Portable paths (MUST):** in committed docs, plans, and agent deliverables, use paths relative to the workspace root or repo ids. Do not paste machine-absolute paths (`C:\...`, `/Users/...`, `d:\...`) into files that ship in git.
 - **XML section tags (MUST):** wrap sections in the documented tag set for always-loaded charter files
@@ -158,7 +160,7 @@ Follow links from those files only as the task requires.
 | Delivery commands | [`.ai-agents/commands/ROUTER.md`](.ai-agents/commands/ROUTER.md) |
 | Stack detection | [`.ai-agents/stack-profiles/ROUTER.md`](.ai-agents/stack-profiles/ROUTER.md) |
 | Generated docs from commands | `docs/<date>/<slug>/<version>/` at workspace root |
-| Verification evidence | `tmp/<date>/<slug>/<version>/` (when gitignored in the workspace) |
+| Verification evidence | `.agent-state/runs/<date>/<slug>/<version>/` (gitignored; `tmp/` is legacy until migrate) |
 | Consumer multi-repo doc workspace | Consumer repo `AGENTS.md` (local-first overrides toolkit defaults) |
 | XML section tags | [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) section "XML section tags" |
 </references>
@@ -194,12 +196,13 @@ Follow links from those files only as the task requires.
 - **Auto `reviews` and `ship` (reversal).** On `/goal`, those verifier nodes stay `verifier: human`
   and only pass through `human_event`. On `/auto` only, the same nodes resolve through existing
   evidence sources already on the allow-list: `reviews` via `ci_api` (review-bot check-run buckets)
-  and `ship` via `file_assert` on `tmp/<date>/<slug>/<version>/ship/DECISION.md` written by `/ship`.
+  and `ship` via `file_assert` on `.agent-state/runs/<date>/<slug>/<version>/ship/DECISION.md` written by `/ship`.
   No new checkpoint evidence source was added (`exit_code`, `file_assert`, `ci_api`, `human_event`
   remain the set). `/goal` is unchanged. Spec for this delivery: workspace slug `auto-ship-reviews`.
-- **Evidence.** `/goal` records verification under `tmp/<date>/<slug>/<version>/` when that path is gitignored in the
+- **Evidence.** `/goal` records verification under `.agent-state/runs/<date>/<slug>/<version>/` when that path is gitignored in the
   workspace, redacted before write. See
   [`goal-verification-records`](.ai-agents/references/goal-verification-records.md).
+  Legacy `tmp/<date>/<slug>/<version>/` remains readable until migrate.
 - **Commit attribution.** Never add AI or agent co-author trailers, "Generated with ..." lines, or
   robot-emoji attribution to commits or PR bodies. Commits belong to the human contributor's git
   identity, on every harness and for manual commits. How that is enforced, and what not to remove:
@@ -209,7 +212,8 @@ Follow links from those files only as the task requires.
   environment variables.
 - **Gitignore is a commit boundary (MUST).** Before staging, read the **workspace root**
   `.gitignore`. Never commit paths it excludes. Each repo defines its own rules: many consumer repos
-  track `docs/`; this toolkit gitignores `/docs/` and `/tmp/`. Ignore rules do not untrack files
+  track `docs/`; this toolkit gitignores `/docs/` and `/.agent-state/` (and `/tmp/`
+  while legacy run trees may still exist). Ignore rules do not untrack files
   already in git; remove stray tracked paths with `git rm --cached` (keep the local copy). Do not use
   `git add -f` to bypass ignore for workspace-local deliverables.
 </delivery_gates>

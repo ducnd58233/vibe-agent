@@ -29,13 +29,28 @@ const RunsDirName = workspace.RunsDirName
 func RunsDir(workspaceRoot string) string { return workspace.RunsDir(workspaceRoot) }
 
 // RunDir is where a slug's state and evidence live.
-// Prefer the indexed versioned path; fall back to the legacy flat path so
-// unmigrated workspaces keep loading until the migrate task runs.
+// Prefer the indexed versioned path under .agent-state/runs; if that revision
+// still sits in legacy tmp/, use it until migrate moves the tree. Fall back to
+// the legacy flat path so unmigrated workspaces keep loading.
 func RunDir(workspaceRoot, slug string) string {
-	if dir, err := runpath.RunDir(workspaceRoot, slug); err == nil {
-		return dir
+	entry, err := runpath.Resolve(workspaceRoot, slug)
+	if err == nil {
+		modern := workspace.RunDirAt(workspaceRoot, entry.Date, entry.Slug, entry.Version)
+		if manifestReadable(filepath.Join(modern, "manifest.json")) {
+			return modern
+		}
+		legacy := workspace.LegacyRunDirAt(workspaceRoot, entry.Date, entry.Slug, entry.Version)
+		if manifestReadable(filepath.Join(legacy, "manifest.json")) {
+			return legacy
+		}
+		return modern
 	}
 	return workspace.RunDir(workspaceRoot, slug)
+}
+
+func manifestReadable(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // ManifestPath is the run-state file for a slug.
@@ -248,10 +263,10 @@ func List(workspaceRoot string) ([]string, error) {
 	}
 
 	// Legacy flat tmp/<slug>/manifest.json until migrate.
-	entries, err := os.ReadDir(RunsDir(workspaceRoot))
+	entries, err := os.ReadDir(workspace.LegacyRunsDir(workspaceRoot))
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("list runs: %w", err)
+			return nil, fmt.Errorf("list legacy runs: %w", err)
 		}
 	} else {
 		for _, entry := range entries {
@@ -262,7 +277,7 @@ func List(workspaceRoot string) ([]string, error) {
 			if !validate.Slug(slug) || seen[slug] {
 				continue
 			}
-			flat := filepath.Join(RunsDir(workspaceRoot), slug, "manifest.json")
+			flat := filepath.Join(workspace.LegacyRunsDir(workspaceRoot), slug, "manifest.json")
 			if _, err := Load(flat); err != nil {
 				continue
 			}
@@ -279,13 +294,21 @@ func List(workspaceRoot string) ([]string, error) {
 }
 
 func walkVersionedRuns(workspaceRoot string, seen map[string]bool) error {
-	root := RunsDir(workspaceRoot)
+	for _, root := range []string{RunsDir(workspaceRoot), workspace.LegacyRunsDir(workspaceRoot)} {
+		if err := walkVersionedRunRoot(workspaceRoot, root, seen); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func walkVersionedRunRoot(workspaceRoot, root string, seen map[string]bool) error {
 	dates, err := os.ReadDir(root)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
-		return fmt.Errorf("list runs: %w", err)
+		return fmt.Errorf("list runs under %s: %w", root, err)
 	}
 	for _, dateEnt := range dates {
 		if !dateEnt.IsDir() || !validate.Date(dateEnt.Name()) {

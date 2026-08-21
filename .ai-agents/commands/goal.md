@@ -142,7 +142,7 @@ Stop only when:
 2. Verification commands from the spec pass (run them; do not assume),
 3. **E2E / full-runtime verification** completed when in scope (browser, docker, k8s, mobile sim per spec and stack; see below),
 4. **PR CI checks** and **configured external PR reviews** (CodeRabbit, Cursor Bugbot, other bots the human uses) are **complete** or explicitly waived by the human,
-5. Evidence saved under `tmp/<date>/<slug>/<version>/` ([`goal-verification-records.md`](../references/goal-verification-records.md)),
+5. Evidence saved under `.agent-state/runs/<date>/<slug>/<version>/` ([`goal-verification-records.md`](../references/goal-verification-records.md)),
 6. [`/ship`](ship.md) returns **Ship Decision: GO**,
 7. The human confirms satisfaction.
 
@@ -193,14 +193,14 @@ For each **incomplete** task in `TASKS.md`:
 | Step | Command / skill | Notes |
 |------|-----------------|-------|
 | Implement | [`/build`](build.md) | TDD + [`git-workflow-and-versioning`](../skills/git-workflow-and-versioning/SKILL.md); one task per `/build` |
-| Verify tests | [`/test`](test.md) | Unit/integration; **record** logs under `tmp/<date>/<slug>/<version>/unit/` |
-| E2E / runtime | [`/test`](test.md) + [`qa-testing-strategy`](../skills/qa-testing-strategy/SKILL.md) + [`browser-testing-with-devtools`](../skills/browser-testing-with-devtools/SKILL.md) | **MUST** when UI, full flows, docker, k8s, or mobile in scope; record under `tmp/<date>/<slug>/<version>/e2e/`, `browser/`, `runtime/` |
+| Verify tests | [`/test`](test.md) | Unit/integration; **record** logs under `.agent-state/runs/<date>/<slug>/<version>/unit/` |
+| E2E / runtime | [`/test`](test.md) + [`qa-testing-strategy`](../skills/qa-testing-strategy/SKILL.md) + [`browser-testing-with-devtools`](../skills/browser-testing-with-devtools/SKILL.md) | **MUST** when UI, full flows, docker, k8s, or mobile in scope; record under `.agent-state/runs/<date>/<slug>/<version>/e2e/`, `browser/`, `runtime/` |
 | Local review | [`/review`](review.md) | [`code-review-and-quality`](../skills/code-review-and-quality/SKILL.md) |
 | Open/update PR | human or `gh pr create` | Push task branch first |
-| Wait: CI + external review | [`goal-verification-records.md`](../references/goal-verification-records.md) | `gh pr checks --watch`; snapshot bot/human reviews to `tmp/<date>/<slug>/<version>/pr-reviews/`; **do not proceed** while required checks or reviews are pending |
+| Wait: CI + external review | [`goal-verification-records.md`](../references/goal-verification-records.md) | `gh pr checks --watch`; snapshot bot/human reviews to `.agent-state/runs/<date>/<slug>/<version>/pr-reviews/`; **do not proceed** while required checks or reviews are pending |
 | Ship gate | [`/ship`](ship.md) | [`shipping-and-launch`](../skills/shipping-and-launch/SKILL.md) |
 
-**Evidence (MUST):** After each verification step, update `tmp/<date>/<slug>/<version>/RECORD.md`. Workspace `.gitignore` must include `/tmp/` (not pushed). See [`goal-verification-records.md`](../references/goal-verification-records.md).
+**Evidence (MUST):** After each verification step, update `.agent-state/runs/<date>/<slug>/<version>/RECORD.md`. Workspace `.gitignore` must include `/.agent-state/` (and `/tmp/` while legacy trees remain). See [`goal-verification-records.md`](../references/goal-verification-records.md).
 
 **E2E when in scope:** Web flows (browser/Playwright), API+service (compose/`make run`), k8s only if repo documents local flow, mobile per stack profile. Never skip because unit tests passed.
 
@@ -208,7 +208,7 @@ For each **incomplete** task in `TASKS.md`:
 
 **Iterate:**
 
-- **NO-GO**, test/E2E failure, **pending PR checks/reviews**, or **same-task** human feedback → fix on **same branch** → re-verify → update `tmp/<date>/<slug>/<version>/` → wait for CI/reviews again → `/ship`.
+- **NO-GO**, test/E2E failure, **pending PR checks/reviews**, or **same-task** human feedback → fix on **same branch** → re-verify → update `.agent-state/runs/<date>/<slug>/<version>/` → wait for CI/reviews again → `/ship`.
 - **Next planned task** → new branch from `main` → `/build`.
 - **Three** failed ship cycles on the same blocker → stop; report root cause; ask human.
 
@@ -222,7 +222,7 @@ Optional personas (user or phase invokes; no persona-to-persona chains): [`archi
 - Commit attribution stripped by [`strip-ai-attribution`](../hooks/strip-ai-attribution.sh) when link script installed.
 - UI guard: runtime `design-token-guard` when configured in workspace hooks.
 - Disclosure guard: runtime `sensitive-data-guard` when configured in workspace hooks.
-- **Redact before writing `tmp/<date>/<slug>/<version>/` evidence.** PR comments, test output, and captured responses routinely carry tokens and personal data, and evidence records are written on every phase. See [`goal-verification-records.md`](../references/goal-verification-records.md) and [`secure-by-default`](../skills/secure-by-default/SKILL.md).
+- **Redact before writing `.agent-state/runs/<date>/<slug>/<version>/` evidence.** PR comments, test output, and captured responses routinely carry tokens and personal data, and evidence records are written on every phase. See [`goal-verification-records.md`](../references/goal-verification-records.md) and [`secure-by-default`](../skills/secure-by-default/SKILL.md).
 </references>
 
 ## Required status reporting
@@ -242,7 +242,7 @@ GOAL STATUS:
 - E2E/runtime: pass | fail | not in scope | pending
 - PR checks: pass | fail | pending
 - External reviews: complete | pending (which bots) | waived
-- Evidence: tmp/<date>/<slug>/<version>/RECORD.md
+- Evidence: .agent-state/runs/<date>/<slug>/<version>/RECORD.md
 - Ship: GO | NO-GO | not yet run
 - Blockers: …
 - Next step: …

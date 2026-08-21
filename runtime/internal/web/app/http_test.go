@@ -893,8 +893,8 @@ func TestNewSessionRedirectsToChatView(t *testing.T) {
 	}
 }
 
-// Creating a session must land under tmp/<date>/<slug>/<version>/, not the
-// legacy flat tmp/<slug>/ tree.
+// Creating a session must land under .agent-state/runs/<date>/<slug>/<version>/,
+// not a flat <slug>/ tree under tmp/ or runs/.
 func TestNewSessionWritesVersionedRunDir(t *testing.T) {
 	root := t.TempDir()
 	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
@@ -911,12 +911,15 @@ func TestNewSessionWritesVersionedRunDir(t *testing.T) {
 	}
 
 	today := time.Now().UTC().Format("2006-01-02")
-	manifest := filepath.Join(root, "tmp", today, "versioned-web", "1", "manifest.json")
+	manifest := filepath.Join(root, ".agent-state", "runs", today, "versioned-web", "1", "manifest.json")
 	if _, err := os.Stat(manifest); err != nil {
 		t.Fatalf("expected versioned manifest at %s: %v", manifest, err)
 	}
 	if _, err := os.Stat(filepath.Join(root, "tmp", "versioned-web")); !os.IsNotExist(err) {
 		t.Fatal("must not create a flat tmp/versioned-web directory")
+	}
+	if _, err := os.Stat(filepath.Join(root, ".agent-state", "runs", "versioned-web")); !os.IsNotExist(err) {
+		t.Fatal("must not create a flat .agent-state/runs/versioned-web directory")
 	}
 
 	load := httptest.NewRecorder()

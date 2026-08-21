@@ -295,9 +295,15 @@ func checkGitignore(report *diagnostics, workspaceRoot string) {
 		return // no .gitignore is a consumer choice, not a runtime problem
 	}
 	content := string(raw)
-	report.check("tmp/ is gitignored", strings.Contains(content, "/tmp/"),
-		"add /tmp/ so run evidence is not committed")
 	report.check(workspace.StateDirName+"/ is gitignored",
 		strings.Contains(content, "/"+workspace.StateDirName+"/"),
-		"add /"+workspace.StateDirName+"/ so derived state is not committed")
+		"add /"+workspace.StateDirName+"/ so run evidence and derived state are not committed")
+	// Legacy tmp/ may still hold unmigrated trees; keep the ignore while it exists.
+	if _, err := os.Stat(filepath.Join(workspaceRoot, workspace.LegacyRunsDirName)); err == nil {
+		report.check("tmp/ is gitignored", strings.Contains(content, "/tmp/"),
+			"add /tmp/ so legacy run evidence is not committed until migrate empties it")
+	} else {
+		fmt.Printf("  note  no %s/; new runs live under %s/%s/\n",
+			workspace.LegacyRunsDirName, workspace.StateDirName, workspace.RunsDirName)
+	}
 }

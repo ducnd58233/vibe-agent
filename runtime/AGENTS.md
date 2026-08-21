@@ -74,7 +74,7 @@ runtime/
 
 **Run and session state (MUST):**
 
-- Run state lives under **`tmp/<date>/<slug>/<version>/manifest.json`** (the versioned layout `RunDir` resolves first; a flat `tmp/<slug>/manifest.json` is the legacy fallback used only when versioned resolution fails). Do not write it directly; use **`checkpoint`** and **`run`** packages.
+- Run state lives under **`.agent-state/runs/<date>/<slug>/<version>/manifest.json`** (the versioned layout `RunDir` resolves first; legacy `tmp/<date>/<slug>/<version>/` and flat `tmp/<slug>/` remain readable until migrate used only when versioned resolution fails). Do not write it directly; use **`checkpoint`** and **`run`** packages.
 - Session logs are append-only NDJSON. Do not truncate or rewrite them.
 </required>
 
@@ -222,7 +222,7 @@ Any change under **`runtime/web/`**, **`runtime/internal/web/`**, or **`web/stat
 1. **Run the loopback server:** `vibe-agent web --workspace .` (binds **`127.0.0.1:3080`** only).
 2. **Exercise affected flows in a real browser** (Cursor browser MCP, Playwright, or manual). At minimum hit every route or HTMX partial you touched, plus one happy path and one error path when the change affects errors or forms.
    - **No browser automation available?** Drive the running server directly with an HTTP/SSE client (`curl`, or a small Go test) as the minimum bar for wire-level/functional behavior: status codes, headers, streaming (e.g. does an SSE endpoint actually deliver events, not just accept the connection). This is not a substitute for a visual check when the change is CSS/layout-only, but skipping verification entirely because no browser tool is connected is not an option either.
-3. **Record evidence** under **`tmp/<date>/<slug>/<version>/browser/`** (the versioned layout; a flat `tmp/<slug>/browser/` is the legacy fallback) at the workspace root (gitignored). For each session include:
+3. **Record evidence** under **`.agent-state/runs/<date>/<slug>/<version>/browser/`** (the versioned layout; legacy tmp/ browser trees remain readable until migrate) at the workspace root (gitignored). For each session include:
    - `RECORD.md` with date, branch, flows tested, pass/fail, and notes. Note explicitly when the fallback HTTP/SSE client stood in for a browser, and what it did and did not cover.
    - Screenshots or short notes for before/after when the change is visual.
    - Redact before write; no credentials or full file contents in evidence.
