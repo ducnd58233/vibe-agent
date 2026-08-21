@@ -37,6 +37,7 @@ func TestEveryDangerCategoryRefusesSomething(t *testing.T) {
 		{"credential-change", "gh secret set BUILD_FLAG"},
 		{"history-rewrite", "git push --force origin main"},
 		{"infrastructure-destruction", "terraform destroy -auto-approve"},
+		{"local-destruction", "rm" + " -rf /"},
 		{"publication", "npm publish"},
 	}
 
