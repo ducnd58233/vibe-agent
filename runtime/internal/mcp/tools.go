@@ -52,7 +52,7 @@ func (d Deps) now() time.Time {
 	return d.Now().UTC()
 }
 
-// NewServer builds the stdio server with the nine-tool surface.
+// NewServer builds the stdio server with the ten-tool surface.
 func NewServer(version string, deps Deps) *Server {
 	return &Server{
 		Name:    "vibe-agent",
@@ -117,6 +117,13 @@ func Tools(deps Deps) []Tool {
 			Description: "Call to get the next actionable task (acceptance, branch, files) in one call. Do not call before the plan node has run; there is no task list yet.",
 			InputSchema: schema(`{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return taskPacket(deps, raw) },
+		},
+		{
+			Name: "vibe_repo_map",
+			Description: "Call to get a token-budgeted map of the most referenced definitions in the workspace before reading files by hand. " +
+				"Do not call when you already have the files you need open; this rebuilds the map each time and is not a cache.",
+			InputSchema: schema(`{"type":"object","properties":{"budget":{"type":"integer","minimum":1,"description":"Approximate token budget for the returned map"},"focus":{"type":"string","description":"Path prefix that raises matching files in the ranking without excluding others"}}}`),
+			Handler:     func(raw json.RawMessage) (any, error) { return repoMap(deps, raw) },
 		},
 		{
 			Name:        "vibe_checkpoint",

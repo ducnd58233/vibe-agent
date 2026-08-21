@@ -90,6 +90,7 @@ func TestEveryToolOnTheSurfaceEarnsItsSlot(t *testing.T) {
 		"vibe_run_start":      "hosts without hooks have no other way to begin a run",
 		"vibe_run_status":     "the node and its evidence, which is the one thing never to infer",
 		"vibe_task_packet":    "the next actionable task in one call, instead of a manual re-read of tasks.json and TASKS.md",
+		"vibe_repo_map":       "a token-budgeted map of referenced definitions, so the model reads less of the tree by hand",
 		"vibe_checkpoint":     "records evidence; the verifiers stay behind vibe_verify on purpose",
 		"vibe_verify":         "runs what the check plan declares, so the command is not chosen at the keyboard",
 		"vibe_fetch":          "the only tool here that returns tokens rather than spending them",
