@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/harness"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 func writeConfig(t *testing.T, root, relative, body string) {
@@ -324,7 +325,8 @@ func TestAVendoredToolkitsOwnConfigIsNotTheWorkspaceWiring(t *testing.T) {
 }`)
 	// A run in flight is what makes the gap actionable rather than a preference:
 	// the loop is being driven and nothing is recording it.
-	writeConfig(t, workspace, filepath.Join("tmp", "demo", "manifest.json"), `{
+	testutil.EnsureRunIndex(t, workspace, "demo")
+	writeConfig(t, workspace, filepath.Join(".agent-state", "runs", "2026-08-21", "demo", "1", "manifest.json"), `{
   "schemaVersion": 1,
   "runId": "run_fixture",
   "graphId": "goal-delivery",

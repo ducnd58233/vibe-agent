@@ -8,6 +8,7 @@ import (
 	"time"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 const toolkitRoot = "../../.."
@@ -25,6 +26,7 @@ func workspaceWithRun(t *testing.T, mutate ...func(*state.Run)) string {
 	for _, apply := range mutate {
 		apply(run)
 	}
+	testutil.EnsureRunIndex(t, root, "demo")
 	if err := state.Save(state.ManifestPath(root, "demo"), run); err != nil {
 		t.Fatalf("Save: %v", err)
 	}

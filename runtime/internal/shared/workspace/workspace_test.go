@@ -6,8 +6,6 @@ import (
 	"testing"
 )
 
-// Derived state has one home. The WebFetch cache used to sit under .claude/,
-// which made it a per-host directory for something no host owns.
 func TestSDDCacheSitsUnderTheStateDir(t *testing.T) {
 	root := filepath.FromSlash("/w")
 	cache := SDDCacheDir(root)
@@ -20,30 +18,18 @@ func TestSDDCacheSitsUnderTheStateDir(t *testing.T) {
 	}
 }
 
-// Runs live under .agent-state but in their own subdirectory so caches are not
-// treated as evidence.
 func TestRunsSitUnderStateDirAsOwnFolder(t *testing.T) {
 	root := filepath.FromSlash("/w")
 	runs := RunsDir(root)
 	if runs == StateDir(root) {
 		t.Fatal("runs and state resolved to one directory")
 	}
-	if !strings.HasPrefix(runs, StateDir(root)+string(filepath.Separator)) && runs != filepath.Join(StateDir(root), RunsDirName) {
-		t.Errorf("RunsDir = %q, want under %q", runs, StateDir(root))
-	}
 	if filepath.Base(runs) != RunsDirName {
 		t.Errorf("RunsDir base = %q, want %q", filepath.Base(runs), RunsDirName)
 	}
-}
-
-func TestLegacyRunsStayAtWorkspaceRootTmp(t *testing.T) {
-	root := filepath.FromSlash("/w")
-	legacy := LegacyRunsDir(root)
-	if legacy != filepath.Join(root, LegacyRunsDirName) {
-		t.Errorf("LegacyRunsDir = %q", legacy)
-	}
-	if strings.Contains(legacy, StateDirName) {
-		t.Errorf("legacy tmp must not sit under %s", StateDirName)
+	want := filepath.Join(StateDir(root), RunsDirName)
+	if runs != want {
+		t.Errorf("RunsDir = %q, want %q", runs, want)
 	}
 }
 

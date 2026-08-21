@@ -10,6 +10,7 @@ import (
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 const cliTestSecret = "sk-0123456789abcdef0123456789ab"
@@ -22,6 +23,7 @@ func workspaceWithSessionLog(t *testing.T) (root, slug string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}

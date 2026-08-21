@@ -1,13 +1,12 @@
 package view
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/sessionread"
 )
 
@@ -33,9 +32,6 @@ func TestFormatRel(t *testing.T) {
 func TestProjectSessionsCardFields(t *testing.T) {
 	root := t.TempDir()
 	slug := "control-plane-activation"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
 	now := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 	run, err := state.NewRun(slug, "Control plane activation", "goal-delivery", 50, now.Add(-11*time.Hour))
 	if err != nil {
@@ -43,6 +39,7 @@ func TestProjectSessionsCardFields(t *testing.T) {
 	}
 	run.Status = state.StatusFailed
 	run.UpdatedAt = now.Add(-11 * time.Hour)
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}

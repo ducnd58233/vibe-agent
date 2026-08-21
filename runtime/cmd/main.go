@@ -58,7 +58,7 @@ Usage:
 
 Run state is written to .agent-state/runs/<date>/<slug>/<version>/manifest.json
 with an append-only log at events.ndjson under that directory (gitignored).
-Legacy tmp/ trees remain readable until migrate.
+Use vibe-agent migrate docs-tmp once to move an old workspace-root tmp/ tree.
 
 
 "fetch" reads a URL or a file and prints the text without the markup, scripts,

@@ -22,6 +22,7 @@ import (
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/domain"
 )
 
@@ -976,6 +977,7 @@ func writeWebFixtureSession(t *testing.T, root, slug string) {
 	}
 	run.Date = entry.Date
 	run.Version = entry.Version
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}

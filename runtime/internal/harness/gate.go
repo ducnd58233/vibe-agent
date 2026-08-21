@@ -296,9 +296,8 @@ func shellVerdict(req Request, command string) *BlockError {
 	return &BlockError{Reason: blockedReason(action, runs)}
 }
 
-// runStateFile matches a run's own bookkeeping: the manifest that says where a
-// run is, and the append-only log that says how it got there.
-var runStateFile = regexp.MustCompile(`(^|/)tmp/[^/]+/(manifest\.json|events\.ndjson)$`)
+// runStateFile matches a run's own bookkeeping under .agent-state/runs/.
+var runStateFile = regexp.MustCompile(`(^|/)\.agent-state/runs/[^/]+/[^/]+/[0-9]+/(manifest\.json|events\.ndjson)$`)
 
 // shellWriters are the commands that change a file rather than read it. A
 // redirection is handled separately, since it has no command word of its own.
@@ -432,7 +431,7 @@ func blockedReason(action string, runs []*state.Run) string {
 	lines = append(lines,
 		"Finish the run through /ship, then record the human approval:",
 		"  vibe-agent checkpoint --slug <slug> --check "+mergeApprovedCheck+" --source human_event --passed",
-		"Do not edit tmp/<slug>/manifest.json to get past this.")
+		"Do not edit .agent-state/runs/.../manifest.json to get past this.")
 	return strings.Join(lines, "\n")
 }
 

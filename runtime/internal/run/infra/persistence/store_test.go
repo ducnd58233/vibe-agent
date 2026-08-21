@@ -14,12 +14,11 @@ import (
 func TestSaveThenLoadRoundTrips(t *testing.T) {
 	dir := t.TempDir()
 	run := newTestRun(t)
+	path, _ := indexedPaths(t, dir, run.Slug)
 	run.Flags = map[string]bool{"research_required": true, "e2e_required": false}
 	if err := run.SetCheck("unit", domain.Check{Passed: true, Source: domain.SourceExitCode, Ref: "events.ndjson#41", At: fixedTime()}); err != nil {
 		t.Fatalf("SetCheck: %v", err)
 	}
-
-	path := ManifestPath(dir, run.Slug)
 	if err := Save(path, run); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -44,7 +43,7 @@ func TestSaveThenLoadRoundTrips(t *testing.T) {
 func TestLoadRejectsAForgedCheckSource(t *testing.T) {
 	dir := t.TempDir()
 	run := newTestRun(t)
-	path := ManifestPath(dir, run.Slug)
+	path, _ := indexedPaths(t, dir, run.Slug)
 	if err := Save(path, run); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -76,7 +75,7 @@ func TestLoadRejectsAForgedCheckSource(t *testing.T) {
 func TestSaveIsAtomicAndLeavesNoTempFiles(t *testing.T) {
 	dir := t.TempDir()
 	run := newTestRun(t)
-	path := ManifestPath(dir, run.Slug)
+	path, _ := indexedPaths(t, dir, run.Slug)
 
 	for i := 0; i < 3; i++ {
 		if err := Save(path, run); err != nil {
@@ -98,7 +97,7 @@ func TestSaveIsAtomicAndLeavesNoTempFiles(t *testing.T) {
 func TestSaveWritesSchemaConformantShape(t *testing.T) {
 	dir := t.TempDir()
 	run := newTestRun(t)
-	path := ManifestPath(dir, run.Slug)
+	path, _ := indexedPaths(t, dir, run.Slug)
 	if err := Save(path, run); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -126,11 +125,8 @@ func TestSaveWritesSchemaConformantShape(t *testing.T) {
 }
 
 func TestManifestAndEventPathsSitTogether(t *testing.T) {
-	manifest := ManifestPath("/repo", "my-slug")
-	events := EventLogPath("/repo", "my-slug")
-	if filepath.Dir(manifest) != filepath.Dir(events) {
-		t.Errorf("manifest %q and events %q should share a directory", manifest, events)
-	}
+	root := t.TempDir()
+	manifest, events := indexedPaths(t, root, "my-slug")
 	if filepath.Base(manifest) != "manifest.json" {
 		t.Errorf("manifest basename = %q", filepath.Base(manifest))
 	}

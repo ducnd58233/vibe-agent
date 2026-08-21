@@ -1,4 +1,5 @@
-// Package shipdecision parses the file /ship writes at tmp/<slug>/ship/DECISION.md.
+// Package shipdecision parses the file /ship writes at
+// .agent-state/runs/<date>/<slug>/<version>/ship/DECISION.md.
 //
 // /ship's GO/NO-GO has always been a judgement call rendered as chat prose, which is
 // exactly why the "ship" check in vibe-checks.yaml is verifier: human — there was never
@@ -18,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/run/infra/persistence"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
 // Specialist is one review lane's own verdict, e.g. "code-reviewer -> PASS".
@@ -117,7 +119,13 @@ func Parse(r io.Reader) (*Decision, error) {
 
 // Path is where /ship writes its decision for a run.
 func Path(workspaceRoot, slug string) string {
-	return filepath.Join(persistence.RunDir(workspaceRoot, slug), "ship", "DECISION.md")
+	dir := persistence.RunDir(workspaceRoot, slug)
+	if dir == "" {
+		// No indexed run yet: point at a path under RunsDir that cannot exist
+		// until Begin allocates, so Load returns os.ErrNotExist.
+		return filepath.Join(workspace.RunsDir(workspaceRoot), "_unindexed", slug, "ship", "DECISION.md")
+	}
+	return filepath.Join(dir, "ship", "DECISION.md")
 }
 
 // Load reads and parses the decision file for a run.

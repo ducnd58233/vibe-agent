@@ -11,6 +11,7 @@ import (
 
 	agent "github.com/ducnd58233/vibe-agent/runtime/internal/agent/domain"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 func call(name string, args map[string]any) agent.ToolCall {
@@ -48,11 +49,12 @@ func TestARefusedCallComesBackAsAnErrorResult(t *testing.T) {
 	}
 	run.CurrentNode = "build"
 	run.Status = state.StatusRunning
+	testutil.EnsureRunIndex(t, root, "demo")
 	if err := state.Save(state.ManifestPath(root, "demo"), run); err != nil {
 		t.Fatal(err)
 	}
 
-	manifest := filepath.ToSlash(filepath.Join("tmp", "demo", "manifest.json"))
+	manifest := filepath.ToSlash(filepath.Join(".agent-state", "runs", "2026-08-21", "demo", "1", "manifest.json"))
 	result := New(root).Dispatch(context.Background(),
 		call("write", map[string]any{"path": manifest, "content": "{}"}))
 
@@ -63,8 +65,9 @@ func TestARefusedCallComesBackAsAnErrorResult(t *testing.T) {
 		t.Errorf("content = %q, want it to say it was refused", result.Content)
 	}
 	// The refusal has to have stopped the write, not merely described it.
-	if _, err := os.Stat(filepath.Join(root, "tmp", "demo", "manifest.json")); err == nil {
-		if data, readErr := os.ReadFile(filepath.Clean(filepath.Join(root, "tmp", "demo", "manifest.json"))); readErr == nil && string(data) == "{}" {
+	abs := filepath.Join(root, filepath.FromSlash(manifest))
+	if _, err := os.Stat(abs); err == nil {
+		if data, readErr := os.ReadFile(filepath.Clean(abs)); readErr == nil && string(data) == "{}" {
 			t.Error("the file was written anyway")
 		}
 	}

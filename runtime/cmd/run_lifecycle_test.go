@@ -7,6 +7,7 @@ import (
 	"time"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 // stoppedRun writes a run in a given stopped state, at a node, with a blocker.
@@ -21,6 +22,7 @@ func stoppedRun(t *testing.T, root, slug string, status state.Status) *state.Run
 	run.Status = status
 	run.Iteration = 50
 	run.Blockers = []state.Blocker{{Node: "build", Reason: "dependency will not install", Attempts: 3}}
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
@@ -188,6 +190,7 @@ func TestResumeRaisesTheBudgetThatStoppedTheRun(t *testing.T) {
 		root := t.TempDir()
 		run := stoppedRun(t, root, "demo", state.StatusBudgetExceeded)
 		run.StoppedBy = testCase.stoppedBy
+		testutil.EnsureRunIndex(t, root, "demo")
 		if err := state.Save(state.ManifestPath(root, "demo"), run); err != nil {
 			t.Fatal(err)
 		}
@@ -215,6 +218,7 @@ func runningRun(t *testing.T, root, slug string) *state.Run {
 	run.CurrentNode = "build"
 	run.Status = state.StatusRunning
 	run.Iteration = 99
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,10 @@
 package session
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
+)
 
 func TestParseUsageReadsSplitAndTotal(t *testing.T) {
 	split := ParseUsage(map[string]any{
@@ -33,7 +37,9 @@ func TestParseUsageReadsSplitAndTotal(t *testing.T) {
 // The runtime owns no model call, so a session log is the only place a token
 // figure exists. Summing it is what makes a token budget enforceable at all.
 func TestTokensUsedSumsWhatTheHostsReported(t *testing.T) {
-	path := LogPath(t.TempDir(), "demo")
+	root := t.TempDir()
+	testutil.EnsureRunIndex(t, root, "demo")
+	path := LogPath(root, "demo")
 	records := []Record{
 		{Type: TypeTranscriptMessage, Source: SourcePrint, Role: "assistant", Body: "one",
 			Usage: &Usage{Input: 100, Output: 50}},
@@ -60,7 +66,9 @@ func TestTokensUsedSumsWhatTheHostsReported(t *testing.T) {
 
 // A cache read is the cost being avoided rather than paid, so it stays out.
 func TestTokensUsedLeavesCacheReadsOut(t *testing.T) {
-	path := LogPath(t.TempDir(), "demo")
+	root := t.TempDir()
+	testutil.EnsureRunIndex(t, root, "demo")
+	path := LogPath(root, "demo")
 	if _, err := Append(path, Record{
 		Type: TypeTranscriptMessage, Source: SourcePrint, Role: "assistant", Body: "cached",
 		Usage: &Usage{Input: 10, Output: 5, CacheRead: 9000},
@@ -77,7 +85,9 @@ func TestTokensUsedLeavesCacheReadsOut(t *testing.T) {
 }
 
 func TestTokensUsedOnAnAbsentLogIsZero(t *testing.T) {
-	total, err := TokensUsed(LogPath(t.TempDir(), "nothing-here"))
+	root := t.TempDir()
+	testutil.EnsureRunIndex(t, root, "nothing-here")
+	total, err := TokensUsed(LogPath(root, "nothing-here"))
 	if err != nil {
 		t.Fatalf("an absent log errored: %v", err)
 	}

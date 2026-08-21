@@ -117,7 +117,7 @@ spec:
       auto:
         verifier: shipdecision
         description: >-
-          Reads tmp/<slug>/ship/DECISION.md, written by /ship per ship.md's
+          Reads .agent-state/runs/<date>/<slug>/<version>/ship/DECISION.md, written by /ship per ship.md's
           "Decision file" step. Passes only on a parsed "Ship Decision: GO"
           with zero blockers; a missing, malformed, or NO-GO file is not
           passed. Active only on a run with the auto flag set — docs/auto-ship-reviews.

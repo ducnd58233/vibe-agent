@@ -3,7 +3,7 @@
 // Run state lives at .agent-state/runs/<date>/<slug>/<version>/manifest.json
 // beside the human-readable RECORD.md, and the append-only event log at
 // events.ndjson. Both are gitignored under .agent-state/. Legacy tmp/ trees
-// remain readable until migrate. The shapes match schemas/run-state.schema.json.
+// The shapes match schemas/run-state.schema.json.
 //
 // The rule this package exists to enforce: a check is passed only when real
 // evidence produced it. There is no provenance value for model assertion, so

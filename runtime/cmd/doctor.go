@@ -298,12 +298,9 @@ func checkGitignore(report *diagnostics, workspaceRoot string) {
 	report.check(workspace.StateDirName+"/ is gitignored",
 		strings.Contains(content, "/"+workspace.StateDirName+"/"),
 		"add /"+workspace.StateDirName+"/ so run evidence and derived state are not committed")
-	// Legacy tmp/ may still hold unmigrated trees; keep the ignore while it exists.
-	if _, err := os.Stat(filepath.Join(workspaceRoot, workspace.LegacyRunsDirName)); err == nil {
-		report.check("tmp/ is gitignored", strings.Contains(content, "/tmp/"),
-			"add /tmp/ so legacy run evidence is not committed until migrate empties it")
-	} else {
-		fmt.Printf("  note  no %s/; new runs live under %s/%s/\n",
-			workspace.LegacyRunsDirName, workspace.StateDirName, workspace.RunsDirName)
+	tmpRoot := filepath.Join(workspaceRoot, "tmp")
+	if st, err := os.Stat(tmpRoot); err == nil && st.IsDir() {
+		report.check("workspace-root tmp/ has been migrated", false,
+			"run: vibe-agent migrate docs-tmp  (runtime no longer reads tmp/; evidence lives under .agent-state/runs/)")
 	}
 }

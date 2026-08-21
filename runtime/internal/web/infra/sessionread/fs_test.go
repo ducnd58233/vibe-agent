@@ -7,12 +7,14 @@ import (
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/sessionread"
 )
 
 func TestFSReplayAndPeekHost(t *testing.T) {
 	root := t.TempDir()
 	slug := "demo"
+	testutil.EnsureRunIndex(t, root, slug)
 	logPath := session.LogPath(root, slug)
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o750); err != nil {
 		t.Fatal(err)

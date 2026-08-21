@@ -9,13 +9,13 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 func TestComposerSendRecordsCursorPromptOnTrajectory(t *testing.T) {
@@ -655,6 +655,7 @@ func TestComposerFirstSendWritesStartAndStop(t *testing.T) {
 	var events []session.Event
 	for time.Now().Before(deadline) {
 		var err error
+		testutil.EnsureRunIndex(t, root, slug)
 		events, err = session.Replay(session.LogPath(root, slug))
 		if err != nil {
 			t.Fatal(err)
@@ -686,6 +687,7 @@ func TestComposerFirstSendWritesStartAndStop(t *testing.T) {
 	deadline = time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		var err error
+		testutil.EnsureRunIndex(t, root, slug)
 		events, err = session.Replay(session.LogPath(root, slug))
 		if err != nil {
 			t.Fatal(err)
@@ -728,6 +730,7 @@ func waitForPrintToSettle(t *testing.T, root, slug string, sends int) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
+		testutil.EnsureRunIndex(t, root, slug)
 		events, err := session.Replay(session.LogPath(root, slug))
 		if err == nil && countType(events, session.TypeStop) >= sends {
 			return
@@ -740,6 +743,7 @@ func waitForPrintToSettle(t *testing.T, root, slug string, sends int) {
 
 func mustReplay(t *testing.T, root, slug string) []session.Event {
 	t.Helper()
+	testutil.EnsureRunIndex(t, root, slug)
 	events, err := session.Replay(session.LogPath(root, slug))
 	if err != nil {
 		return nil
@@ -803,9 +807,7 @@ func TestPrintFailureChatBody(t *testing.T) {
 func TestAppendHostPrintWritesTimeoutAndRedactedStderr(t *testing.T) {
 	root := t.TempDir()
 	slug := "print-fail"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
+	testutil.EnsureRunIndex(t, root, slug)
 	hostPrint = func(ctx context.Context, host hosts.Host, prompt string, opts hosts.PrintOptions) (string, error) {
 		return "", context.DeadlineExceeded
 	}
@@ -838,9 +840,7 @@ func TestAppendHostPrintWritesTimeoutAndRedactedStderr(t *testing.T) {
 	}
 	root2 := t.TempDir()
 	slug2 := "print-stderr"
-	if err := os.MkdirAll(filepath.Join(root2, "tmp", slug2), 0o750); err != nil {
-		t.Fatal(err)
-	}
+	testutil.EnsureRunIndex(t, root2, slug2)
 	appendHostPrint(context.Background(), root2, slug2, hosts.Host{Binary: "claude"}, "hi", hosts.PrintOptions{})
 	raw, err := os.ReadFile(session.LogPath(root2, slug2))
 	if err != nil {
@@ -849,6 +849,7 @@ func TestAppendHostPrintWritesTimeoutAndRedactedStderr(t *testing.T) {
 	if strings.Contains(string(raw), secret) {
 		t.Fatalf("secret leaked: %s", raw)
 	}
+	testutil.EnsureRunIndex(t, root2, slug2)
 	events, err = session.Replay(session.LogPath(root2, slug2))
 	if err != nil {
 		t.Fatal(err)

@@ -1,4 +1,6 @@
-// Package migrate moves legacy docs and tmp trees into the current layout.
+// Package migrate moves legacy flat docs/ and workspace-root tmp/ trees into
+// the current layout. The runtime itself does not read tmp/; this package is
+// the only place that still knows that name, and only as a migration source.
 package migrate
 
 import (
@@ -13,6 +15,10 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/validate"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
+
+// sourceTmp is the former workspace-root evidence directory. Migrate moves it
+// into .agent-state/runs/; the runtime path helpers do not reference it.
+const sourceTmp = "tmp"
 
 // Plan is one directory move the migrator will perform.
 type Plan struct {
@@ -111,7 +117,7 @@ func planFlatDocs(root string, now time.Time) ([]Plan, error) {
 }
 
 func planFlatTmp(root string, now time.Time) ([]Plan, error) {
-	base := workspace.LegacyRunsDir(root)
+	base := filepath.Join(root, sourceTmp)
 	entries, err := os.ReadDir(base)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -134,7 +140,7 @@ func planFlatTmp(root string, now time.Time) ([]Plan, error) {
 			return nil, err
 		}
 		to := workspace.RunDirAt(root, date, name, 1)
-		plan := Plan{Slug: name, Date: date, Kind: workspace.LegacyRunsDirName, From: from, To: to}
+		plan := Plan{Slug: name, Date: date, Kind: sourceTmp, From: from, To: to}
 		if _, err := os.Stat(to); err == nil {
 			plan.SkipReason = "target already exists"
 			plans = append(plans, plan)
@@ -146,7 +152,7 @@ func planFlatTmp(root string, now time.Time) ([]Plan, error) {
 }
 
 func planVersionedTmp(root string) ([]Plan, error) {
-	base := workspace.LegacyRunsDir(root)
+	base := filepath.Join(root, sourceTmp)
 	dates, err := os.ReadDir(base)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -201,9 +207,14 @@ func planVersionedTmp(root string) ([]Plan, error) {
 }
 
 // Apply executes plans. Dry-run returns the same plans without writing.
+// When the target already exists, leftover source trees under tmp/ are removed
+// so doctor can pass after a partial migrate.
 func Apply(root string, plans []Plan, opts Options) error {
 	for _, plan := range plans {
 		if plan.SkipReason != "" {
+			if !opts.DryRun && strings.HasPrefix(filepath.ToSlash(plan.From), filepath.ToSlash(filepath.Join(root, sourceTmp))+"/") {
+				_ = os.RemoveAll(plan.From)
+			}
 			continue
 		}
 		if opts.DryRun {
@@ -252,7 +263,7 @@ func ensureIndex(root string, plan Plan) error {
 }
 
 func chooseDate(root, slug, dir string, now time.Time) (string, error) {
-	manifest := filepath.Join(workspace.LegacyRunsDir(root), slug, "manifest.json")
+	manifest := filepath.Join(root, sourceTmp, slug, "manifest.json")
 	if raw, err := os.ReadFile(filepath.Clean(manifest)); err == nil {
 		var body struct {
 			CreatedAt time.Time `json:"createdAt"`
@@ -280,7 +291,6 @@ func plannedRenames(dir, date string) ([]Rename, error) {
 		return nil, err
 	}
 	var out []Rename
-	seen := map[string]bool{}
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -291,20 +301,15 @@ func plannedRenames(dir, date string) ([]Rename, error) {
 		}
 		switch name {
 		case "tasks.json":
-			to := "tasks-" + date + ".json"
-			out = append(out, Rename{From: name, To: to})
-			seen[to] = true
+			out = append(out, Rename{From: name, To: "tasks-" + date + ".json"})
 			continue
 		}
 		for _, stem := range markdownStems {
 			if name == stem+".md" {
-				to := stem + "-" + date + ".md"
-				out = append(out, Rename{From: name, To: to})
-				seen[to] = true
+				out = append(out, Rename{From: name, To: stem + "-" + date + ".md"})
 			}
 		}
 	}
-	_ = seen
 	return out, nil
 }
 

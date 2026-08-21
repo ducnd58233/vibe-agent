@@ -104,13 +104,16 @@ func (c Command) Verify(ctx context.Context, req Request) (Result, error) {
 	return result, nil
 }
 
-// writeLog stores captured output under tmp/<slug>/<logDir>/, matching the
-// layout in goal-verification-records.md.
+// writeLog stores captured output under .agent-state/runs/.../<logDir>/.
 func writeLog(req Request, output []byte) (string, error) {
 	if req.Slug == "" || req.LogDir == "" {
 		return "", nil
 	}
-	dir := filepath.Join(state.RunDir(req.WorkspaceRoot, req.Slug), req.LogDir)
+	runDir := state.RunDir(req.WorkspaceRoot, req.Slug)
+	if runDir == "" {
+		return "", fmt.Errorf("no run directory for slug %q", req.Slug)
+	}
+	dir := filepath.Join(runDir, req.LogDir)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return "", fmt.Errorf("create log directory: %w", err)
 	}

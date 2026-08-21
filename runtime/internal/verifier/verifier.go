@@ -35,7 +35,7 @@ type Request struct {
 	Check string
 	// WorkspaceRoot anchors relative paths and command execution.
 	WorkspaceRoot string
-	// Slug selects the tmp/<slug>/ evidence directory.
+	// Slug selects the .agent-state/runs/.../ evidence directory.
 	Slug string
 	// Timeout bounds the work. Zero means the verifier's own default.
 	Timeout time.Duration
@@ -43,7 +43,7 @@ type Request struct {
 	// Command verifier
 	Command string
 	Args    []string
-	// LogDir is the subdirectory under tmp/<slug>/ for captured output, for
+	// LogDir is the subdirectory under .agent-state/runs/.../ for captured output, for
 	// example "unit" or "e2e".
 	LogDir string
 
@@ -62,7 +62,7 @@ type Result struct {
 	Check   state.Check
 	Summary string
 	// Detail is the captured output or assertion trace, already written to
-	// tmp/<slug>/ when the verifier produces a log.
+	// .agent-state/runs/.../ when the verifier produces a log.
 	Detail  string
 	LogPath string
 }

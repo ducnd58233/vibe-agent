@@ -28,10 +28,6 @@ const (
 	// Layout: .agent-state/runs/<date>/<slug>/<version>/.
 	RunsDirName = "runs"
 
-	// LegacyRunsDirName is the former workspace-root evidence tree (tmp/).
-	// Readable until migrate moves trees into RunsDir.
-	LegacyRunsDirName = "tmp"
-
 	// SDDCacheDirName holds the source-driven WebFetch cache. It used to sit
 	// under .claude/, hardcoded in the two Python hooks, so a Cursor or
 	// opencode session wrote its cache into another host's directory and
@@ -63,11 +59,6 @@ func RunsDir(workspaceRoot string) string {
 	return filepath.Join(StateDir(workspaceRoot), RunsDirName)
 }
 
-// LegacyRunsDir is the old workspace-root tmp/ tree.
-func LegacyRunsDir(workspaceRoot string) string {
-	return filepath.Join(workspaceRoot, LegacyRunsDirName)
-}
-
 // SDDCacheDir is where the WebFetch cache lives for a workspace.
 func SDDCacheDir(workspaceRoot string) string {
 	return filepath.Join(StateDir(workspaceRoot), SDDCacheDirName)
@@ -94,14 +85,6 @@ func RunDirAt(workspaceRoot, date, slug string, version int) string {
 		return ""
 	}
 	return filepath.Join(RunsDir(workspaceRoot), date, slug, strconv.Itoa(version))
-}
-
-// LegacyRunDirAt is the same shape under tmp/, for unmigrated trees.
-func LegacyRunDirAt(workspaceRoot, date, slug string, version int) string {
-	if err := CheckRevision(date, version); err != nil {
-		return ""
-	}
-	return filepath.Join(LegacyRunsDir(workspaceRoot), date, slug, strconv.Itoa(version))
 }
 
 // CheckRevision reports whether date and version are usable in a path segment.
@@ -133,11 +116,7 @@ func DocsArtifact(stem, date string) (string, error) {
 }
 
 // DocsDir is the legacy flat docs path (docs/<slug>/). Prefer DocsDirAt.
+// Kept for docs migrate only; new work uses DocsDirAt.
 func DocsDir(workspaceRoot, slug string) string {
 	return filepath.Join(workspaceRoot, DocsDirName, slug)
-}
-
-// RunDir is the legacy flat run path (tmp/<slug>/). Prefer RunDirAt.
-func RunDir(workspaceRoot, slug string) string {
-	return filepath.Join(LegacyRunsDir(workspaceRoot), slug)
 }

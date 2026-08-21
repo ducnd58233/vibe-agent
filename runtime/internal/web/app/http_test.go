@@ -155,9 +155,7 @@ func TestSettingsDialogPinsURLAndHostChips(t *testing.T) {
 func TestTrajectoryOmitsEmptyPreAndLabelsHook(t *testing.T) {
 	root := t.TempDir()
 	slug := "empty-tool-rows"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
+	testutil.EnsureRunIndex(t, root, slug)
 	path := session.LogPath(root, slug)
 	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
 	for _, rec := range []session.Record{
@@ -203,15 +201,13 @@ func TestTrajectoryOmitsEmptyPreAndLabelsHook(t *testing.T) {
 func TestTrajectoryShowsGraphTransitionsFromRunLog(t *testing.T) {
 	root := t.TempDir()
 	slug := "graph-on-trajectory"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
 	stamp := time.Date(2026, 8, 19, 2, 10, 0, 0, time.UTC)
 	run, err := state.NewRun(slug, "show graph on trajectory", "goal-delivery", 50, stamp)
 	if err != nil {
 		t.Fatal(err)
 	}
 	run.CurrentNode = "research"
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
@@ -286,9 +282,7 @@ func TestTrajectoryShowsGraphTransitionsFromRunLog(t *testing.T) {
 func TestSessionRendersMarkdownAndOmitsEmptyUserTokens(t *testing.T) {
 	root := t.TempDir()
 	slug := "md-session"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
+	testutil.EnsureRunIndex(t, root, slug)
 	path := session.LogPath(root, slug)
 	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
 	records := []session.Record{
@@ -358,9 +352,7 @@ func TestSessionRendersMarkdownAndOmitsEmptyUserTokens(t *testing.T) {
 func TestChatRendersFoldedThinkingBeforeAssistant(t *testing.T) {
 	root := t.TempDir()
 	slug := "think-session"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
+	testutil.EnsureRunIndex(t, root, slug)
 	path := session.LogPath(root, slug)
 	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
 	records := []session.Record{
@@ -401,9 +393,7 @@ func TestChatRendersFoldedThinkingBeforeAssistant(t *testing.T) {
 func TestLongAssistantRowHasNoChatExpand(t *testing.T) {
 	root := t.TempDir()
 	slug := "fold-session"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
+	testutil.EnsureRunIndex(t, root, slug)
 	path := session.LogPath(root, slug)
 	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
 	rec := session.Record{
@@ -539,6 +529,7 @@ func TestCheckpointRejectsVerifierNode(t *testing.T) {
 	}
 	run.CurrentNode = "test"
 	run.Status = state.StatusRunning
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
@@ -570,7 +561,11 @@ func TestCheckpointRejectsVerifierNode(t *testing.T) {
 func TestSessionPageRedactedPromptAbsentFromHTML(t *testing.T) {
 	root := t.TempDir()
 	slug := "redact-test"
-	manifestDir := filepath.Join(root, "tmp", slug)
+	testutil.EnsureRunIndex(t, root, slug)
+	manifestDir := filepath.Dir(state.ManifestPath(root, slug))
+	if manifestDir == "." || manifestDir == "" {
+		t.Fatal("manifest path unresolved")
+	}
 	if err := os.MkdirAll(manifestDir, 0o750); err != nil {
 		t.Fatal(err)
 	}
@@ -589,6 +584,7 @@ func TestSessionPageRedactedPromptAbsentFromHTML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
@@ -860,13 +856,11 @@ func writeEmptySession(t *testing.T) (root, slug string) {
 	t.Helper()
 	root = t.TempDir()
 	slug = "empty-session"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
 	run, err := state.NewRun(slug, "empty", "goal-delivery", 50, time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
 	}
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
@@ -963,9 +957,6 @@ func TestChatQueryKeepsHumanGateVisible(t *testing.T) {
 func TestChatVerifierPromptOmitsDuplicateAndComposerHint(t *testing.T) {
 	root := t.TempDir()
 	slug := "e2e-chat-prompt"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
 	stamp := time.Date(2026, 8, 19, 2, 28, 0, 0, time.UTC)
 	run, err := state.NewRun(slug, "verifier card copy", "goal-delivery", 50, stamp)
 	if err != nil {
@@ -973,6 +964,7 @@ func TestChatVerifierPromptOmitsDuplicateAndComposerHint(t *testing.T) {
 	}
 	run.CurrentNode = "e2e"
 	run.Status = state.StatusRunning
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
@@ -1013,9 +1005,6 @@ func TestChatVerifierPromptOmitsDuplicateAndComposerHint(t *testing.T) {
 func TestChatIntakePromptShowsRunGoal(t *testing.T) {
 	root := t.TempDir()
 	slug := "intake-goal-card"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
 	stamp := time.Date(2026, 8, 19, 3, 0, 0, 0, time.UTC)
 	run, err := state.NewRun(slug, "unique-goal-xyz", "goal-delivery", 50, stamp)
 	if err != nil {
@@ -1023,6 +1012,7 @@ func TestChatIntakePromptShowsRunGoal(t *testing.T) {
 	}
 	run.CurrentNode = "intake"
 	run.Status = state.StatusAwaitingHuman
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
@@ -1060,9 +1050,6 @@ func TestChatIntakePromptShowsRunGoal(t *testing.T) {
 func TestChatIntakePromptRedactsSecretInGoal(t *testing.T) {
 	root := t.TempDir()
 	slug := "intake-goal-secret"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
 	stamp := time.Date(2026, 8, 19, 3, 5, 0, 0, time.UTC)
 	run, err := state.NewRun(slug, "ship with "+testSecret, "goal-delivery", 50, stamp)
 	if err != nil {
@@ -1070,6 +1057,7 @@ func TestChatIntakePromptRedactsSecretInGoal(t *testing.T) {
 	}
 	run.CurrentNode = "intake"
 	run.Status = state.StatusAwaitingHuman
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
@@ -1098,9 +1086,7 @@ func writeFixtureSession(t *testing.T) (root, slug string) {
 	t.Helper()
 	root = t.TempDir()
 	slug = "fixture-session"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
+	testutil.EnsureRunIndex(t, root, slug)
 	path := session.LogPath(root, slug)
 	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
 	records := []session.Record{
@@ -1133,6 +1119,7 @@ func writeFixtureSession(t *testing.T) (root, slug string) {
 	}
 	run.Status = state.StatusAwaitingHuman
 	run.CurrentNode = "approve_spec"
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
@@ -1142,9 +1129,7 @@ func writeFixtureSession(t *testing.T) (root, slug string) {
 func TestSessionPageKeepsLastComposerHost(t *testing.T) {
 	root := t.TempDir()
 	slug := "host-persist"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
+	testutil.EnsureRunIndex(t, root, slug)
 	path := session.LogPath(root, slug)
 	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
 	if _, err := session.Append(path, session.Record{
@@ -1156,6 +1141,7 @@ func TestSessionPageKeepsLastComposerHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	testutil.EnsureRunIndex(t, root, slug)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}

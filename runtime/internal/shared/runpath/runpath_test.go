@@ -106,7 +106,7 @@ func TestResolveIgnoresFlatLegacyDirs(t *testing.T) {
 	}
 }
 
-func TestBeginRefusesIndexedAndFlatRuns(t *testing.T) {
+func TestBeginRefusesIndexedRuns(t *testing.T) {
 	root := t.TempDir()
 	now := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
 	if _, err := runpath.Allocate(root, "taken", now); err != nil {
@@ -114,17 +114,6 @@ func TestBeginRefusesIndexedAndFlatRuns(t *testing.T) {
 	}
 	if _, err := runpath.Begin(root, "taken", now); err == nil {
 		t.Fatal("Begin accepted an indexed slug")
-	}
-
-	flat := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(flat, "tmp", "legacy"), 0o750); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(flat, "tmp", "legacy", "manifest.json"), []byte("{}"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := runpath.Begin(flat, "legacy", now); err == nil {
-		t.Fatal("Begin accepted a flat legacy slug")
 	}
 }
 

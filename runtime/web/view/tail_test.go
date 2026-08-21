@@ -1,14 +1,13 @@
 package view
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/web/infra/sessionread"
 )
 
@@ -117,9 +116,7 @@ func TestEventsAfterForViewTrajectoryKeepsAssistantProgress(t *testing.T) {
 func TestEventsAfterReturnsNewRowsOnly(t *testing.T) {
 	root := t.TempDir()
 	slug := "tail-test"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
+	testutil.EnsureRunIndex(t, root, slug)
 	path := session.LogPath(root, slug)
 	stamp := time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 	first, err := session.Append(path, session.Record{
@@ -161,9 +158,7 @@ func TestLastSequenceEmptyLog(t *testing.T) {
 func TestTrajectoryRowsMergesGraphTransitions(t *testing.T) {
 	root := t.TempDir()
 	slug := "graph-tail"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
-		t.Fatal(err)
-	}
+	testutil.EnsureRunIndex(t, root, slug)
 	stamp := time.Date(2026, 8, 19, 3, 0, 0, 0, time.UTC)
 	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
 		Type: "run_started", Node: "intake", At: stamp, Payload: []byte(`{"goal":"graph on trajectory"}`),

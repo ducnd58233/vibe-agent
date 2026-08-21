@@ -9,9 +9,13 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
-// LogPath is the append-only session log for a slug.
+// LogPath is the append-only session log for a slug. Empty when no run is indexed.
 func LogPath(workspaceRoot, slug string) string {
-	return filepath.Join(state.RunDir(workspaceRoot, slug), LogName)
+	dir := state.RunDir(workspaceRoot, slug)
+	if dir == "" {
+		return ""
+	}
+	return filepath.Join(dir, LogName)
 }
 
 // Append redacts and stores one session gesture.

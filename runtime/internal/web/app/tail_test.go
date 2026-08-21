@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
 func TestSessionEventsTailAppendsNewRows(t *testing.T) {
@@ -19,6 +20,7 @@ func TestSessionEventsTailAppendsNewRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	testutil.EnsureRunIndex(t, root, slug)
 	path := session.LogPath(root, slug)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug+"/events?after=6", nil)
@@ -57,10 +59,11 @@ func TestSessionEventsTailUnreadableLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	slug := "broken"
-	if err := os.MkdirAll(filepath.Join(root, "tmp", slug), 0o750); err != nil {
+	testutil.EnsureRunIndex(t, root, slug)
+	logPath := session.LogPath(root, slug)
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	logPath := session.LogPath(root, slug)
 	if err := os.WriteFile(logPath, []byte("not json\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}

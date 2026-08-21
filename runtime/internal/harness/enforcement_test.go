@@ -210,7 +210,7 @@ func TestPreToolUseDeniesEditingAManifest(t *testing.T) {
 	err := runHook(t, Request{
 		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Edit","tool_input":{"file_path":"` +
-			jsonPath(root, "tmp", "demo", "manifest.json") + `"}}`),
+			jsonPath(root, ".agent-state", "runs", "2026-08-21", "demo", "1", "manifest.json") + `"}}`),
 	})
 	var blocked *BlockError
 	if !asBlock(err, &blocked) {
@@ -225,7 +225,7 @@ func TestPreToolUseDeniesAppendingToAnEventLog(t *testing.T) {
 	root := workspaceWithRun(t)
 	err := runHook(t, Request{
 		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
-		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"echo hi >> tmp/demo/events.ndjson"}}`),
+		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"echo hi >> .agent-state/runs/2026-08-21/demo/1/events.ndjson"}}`),
 	})
 	var blocked *BlockError
 	if !asBlock(err, &blocked) {
@@ -252,7 +252,7 @@ func TestPreToolUseAllowsManifestEditsWithNoRun(t *testing.T) {
 	err := runHook(t, Request{
 		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Write","tool_input":{"file_path":"` +
-			jsonPath(root, "tmp", "demo", "manifest.json") + `"}}`),
+			jsonPath(root, ".agent-state", "runs", "2026-08-21", "demo", "1", "manifest.json") + `"}}`),
 	})
 	if err != nil {
 		t.Errorf("a manifest write was refused with no active run: %v", err)
