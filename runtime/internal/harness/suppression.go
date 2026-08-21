@@ -271,8 +271,14 @@ func suppressionVerdict(req Request, body payload) *BlockError {
 	if !ok {
 		return nil
 	}
+	// The exemption and the plan both come after the subject, for the reason
+	// dangerVerdict states: compiling a plan to match against nothing is the
+	// whole cost of a call that had nothing to check.
+	if definesTheRule(req, body.writeTarget()) {
+		return nil
+	}
 	plan := suppressionRules(req.WorkspaceRoot)
-	if plan.empty() || definesTheRule(req, body.writeTarget()) {
+	if plan.empty() {
 		return nil
 	}
 	before := suppressionBefore(req, body)
