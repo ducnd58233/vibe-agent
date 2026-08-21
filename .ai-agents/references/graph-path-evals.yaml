@@ -264,3 +264,18 @@ spec:
           - ship
           - approve_merge
           - build
+
+    # docs/auto-ship-reviews T4. human_redirect is read from every in-flight
+    # node, evaluated before that node's own edges - proven here by setting it
+    # from the start and showing the very first node reached after intake
+    # (spec, which is also mid-fan-out on the happy path above) routes
+    # straight back rather than continuing to approve_spec.
+    - name: a human redirect returns to intake from spec
+      graph: goal-delivery
+      flags: {human_redirect: true}
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {} # spec's human_redirect edge fires before its normal fallback to approve_spec
+      expect:
+        status: awaiting_human # back at intake, a human_gate, waiting on a fresh intake_confirmed
+        path: [intake, spec, intake]
