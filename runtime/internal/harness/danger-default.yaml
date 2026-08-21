@@ -89,7 +89,11 @@ spec:
         - '(?i)\bpulumi\s+destroy\b'
         - '(?i)\bkubectl\s+delete\s+(?:namespace|ns|deployment|statefulset|pvc|persistentvolumeclaim)\b'
         - '(?i)\baws\s+(?:s3\s+rb|rds\s+delete-db-instance|ec2\s+terminate-instances)\b'
-        - '(?i)\bgcloud\s+\S+\s+delete\b'
+        # One or more subcommand words, not exactly one. The old pattern read a
+        # single word between the tool and the verb, so the two-word forms people
+        # actually type went through. Found by a test asserting the families about
+        # to leave the ask tier were already covered here.
+        - '(?i)\bgcloud\s+(?:\S+\s+)+delete\b'
         - '(?i)\bdocker\s+(?:system\s+prune\s+.*--volumes|volume\s+rm)\b'
 
     - id: publication
@@ -102,3 +106,25 @@ spec:
         - '(?i)\bcargo\s+publish\b|\bgem\s+push\b'
         - '(?i)\bgh\s+release\s+create\b'
         - '(?i)\bdocker\s+push\b'
+
+    - id: local-destruction
+      reason: >-
+        This erases files or a disk on the machine it runs on, and nothing brings them back. Cloud
+        destruction was already on this list; the local kind was not, which left a prompt as the
+        only thing in its way and no prompt at all when nobody is watching.
+      commands:
+        # Recursive force-removal aimed at a root, a home, or a parent. Narrow on
+        # purpose: `rm -rf tmp/scratch` is daily work and stays allowed, because a
+        # rule that fires on ordinary work gets switched off and takes the whole
+        # protection with it. The flags are matched in either order and in either
+        # of the two spellings people actually type.
+        - '(?i)\brm\s+(?:-[a-z]*\s+)*-{1,2}(?:rf|fr|recursive|force)[a-z]*\s+(?:-\S+\s+)*(?:/|~|\$HOME|\$\{HOME\}|\.\.)\s*$'
+        - '(?i)\brm\s+(?:-[a-z]*\s+)*-{1,2}(?:rf|fr)\s+(?:-\S+\s+)*(?:/\*|~/\*|\$HOME/\*|[A-Za-z]:[\\/]?\s*$)'
+        # Writing to a block device is not writing a file.
+        - '(?i)\bdd\b[^|;]*\bof=/dev/'
+        # Making a filesystem, or repartitioning, ends whatever was there.
+        - '(?i)\bmkfs(?:\.[a-z0-9]+)?\s'
+        - '(?i)\b(?:fdisk|parted|diskpart)\s+(?:/dev/|[A-Za-z]:)'
+        # Overwriting a file so it cannot be recovered is the whole point of the
+        # tool, which makes every use of it the dangerous form.
+        - '(?i)\bshred\s+'
