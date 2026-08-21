@@ -9,7 +9,13 @@
 // module and depends on nothing.
 package workspace
 
-import "path/filepath"
+import (
+	"fmt"
+	"path/filepath"
+	"strconv"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/validate"
+)
 
 const (
 	// StateDirName holds state derived from a checkout: caches and databases
@@ -27,10 +33,14 @@ const (
 	// nothing reported it. Derived state has one home.
 	SDDCacheDirName = "sdd-cache"
 
-	// DocsDirName holds one directory per slug: the spec, plan, task list, and
-	// research a run produced. Tracked or ignored by the workspace's own
-	// choice, unlike the two above, which are always ignored.
+	// DocsDirName holds written deliverables: specs, plans, task lists.
+	// Tracked or ignored by the workspace's own choice, unlike the two above,
+	// which are always ignored. Layout is docs/<date>/<slug>/<version>/.
 	DocsDirName = "docs"
+
+	// RunIndexDirName holds one JSON pointer per slug under StateDirName so
+	// CLI and web can resolve the current (date, version) without scanning.
+	RunIndexDirName = "run-index"
 
 	// EnvSDDCacheDir hands the resolved cache directory to the hook scripts.
 	// They cannot import this constant, so the runtime passes it instead of
@@ -53,12 +63,65 @@ func SDDCacheDir(workspaceRoot string) string {
 	return filepath.Join(StateDir(workspaceRoot), SDDCacheDirName)
 }
 
-// DocsDir is where a slug's written deliverables live.
+// RunIndexDir is where per-slug current-revision pointers live.
+func RunIndexDir(workspaceRoot string) string {
+	return filepath.Join(StateDir(workspaceRoot), RunIndexDirName)
+}
+
+// DocsDirAt is the versioned docs directory for one revision.
+// date must be YYYY-MM-DD; version must be >= 1. Invalid inputs return "".
+func DocsDirAt(workspaceRoot, date, slug string, version int) string {
+	if err := CheckRevision(date, version); err != nil {
+		return ""
+	}
+	return filepath.Join(workspaceRoot, DocsDirName, date, slug, strconv.Itoa(version))
+}
+
+// RunDirAt is the versioned run/evidence directory for one revision.
+// date must be YYYY-MM-DD; version must be >= 1. Invalid inputs return "".
+func RunDirAt(workspaceRoot, date, slug string, version int) string {
+	if err := CheckRevision(date, version); err != nil {
+		return ""
+	}
+	return filepath.Join(RunsDir(workspaceRoot), date, slug, strconv.Itoa(version))
+}
+
+// CheckRevision reports whether date and version are usable in a path segment.
+func CheckRevision(date string, version int) error {
+	if !validate.Date(date) {
+		return fmt.Errorf("date %q is not YYYY-MM-DD", date)
+	}
+	if version < 1 {
+		return fmt.Errorf("version %d must be >= 1", version)
+	}
+	return nil
+}
+
+// DocsArtifact is the dated basename for a docs deliverable.
+// stem is SPEC, PLAN, TASKS, tasks, RESEARCH, and so on.
+// Markdown stems get .md; the stem "tasks" gets .json.
+func DocsArtifact(stem, date string) (string, error) {
+	if stem == "" {
+		return "", fmt.Errorf("artifact stem is empty")
+	}
+	if !validate.Date(date) {
+		return "", fmt.Errorf("date %q is not YYYY-MM-DD", date)
+	}
+	ext := ".md"
+	if stem == "tasks" {
+		ext = ".json"
+	}
+	return stem + "-" + date + ext, nil
+}
+
+// DocsDir is the legacy flat docs path (docs/<slug>/). Prefer DocsDirAt.
+// Kept until callers move to the run index in the wiring task.
 func DocsDir(workspaceRoot, slug string) string {
 	return filepath.Join(workspaceRoot, DocsDirName, slug)
 }
 
-// RunDir is one run's directory, by slug.
+// RunDir is the legacy flat run path (tmp/<slug>/). Prefer RunDirAt.
+// Kept until callers move to the run index in the wiring task.
 func RunDir(workspaceRoot, slug string) string {
 	return filepath.Join(RunsDir(workspaceRoot), slug)
 }

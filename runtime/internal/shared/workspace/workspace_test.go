@@ -29,3 +29,34 @@ func TestRunsAndStateAreDifferentDirectories(t *testing.T) {
 		t.Fatal("state and runs resolved to one directory")
 	}
 }
+
+func TestVersionedDirsSitUnderDateSlugVersion(t *testing.T) {
+	root := filepath.FromSlash("/w")
+	docs := DocsDirAt(root, "2026-08-21", "demo", 2)
+	run := RunDirAt(root, "2026-08-21", "demo", 2)
+	wantDocs := filepath.Join(root, DocsDirName, "2026-08-21", "demo", "2")
+	wantRun := filepath.Join(root, RunsDirName, "2026-08-21", "demo", "2")
+	if docs != wantDocs {
+		t.Errorf("DocsDirAt = %q, want %q", docs, wantDocs)
+	}
+	if run != wantRun {
+		t.Errorf("RunDirAt = %q, want %q", run, wantRun)
+	}
+	if !strings.HasPrefix(RunIndexDir(root), StateDir(root)) {
+		t.Errorf("RunIndexDir = %q, want under state", RunIndexDir(root))
+	}
+}
+
+func TestDocsArtifactDatedBasename(t *testing.T) {
+	got, err := DocsArtifact("SPEC", "2026-08-21")
+	if err != nil || got != "SPEC-2026-08-21.md" {
+		t.Fatalf("DocsArtifact(SPEC) = %q, %v", got, err)
+	}
+	got, err = DocsArtifact("tasks", "2026-08-21")
+	if err != nil || got != "tasks-2026-08-21.json" {
+		t.Fatalf("DocsArtifact(tasks) = %q, %v", got, err)
+	}
+	if _, err := DocsArtifact("PLAN", "bad"); err == nil {
+		t.Fatal("expected error for bad date")
+	}
+}
