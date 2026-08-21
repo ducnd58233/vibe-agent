@@ -60,7 +60,7 @@ func skipFile(rel, abs string) bool {
 	if err != nil || info.Size() > MaxFileBytes {
 		return true
 	}
-	data, err := os.ReadFile(filepath.Clean(abs)) //nolint:gosec // abs is joined from walked workspace paths only
+	data, err := os.ReadFile(filepath.Clean(abs))
 	if err != nil {
 		return true
 	}
