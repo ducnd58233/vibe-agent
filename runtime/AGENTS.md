@@ -74,7 +74,7 @@ runtime/
 
 **Run and session state (MUST):**
 
-- Run state lives under **`tmp/<slug>/manifest.json`**. Do not write it directly; use **`checkpoint`** and **`run`** packages.
+- Run state lives under **`tmp/<date>/<slug>/<version>/manifest.json`** (the versioned layout `RunDir` resolves first; a flat `tmp/<slug>/manifest.json` is the legacy fallback used only when versioned resolution fails). Do not write it directly; use **`checkpoint`** and **`run`** packages.
 - Session logs are append-only NDJSON. Do not truncate or rewrite them.
 </required>
 
@@ -221,8 +221,9 @@ Any change under **`runtime/web/`**, **`runtime/internal/web/`**, or **`web/stat
 
 1. **Run the loopback server:** `vibe-agent web --workspace .` (binds **`127.0.0.1:3080`** only).
 2. **Exercise affected flows in a real browser** (Cursor browser MCP, Playwright, or manual). At minimum hit every route or HTMX partial you touched, plus one happy path and one error path when the change affects errors or forms.
-3. **Record evidence** under **`tmp/<slug>/browser/`** at the workspace root (gitignored). For each session include:
-   - `RECORD.md` with date, branch, flows tested, pass/fail, and notes.
+   - **No browser automation available?** Drive the running server directly with an HTTP/SSE client (`curl`, or a small Go test) as the minimum bar for wire-level/functional behavior: status codes, headers, streaming (e.g. does an SSE endpoint actually deliver events, not just accept the connection). This is not a substitute for a visual check when the change is CSS/layout-only, but skipping verification entirely because no browser tool is connected is not an option either.
+3. **Record evidence** under **`tmp/<date>/<slug>/<version>/browser/`** (the versioned layout; a flat `tmp/<slug>/browser/` is the legacy fallback) at the workspace root (gitignored). For each session include:
+   - `RECORD.md` with date, branch, flows tested, pass/fail, and notes. Note explicitly when the fallback HTTP/SSE client stood in for a browser, and what it did and did not cover.
    - Screenshots or short notes for before/after when the change is visual.
    - Redact before write; no credentials or full file contents in evidence.
 4. **Do not skip browser checks** because unit tests passed. HTMX partials, SSE, composer alignment, and dialog behavior are not fully covered by `go test`.
@@ -245,4 +246,5 @@ CSS/HTML-only tweaks: verify at desktop (`>68.75em`) and mobile (`<48em`) per **
 8. **Duplicate middleware or shutdown logic** outside **`httpserver.Serve`** / **`StandardStack`**.
 9. **Magic port/timeouts** instead of **`DefaultPort`**, **`readHeaderTimeout`**, **`shutdownTimeout`** in shared httpserver.
 10. **Committing generated plugin manifests** under **`.claude-plugin/`**, **`.cursor-plugin/`**, etc. If tracked by mistake, **`git rm --cached`**.
+11. **Wrapping `http.ResponseWriter` in a struct silently drops `http.Flusher`** (and similarly `http.Hijacker`, `io.ReaderFrom`) unless the wrapper forwards it explicitly - embedding an interface only promotes that interface's own method set, not extra methods the concrete value underneath happens to have. This broke every SSE request (`stream unsupported`) when the access-log middleware's status-capturing wrapper had no `Flush()` passthrough. Any `http.ResponseWriter` wrapper needs an explicit `Flush() { if f, ok := w.ResponseWriter.(http.Flusher); ok { f.Flush() } }`-shaped method (and the `Hijacker`/`ReaderFrom` equivalents if those matter to the route).
 </antipatterns>
