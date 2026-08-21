@@ -2,7 +2,14 @@
 
 <context>
 
-This file explains how **permission documentation** in `.ai-agents` assets connects to **Claude Code** configuration. **Cursor** does not use the same `settings.json` matrix; use [`.cursor/rules`](../.cursor/rules) and workspace trust.
+This file explains how **permission documentation** in `.ai-agents` assets connects to each host's
+configuration: [`.claude/settings.json`](../.claude/settings.json) for Claude Code,
+[`.cursor/cli.json`](../.cursor/cli.json) for `cursor-agent`, [`.codex/config.toml`](../.codex/config.toml)
+for Codex, [`opencode.json`](../opencode.json) for OpenCode. All four share one posture: a broad
+allow, with the `pre-tool-use` danger-list hook — command-precise, unbypassable, fires for every
+host — as the real safety backstop, not an interactive `ask` tier. `ask` (or its host-specific
+equivalent) is kept minimal on purpose: nobody answers a prompt in `/auto`, so an `ask` entry there
+stalls an unattended run while doing nothing a command-precise refusal wouldn't already catch.
 Permissions described here are for reusable agent assets, not for domain-specific product workflows.
 </context>
 
@@ -20,13 +27,19 @@ When you add or change a skill, agent, command, or hook:
 
 1. Fill the **Permissions & authority** section in that folder's [`TEMPLATE.md`](./skills/TEMPLATE.md) (or equivalent).
 2. If new tool patterns are required project-wide, extend `.claude/settings.json` in a dedicated PR and mention it here or in the PR description.
-3. Prefer a **narrow default posture**: allow read/discovery and repo-local validation, ask for broad edits/network/package/deploy commands, and deny known secret/destructive patterns.
+3. Prefer a **broad allow, minimal ask, danger-list backstop** posture (below), not a narrow allow
+   with broad `ask` — an `ask` entry stalls any unattended `/auto` run, so the command-precise
+   `pre-tool-use` danger list is the actual safety instrument, not the permission tiers.
 
 Current project posture:
 
-- Allows common reads, router checks, link scripts, scoped edits under AI asset/config paths, and selected documentation fetch domains.
-- Asks for broad shell/edit/web/MCP patterns and dependency/deploy/admin commands.
-- Denies common secret files and force-push patterns.
+- Allows nearly everything routine: reads, edits under `Edit(**)`, git (including `push`/`merge`/
+  `rebase`/`worktree`), `gh`, `go`/`gofmt`/`golangci-lint`, `make`, script runners, common CLI
+  utilities, `WebFetch`.
+- Asks for almost nothing: `NotebookEdit`, `chmod`, `chown`, `kill`, `killall`, `pkill` only. Nothing
+  else is in `ask`, deliberately — see the note above.
+- Denies credential-shaped file reads, `git push --force`, `git clean`, `git push --mirror`,
+  `git filter-branch`, and hand-writes to a run's own `manifest.json`/`events.ndjson`.
 - **Deny patterns must be specific enough to miss ordinary source files.** A broad `Read(**/*token*)` also blocked runtime guard code and design-token files such as `tokens.json`, and because deny overrides allow there is no way to grant an exception. It is now a set of credential-shaped patterns (`*access_token*`, `*refresh_token*`, `*auth_token*`, `*api_token*`, `*id_token*`, `.token*`, `token.json`). When adding a deny rule, check it against real repository paths before committing it.
 - See [`references/tool-safety-and-permissions.md`](references/tool-safety-and-permissions.md) for the hardening checklist.
 </procedure>
@@ -42,12 +55,61 @@ After changing subagent `tools:` frontmatter, smoke-test delegation in Claude Co
 
 ## Cursor
 
-<references>
+<procedure>
 
-- No duplicate of Claude `permissions` JSON.
-- Encode guardrails in [`.cursor/rules/*.mdc`](../.cursor/rules).
-- Refer to [`CURSOR.md`](../CURSOR.md) for onboarding.
-</references>
+`cursor-agent` (the Cursor CLI) reads [`.cursor/cli.json`](../.cursor/cli.json): `permissions.allow`/
+`permissions.deny` only — **no `ask` tier exists in Cursor's schema**, so there is no equivalent of
+Claude's minimal-`ask` pattern to opt into; an unlisted tool is simply not allowed. Real tool names,
+confirmed by provoking actual permission messages rather than assumed: `Read`, `Write` (not `Edit`
+— Cursor's own write tool is named `Write`), `Shell`, `WebFetch`. The file has **no comment field in
+its schema** — a `$comment` key at the top level fails validation with `unrecognized_keys` and
+`cursor-agent` refuses to start at all; put any explanation in this doc instead, not in the JSON.
+
+Current project posture: broad `Write`/`Shell`/`Read`/`WebFetch` allow matching Claude's breadth;
+deny mirrors Claude's (credential-shaped reads, `rm`/`shred`, force-push and history-rewrite git
+forms, hand-writes to a run's own `manifest.json`/`events.ndjson`).
+
+Guardrails also live in [`.cursor/rules/*.mdc`](../.cursor/rules) (prose, not permission enforcement)
+and [`.cursor/hooks.json`](../.cursor/hooks.json) (wires the vibe-agent control plane — the
+`pre-tool-use` danger list, separate from and in addition to `cli.json`'s allow/deny). See
+[`CURSOR.md`](../CURSOR.md) for onboarding.
+
+**Known defect, not fixed by this posture:** `cursor-agent` (measured 2026.08.11 and again
+2026-08-21) wraps a hook command in PowerShell and executes it with a POSIX shell on Windows, so the
+hook process never starts — `runtime/internal/harness/contracts.go` documents this as a host-side
+bug nothing in this repository can wire around. On Windows, every Cursor tool call is blocked by that
+broken hook regardless of what `cli.json` allows, until Cursor fixes it upstream.
+</procedure>
+
+## Codex
+
+<procedure>
+
+Codex has **no command-level allow/deny list at all** — verified against the live config reference,
+not assumed. `approval_policy` (`untrusted` | `on-request` | `never` | a granular object) and
+`sandbox_mode` (`read-only` | `workspace-write` | `danger-full-access`) are the whole permission
+surface in [`.codex/config.toml`](../.codex/config.toml). Parity with the other three hosts here is
+a **policy** match, not a config-shape match: `approval_policy = "never"` (no prompt ever blocks an
+unattended run — Claude's near-empty `ask` reasoning, applied to Codex's own mechanism) and
+`sandbox_mode = "workspace-write"` (broad within-workspace file access, matching `Edit(**)`'s
+breadth — not `danger-full-access`, not `read-only`). The `pre-tool-use` danger-list hook still
+fires for Codex via its MCP registration in the same file and is still the real backstop.
+</procedure>
+
+## OpenCode
+
+<procedure>
+
+[`opencode.json`](../opencode.json)'s `permission.edit`/`permission.bash` matches Claude's shape most
+closely: per-path/per-command `allow`/`ask`/`deny`, most-specific-match-wins (a `deny` entry always
+overrides the `"*"` default, confirmed empirically — a broader default does not need clearing every
+specific rule first). Current posture: `"*": "allow"` for both `edit` and `bash` (an `ask` default
+stalls an unattended run, same reasoning as Claude), with the same specific denies Claude has
+(`rm *`, `shred *`, `git push --force*`, `git clean *`, `git push --mirror*`, `git filter-branch*`).
+`opencode.json`'s schema, like Cursor's, has **no comment field** — an unrecognized key anywhere
+under `permission` fails validation (`Expected PermissionActionConfig, got "..."`) and `opencode`
+refuses to load the config at all.
+</procedure>
 
 ## Runtime control plane
 
