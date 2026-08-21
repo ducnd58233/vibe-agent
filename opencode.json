@@ -17,24 +17,17 @@
   ],
   "permission": {
     "edit": {
-      "*": "ask",
-      ".ai-agents/**": "allow",
-      ".vibe-agent/.ai-agents/**": "allow",
-      "scripts/**": "allow",
-      ".vibe-agent/scripts/**": "allow",
-      ".cursor/**": "allow",
-      ".claude/**": "allow",
-      "*.md": "allow"
+      "*": "allow",
+      "~/**": "deny"
     },
     "bash": {
-      "*": "ask",
-      "git status": "allow",
-      "git diff*": "allow",
-      "git log*": "allow",
-      "ls *": "allow",
-      "cat *": "allow",
+      "*": "allow",
       "rm *": "deny",
-      "git push --force*": "deny"
+      "shred *": "deny",
+      "git push --force*": "deny",
+      "git clean *": "deny",
+      "git push --mirror*": "deny",
+      "git filter-branch*": "deny"
     },
     "webfetch": "allow",
     "websearch": "allow"

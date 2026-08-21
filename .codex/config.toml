@@ -7,6 +7,23 @@
 # Relative to this file's directory (.codex/); repo charter lives at workspace root.
 model_instructions_file = "../AGENTS.md"
 
+# Permission parity with Claude/Cursor/OpenCode: one broad, unattended-safe
+# posture, with the pre-tool-use danger-list hook (contracts.go) as the real
+# backstop rather than an interactive prompt tier. Codex has no command-level
+# allow/deny list at all (verified against the live config reference, not
+# assumed) -- approval_policy and sandbox_mode are the whole permission
+# surface, so parity here is a policy match, not a config-shape match.
+#
+# approval_policy = "never": no prompt ever blocks an unattended run, the same
+# reasoning Claude's near-empty `ask` list already documents -- nobody answers
+# a prompt in auto mode, so the danger list (command-precise, unbypassable)
+# carries the safety weight instead.
+# sandbox_mode = "workspace-write": broad file access within the workspace,
+# matching Claude's Edit(**) breadth -- not "danger-full-access" (reckless),
+# not "read-only" (breaks build/edit work).
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+
 # Subagent fan-out defaults; custom agents are generated under .codex/agents/ by scripts/link-ai-agents.*
 [agents]
 max_threads = 8
