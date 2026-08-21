@@ -3,6 +3,7 @@ package mcp
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -694,6 +695,84 @@ func TestAFailedFetchReturnsAnActionableError(t *testing.T) {
 func TestFetchRefusesAnEmptySource(t *testing.T) {
 	if _, err := fetchSource(Deps{WorkspaceRoot: t.TempDir()}, json.RawMessage(`{"source":"  "}`)); err == nil {
 		t.Error("an empty source was accepted")
+	}
+}
+
+func TestFetchClipFromTailKeepsTheEnd(t *testing.T) {
+	root := t.TempDir()
+	var b strings.Builder
+	for i := 0; i < 300; i++ {
+		fmt.Fprintf(&b, "line-%03d\n", i)
+	}
+	path := filepath.Join(root, "long.log")
+	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := fetchSource(Deps{WorkspaceRoot: root}, json.RawMessage(
+		`{"source":`+quote(path)+`,"budget":40,"clipFrom":"tail"}`))
+	if err != nil {
+		t.Fatalf("fetchSource: %v", err)
+	}
+	result, ok := out.(map[string]any)
+	if !ok {
+		t.Fatalf("result is %T, want a map", out)
+	}
+	text, _ := result["text"].(string)
+	if !strings.Contains(text, "line-299") {
+		t.Fatalf("tail clip missing last line: %q", text)
+	}
+	if strings.Contains(text, "line-000") {
+		t.Fatalf("tail clip kept the start: %q", text)
+	}
+	if omitted, _ := result["omittedLines"].(int); omitted <= 0 {
+		t.Error("omittedLines should report dropped leading lines")
+	}
+	if from, _ := result["clipFrom"].(string); from != "tail" {
+		t.Errorf("clipFrom=%q, want tail", from)
+	}
+}
+
+func TestFetchCheckShorthandReadsVerifierLog(t *testing.T) {
+	root := t.TempDir()
+	entry, err := state.PrepareStart(root, "clip-check", at())
+	if err != nil {
+		t.Fatalf("PrepareStart: %v", err)
+	}
+	runDir := state.RunDir(root, "clip-check")
+	if runDir == "" {
+		t.Fatal("RunDir empty after PrepareStart")
+	}
+	_ = entry
+	logDir := filepath.Join(runDir, "unit")
+	if err := os.MkdirAll(logDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	body := strings.Repeat("HEAD\n", 80) + "TAIL-MARKER\n"
+	if err := os.WriteFile(filepath.Join(logDir, "unit.log"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := fetchSource(Deps{WorkspaceRoot: root}, json.RawMessage(
+		`{"source":"check:clip-check:unit","budget":30,"clipFrom":"tail"}`))
+	if err != nil {
+		t.Fatalf("fetchSource check: %v", err)
+	}
+	result, ok := out.(map[string]any)
+	if !ok {
+		t.Fatalf("result is %T, want a map", out)
+	}
+	text, _ := result["text"].(string)
+	if !strings.Contains(text, "TAIL-MARKER") {
+		t.Fatalf("check: fetch missed log tail: %q", text)
+	}
+
+	_, err = fetchSource(Deps{WorkspaceRoot: root}, json.RawMessage(
+		`{"source":"check:clip-check:missing"}`))
+	if err == nil {
+		t.Fatal("missing check log returned no error")
+	}
+	if !strings.Contains(err.Error(), "not run yet") {
+		t.Errorf("want not-run-yet error, got %v", err)
 	}
 }
 

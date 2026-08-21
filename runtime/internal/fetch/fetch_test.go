@@ -1,13 +1,15 @@
 package fetch
 
 import (
-	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch/app/usecases"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch/app/usecases"
 )
 
 const page = `<html><head><title>Guide</title><script>var x=1</script></head>
@@ -198,5 +200,28 @@ func TestGetReportsTheHTTPStatusItWasRefusedWith(t *testing.T) {
 	_, _, err := Get(t.Context(), t.TempDir(), server.URL, Options{})
 	if err == nil || !strings.Contains(err.Error(), "404") {
 		t.Errorf("a 404 was not reported as one: %v", err)
+	}
+}
+
+func TestClipFromTailKeepsTheEnd(t *testing.T) {
+	var b strings.Builder
+	for i := 0; i < 200; i++ {
+		fmt.Fprintf(&b, "line-%03d\n", i)
+	}
+	text := b.String()
+	clipped, omitted := ClipFrom(text, 20, "tail")
+	if !strings.Contains(clipped, "line-199") {
+		t.Fatalf("tail clip missing last line: %q", clipped)
+	}
+	if strings.Contains(clipped, "line-000") {
+		t.Fatalf("tail clip kept the start: %q", clipped)
+	}
+	if omitted <= 0 {
+		t.Fatal("omittedLines should count dropped leading lines")
+	}
+	head, _ := ClipFrom(text, 20, "head")
+	legacy, _ := Clip(text, 20)
+	if head != legacy {
+		t.Fatal("ClipFrom head must match Clip")
 	}
 }

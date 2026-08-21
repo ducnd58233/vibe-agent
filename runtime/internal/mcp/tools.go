@@ -83,9 +83,9 @@ func Tools(deps Deps) []Tool {
 			// a short tool list exists to protect, which is the argument for its
 			// place in a list that is deliberately short.
 			Name: "vibe_fetch",
-			Description: "Call to read a URL or local path as text clipped to a token budget and cached. " +
-				"Do not call again for a source already fetched this session unless you need a refresh.",
-			InputSchema: schema(`{"type":"object","required":["source"],"properties":{"source":{"type":"string","description":"URL or path"},"budget":{"type":"integer","minimum":1,"description":"Approximate token budget for the returned text"},"refresh":{"type":"boolean","description":"Bypass the cache"}}}`),
+			Description: "Call to read a URL, local path, or check:<slug>:<name> log as text clipped to a token budget and cached. " +
+				"Do not call again for a source already fetched this session unless you need a refresh or a different clipFrom.",
+			InputSchema: schema(`{"type":"object","required":["source"],"properties":{"source":{"type":"string","description":"URL, path, or check:<slug>:<name> for a verifier log"},"budget":{"type":"integer","minimum":1,"description":"Approximate token budget for the returned text"},"refresh":{"type":"boolean","description":"Bypass the cache"},"clipFrom":{"type":"string","enum":["head","tail"],"description":"Keep the start (default) or the end of a long document"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return fetchSource(deps, raw) },
 		},
 		{
@@ -591,9 +591,10 @@ const DefaultFetchBudget = 4000
 // replace.
 func fetchSource(deps Deps, raw json.RawMessage) (any, error) {
 	var args struct {
-		Source  string `json:"source"`
-		Budget  int    `json:"budget"`
-		Refresh bool   `json:"refresh"`
+		Source   string `json:"source"`
+		Budget   int    `json:"budget"`
+		Refresh  bool   `json:"refresh"`
+		ClipFrom string `json:"clipFrom"`
 	}
 	if err := json.Unmarshal(raw, &args); err != nil {
 		return nil, fmt.Errorf("vibe_fetch: %w", err)
@@ -605,19 +606,28 @@ func fetchSource(deps Deps, raw json.RawMessage) (any, error) {
 	if budget <= 0 {
 		budget = DefaultFetchBudget
 	}
+	clipFrom := args.ClipFrom
+	if clipFrom == "" {
+		clipFrom = "head"
+	}
+	if clipFrom != "head" && clipFrom != "tail" {
+		return nil, fmt.Errorf("vibe_fetch clipFrom must be head or tail, got %q", clipFrom)
+	}
+
+	source, err := resolveFetchSource(deps.WorkspaceRoot, args.Source)
+	if err != nil {
+		return nil, err
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), fetchTimeout)
 	defer cancel()
 
-	document, cached, err := fetch.Get(ctx, deps.WorkspaceRoot, args.Source, fetch.Options{Refresh: args.Refresh})
+	document, cached, err := fetch.Get(ctx, deps.WorkspaceRoot, source, fetch.Options{Refresh: args.Refresh})
 	if err != nil {
-		// An error the model can act on, not a panic: it says which source and
-		// what went wrong, so the next move can be a different URL rather than
-		// the same one again.
 		return nil, fmt.Errorf("vibe_fetch %s: %w", args.Source, err)
 	}
 
-	clipped, omitted := fetch.Clip(document.Text, budget)
+	clipped, omitted := fetch.ClipFrom(document.Text, budget, clipFrom)
 	return map[string]any{
 		"source":       args.Source,
 		"title":        document.Title,
@@ -625,7 +635,34 @@ func fetchSource(deps Deps, raw json.RawMessage) (any, error) {
 		"cached":       cached,
 		"omittedLines": omitted,
 		"tokens":       fetch.EstimateTokens(clipped),
+		"clipFrom":     clipFrom,
 	}, nil
+}
+
+// resolveFetchSource maps check:<slug>:<name> onto the verifier log convention
+// RunDir/<name>/<name>.log. Other sources pass through unchanged.
+func resolveFetchSource(workspaceRoot, source string) (string, error) {
+	const prefix = "check:"
+	if !strings.HasPrefix(source, prefix) {
+		return source, nil
+	}
+	rest := strings.TrimPrefix(source, prefix)
+	slug, name, ok := strings.Cut(rest, ":")
+	if !ok || slug == "" || name == "" {
+		return "", fmt.Errorf("vibe_fetch check source must be check:<slug>:<name>, got %q", source)
+	}
+	runDir := state.RunDir(workspaceRoot, slug)
+	if runDir == "" {
+		return "", fmt.Errorf("vibe_fetch check:%s:%s: run not started yet", slug, name)
+	}
+	path := filepath.Join(runDir, name, name+".log")
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("vibe_fetch check:%s:%s: not run yet", slug, name)
+		}
+		return "", fmt.Errorf("vibe_fetch check:%s:%s: %w", slug, name, err)
+	}
+	return path, nil
 }
 
 // fetchTimeout bounds one call. A tool that hangs is worse than one that fails,
