@@ -8,12 +8,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -48,25 +50,71 @@ func toolkitRoot(t *testing.T) string {
 	return root
 }
 
-func buildBinary(t *testing.T) string {
-	t.Helper()
+// binaryDir holds the one binary every test in this package shares. Set by
+// TestMain so it can be removed when the suite ends; a t.TempDir() would be
+// gone before the next test asked for it.
+var binaryDir string
+
+// sharedBinary builds the program once for the whole package.
+//
+// Every test needs the same bytes, and there are twenty-five call sites. Each
+// used to link its own copy into its own t.TempDir() at roughly eight seconds,
+// which is most of what the suite spent. sync.OnceValues is the idiom this
+// module already uses for the danger and suppression plans; here it wraps a
+// process that genuinely should run once.
+//
+// The error is returned rather than raised, so the test that asked is the one
+// that fails, with the build output attached.
+var sharedBinary = sync.OnceValues(func() (string, error) {
 	if _, err := safexec.LookPath("go"); err != nil {
-		t.Skip("go toolchain not on PATH")
+		return "", errNoToolchain
 	}
 	name := "vibe-agent"
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
-	binary := filepath.Join(t.TempDir(), name)
+	binary := filepath.Join(binaryDir, name)
 
-	build, err := safexec.CommandContext(t.Context(), "go", "build", "-o", binary, "./cmd")
+	root, err := filepath.Abs("..")
 	if err != nil {
-		t.Fatalf("build command: %v", err)
+		return "", fmt.Errorf("resolve module root: %w", err)
 	}
-	build.Dir = moduleRoot(t)
+	build, err := safexec.CommandContext(context.Background(), "go", "build", "-o", binary, "./cmd")
+	if err != nil {
+		return "", fmt.Errorf("build command: %w", err)
+	}
+	build.Dir = root
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build: %v: %s", err, out)
+	if out, buildErr := build.CombinedOutput(); buildErr != nil {
+		return "", fmt.Errorf("build: %w: %s", buildErr, out)
+	}
+	return binary, nil
+})
+
+// errNoToolchain is a skip rather than a failure: this suite is the only one
+// that compiles the program, and a machine without Go can still run the rest.
+var errNoToolchain = errors.New("go toolchain not on PATH")
+
+func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "vibe-e2e-")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "e2e: temp dir: %v\n", err)
+		os.Exit(1)
+	}
+	binaryDir = dir
+	code := m.Run()
+	_ = os.RemoveAll(dir)
+	os.Exit(code)
+}
+
+func buildBinary(t *testing.T) string {
+	t.Helper()
+	binary, err := sharedBinary()
+	if errors.Is(err, errNoToolchain) {
+		t.Skip(err.Error())
+	}
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 	return binary
 }
