@@ -92,12 +92,18 @@ func settledDocs(t *testing.T, root, slug string, done bool) {
 	tasksJSON := fmt.Sprintf("tasks-%s.json", current.Date)
 	write(t, filepath.Join(docs, spec), "# Spec\n\n## Open questions\n\n- None.\n")
 	write(t, filepath.Join(docs, plan), "# Plan\n\n## Open questions\n\n- None.\n")
-	write(t, filepath.Join(docs, tasksMD), "# Tasks\n\n- T1 the only task\n")
 
 	status := "queued"
+	headingStatus := "queued"
+	acBox := "- [ ] criteria"
 	if done {
 		status = "done"
+		headingStatus = "done"
+		acBox = "- [x] criteria"
 	}
+	write(t, filepath.Join(docs, tasksMD), fmt.Sprintf(
+		"# Tasks\n\n## T1: the only task  [%s]\n\n**Acceptance criteria:**\n%s\n",
+		headingStatus, acBox))
 	write(t, filepath.Join(docs, tasksJSON),
 		fmt.Sprintf(`{"schemaVersion":1,"slug":%q,"date":%q,"version":%d,"tasks":[{"id":"T1","title":"the only task","status":%q}]}`,
 			slug, current.Date, current.Version, status))
