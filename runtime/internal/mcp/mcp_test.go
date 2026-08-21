@@ -10,7 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 const toolkitRoot = "../../.."
@@ -407,6 +409,60 @@ func TestProposingCreatesTheDatabase(t *testing.T) {
 	}
 	if _, err := os.Stat(memory.DBPath(root)); err != nil {
 		t.Errorf("a stored memory left no database at %s", memory.DBPath(root))
+	}
+}
+
+func loadGoalDeliveryGraphForTest(t *testing.T) *graph.Graph {
+	t.Helper()
+	g, err := graph.LoadByID(graph.DefaultDir(toolkitRoot), "goal-delivery")
+	if err != nil {
+		t.Fatalf("load goal-delivery graph: %v", err)
+	}
+	return g
+}
+
+func newRunAt(t *testing.T, g *graph.Graph, node string) *state.Run {
+	t.Helper()
+	run, err := state.NewRun("demo", "goal", g.Metadata.ID, g.Spec.MaxTransitions, at())
+	if err != nil {
+		t.Fatalf("new run: %v", err)
+	}
+	run.CurrentNode = node
+	return run
+}
+
+// relevantTools narrows what a model should call next without narrowing what
+// it can call: only vibe_checkpoint/vibe_verify visibility varies by node
+// type, since those two are the only tools that already error at the wrong
+// node.
+func TestRelevantToolsHintPerNodeType(t *testing.T) {
+	g := loadGoalDeliveryGraphForTest(t)
+	cases := []struct {
+		node string
+		want []string
+	}{
+		{"intake", []string{"vibe_checkpoint"}}, // human_gate
+		{"spec", []string{"vibe_checkpoint"}},   // artifact
+		{"build", []string{"vibe_checkpoint"}},  // agent
+		{"test", []string{"vibe_verify"}},       // verifier
+		{"done", []string{}},                    // terminal
+	}
+	for _, tc := range cases {
+		run := newRunAt(t, g, tc.node)
+		out := describe(g, run)
+		action := object(t, out["requiredAction"], "requiredAction")
+		got := action["relevantTools"]
+		gotList, _ := got.([]string)
+		if len(gotList) != len(tc.want) {
+			t.Errorf("node %q: relevantTools = %v, want %v", tc.node, got, tc.want)
+			continue
+		}
+		for i, name := range tc.want {
+			if gotList[i] != name {
+				t.Errorf("node %q: relevantTools = %v, want %v", tc.node, got, tc.want)
+				break
+			}
+		}
 	}
 }
 

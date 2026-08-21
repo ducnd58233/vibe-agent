@@ -445,7 +445,10 @@ func describe(loaded *graph.Graph, run *state.Run) map[string]any {
 		}
 	}
 
-	action := map[string]any{"kind": string(node.Type), "description": node.Description}
+	action := map[string]any{
+		"kind": string(node.Type), "description": node.Description,
+		"relevantTools": relevantToolsFor(node.Type),
+	}
 	switch node.Type {
 	case graph.NodeAgent:
 		action["command"] = node.Command
@@ -471,6 +474,22 @@ func describe(loaded *graph.Graph, run *state.Run) map[string]any {
 	out["requiredAction"] = action
 	out["graph"] = loaded.Metadata.ID
 	return out
+}
+
+// relevantToolsFor names which of vibe_checkpoint/vibe_verify applies at a
+// node type. Every other tool stays useful regardless of where the run sits
+// (fetching a failing check's log, searching memory, checking status), so
+// only these two - the ones that already error at the wrong node type - vary.
+// Narrowing further risks hiding a tool a caller actually needs.
+func relevantToolsFor(t graph.NodeType) []string {
+	switch t {
+	case graph.NodeVerifier:
+		return []string{"vibe_verify"}
+	case graph.NodeTerminal:
+		return []string{}
+	default: // agent, artifact, human_gate
+		return []string{"vibe_checkpoint"}
+	}
 }
 
 // summarize is the envelope every tool response shares: run identity and
