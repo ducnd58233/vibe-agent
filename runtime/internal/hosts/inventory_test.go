@@ -36,9 +36,32 @@ func TestInventoryPresentBinary(t *testing.T) {
 	}
 }
 
-func TestCatalogListsFourHosts(t *testing.T) {
-	if got := len(Catalog()); got != 4 {
-		t.Fatalf("catalog = %d hosts, want 4", got)
+// A count told you a host had been added and nothing about whether it should
+// have been. Each entry now carries why it is here, and one with no reason
+// fails - the same rule the MCP tool surface uses, for the same reason: a list
+// that grows without an argument is a list nobody can prune.
+func TestEveryCatalogedHostHasAReason(t *testing.T) {
+	reasons := map[string]string{
+		"codex":        "hooks through config.toml; the fallback MCP surface exists for it",
+		"claude":       "the reference host; every hook event is wired and verified here",
+		"cursor-agent": "hooks through .cursor/hooks.json; refuses through JSON rather than exit codes",
+		"opencode":     "plugin at .opencode/plugin; permission.ask is its only refusal path",
+		"kimi":         "reads SKILL.md from ~/.config/agents/skills; hook payload undocumented, unwired",
+		"muse":         "scans .claude/skills and .codex/skills already; hook schema unpublished, unwired",
+		"antigravity":  "hooks.json contract published in full and deliberately not wired until someone can run it",
+	}
+
+	catalog := Catalog()
+	if len(catalog) != len(reasons) {
+		t.Errorf("catalog has %d hosts, the reason list has %d", len(catalog), len(reasons))
+	}
+	for _, host := range catalog {
+		if reasons[host.ID] == "" {
+			t.Errorf("host %q is catalogued with no reason recorded; add one here or take it out", host.ID)
+		}
+		if host.Binary == "" || host.EvalCommand == "" {
+			t.Errorf("host %q is missing a binary or an eval command: %+v", host.ID, host)
+		}
 	}
 }
 
