@@ -6,7 +6,12 @@ Run the pre-ship specialist fan-out over one change, then merge the lanes into a
 
 <prerequisites>
 
-**Runtime required (MUST).** GO is recorded as the `ship` check, which [`vibe-checks.yaml`](../../vibe-checks.yaml) declares `verifier: human` because no exit code means GO. Merge stays refused by `pre-tool-use` until `merge_approved` is recorded. Rules: [`goal.md`](goal.md) section "Runtime is required".
+**Runtime required (MUST).** GO is recorded as the `ship` check. [`vibe-checks.yaml`](../../vibe-checks.yaml)
+declares `verifier: human` for `/goal` because no exit code means GO. On `/auto` only, the same
+checkplan entry carries an `auto` alternative that reads `tmp/<date>/<slug>/<version>/ship/DECISION.md`
+via `file_assert` (see [`AGENTS.md`](../../AGENTS.md) **Auto `reviews` and `ship` (reversal)**).
+Merge stays refused by `pre-tool-use` until `merge_approved` is recorded. Rules: [`goal.md`](goal.md)
+section "Runtime is required".
 </prerequisites>
 
 <context>
@@ -92,7 +97,7 @@ fabricated ones. Parsed by `runtime/internal/shipdecision`.
 `/ship` is the **only** command in the delivery pipeline that may **authorize** merging a task branch into `main` (or the team default branch).
 
 - **GO** means the change is fit to merge from a quality, security, and test perspective. It does **not** mean auto-merge.
-- **MUST NOT** merge, push to `main`, or complete a PR merge unless **both** are true: (1) **Ship Decision: GO**, and (2) the human explicitly asks to merge (or to open/update a PR and merge when checks pass).
+- **MUST NOT** merge, push to `main`, or complete a PR merge unless **both** are true: (1) **Ship Decision: GO**, and (2) the human explicitly asks to merge (or to open/update a PR and merge when checks pass). On `/auto`, condition (2) is the workspace opt-in plus the six merge conditions in [`AGENTS.md`](../../AGENTS.md) **Merge approval**, not a live ask in chat.
 - **NO-GO** means do not merge. Stay on the **same task branch**; fix blockers (logic, UI, tests, security) on that branch and re-run `/ship`. Only unrelated new work needs a new branch.
 - [`build.md`](build.md) must never merge to `main`. If `/build` was run on `main`, treat that as a workflow violation: move work to a task branch before ship.
 

@@ -190,6 +190,13 @@ Follow links from those files only as the task requires.
   This loosens a boundary this file used to state without exception. It is written here rather than
   left to a mode flag because a reader of this rule has to be able to see what changed and when it
   applies. Spec: `docs/harness-autonomy/SPEC.md`, decision D3.
+
+- **Auto `reviews` and `ship` (reversal).** On `/goal`, those verifier nodes stay `verifier: human`
+  and only pass through `human_event`. On `/auto` only, the same nodes resolve through existing
+  evidence sources already on the allow-list: `reviews` via `ci_api` (review-bot check-run buckets)
+  and `ship` via `file_assert` on `tmp/<date>/<slug>/<version>/ship/DECISION.md` written by `/ship`.
+  No new checkpoint evidence source was added (`exit_code`, `file_assert`, `ci_api`, `human_event`
+  remain the set). `/goal` is unchanged. Spec for this delivery: workspace slug `auto-ship-reviews`.
 - **Evidence.** `/goal` records verification under `tmp/<date>/<slug>/<version>/` when that path is gitignored in the
   workspace, redacted before write. See
   [`goal-verification-records`](.ai-agents/references/goal-verification-records.md).

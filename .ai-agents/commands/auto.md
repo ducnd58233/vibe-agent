@@ -14,7 +14,9 @@ Read [`goal.md`](goal.md) first. Everything it says about the runtime, evidence 
 delivery gates applies here unchanged, and this file does not restate it.
 
 Boundary this mode moves, and where that is recorded: [`AGENTS.md`](../../AGENTS.md) section
-"Delivery gates", bullet **Merge approval**.
+"Delivery gates", bullets **Merge approval** and **Auto `reviews` and `ship` (reversal)**. On
+`/auto` only, `reviews` and `ship` pass from `ci_api` / `file_assert` evidence rather than from
+`human_event`; `/goal` stays human at those nodes, and no new checkpoint evidence source was added.
 </context>
 
 ## Runtime is required (MUST)
