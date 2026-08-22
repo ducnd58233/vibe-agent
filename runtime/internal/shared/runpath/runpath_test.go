@@ -129,6 +129,51 @@ func TestBeginAllocatesFirstRevision(t *testing.T) {
 	}
 }
 
+func TestBeginRefusesCaseOnlyCollision(t *testing.T) {
+	root := t.TempDir()
+	now := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
+	if _, err := runpath.Allocate(root, "MyFeature", now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runpath.Begin(root, "myfeature", now); err == nil {
+		t.Fatal("Begin accepted a slug differing only in case from an existing one")
+	}
+}
+
+func TestBeginAllowsUnrelatedSlugsDifferingInCaseFromNothing(t *testing.T) {
+	root := t.TempDir()
+	now := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
+	if _, err := runpath.Allocate(root, "AlphaFeature", now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runpath.Begin(root, "BetaFeature", now); err != nil {
+		t.Fatalf("Begin refused an unrelated slug: %v", err)
+	}
+}
+
+func TestExistingSlugsFindsIndexedAndScannedEntries(t *testing.T) {
+	root := t.TempDir()
+	now := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
+	if _, err := runpath.Allocate(root, "Indexed", now); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(workspace.RunDirAt(root, "2026-08-20", "ScannedOnly", 1), 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := runpath.ExistingSlugs(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]bool{"Indexed": true, "ScannedOnly": true}
+	for _, slug := range got {
+		delete(want, slug)
+	}
+	if len(want) != 0 {
+		t.Fatalf("ExistingSlugs = %v, missing %v", got, want)
+	}
+}
+
 func TestCheckRevisionRejectsBadSegments(t *testing.T) {
 	if workspace.DocsDirAt("/w", "not-a-date", "slug", 1) != "" {
 		t.Fatal("bad date should yield empty DocsDirAt")

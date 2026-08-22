@@ -113,9 +113,10 @@ path. When a rule already has a home, link to it instead of restating it.
   `.vibe-agent/`, or the repo root when this toolkit is standalone. Basenames are dated:
   `{STEM}-YYYY-MM-DD.md` (and `tasks-YYYY-MM-DD.json`). Required YAML front matter on those
   markdown files: `slug`, `date`, `version` (same values as the path). `<slug>` is short kebab-case
-  for the work; `version` is a positive integer global per slug. Never inside `.vibe-agent/`, never
-  scattered, never `docs/<slug>/` for new work. Confirm the slug with the user when it is
-  not obvious.
+  for the work; letters may be either case, but two slugs differing only in case are refused as a
+  collision (case-preserving filesystems on Windows and macOS would alias their files); `version` is
+  a positive integer global per slug. Never inside `.vibe-agent/`, never scattered, never
+  `docs/<slug>/` for new work. Confirm the slug with the user when it is not obvious.
 - **Verification evidence (MUST):** run state and logs live under
   `.agent-state/runs/<YYYY-MM-DD>/<slug>/<version>/` (when gitignored in the
   workspace), beside `manifest.json`. A leftover workspace-root `tmp/` tree fails

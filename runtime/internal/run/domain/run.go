@@ -204,7 +204,7 @@ var (
 // chronologically, and the slug so a directory listing is readable.
 func NewRun(slug, goal, graphID string, maxTransitions int, now time.Time) (*Run, error) {
 	if !validate.Slug(slug) {
-		return nil, fmt.Errorf("slug %q must be lowercase kebab-case", slug)
+		return nil, fmt.Errorf("slug %q must be kebab-case", slug)
 	}
 	if goal == "" {
 		return nil, fmt.Errorf("goal must not be empty")
@@ -288,7 +288,7 @@ func (r *Run) Validate() error {
 		return fmt.Errorf("schemaVersion %d is not supported, want %d", r.SchemaVersion, SchemaVersion)
 	}
 	if !validate.Slug(r.Slug) {
-		return fmt.Errorf("slug %q must be lowercase kebab-case", r.Slug)
+		return fmt.Errorf("slug %q must be kebab-case", r.Slug)
 	}
 	if r.Date != "" || r.Version != 0 {
 		if !validate.Date(r.Date) {

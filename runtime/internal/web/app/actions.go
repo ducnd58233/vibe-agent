@@ -10,6 +10,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/httpserver"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/runpath"
 )
 
 type slugExistsResponse struct {
@@ -41,9 +42,25 @@ func handleCheckSlug(w http.ResponseWriter, r *http.Request, d httpDeps) {
 		httpserver.JSON(w, http.StatusOK, slugExistsResponse{Exists: false})
 		return
 	}
-	manifest := state.ManifestPath(d.activeWorkspace(r), slug)
-	_, err := os.Stat(filepath.Clean(manifest))
-	httpserver.JSON(w, http.StatusOK, slugExistsResponse{Exists: err == nil})
+	workspaceRoot := d.activeWorkspace(r)
+	if manifest := state.ManifestPath(workspaceRoot, slug); manifest != "" {
+		if _, err := os.Stat(filepath.Clean(manifest)); err == nil {
+			httpserver.JSON(w, http.StatusOK, slugExistsResponse{Exists: true})
+			return
+		}
+	}
+	existing, err := runpath.ExistingSlugs(workspaceRoot)
+	if err != nil {
+		httpserver.JSON(w, http.StatusOK, slugExistsResponse{Exists: false})
+		return
+	}
+	for _, other := range existing {
+		if strings.EqualFold(other, slug) {
+			httpserver.JSON(w, http.StatusOK, slugExistsResponse{Exists: true})
+			return
+		}
+	}
+	httpserver.JSON(w, http.StatusOK, slugExistsResponse{Exists: false})
 }
 
 func handleComposerSend(w http.ResponseWriter, r *http.Request, d httpDeps) {

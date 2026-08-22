@@ -25,7 +25,7 @@ type Meta struct {
 // Validate reports whether meta is internally consistent.
 func Validate(meta Meta) error {
 	if !validate.Slug(meta.Slug) {
-		return fmt.Errorf("slug %q must be lowercase kebab-case", meta.Slug)
+		return fmt.Errorf("slug %q must be kebab-case", meta.Slug)
 	}
 	if !validate.Date(meta.Date) {
 		return fmt.Errorf("date %q is not YYYY-MM-DD", meta.Date)
