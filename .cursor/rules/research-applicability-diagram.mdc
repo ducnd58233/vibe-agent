@@ -1,0 +1,23 @@
+---
+description: Research deliverables MUST include Applicability mapping and Mermaid diagrams.
+globs:
+  - "**/RESEARCH-*.md"
+  - "**/PLAN-*.md"
+  - "**/FINDINGS-*.md"
+  - "**/WRITEUP-*.md"
+  - "docs/**/RESEARCH*"
+  - ".ai-agents/commands/research.md"
+  - ".ai-agents/commands/experiment.md"
+  - ".ai-agents/commands/findings.md"
+alwaysApply: false
+---
+
+# Research deliverables (MUST)
+
+When writing or editing research artifacts for `researcher-delivery` or `/research`:
+
+1. **Applicability (MUST)** - Map each cited paper/source to the user's topic: what to reuse, what to reject, what gaps remain. Empty Applicability is a failure.
+2. **Refine (MUST)** - State concrete method/data/scope changes before experiments.
+3. **Mermaid (MUST)** - Include at least one fenced ` ```mermaid ` diagram (literature map, experiment setup, or findings flow). See `.ai-agents/references/diagram-authoring.md`.
+
+Do not claim GPU sandbox support in-process; experiments run on host or CI and update `experiment/STATUS.md`.

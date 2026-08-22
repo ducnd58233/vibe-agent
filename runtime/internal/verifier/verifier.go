@@ -86,6 +86,7 @@ func Default() Registry {
 		"git":          Git{},
 		"screen":       Screen{},
 		"tasks":        Tasks{},
+		"experiment":   Experiment{},
 		"shipdecision": ShipDecision{},
 		"reviewbots":   ReviewBots{},
 	}

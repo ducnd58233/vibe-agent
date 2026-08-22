@@ -24,7 +24,7 @@ When **authoring** under `.ai-agents`, follow each folder’s **`TEMPLATE.md`**.
 
 | What | Where |
 |------|--------|
-| Rules (recommended for persistent agent context) | [`.cursor/rules/`](.cursor/rules) |
+| Rules (recommended for persistent agent context) | [`.cursor/rules/`](.cursor/rules) (includes research Applicability + Mermaid MUST) |
 | Skills (`SKILL.md` folders) | `.cursor/skills` → link to [`.ai-agents/skills`](.ai-agents/skills) via [`scripts/link-ai-agents.ps1`](scripts/link-ai-agents.ps1) or [`scripts/link-ai-agents.sh`](scripts/link-ai-agents.sh) |
 | Slash commands (same sources as Claude) | `.cursor/commands` → junction/symlink to [`.ai-agents/commands`](.ai-agents/commands) via the same link script |
 | Reference checklists | [`.ai-agents/references/`](.ai-agents/references) |

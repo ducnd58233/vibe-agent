@@ -1,0 +1,221 @@
+# Executable form of researcher delivery: literature, applicability, experiment, monitor, findings.
+#
+# Product shipping stays on goal-delivery.yaml. This graph is for research loops
+# (AI/ML, engineering, finance, and non-code domains). Host compute runs
+# experiments; the runtime does not sandbox GPUs (charter: sandboxed execution
+# declined). Evidence stays exit_code / file_assert / ci_api / human_event only.
+
+apiVersion: vibe-agent/v1
+kind: WorkflowGraph
+
+metadata:
+  id: researcher-delivery
+  description: >-
+    Literature with mandatory applicability, experiment plans with Mermaid,
+    continuous STATUS monitoring until the experiment finishes, then findings
+    and writeup. For researchers; not a substitute for goal-delivery product ship.
+
+spec:
+  initial: intake
+  maxTransitions: 200
+
+  guards:
+    - name: auto
+      description: >-
+        Auto mode is running this delivery. Set once by `vibe-agent auto`, never
+        by a node.
+      source: flag
+
+    - name: applicability_ok
+      description: >-
+        Auto mode read RESEARCH and found Applicability, Refine, a Mermaid
+        fence, and no open markers. Set by `vibe-agent auto gate` only.
+      source: flag
+
+    - name: design_ok
+      description: >-
+        Auto mode read the experiment PLAN and found a Mermaid fence plus no
+        open markers. Set by `vibe-agent auto gate` only.
+      source: flag
+
+    - name: applicability_approved
+      description: >-
+        Human accepted RESEARCH applicability, or auto skipped the gate because
+        the document met the structural tests. acceptsSkipped keeps skipped
+        distinct from passed.
+      source: check
+      reads: applicability_approved
+      acceptsSkipped: true
+
+    - name: design_approved
+      description: >-
+        Human accepted the experiment design, or auto skipped the gate.
+      source: check
+      reads: design_approved
+      acceptsSkipped: true
+
+    - name: experiment_done
+      description: >-
+        Experiment STATUS.md reports done or failed (terminal). Running or
+        missing STATUS leaves this false so the monitor loops back to the run.
+      source: check
+      reads: experiment_done
+
+    - name: human_redirect
+      description: >-
+        A live human message changed the objective mid-run. Set with
+        `vibe-agent run flag --set human_redirect`.
+      source: flag
+
+  nodes:
+    intake:
+      type: human_gate
+      description: Restate the research objective, unknowns, slug, and measurable done line.
+      check: intake_confirmed
+      prompt: Research objective, assumptions, slug, and done line are agreed. Confirm to proceed.
+      skipWhen: auto
+
+    literature:
+      type: artifact
+      description: Citation-first literature digest with Applicability, Refine, and a Mermaid map.
+      command: research
+      outputs:
+        - docs/${date}/${slug}/${version}/RESEARCH-${date}.md
+
+    approve_applicability:
+      type: human_gate
+      description: Applicability checkpoint before hypothesis and experiments.
+      check: applicability_approved
+      prompt: >-
+        Review Applicability and Refine in RESEARCH under
+        docs/${date}/${slug}/${version}/. Approve only if papers map to this
+        topic and refinements are explicit.
+      skipWhen: applicability_ok
+
+    hypothesis:
+      type: artifact
+      description: Testable hypothesis or research questions derived from applicability.
+      command: research
+      outputs:
+        - docs/${date}/${slug}/${version}/HYPOTHESIS-${date}.md
+
+    experiment_design:
+      type: artifact
+      description: Experiment plan with Mermaid setup diagram, tasks, and stop conditions.
+      command: plan
+      outputs:
+        - docs/${date}/${slug}/${version}/PLAN-${date}.md
+        - docs/${date}/${slug}/${version}/TASKS-${date}.md
+        - docs/${date}/${slug}/${version}/tasks-${date}.json
+
+    approve_design:
+      type: human_gate
+      description: Experiment design checkpoint before host execution.
+      check: design_approved
+      prompt: >-
+        Review the experiment PLAN Mermaid and tasks under
+        docs/${date}/${slug}/${version}/. Approve to run on host/CI compute.
+      skipWhen: design_ok
+
+    experiment_run:
+      type: agent
+      description: >-
+        Execute or advance the experiment on host/CI compute. Keep
+        .agent-state/runs/<date>/<slug>/<version>/experiment/STATUS.md current
+        (running|done|failed). No in-process GPU sandbox.
+      command: experiment
+
+    experiment_monitor:
+      type: verifier
+      description: >-
+        Read experiment/STATUS.md. Fail while status is running so the graph
+        loops back to experiment_run; pass when done or failed.
+      verifier: files
+      check: experiment_done
+
+    findings:
+      type: artifact
+      description: Findings that cite the run STATUS and experiment artifacts; no orphan claims.
+      command: findings
+      outputs:
+        - docs/${date}/${slug}/${version}/FINDINGS-${date}.md
+
+    writeup:
+      type: artifact
+      description: Final research writeup linking literature, design, runs, and findings.
+      command: research
+      outputs:
+        - docs/${date}/${slug}/${version}/WRITEUP-${date}.md
+
+    done:
+      type: terminal
+      description: Research loop finished with writeup on disk.
+      status: done
+
+  edges:
+    - from: literature
+      to: intake
+      when: human_redirect
+      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done]
+    - from: hypothesis
+      to: intake
+      when: human_redirect
+      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done]
+    - from: experiment_design
+      to: intake
+      when: human_redirect
+      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done]
+    - from: experiment_run
+      to: intake
+      when: human_redirect
+      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done]
+    - from: findings
+      to: intake
+      when: human_redirect
+      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done]
+    - from: writeup
+      to: intake
+      when: human_redirect
+      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done]
+
+    - from: intake
+      to: literature
+
+    - from: literature
+      to: approve_applicability
+
+    - from: approve_applicability
+      to: literature
+      when: "!applicability_approved"
+    - from: approve_applicability
+      to: hypothesis
+      when: applicability_approved
+
+    - from: hypothesis
+      to: experiment_design
+
+    - from: experiment_design
+      to: approve_design
+
+    - from: approve_design
+      to: experiment_design
+      when: "!design_approved"
+    - from: approve_design
+      to: experiment_run
+      when: design_approved
+
+    - from: experiment_run
+      to: experiment_monitor
+
+    - from: experiment_monitor
+      to: experiment_run
+      when: "!experiment_done"
+    - from: experiment_monitor
+      to: findings
+      when: experiment_done
+
+    - from: findings
+      to: writeup
+
+    - from: writeup
+      to: done
