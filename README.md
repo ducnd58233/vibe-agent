@@ -6,17 +6,37 @@ Shared agent skills, slash commands, hooks, and a Go runtime (`vibe-agent`) that
 
 You need `git` and `curl`. Go is only required to build the runtime from source. Some hooks call `python3` (3.8+, stdlib). On Windows, disable the Microsoft Store `python3` alias or those hooks fail silently.
 
+There are two install shapes, and they're not alternatives — most setups end up using both:
+
+| | Global | Workspace |
+|---|---|---|
+| What it is | One shared copy for the whole machine | A copy mounted inside one repo — think git submodule or vendored subfolder, not a system package |
+| Where it lands | `~/.vibe-agent`, `~/.claude/skills`, … | `.ai-agents/` inside whichever repo it's linked into |
+| Commands | Prefixed: `/vibe-goal`, `$vibe-goal` | Unprefixed: `/goal`, `$goal` |
+| Followed by | Every project on the machine | Only the repo it's linked into |
+| Run it | Once per machine | Once per repo that should carry its own copy of the assets, permissions, and hooks — including this repo, if you're working on the toolkit itself |
+
 | Goal | PowerShell | Bash |
 |---|---|---|
-| Put commands on PATH (`vibe-goal`, `vibe-agent`, …) | `powershell -ExecutionPolicy Bypass -File scripts/install-global.ps1` | `sh scripts/install-global.sh` |
-| Link this checkout (`.claude`, `.cursor`, `.opencode`) | `powershell -ExecutionPolicy Bypass -File scripts/link-ai-agents.ps1` | `bash scripts/link-ai-agents.sh` |
+| Global: put commands on PATH (`vibe-goal`, `vibe-agent`, …) | `powershell -ExecutionPolicy Bypass -File scripts/install-global.ps1` | `sh scripts/install-global.sh` |
+| Workspace: link *this* checkout (`.claude`, `.cursor`, `.opencode`) | `powershell -ExecutionPolicy Bypass -File scripts/link-ai-agents.ps1` | `bash scripts/link-ai-agents.sh` |
 
-Consumer repo with the kit at `.vibe-agent/`:
+### Workspace install in another repo
+
+To use vibe-agent from a product repo without vendoring it, mount this toolkit as a git submodule at a
+path of your choosing (`.vibe-agent/` below), then run the *same* workspace link script from the row
+above, pointed at the consumer repo instead of at itself:
 
 ```bash
+git submodule add git@github.com:ducnd58233/vibe-agent.git .vibe-agent   # once, from the consumer repo root
 bash .vibe-agent/scripts/link-ai-agents.sh --workspace "$PWD" --assets "$PWD/.vibe-agent/.ai-agents"
 vibe-agent doctor   # repeat until OK
 ```
+
+`--workspace` is the consumer repo's root, where `.claude`, `.cursor`, and friends get written.
+`--assets` always points at `<toolkit-root>/.ai-agents`, wherever the toolkit is mounted. The consumer
+repo stays its own repository and the source of product code; vibe-agent only supplies the shared
+assets, the same way a submodule supplies shared library code without becoming part of your app.
 
 ## How commands look in your host
 
