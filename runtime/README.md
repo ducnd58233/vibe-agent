@@ -20,7 +20,7 @@ runtime/
   cmd/                    the CLI, one file per command
     main.go               entry point and the dispatch table
     common.go             shared path flags and output helpers
-    run.go                run start, run status, run flag
+    run.go                goal, research, auto, run start, run status, run flag
     verify.go             run a verifier node's check and record what it found
     checkpoint.go         record evidence and advance the graph
     graph.go              graph validate
@@ -137,11 +137,16 @@ The session composer supports `/command` and `@skill` autocomplete from `.ai-age
 ## Try it
 
 ```sh
-vibe-agent run start --slug my-feature --goal "add webhook idempotency"
-vibe-agent run status --slug my-feature
+vibe-agent goal "add webhook idempotency"
+vibe-agent research "compare RAG chunking strategies"
+vibe-agent auto init
+vibe-agent auto "add webhook idempotency"
+vibe-agent run status --slug add-webhook-idempotency
 ```
 
-State lands in `tmp/my-feature/manifest.json` with the log at `tmp/my-feature/events.ndjson`, beside the human-readable `RECORD.md` described in [`goal-verification-records.md`](../.ai-agents/references/goal-verification-records.md). Both are gitignored.
+`goal`, `research`, and `auto` take the objective as plain text and derive slug and graph. `run start` accepts the same plain-text form; `--slug` and `--graph` remain for scripts.
+
+State lands under `.agent-state/runs/<date>/<slug>/<version>/manifest.json` with an append-only `events.ndjson` beside it. Both are gitignored in consumer workspaces.
 
 ## Audit code slop
 

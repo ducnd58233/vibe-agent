@@ -168,6 +168,12 @@ spec:
     tasks_remaining:
       verifier: human
       description: a person decides whether another in-scope task remains
+    experiment_done:
+      verifier: experiment
+      description: fixture stand-in for researcher-delivery monitor
+    results_acceptable:
+      verifier: results
+      description: fixture stand-in for researcher-delivery metric gate
 `
 
 type cli struct {

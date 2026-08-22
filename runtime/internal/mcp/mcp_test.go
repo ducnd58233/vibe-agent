@@ -89,6 +89,7 @@ func TestEveryToolOnTheSurfaceEarnsItsSlot(t *testing.T) {
 		"vibe_memory_search":     "what earlier runs established, so this one does not re-derive it",
 		"vibe_memory_propose":    "the only way a memory is written, and it still needs confirming",
 		"vibe_run_start":         "hosts without hooks have no other way to begin a run",
+		"vibe_auto_start":        "unattended auto path when hooks cannot shell out to vibe-agent auto",
 		"vibe_run_status":        "the node and its evidence, which is the one thing never to infer",
 		"vibe_task_packet":       "the next actionable task in one call, instead of a manual re-read of tasks.json and TASKS.md",
 		"vibe_repo_map":          "a token-budgeted map of referenced definitions, so the model reads less of the tree by hand",

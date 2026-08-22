@@ -293,7 +293,8 @@
                   "files",
                   "git",
                   "screen",
-                  "tasks"
+                  "tasks",
+                  "results"
                 ],
                 "description": "Verifier implementation that produces the evidence. screen proves an app rendered rather than that a command exited; tasks reads the machine-readable task list a plan produced."
               },

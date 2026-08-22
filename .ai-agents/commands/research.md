@@ -37,6 +37,16 @@ Diagrams: [`diagram-authoring`](../references/diagram-authoring.md). Cursor rule
 When writing under `docs/<date>/<slug>/<version>/`, use basename `RESEARCH-<date>.md`.
 </outputs>
 
+```sh
+vibe-agent doctor
+vibe-agent research "<topic from the user>"
+vibe-agent run status --slug <slug from start output>
+```
+
+Host agents derive slug and graph; do not ask the user for flags. For unattended
+research loops with metric gates, use `vibe-agent auto research "<topic>"` after
+`vibe-agent auto init`.
+
 ## Routing & discovery
 
 <routing>

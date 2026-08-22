@@ -87,6 +87,7 @@ func Default() Registry {
 		"screen":       Screen{},
 		"tasks":        Tasks{},
 		"experiment":   Experiment{},
+		"results":      Results{},
 		"shipdecision": ShipDecision{},
 		"reviewbots":   ReviewBots{},
 	}

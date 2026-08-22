@@ -103,6 +103,7 @@ type SessionPage struct {
 	GraphID          string
 	CurrentNode      string
 	GraphNodes       []GraphNodeRow
+	GraphStep        GraphStepView
 	GraphTypeCounts  map[string]int
 	GraphNodeJSON    template.JS
 	LastEventSeq     int
@@ -137,7 +138,11 @@ func BuildSessionPage(logs sessionread.Reader, workspaceRoot, toolkitRoot, bindA
 		page.GraphID = "goal-delivery"
 	}
 	if g, err := graph.LoadByID(graph.DefaultDir(toolkitRoot), page.GraphID); err == nil && g != nil {
-		page.GraphNodes = ProjectGraph(g, run)
+		page.GraphStep = ProjectGraphStep(g, run)
+		page.GraphNodes = []GraphNodeRow{page.GraphStep.Current}
+		if len(page.GraphStep.Neighbors) == 0 {
+			page.GraphNodes = ProjectGraph(g, run)
+		}
 		page.GraphTypeCounts = GraphTypeCounts(page.GraphNodes)
 	}
 	events, err := logs.Replay(workspaceRoot, slug)

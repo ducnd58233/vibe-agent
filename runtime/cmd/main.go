@@ -23,8 +23,11 @@ var version = "dev"
 const usage = `vibe-agent - outer-loop control plane
 
 Usage:
-  vibe-agent run start --slug <slug> --goal <text> [--graph <id>]
-                       [--token-budget <n>] [--wallclock <duration>]
+  vibe-agent goal "<objective>"
+  vibe-agent research "<topic>"
+  vibe-agent auto "<objective>"
+  vibe-agent auto research "<topic>"
+  vibe-agent run start "<objective>" [--slug <slug>]
   vibe-agent run status --slug <slug> [--json]
   vibe-agent run list [--status <status>]
   vibe-agent run flag --slug <slug> (--set|--clear) <guard> [--note <text>]
@@ -38,10 +41,9 @@ Usage:
   vibe-agent slop audit [path] [--format text|json] [--workers N] [--fail-on score]
   vibe-agent mcp serve
   vibe-agent run extend --slug <slug> --budget <n> --reason <text>
-  vibe-agent auto --goal "<text>" [--slug <slug>] [--task-source <name>]
+  vibe-agent auto init [--workspace <dir>]
   vibe-agent auto gate --slug <slug>
   vibe-agent auto merge --slug <slug>
-  vibe-agent auto init [--workspace <dir>]
   vibe-agent guards <list|init> [--workspace <dir>] [--force]
   vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|post-tool-use-failure|stop|subagent-stop> [--client claude|cursor]
   vibe-agent hook --events
@@ -84,10 +86,9 @@ A run stops on whichever of three budgets it passes first: transitions,
 host-reported tokens, or wallclock. Zero is no limit, and "run status" names
 the one that ended it.
 
-"auto" starts a run on the auto path from one objective: it derives the slug,
-sets the flag the graph routes on, and skips the intake gate. The host coding
-agent still runs every agent node; auto is a route through the same graph, not
-a second implementation of it.
+"auto" starts a run on the auto path from one objective passed as plain text.
+The slug and graph are derived from the command; host agents supply the text,
+not the user. Use "auto research" for the researcher-delivery graph.
 
 "auto gate" answers the spec or plan gate from what the document says. It sets
 the flag only when the document declares nothing open, and the gate it opens
@@ -195,6 +196,10 @@ func run(args []string) error {
 		return mcpCommand(args[1:])
 	case "auto":
 		return autoCommand(args[1:])
+	case "goal":
+		return goalCommand(args[1:])
+	case "research":
+		return researchCommand(args[1:])
 	case "guards":
 		return guardsCommand(args[1:])
 	case "hook":

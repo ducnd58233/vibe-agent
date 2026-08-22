@@ -49,7 +49,7 @@ func optedIn(t *testing.T, root string, merge bool) {
 func startAuto(t *testing.T, root string, extra ...string) {
 	t.Helper()
 	args := append([]string{"--workspace", root, "--toolkit", toolkitRoot}, extra...)
-	if err := autoStartCommand(args); err != nil {
+	if err := autoCommand(args); err != nil {
 		t.Fatalf("auto start: %v", err)
 	}
 }
@@ -59,7 +59,7 @@ func TestOnePromptStartsARunOnTheAutoPath(t *testing.T) {
 	root := t.TempDir()
 	optedIn(t, root, false)
 
-	startAuto(t, root, "--goal", "Add a retry ceiling to the webhook dispatcher")
+	startAuto(t, root, "Add a retry ceiling to the webhook dispatcher")
 
 	run, err := state.Load(state.ManifestPath(root, "add-retry-ceiling-webhook"))
 	if err != nil {
@@ -81,7 +81,7 @@ func TestOnePromptStartsARunOnTheAutoPath(t *testing.T) {
 func TestAutoRefusesToStartBeforeTheWorkspaceHasAnswered(t *testing.T) {
 	root := t.TempDir()
 
-	err := autoStartCommand([]string{"--workspace", root, "--toolkit", toolkitRoot, "--goal", "Do the thing"})
+	err := autoCommand([]string{"--workspace", root, "--toolkit", toolkitRoot, "--goal", "Do the thing"})
 	if err == nil {
 		t.Fatal("auto started in a workspace with no opt-in")
 	}

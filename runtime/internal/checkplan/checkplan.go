@@ -111,7 +111,7 @@ func (e Entry) runnable() bool {
 // path, or screen. The names are carried here for the same reason
 // HumanVerifier is: this package validates a plan, and a plan that declares
 // nothing runnable is the defect it exists to catch.
-var selfConfiguring = map[string]bool{"tasks": true, "shipdecision": true, "experiment": true}
+var selfConfiguring = map[string]bool{"tasks": true, "shipdecision": true, "experiment": true, "results": true}
 
 // Spec is the plan itself.
 type Spec struct {

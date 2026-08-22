@@ -28,7 +28,14 @@ Boundary this mode moves, and where that is recorded: [`AGENTS.md`](../../AGENTS
 ```sh
 vibe-agent doctor          # preflight; stop here if it reports problems
 vibe-agent auto init       # writes the opt-in, once per workspace
+vibe-agent auto "<objective from the user>"
+vibe-agent auto research "<research topic from the user>"
+vibe-agent auto gate --slug <slug from start output>
 ```
+
+Host agents pass the user's text as plain arguments. Slug and graph are derived;
+do not ask the user for `--goal`, `--graph`, or `--slug` unless resuming an
+existing run.
 
 If the binary is not on `PATH`, or `doctor` reports problems, **stop. Run no phase.** Report:
 
@@ -129,11 +136,13 @@ run's flags say a person is not needed. A skipped gate records `skipped`, never 
 state still says which gates a person answered.
 
 ```sh
-vibe-agent auto --goal "<one objective>"   # derives the slug, sets the flag, skips intake
-vibe-agent auto --graph researcher-delivery --goal "<research objective>"  # literature → experiment → findings
-vibe-agent auto gate --slug <slug>         # answers the spec, plan, applicability, or design gate from the document
-vibe-agent auto init                       # writes the opt-in, once per checkout
+vibe-agent auto "<one objective>"   # delivery graph; slug derived
+vibe-agent auto research "<topic>"  # researcher-delivery graph
+vibe-agent auto gate --slug <slug>  # answers gates from documents
+vibe-agent auto init                # writes the opt-in, once per checkout
 ```
+
+Host agents pass plain text; users never pass `--graph` or `--goal`.
 
 `auto gate` sets the flag only when the document declares nothing open: a populated **Open
 questions** section, or a `TBD` left in the prose. For `approve_applicability` it also requires
@@ -157,7 +166,7 @@ it.
 
 - Master: [`ROUTER.md`](../ROUTER.md) → [`commands/ROUTER.md`](ROUTER.md).
 - Use when the objective is routine enough to run unattended and the workspace has opted in.
-- Use `--graph researcher-delivery` for literature → experiment → findings loops.
+- Use `vibe-agent auto research "<topic>"` for literature → experiment → findings loops.
 - Use [`goal.md`](goal.md) when you want the approval gates, when the workspace has not opted in,
   or when the objective is exploratory.
 - Do **not** use for anything on the danger list. It will stop, and stopping late costs more than

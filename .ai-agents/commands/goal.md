@@ -56,11 +56,17 @@ mode this rule exists to remove: it is the model marking its own work complete.
 | **memory** | What earlier runs learned, recalled every phase | `memory list`, `memory confirm`, `memory forget` |
 
 ```sh
-vibe-agent run start  --slug <slug> --goal "<objective>"
-vibe-agent run status --slug <slug>          # the node, and what completes it
-vibe-agent verify     --slug <slug>          # runs what vibe-checks.yaml declares
+vibe-agent doctor
+vibe-agent goal "<objective from the user>"
+vibe-agent run status --slug <slug from start output>
+vibe-agent verify     --slug <slug>
 vibe-agent checkpoint --slug <slug> --check <name> --source <source> --passed
 ```
+
+Host agents derive slug and graph from the command; do not ask the user for them.
+Use `vibe-agent auto "<objective>"` when the workspace opted into auto mode.
+Use `vibe-agent research "<topic>"` or `vibe-agent auto research "<topic>"` for the
+researcher graph.
 
 ### Rules in this mode (MUST)
 

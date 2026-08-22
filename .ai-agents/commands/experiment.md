@@ -38,6 +38,17 @@ note: <short progress>
 Allowed `status` values: `running`, `done`, `failed`.
 
 Update it whenever progress changes. The `experiment_monitor` verifier fails while `running` (or missing) and passes on `done` or `failed`.
+
+When `status` becomes `done`, also write `experiment/METRICS.json`:
+
+```json
+{
+  "metrics": {"ndcg_at_10": 0.84},
+  "thresholds": {"ndcg_at_10": {"op": ">=", "value": 0.82}}
+}
+```
+
+The `results_eval` verifier compares metrics to thresholds. Values below the bar route the graph back to `hypothesis` without human approval.
 </required>
 
 ## How

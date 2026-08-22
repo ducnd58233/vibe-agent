@@ -1356,6 +1356,44 @@ html[data-theme="light"] .is-chat-view li[data-role="thinking"] .event-body {
   margin-bottom: 0;
 }
 
+.graph-view-step .graph-current {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.graph-neighbor-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.graph-neighbor {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.graph-neighbor.is-active {
+  border-color: var(--color-accent, #3b82f6);
+}
+
+.graph-neighbor p {
+  margin: 0.25rem 0 0;
+  font-size: var(--font-size-meta);
+  color: var(--color-text-secondary);
+}
+
+.graph-neighbor-head {
+  margin-top: 0;
+  color: var(--color-text);
+}
+
 .graph-rail {
   --graph-tag-col: 7.25rem;
   --graph-spine: 1.25rem;

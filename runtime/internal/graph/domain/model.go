@@ -51,12 +51,13 @@ const (
 	VerifierScreen VerifierKind = "screen"
 	// VerifierTasks reads the machine-readable task list a plan produced and
 	// reports whether any task is still in scope.
-	VerifierTasks VerifierKind = "tasks"
+	VerifierTasks   VerifierKind = "tasks"
+	VerifierResults VerifierKind = "results"
 )
 
 func (k VerifierKind) valid() bool {
 	switch k {
-	case VerifierCommand, VerifierFiles, VerifierGit, VerifierScreen, VerifierTasks:
+	case VerifierCommand, VerifierFiles, VerifierGit, VerifierScreen, VerifierTasks, VerifierResults:
 		return true
 	}
 	return false

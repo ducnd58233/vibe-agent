@@ -143,3 +143,11 @@ spec:
         when the file is missing, so researcher-delivery can loop the monitor
         back to experiment_run. Host/CI compute writes the file; there is no
         in-process GPU sandbox.
+
+    results_acceptable:
+      verifier: results
+      description: >-
+        Reads experiment/METRICS.json together with STATUS.md. Passes only when
+        the experiment finished done and every declared metric meets its
+        threshold. Fails on failed runs or short metrics so results_eval can
+        route back to hypothesis.
