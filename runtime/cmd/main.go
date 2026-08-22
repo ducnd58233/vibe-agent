@@ -52,7 +52,7 @@ Usage:
   vibe-agent memory forget --id <id>
   vibe-agent session list
   vibe-agent session show --slug <slug|ambient>
-  vibe-agent web [--port 3080] [--open]
+  vibe-agent web [--port 1411] [--open]
   vibe-agent doctor
   vibe-agent eval routing [--trials N] [--jobs N] [--runner codex|claude|cursor|opencode|all] [--only <text>]
   vibe-agent version
