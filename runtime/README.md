@@ -158,12 +158,13 @@ The session composer supports `/command` and `@skill` autocomplete from `.ai-age
 ```sh
 vibe-agent goal "add webhook idempotency"
 vibe-agent research "compare RAG chunking strategies"
+vibe-agent auto research "compare RAG chunking; loop until recall@10 >= 0.85"
 vibe-agent auto init
 vibe-agent auto "add webhook idempotency"
 vibe-agent run status --slug add-webhook-idempotency
 ```
 
-`goal`, `research`, and `auto` take the objective as plain text and derive slug and graph. `run start` accepts the same plain-text form; `--slug` and `--graph` remain for scripts.
+`goal`, `research`, and `auto` take plain text; slug and graph follow the command (`auto research` → researcher graph). See [README](../README.md#research).
 
 State lands under `.agent-state/runs/<date>/<slug>/<version>/manifest.json` with an append-only `events.ndjson` beside it. Both are gitignored in consumer workspaces.
 
