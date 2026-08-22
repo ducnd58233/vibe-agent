@@ -279,3 +279,66 @@ spec:
       expect:
         status: awaiting_human # back at intake, a human_gate, waiting on a fresh intake_confirmed
         path: [intake, spec, intake]
+
+    - name: researcher happy path reaches done
+      graph: researcher-delivery
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {} # literature
+        - check: {name: applicability_approved, passed: true, source: human_event}
+        - {} # hypothesis
+        - {} # experiment_design
+        - check: {name: design_approved, passed: true, source: human_event}
+        - {} # experiment_run
+        - check: {name: experiment_done, passed: true, source: file_assert}
+        - {} # findings
+        - {} # writeup
+      expect:
+        status: done
+        path:
+          - intake
+          - literature
+          - approve_applicability
+          - hypothesis
+          - experiment_design
+          - approve_design
+          - experiment_run
+          - experiment_monitor
+          - findings
+          - writeup
+          - done
+
+    - name: researcher monitor loops while experiment runs
+      graph: researcher-delivery
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {}
+        - check: {name: applicability_approved, passed: true, source: human_event}
+        - {}
+        - {}
+        - check: {name: design_approved, passed: true, source: human_event}
+        - {}
+        - check: {name: experiment_done, passed: false, source: file_assert}
+      expect:
+        status: running
+        path:
+          - intake
+          - literature
+          - approve_applicability
+          - hypothesis
+          - experiment_design
+          - approve_design
+          - experiment_run
+          - experiment_monitor
+          - experiment_run
+
+    - name: researcher auto skips intake then applicability gate
+      graph: researcher-delivery
+      flags: {auto: true, applicability_ok: true}
+      steps:
+        - {} # intake -> literature (intake already skipped on enter)
+        - {} # literature -> approve_applicability (skipped via applicability_ok)
+        - {} # skipped gate opens to hypothesis
+      expect:
+        status: running
+        path: [intake, literature, approve_applicability, hypothesis]

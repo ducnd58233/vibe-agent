@@ -14,7 +14,9 @@ Slash-style prompts live in this folder as `*.md`. **Claude Code** commonly reso
 | Build or audit UI registry-first | [`design.md`](design.md) | Modes: build / audit / registry; audit is read-only; needs browser or MCP for render evidence |
 | Ship decision, parallel personas | [`ship.md`](ship.md) | Non-trivial blast radius; only phase that may authorize merge to `main` after GO + human approval |
 | Write spec first | [`spec.md`](spec.md) | Agree spec path |
-| Citation-first research digest command | [`research.md`](research.md) | Topic + scope provided; reusable behavior is `research-with-citations`; multi-lane evidence questions use `investigate.md` |
+| Citation-first research digest command | [`research.md`](research.md) | Topic + scope; MUST Applicability + Refine + Mermaid; reusable behavior is `research-with-citations`; multi-lane uses `investigate.md` |
+| Host/CI experiment + STATUS.md updates | [`experiment.md`](experiment.md) | `researcher-delivery` `experiment_run`; no in-process GPU sandbox |
+| Findings citing STATUS and run artifacts | [`findings.md`](findings.md) | After experiment terminal STATUS |
 | Analyze evidence into recommendation | [`analyze.md`](analyze.md) | Digest/evidence available |
 | Parallel evidence investigation with audit | [`investigate.md`](investigate.md) | Multi-faceted citation question; merge required; single-lane research uses `research.md` |
 | Plan tasks from spec | [`plan.md`](plan.md) | Spec exists |

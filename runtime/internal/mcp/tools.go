@@ -55,7 +55,7 @@ func (d Deps) now() time.Time {
 	return d.Now().UTC()
 }
 
-// NewServer builds the stdio server with the ten-tool surface.
+// NewServer builds the stdio server with the MCP tool surface.
 func NewServer(version string, deps Deps) *Server {
 	if deps.Session == nil {
 		deps.Session = &Session{}
@@ -132,6 +132,13 @@ func Tools(deps Deps) []Tool {
 				"Do not call when you already have the files you need open; this rebuilds the map each time and is not a cache.",
 			InputSchema: schema(`{"type":"object","properties":{"budget":{"type":"integer","minimum":1,"description":"Approximate token budget for the returned map"},"focus":{"type":"string","description":"Path prefix that raises matching files in the ranking without excluding others"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return repoMap(deps, raw) },
+		},
+		{
+			Name: "vibe_experiment_status",
+			Description: "Call to read experiment STATUS.md for a slug (running|done|failed) while monitoring a researcher-delivery run. " +
+				"Do not call to start or sandbox a GPU job; compute stays on the host or CI.",
+			InputSchema: schema(`{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"}}}`),
+			Handler:     func(raw json.RawMessage) (any, error) { return experimentStatus(deps, raw) },
 		},
 		{
 			Name:        "vibe_checkpoint",

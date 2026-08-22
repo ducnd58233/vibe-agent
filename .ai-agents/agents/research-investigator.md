@@ -54,8 +54,10 @@ Return:
 1. Scope and sub-questions
 2. Key findings with citations
 3. Conflicts between sources
-4. Open questions and `UNVERIFIED` claims
-5. One-page digest
+4. Applicability to the user's topic (reuse / reject / gap) and Refine steps
+5. Mermaid literature or claim→method diagram when the digest feeds experiments
+6. Open questions and `UNVERIFIED` claims
+7. One-page digest
 </outputs>
 
 ## Rules

@@ -27,6 +27,10 @@ disable-model-invocation: true
    - Numeric facts must always be cited.
 5. DIGEST
    - Produce a concise synthesis: key findings, conflicts, open questions, and confidence.
+6. APPLY (MUST for research that will drive experiments)
+   - **Applicability:** for each material source, state what maps onto the user's topic (reuse), what does not (reject), and what is missing (gap).
+   - **Refine:** concrete changes to method, data, or scope before running experiments.
+   - **Mermaid:** at least one fenced `mermaid` diagram (literature map or claim→method). See [`diagram-authoring`](../../references/diagram-authoring.md).
 
 No-fabrication rules:
 - If a claim cannot be traced to a reachable URL or local file, label it `UNVERIFIED`.

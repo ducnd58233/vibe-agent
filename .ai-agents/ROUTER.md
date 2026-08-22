@@ -19,6 +19,7 @@ All assets are reusable and **domain-agnostic**; keep product-domain implementat
 | Isolated specialist worker (Claude subagent) | [`agents/ROUTER.md`](agents/ROUTER.md) |
 | Slash-style command prompt (Claude Code / Cursor after link script) | [`commands/ROUTER.md`](commands/ROUTER.md) |
 | Full delivery from user objective (`/goal`) | [`commands/goal.md`](commands/goal.md) + [`skills/goal-driven-delivery/SKILL.md`](skills/goal-driven-delivery/SKILL.md) |
+| Researcher loop (`researcher-delivery`) | [`graphs/researcher-delivery.yaml`](graphs/researcher-delivery.yaml) + [`skills/researcher-harness/SKILL.md`](skills/researcher-harness/SKILL.md) |
 | Executable control flow for a multi-phase workflow (nodes, edges, gates) | [`graphs/ROUTER.md`](graphs/ROUTER.md) |
 | Lifecycle automation (format on save, CI hooks, guardrails) | [`hooks/ROUTER.md`](hooks/ROUTER.md) |
 | Creating an asset, wiring a harness, mounting into a consumer repo | [`AUTHORING.md`](AUTHORING.md) - layout, authoring rules, checks table, clone and link steps |

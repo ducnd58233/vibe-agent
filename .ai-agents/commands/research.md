@@ -1,23 +1,23 @@
 ---
-description: Run citation-first research on a scoped topic and return a digest with sources and unresolved questions
+description: Run citation-first research on a scoped topic and return a digest with Applicability, Refine, Mermaid, sources, and unresolved questions
 ---
 
-Research a scoped topic citation-first and return a digest of what the sources support, where they conflict, and what stays unresolved.
+Research a scoped topic citation-first and return a digest of what the sources support, where they conflict, what applies to *this* topic, and what stays unresolved.
 
 <references>
 
-Follow [`research-with-citations`](../skills/research-with-citations/SKILL.md).
+Follow [`research-with-citations`](../skills/research-with-citations/SKILL.md) and, for the full loop, [`researcher-harness`](../skills/researcher-harness/SKILL.md).
 
 Primary persona: [`research-investigator`](../agents/research-investigator.md).
 
-When the output includes docs with diagrams or flows, follow [`diagram-authoring`](../references/diagram-authoring.md).
+Diagrams: [`diagram-authoring`](../references/diagram-authoring.md). Cursor rule: research Applicability + Mermaid MUST.
 </references>
 
 ## Inputs
 
 <inputs>
 
-- Topic or question
+- Topic or question (the user's research topic is the Applicability target)
 - Optional scope constraints (time range, geography, source type)
 </inputs>
 
@@ -28,8 +28,13 @@ When the output includes docs with diagrams or flows, follow [`diagram-authoring
 1. Scoped question breakdown
 2. Findings with citations
 3. Conflicts across sources
-4. `UNVERIFIED` items
-5. Final digest section
+4. **Applicability (MUST)** - table or section mapping each source to this topic: reuse / reject / gap
+5. **Refine (MUST)** - what to change in method, data, or scope before experiments
+6. **Mermaid diagram (MUST)** - literature map or claim→method flow in a ` ```mermaid ` fence
+7. `UNVERIFIED` items
+8. Final digest section
+
+When writing under `docs/<date>/<slug>/<version>/`, use basename `RESEARCH-<date>.md`.
 </outputs>
 
 ## Routing & discovery
@@ -37,11 +42,8 @@ When the output includes docs with diagrams or flows, follow [`diagram-authoring
 <routing>
 
 - Use when the user invokes `/research` or asks for a command-style citation digest.
+- On `researcher-delivery`, this command drives the `literature` (and optionally writeup) nodes.
 - Do not use when evidence is already collected and only synthesis is needed.
-- Use [`research-with-citations`](../skills/research-with-citations/SKILL.md) when another
-  asset needs the reusable research workflow rather than this slash command.
-- Use [`investigate.md`](investigate.md) when the question needs parallel evidence,
-  analysis, and source-audit lanes.
-
-Invoke when current, verifiable evidence is required.
+- Use [`investigate.md`](investigate.md) when the question needs parallel evidence lanes.
+- Use [`experiment.md`](experiment.md) after an approved experiment design.
 </routing>

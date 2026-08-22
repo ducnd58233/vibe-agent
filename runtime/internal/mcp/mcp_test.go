@@ -85,16 +85,17 @@ func toolText(t *testing.T, reply map[string]any) string {
 func TestEveryToolOnTheSurfaceEarnsItsSlot(t *testing.T) {
 	server := NewServer("test", newDeps(t))
 	want := map[string]string{
-		"vibe_bootstrap":      "the entry point; without it a session works from a memorised asset list",
-		"vibe_memory_search":  "what earlier runs established, so this one does not re-derive it",
-		"vibe_memory_propose": "the only way a memory is written, and it still needs confirming",
-		"vibe_run_start":      "hosts without hooks have no other way to begin a run",
-		"vibe_run_status":     "the node and its evidence, which is the one thing never to infer",
-		"vibe_task_packet":    "the next actionable task in one call, instead of a manual re-read of tasks.json and TASKS.md",
-		"vibe_repo_map":       "a token-budgeted map of referenced definitions, so the model reads less of the tree by hand",
-		"vibe_checkpoint":     "records evidence; the verifiers stay behind vibe_verify on purpose",
-		"vibe_verify":         "runs what the check plan declares, so the command is not chosen at the keyboard",
-		"vibe_fetch":          "the only tool here that returns tokens rather than spending them",
+		"vibe_bootstrap":         "the entry point; without it a session works from a memorised asset list",
+		"vibe_memory_search":     "what earlier runs established, so this one does not re-derive it",
+		"vibe_memory_propose":    "the only way a memory is written, and it still needs confirming",
+		"vibe_run_start":         "hosts without hooks have no other way to begin a run",
+		"vibe_run_status":        "the node and its evidence, which is the one thing never to infer",
+		"vibe_task_packet":       "the next actionable task in one call, instead of a manual re-read of tasks.json and TASKS.md",
+		"vibe_repo_map":          "a token-budgeted map of referenced definitions, so the model reads less of the tree by hand",
+		"vibe_experiment_status": "STATUS.md for researcher-delivery monitor loops; compute stays on host/CI",
+		"vibe_checkpoint":        "records evidence; the verifiers stay behind vibe_verify on purpose",
+		"vibe_verify":            "runs what the check plan declares, so the command is not chosen at the keyboard",
+		"vibe_fetch":             "the only tool here that returns tokens rather than spending them",
 	}
 	if len(server.Tools) != len(want) {
 		t.Errorf("got %d tools, want %d", len(server.Tools), len(want))
@@ -943,5 +944,37 @@ func TestListChangedNotificationOnRealTransitionOnly(t *testing.T) {
 	}
 	if sawNotify {
 		t.Fatal("duplicate checkpoint must not emit list_changed")
+	}
+}
+
+func TestExperimentStatusReadsSTATUS(t *testing.T) {
+	deps := newDeps(t)
+	server := NewServer("test", deps)
+	exchange(t, server, call("vibe_run_start", map[string]any{
+		"slug": "exp-mcp", "goal": "status tool", "graph": "researcher-delivery",
+	}))
+
+	missing := toolText(t, exchange(t, server, call("vibe_experiment_status", map[string]any{
+		"slug": "exp-mcp",
+	}))[0])
+	if !strings.Contains(missing, `"status":"missing"`) {
+		t.Fatalf("want missing STATUS, got %s", missing)
+	}
+	if !strings.Contains(missing, "host_or_ci") {
+		t.Error("must name the host/CI compute port")
+	}
+
+	path := filepath.Join(state.RunDir(deps.WorkspaceRoot, "exp-mcp"), "experiment", "STATUS.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("status: running\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	running := toolText(t, exchange(t, server, call("vibe_experiment_status", map[string]any{
+		"slug": "exp-mcp",
+	}))[0])
+	if !strings.Contains(running, `"status":"running"`) {
+		t.Fatalf("want running, got %s", running)
 	}
 }

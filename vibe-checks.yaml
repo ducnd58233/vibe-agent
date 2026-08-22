@@ -134,3 +134,12 @@ spec:
         criteria checkboxes are still open or whose TASKS prose is missing.
         Goal and auto share this check. Doctor refuses the same incomplete-done
         case. TASKS.md stays the file a person reviews for the full criteria.
+
+    experiment_done:
+      verifier: experiment
+      description: >-
+        Reads .agent-state/runs/<date>/<slug>/<version>/experiment/STATUS.md.
+        Passes when status is done or failed (terminal). Fails while running or
+        when the file is missing, so researcher-delivery can loop the monitor
+        back to experiment_run. Host/CI compute writes the file; there is no
+        in-process GPU sandbox.

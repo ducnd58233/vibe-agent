@@ -200,8 +200,10 @@ type gate struct {
 }
 
 var gateArtifact = map[string]gate{
-	"approve_spec": {flag: "spec_unambiguous", check: "spec_approved", files: []string{"SPEC"}},
-	"approve_plan": {flag: "plan_unambiguous", check: "plan_approved", files: []string{"PLAN", "TASKS"}},
+	"approve_spec":          {flag: "spec_unambiguous", check: "spec_approved", files: []string{"SPEC"}},
+	"approve_plan":          {flag: "plan_unambiguous", check: "plan_approved", files: []string{"PLAN", "TASKS"}},
+	"approve_applicability": {flag: "applicability_ok", check: "applicability_approved", files: []string{"RESEARCH"}},
+	"approve_design":        {flag: "design_ok", check: "design_approved", files: []string{"PLAN", "TASKS"}},
 }
 
 // resolveGateDoc picks the dated basename when the run has a date, else the
@@ -274,6 +276,14 @@ func autoGateCommand(args []string) error {
 			return fmt.Errorf("read %s: %w", path, readErr)
 		}
 		findings = append(findings, auto.Scan(string(document))...)
+		switch stem {
+		case "RESEARCH":
+			findings = append(findings, auto.RequireApplicability(string(document))...)
+		case "PLAN":
+			if current.CurrentNode == "approve_design" {
+				findings = append(findings, auto.RequireExperimentDiagram(string(document))...)
+			}
+		}
 	}
 
 	if len(findings) > 0 {

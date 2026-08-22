@@ -130,14 +130,16 @@ state still says which gates a person answered.
 
 ```sh
 vibe-agent auto --goal "<one objective>"   # derives the slug, sets the flag, skips intake
-vibe-agent auto gate --slug <slug>         # answers the spec or plan gate from the document
+vibe-agent auto --graph researcher-delivery --goal "<research objective>"  # literature → experiment → findings
+vibe-agent auto gate --slug <slug>         # answers the spec, plan, applicability, or design gate from the document
 vibe-agent auto init                       # writes the opt-in, once per checkout
 ```
 
 `auto gate` sets the flag only when the document declares nothing open: a populated **Open
-questions** section, or a `TBD` left in the prose. An empty result is not a promise the document is
-complete - it is the most a text search can claim - which is why the gate it opens records
-`skipped` and never `passed`.
+questions** section, or a `TBD` left in the prose. For `approve_applicability` it also requires
+Applicability, Refine, and a Mermaid fence; for `approve_design` it also requires a Mermaid fence
+on PLAN. An empty result is not a promise the document is complete - it is the most a text search
+can claim - which is why the gate it opens records `skipped` and never `passed`.
 
 A goal that arrives over MCP is fenced where it enters run state, with the warning before the
 content, and content cannot close its own fence. Whoever filed that ticket is not the person
@@ -155,6 +157,7 @@ it.
 
 - Master: [`ROUTER.md`](../ROUTER.md) → [`commands/ROUTER.md`](ROUTER.md).
 - Use when the objective is routine enough to run unattended and the workspace has opted in.
+- Use `--graph researcher-delivery` for literature → experiment → findings loops.
 - Use [`goal.md`](goal.md) when you want the approval gates, when the workspace has not opted in,
   or when the objective is exploratory.
 - Do **not** use for anything on the danger list. It will stop, and stopping late costs more than
