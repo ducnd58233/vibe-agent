@@ -58,7 +58,7 @@ runtime/
 **Loopback web server (MUST):**
 
 - Bind **`127.0.0.1` only** (`app.ListenHost`). Refuse `0.0.0.0` and non-loopback hosts.
-- Default port: **`app.DefaultPort`** (3080). Do not scatter `3080` literals in production code; tests may use the constant.
+- Default port: **`app.DefaultPort`** (1411). Do not scatter `1411` literals in production code; tests may use the constant.
 - State file: `.agent-state/web.json` via `web/infra/persistence`; remove on shutdown.
 
 **Browser-facing HTTP (MUST):**
@@ -219,7 +219,7 @@ Rules:
 
 Any change under **`runtime/web/`**, **`runtime/internal/web/`**, or **`web/static/`** is not done until browser verification passes.
 
-1. **Run the loopback server:** `vibe-agent web --workspace .` (binds **`127.0.0.1:3080`** only).
+1. **Run the loopback server:** `vibe-agent web --workspace .` (binds **`127.0.0.1:1411`** only).
 2. **Exercise affected flows in a real browser** (Cursor browser MCP, Playwright, or manual). At minimum hit every route or HTMX partial you touched, plus one happy path and one error path when the change affects errors or forms.
    - **No browser automation available?** Drive the running server directly with an HTTP/SSE client (`curl`, or a small Go test) as the minimum bar for wire-level/functional behavior: status codes, headers, streaming (e.g. does an SSE endpoint actually deliver events, not just accept the connection). This is not a substitute for a visual check when the change is CSS/layout-only, but skipping verification entirely because no browser tool is connected is not an option either.
 3. **Record evidence** under **`.agent-state/runs/<date>/<slug>/<version>/browser/`** at the workspace root (gitignored). For each session include:

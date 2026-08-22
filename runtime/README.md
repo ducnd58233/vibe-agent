@@ -147,7 +147,7 @@ UPDATE_GOLDEN=1 go test ./internal/run/infra/persistence -run TestFreshRunMatche
 Long-running commands (`web`, `hook`, `mcp serve`) write structured logs to a sibling `logs/` directory next to the install `bin/` folder (for example `~/.local/logs/web.log`), with tinted console output. Set `VIBE_LOG_LEVEL` (`debug`, `info`, `warn`, `error`) or `VIBE_LOG_DIR` to override the directory. Error records include a redacted stack trace in the JSON file.
 
 ```sh
-vibe-agent web --workspace . --toolkit /path/to/vibe-agent --port 3080
+vibe-agent web --workspace . --toolkit /path/to/vibe-agent --port 1411
 vibe-agent web --workspaces /path/other-repo,/path/another-repo
 ```
 

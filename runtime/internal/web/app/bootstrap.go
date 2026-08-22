@@ -20,7 +20,7 @@ import (
 
 const (
 	// DefaultPort is the loopback web UI listen port.
-	DefaultPort = 3080
+	DefaultPort = 1411
 
 	// ListenHost is always loopback.
 	ListenHost = "127.0.0.1"

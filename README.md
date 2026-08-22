@@ -203,7 +203,7 @@ More: [`.ai-agents/commands/research.md`](.ai-agents/commands/research.md), grap
 
 ```bash
 vibe-agent run status --slug <slug>
-vibe-agent web --open    # http://127.0.0.1:3080/, local only
+vibe-agent web --open    # http://127.0.0.1:1411/, local only
 ```
 
 Runtime flags and internals: [`runtime/README.md`](runtime/README.md).
