@@ -58,8 +58,13 @@ spec:
       description: >-
         Experiment STATUS.md reports done or failed (terminal). Running or
         missing STATUS leaves this false so the monitor loops back to the run.
+        acceptsSkipped so a workspace that never declared this check (product
+        ship only) does not fail doctor: omitting it is the tracked statement
+        that this checkout has no experiment monitor, and a researcher run
+        that skipped it would walk to findings without a STATUS file.
       source: check
       reads: experiment_done
+      acceptsSkipped: true
 
     - name: human_redirect
       description: >-
