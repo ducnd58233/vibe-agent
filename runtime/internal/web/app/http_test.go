@@ -349,6 +349,77 @@ func TestSessionRendersMarkdownAndOmitsEmptyUserTokens(t *testing.T) {
 	}
 }
 
+func TestGraphViewShowsStepPanelWithoutRailNodes(t *testing.T) {
+	root, slug := writeFixtureSession(t)
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug+"?view=graph", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "is-graph-view") {
+		t.Fatal("graph view class missing")
+	}
+	if !strings.Contains(body, `class="graph-view graph-view-step"`) {
+		t.Fatal("expected step graph panel for a node with neighbors")
+	}
+	if !strings.Contains(body, `data-testid="graph-current-node"`) {
+		t.Fatal("step graph must name the current node")
+	}
+	if !strings.Contains(body, `data-testid="graph-neighbors"`) {
+		t.Fatal("step graph must list neighbor paths")
+	}
+	if strings.Contains(body, `class="graph-rail"`) {
+		t.Fatal("step graph must not fall back to the full rail while neighbors exist")
+	}
+	if !strings.Contains(body, "function graphPanelHasContent()") {
+		t.Fatal("graph tab JS must treat step panels as non-empty")
+	}
+	if strings.Contains(body, "graphView.querySelectorAll(\".graph-node\").length === 0") {
+		t.Fatal("graph tab must not hide the panel solely because rail nodes are absent")
+	}
+}
+
+func TestGraphViewShowsFullRailAtTerminalNode(t *testing.T) {
+	root := t.TempDir()
+	slug := "graph-terminal"
+	run, err := state.NewRun(slug, "done run", "researcher-delivery", 200, time.Date(2026, 8, 22, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "done"
+	run.Status = state.StatusDone
+	testutil.EnsureRunIndex(t, root, slug)
+	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
+		t.Fatal(err)
+	}
+	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug+"?view=graph", nil)
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, `class="graph-view graph-view-step"`) {
+		t.Fatal("terminal node must use the full rail, not the step panel")
+	}
+	if !strings.Contains(body, `class="graph-rail"`) {
+		t.Fatal("graph tab must render the full node rail at terminal")
+	}
+	if !strings.Contains(body, `aria-current="true"`) {
+		t.Fatal("current terminal node must be marked on the rail")
+	}
+}
+
 func TestChatRendersFoldedThinkingBeforeAssistant(t *testing.T) {
 	root := t.TempDir()
 	slug := "think-session"

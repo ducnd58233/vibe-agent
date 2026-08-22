@@ -139,9 +139,13 @@ func BuildSessionPage(logs sessionread.Reader, workspaceRoot, toolkitRoot, bindA
 	}
 	if g, err := graph.LoadByID(graph.DefaultDir(toolkitRoot), page.GraphID); err == nil && g != nil {
 		page.GraphStep = ProjectGraphStep(g, run)
-		page.GraphNodes = []GraphNodeRow{page.GraphStep.Current}
-		if len(page.GraphStep.Neighbors) == 0 {
+		if len(page.GraphStep.Neighbors) > 0 {
+			// Step panel: current node plus outgoing paths the host can take next.
+			page.GraphNodes = []GraphNodeRow{page.GraphStep.Current}
+		} else {
+			// Full rail when there is no next-step context (terminal node or idle).
 			page.GraphNodes = ProjectGraph(g, run)
+			page.GraphStep = GraphStepView{}
 		}
 		page.GraphTypeCounts = GraphTypeCounts(page.GraphNodes)
 	}

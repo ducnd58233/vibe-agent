@@ -336,12 +336,19 @@
       return role === "user" || role === "assistant" || role === "thinking";
     }
 
+    function graphPanelHasContent() {
+      if (!graphView) return false;
+      if (graphView.querySelector(".graph-node")) return true;
+      if (graphView.querySelector("[data-testid=graph-current-node]")) return true;
+      return false;
+    }
+
     function applyFilters() {
       if (filterWrap) filterWrap.hidden = view === "chat";
       if (pipeline && pipeline.parentElement) pipeline.parentElement.hidden = view !== "trajectory";
       if (graphView) {
-        const graphEmpty = graphView.querySelectorAll(".graph-node").length === 0;
-        graphView.hidden = view !== "graph" || graphEmpty;
+        const hasGraph = graphPanelHasContent();
+        graphView.hidden = view !== "graph" || !hasGraph;
         graphView.inert = view !== "graph";
       }
       if (eventList) {
@@ -360,11 +367,19 @@
       const q = search.value.trim().toLowerCase();
       let visible = 0;
       if (view === "graph" && graphView) {
+        const isStepView = graphView.classList.contains("graph-view-step");
+        if (isStepView) {
+          filterClear.hidden = selectedGraphTypes().length === 0;
+          if (empty) empty.hidden = true;
+          if (chatEmpty) chatEmpty.hidden = true;
+          if (chatPrompts) chatPrompts.hidden = true;
+          return;
+        }
         const types = selectedGraphTypes();
         filterClear.hidden = types.length === 0;
         const nodes = graphView.querySelectorAll(".graph-node");
         const total = nodes.length;
-        graphView.hidden = total === 0;
+        graphView.hidden = !graphPanelHasContent();
         nodes.forEach((btn) => {
           const nodeType = btn.dataset.graphType || "";
           let show = true;
