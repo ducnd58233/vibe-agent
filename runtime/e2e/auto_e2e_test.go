@@ -128,7 +128,8 @@ func drive(t *testing.T, run cli, slug string, steps int) *state.Run {
 			if _, err := run.run("auto", "merge", "--slug", slug); err != nil {
 				return manifest(t, run.root, slug)
 			}
-		case current.CurrentNode == "approve_spec", current.CurrentNode == "approve_plan":
+		case current.CurrentNode == "approve_spec", current.CurrentNode == "approve_plan",
+			current.CurrentNode == "approve_applicability", current.CurrentNode == "approve_design":
 			// A gate that stays closed is the run stopping to ask, which is a
 			// result rather than a failure. Return and let the caller read
 			// where it stopped.

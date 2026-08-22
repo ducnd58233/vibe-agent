@@ -3,9 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -16,8 +13,6 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/runstart"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/runpath"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
 // The auto command surface.
@@ -186,50 +181,6 @@ func mergeLine(config *autoconfig.Config) string {
 	return "not opted in; auto stops at a green pull request"
 }
 
-// gate names the document a skippable gate is a judgement about, the flag that
-// says the judgement came out clean, and the check a person writes instead.
-//
-// A table rather than a switch because the pairing is data: adding a gate means
-// adding a row, and a row with no document is a gate nothing can answer.
-type gate struct {
-	flag  string
-	check string
-	files []string
-}
-
-var gateArtifact = map[string]gate{
-	"approve_spec":          {flag: "spec_unambiguous", check: "spec_approved", files: []string{"SPEC"}},
-	"approve_plan":          {flag: "plan_unambiguous", check: "plan_approved", files: []string{"PLAN", "TASKS"}},
-	"approve_applicability": {flag: "applicability_ok", check: "applicability_approved", files: []string{"RESEARCH"}},
-	"approve_design":        {flag: "design_ok", check: "design_approved", files: []string{"PLAN", "TASKS"}},
-}
-
-// resolveGateDoc picks the dated basename when the run has a date, else the
-// undated legacy name, under the resolved docs directory.
-func resolveGateDoc(workspaceRoot, slug, stem, date string) string {
-	dir := workspace.DocsDir(workspaceRoot, slug)
-	if entry, err := runpath.Resolve(workspaceRoot, slug); err == nil {
-		dir = workspace.DocsDirAt(workspaceRoot, entry.Date, entry.Slug, entry.Version)
-		if date == "" {
-			date = entry.Date
-		}
-	}
-	if date != "" {
-		if name, err := workspace.DocsArtifact(stem, date); err == nil {
-			dated := filepath.Join(dir, name)
-			if _, err := os.Stat(dated); err == nil {
-				return dated
-			}
-			undated := filepath.Join(dir, stem+".md")
-			if _, err := os.Stat(undated); err == nil {
-				return undated
-			}
-			return dated
-		}
-	}
-	return filepath.Join(dir, stem+".md")
-}
-
 // autoGateCommand answers the gate a run sits at, from what the document says.
 //
 // It sets the flag only when the document says nothing is open. An empty result
@@ -258,37 +209,21 @@ func autoGateCommand(args []string) error {
 		return fmt.Errorf("run %q is not on the auto path; a gate outside auto mode is answered by a person", *slug)
 	}
 
-	answerable, ok := gateArtifact[current.CurrentNode]
+	spec, ok := auto.GateSpecFor(current.CurrentNode)
 	if !ok {
 		return fmt.Errorf("run %q is at node %q, which is not a gate this command answers; it answers %s",
-			*slug, current.CurrentNode, strings.Join(gateNames(), " and "))
+			*slug, current.CurrentNode, strings.Join(auto.GateNodeNames(), " and "))
 	}
 
-	var findings []auto.Ambiguity
-	var resolved []string
-	for _, stem := range answerable.files {
-		path := resolveGateDoc(workspaceRoot, *slug, stem, current.Date)
-		resolved = append(resolved, filepath.Base(path))
-		document, readErr := os.ReadFile(filepath.Clean(path))
-		if readErr != nil {
-			return fmt.Errorf("read %s: %w", path, readErr)
-		}
-		findings = append(findings, auto.Scan(string(document))...)
-		switch stem {
-		case "RESEARCH":
-			findings = append(findings, auto.RequireApplicability(string(document))...)
-		case "PLAN":
-			if current.CurrentNode == "approve_design" {
-				findings = append(findings, auto.RequireExperimentDiagram(string(document))...)
-			}
-		}
+	findings, _, err := auto.ScanGateDocuments(workspaceRoot, *slug, current.CurrentNode, current.Date)
+	if err != nil {
+		return fmt.Errorf("read gate documents: %w", err)
 	}
-
 	if len(findings) > 0 {
 		fmt.Printf("%s stays closed: the document leaves %d thing(s) open\n", current.CurrentNode, len(findings))
 		fmt.Println(auto.Report(findings))
 		fmt.Println("  a person decides these. Settle them in the document and run this again, or")
-		fmt.Printf("  record the approval yourself: checkpoint --check %s --source human_event --passed\n", answerable.check)
+		fmt.Printf("  record the approval yourself: checkpoint --check %s --source human_event --passed\n", spec.Check)
 		return nil
 	}
 
@@ -296,52 +231,24 @@ func autoGateCommand(args []string) error {
 	if err != nil {
 		return err
 	}
-	now := time.Now()
-	if err := current.SetFlagAt(answerable.flag, true, now); err != nil {
-		return err
-	}
-	payload, err := json.Marshal(map[string]any{
-		"flag": answerable.flag, "value": true,
-		"note": "auto gate found nothing open in " + strings.Join(resolved, ", "),
-	})
-	if err != nil {
-		return fmt.Errorf("encode flag event: %w", err)
-	}
-	if _, err := state.AppendRunEvent(state.EventLogPath(workspaceRoot, *slug),
-		state.Event{Type: state.EventFlagSet, Node: current.CurrentNode, At: current.UpdatedAt, Payload: payload},
-	); err != nil {
-		return err
-	}
-	// The flag arrived while the run was already parked at the gate, so the
-	// gate has to be asked again. enterGate answers on arrival, and arrival was
-	// the only moment that existed before a document could answer one.
-	skipped, err := loop.New(loaded).SettleGate(current)
+	answer, err := auto.TryAnswerGate(workspaceRoot, loaded, current)
 	if err != nil {
 		return err
+	}
+	if !answer.Answered {
+		return fmt.Errorf("the documents look settled but the gate did not open; run `run status --slug %s`", *slug)
 	}
 	if err := state.Save(state.ManifestPath(workspaceRoot, *slug), current); err != nil {
 		return err
 	}
-	if !skipped {
-		return fmt.Errorf("the flag is set but the gate did not open; run `run status --slug %s`", *slug)
-	}
 
-	fmt.Printf("%s = true\n", answerable.flag)
-	fmt.Printf("  %s declares nothing open, so the gate skips rather than waits\n", strings.Join(answerable.files, " and "))
+	fmt.Printf("%s = true\n", spec.Flag)
+	fmt.Printf("  %s declares nothing open, so the gate skips rather than waits\n", strings.Join(spec.Files, " and "))
 	fmt.Println("  it records skipped, not approved: nobody was asked, and run state keeps the difference")
 	if node, ok := loaded.Node(current.CurrentNode); ok {
 		fmt.Printf("  gate     %s\n", node.Description)
 	}
 	return nil
-}
-
-func gateNames() []string {
-	names := make([]string, 0, len(gateArtifact))
-	for id := range gateArtifact {
-		names = append(names, id)
-	}
-	sort.Strings(names)
-	return names
 }
 
 // autoMergeCommand records the merge approval a workspace already gave.

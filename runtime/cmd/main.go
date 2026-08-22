@@ -90,10 +90,10 @@ the one that ended it.
 The slug and graph are derived from the command; host agents supply the text,
 not the user. Use "auto research" for the researcher-delivery graph.
 
-"auto gate" answers the spec or plan gate from what the document says. It sets
-the flag only when the document declares nothing open, and the gate it opens
-records skipped rather than approved, because nobody was asked. Text search is
-not a promise the document is complete, and the recorded state says so.
+"auto gate" answers the spec, plan, applicability, or design gate from what
+the document says. On the auto path, checkpoint also tries this after artifact
+nodes, so auto research walks to hypothesis and experiment without a separate
+gate command. Goal mode still parks at those gates until a person approves.
 
 "auto merge" records the merge approval the opt-in file already gave. It is
 file_assert and not human_event: nobody is being asked now, and someone did
