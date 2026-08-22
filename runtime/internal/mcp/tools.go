@@ -479,7 +479,7 @@ func describe(loaded *graph.Graph, run *state.Run) map[string]any {
 
 	action := map[string]any{
 		"kind": string(node.Type), "description": node.Description,
-		"relevantTools": relevantToolsFor(node.Type),
+		"relevantTools": relevantToolsFor(node),
 	}
 	switch node.Type {
 	case graph.NodeAgent:
@@ -508,19 +508,36 @@ func describe(loaded *graph.Graph, run *state.Run) map[string]any {
 	return out
 }
 
-// relevantToolsFor names which of vibe_checkpoint/vibe_verify applies at a
-// node type. Every other tool stays useful regardless of where the run sits
-// (fetching a failing check's log, searching memory, checking status), so
-// only these two - the ones that already error at the wrong node type - vary.
-// Narrowing further risks hiding a tool a caller actually needs.
-func relevantToolsFor(t graph.NodeType) []string {
-	switch t {
-	case graph.NodeVerifier:
-		return []string{"vibe_verify"}
+// relevantToolsFor names the MCP tools that matter most at this node.
+//
+// vibe_checkpoint and vibe_verify still vary by node type: those two error at
+// the wrong type, and tools/list hides the one that does not apply.
+// Command- and check-specific tools are hints only: research surfaces fetch,
+// experiment surfaces STATUS, build surfaces the task packet and repo map.
+// tools/list does not hide those hints; narrowing further would drop a tool
+// a caller still needs mid-node (for example fetch while reading a check log
+// at a verifier).
+func relevantToolsFor(node graph.Node) []string {
+	switch node.Type {
 	case graph.NodeTerminal:
-		return []string{}
+		return nil
+	case graph.NodeVerifier:
+		out := []string{"vibe_verify"}
+		if node.Check == "experiment_done" {
+			out = append(out, "vibe_experiment_status")
+		}
+		return out
 	default: // agent, artifact, human_gate
-		return []string{"vibe_checkpoint"}
+		out := []string{"vibe_checkpoint"}
+		switch node.Command {
+		case "research", "findings":
+			out = append(out, "vibe_fetch")
+		case "experiment":
+			out = append(out, "vibe_experiment_status")
+		case "build", "code-simplify":
+			out = append(out, "vibe_task_packet", "vibe_repo_map")
+		}
+		return out
 	}
 }
 

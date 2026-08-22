@@ -435,21 +435,21 @@ func newRunAt(t *testing.T, g *graph.Graph, node string) *state.Run {
 	return run
 }
 
-// relevantTools narrows what a model should call next without narrowing what
-// it can call: only vibe_checkpoint/vibe_verify visibility varies by node
-// type, since those two are the only tools that already error at the wrong
-// node.
+// relevantTools is a hint of what to call next. Checkpoint/verify still vary
+// by node type; command-specific tools are added without tools/list hiding them.
 func TestRelevantToolsHintPerNodeType(t *testing.T) {
 	g := loadGoalDeliveryGraphForTest(t)
 	cases := []struct {
 		node string
 		want []string
 	}{
-		{"intake", []string{"vibe_checkpoint"}}, // human_gate
-		{"spec", []string{"vibe_checkpoint"}},   // artifact
-		{"build", []string{"vibe_checkpoint"}},  // agent
-		{"test", []string{"vibe_verify"}},       // verifier
-		{"done", []string{}},                    // terminal
+		{"intake", []string{"vibe_checkpoint"}}, // human_gate, no command
+		{"spec", []string{"vibe_checkpoint"}},   // artifact command=spec
+		{"research", []string{"vibe_checkpoint", "vibe_fetch"}},
+		{"build", []string{"vibe_checkpoint", "vibe_task_packet", "vibe_repo_map"}},
+		{"simplify", []string{"vibe_checkpoint", "vibe_task_packet", "vibe_repo_map"}},
+		{"test", []string{"vibe_verify"}}, // verifier
+		{"done", []string{}},              // terminal
 	}
 	for _, tc := range cases {
 		run := newRunAt(t, g, tc.node)
@@ -467,6 +467,77 @@ func TestRelevantToolsHintPerNodeType(t *testing.T) {
 				break
 			}
 		}
+	}
+}
+
+func TestRelevantToolsHintsResearcherExperimentNodes(t *testing.T) {
+	g, err := graph.LoadByID(graph.DefaultDir(toolkitRoot), "researcher-delivery")
+	if err != nil {
+		t.Fatalf("load researcher-delivery: %v", err)
+	}
+	cases := []struct {
+		node string
+		want []string
+	}{
+		{"literature", []string{"vibe_checkpoint", "vibe_fetch"}},
+		{"experiment_run", []string{"vibe_checkpoint", "vibe_experiment_status"}},
+		{"experiment_monitor", []string{"vibe_verify", "vibe_experiment_status"}},
+		{"findings", []string{"vibe_checkpoint", "vibe_fetch"}},
+	}
+	for _, tc := range cases {
+		run := newRunAt(t, g, tc.node)
+		out := describe(g, run)
+		action := object(t, out["requiredAction"], "requiredAction")
+		gotList, _ := action["relevantTools"].([]string)
+		if len(gotList) != len(tc.want) {
+			t.Errorf("node %q: relevantTools = %v, want %v", tc.node, gotList, tc.want)
+			continue
+		}
+		for i, name := range tc.want {
+			if gotList[i] != name {
+				t.Errorf("node %q: relevantTools = %v, want %v", tc.node, gotList, tc.want)
+				break
+			}
+		}
+	}
+}
+
+// tools/list still only gates checkpoint/verify; fetch stays listed at research.
+func TestToolsListKeepsFetchAtResearchNode(t *testing.T) {
+	deps := newDeps(t)
+	server := NewServer("test", deps)
+	exchange(t, server, call("vibe_run_start", map[string]any{
+		"slug": "hint-fetch", "goal": "research tools stay listed",
+	}))
+	// Move to research: set research_required and advance past intake.
+	root := deps.WorkspaceRoot
+	run, err := state.Load(state.ManifestPath(root, "hint-fetch"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := run.SetFlagAt("research_required", true, at()); err != nil {
+		t.Fatal(err)
+	}
+	if err := state.Save(state.ManifestPath(root, "hint-fetch"), run); err != nil {
+		t.Fatal(err)
+	}
+	exchange(t, server, call("vibe_checkpoint", map[string]any{
+		"slug": "hint-fetch",
+		"check": map[string]any{
+			"name": "intake_confirmed", "passed": true, "source": "human_event",
+		},
+	}))
+	status := toolText(t, exchange(t, server, call("vibe_run_status", map[string]any{
+		"slug": "hint-fetch",
+	}))[0])
+	if !strings.Contains(status, `"currentNode":"research"`) {
+		t.Fatalf("want research node, got %s", status)
+	}
+	replies := exchange(t, server, `{"jsonrpc":"2.0","id":9,"method":"tools/list"}`)
+	names := toolNames(t, list(t, object(t, replies[0]["result"], "result")["tools"], "tools"))
+	if !names["vibe_fetch"] || !names["vibe_checkpoint"] || names["vibe_verify"] {
+		t.Fatalf("at research: fetch=%v checkpoint=%v verify=%v",
+			names["vibe_fetch"], names["vibe_checkpoint"], names["vibe_verify"])
 	}
 }
 
