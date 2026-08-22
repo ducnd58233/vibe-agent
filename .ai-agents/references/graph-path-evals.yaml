@@ -291,6 +291,7 @@ spec:
         - check: {name: design_approved, passed: true, source: human_event}
         - {} # experiment_run
         - check: {name: experiment_done, passed: true, source: file_assert}
+        - check: {name: results_acceptable, passed: true, source: file_assert}
         - {} # findings
         - {} # writeup
       expect:
@@ -304,6 +305,7 @@ spec:
           - approve_design
           - experiment_run
           - experiment_monitor
+          - results_eval
           - findings
           - writeup
           - done
@@ -342,3 +344,29 @@ spec:
       expect:
         status: running
         path: [intake, literature, approve_applicability, hypothesis]
+
+    - name: researcher loops to hypothesis when metrics fall short
+      graph: researcher-delivery
+      steps:
+        - check: {name: intake_confirmed, passed: true, source: human_event}
+        - {}
+        - check: {name: applicability_approved, passed: true, source: human_event}
+        - {}
+        - {}
+        - check: {name: design_approved, passed: true, source: human_event}
+        - {}
+        - check: {name: experiment_done, passed: true, source: file_assert}
+        - check: {name: results_acceptable, passed: false, source: file_assert}
+      expect:
+        status: running
+        path:
+          - intake
+          - literature
+          - approve_applicability
+          - hypothesis
+          - experiment_design
+          - approve_design
+          - experiment_run
+          - experiment_monitor
+          - results_eval
+          - hypothesis

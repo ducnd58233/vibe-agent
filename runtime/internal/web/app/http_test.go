@@ -101,8 +101,8 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	if strings.Contains(body, "Confirm this goal") {
 		t.Fatal("approve_spec must not reuse the intake confirm title")
 	}
-	if !strings.Contains(body, `class="graph-desc"`) {
-		t.Fatal("graph nodes must show the workflow description, not only the id")
+	if !strings.Contains(body, `data-testid="graph-current-node"`) || !strings.Contains(body, `data-testid="graph-neighbors"`) {
+		t.Fatal("graph view must show current node and neighbor paths, not only node ids")
 	}
 	if !strings.Contains(body, "<article class=\"event") {
 		t.Fatal("event rows must be articles")

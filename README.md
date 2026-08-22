@@ -76,7 +76,11 @@ flowchart LR
 /goal Add host token counts to the Chat toolbar.
 ```
 
+The host agent starts the run with `vibe-agent goal "<your text>"`. Slug and graph are derived; you do not pass `--goal`, `--graph`, or `--slug`.
+
 It will not merge to `main` unless you say so. Rules: [`.ai-agents/commands/goal.md`](.ai-agents/commands/goal.md).
+
+For citation-first research loops, use `/research` with a topic in plain language. The host agent calls `vibe-agent research "<topic>"` or `vibe-agent auto research "<topic>"` when the workspace opted into auto.
 
 ## The same sequence, unattended
 
@@ -93,16 +97,16 @@ Turn it on once per checkout, and answer the question it writes:
 
 ```bash
 vibe-agent auto init     # writes .agent-state/auto.yaml with merge: false
+vibe-agent auto "Add webhook idempotency"   # delivery graph; slug derived
+vibe-agent auto research "Compare RAG chunking"   # researcher-delivery graph
 ```
+
+The host agent passes your objective as plain text. You do not pass `--goal`, `--graph`, or `--slug`.
 
 No file, or `merge: false`, means auto stops at a green pull request and you merge it. Absence is a
 no; nothing infers the answer.
 
-Parts of `/auto` are still being built. The opt-in, the checks, and the danger gate work today; the
-graph edges that skip the approval gates do not, so until they land use `/goal`. What the finished
-mode may and may not decide is written down now, in
-[`.ai-agents/commands/auto.md`](.ai-agents/commands/auto.md), so the contract is reviewable before
-the machinery arrives.
+Rules and limits: [`.ai-agents/commands/auto.md`](.ai-agents/commands/auto.md).
 
 
 ## Where to edit

@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/graphroute"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/runstart"
 )
 
 func runCommand(args []string) error {
@@ -127,9 +129,9 @@ func runFlag(args []string) error {
 func runStart(args []string) error {
 	flags := newFlagSet("run start")
 	paths := addRootFlags(flags)
-	slug := flags.String("slug", "", "kebab-case slug for this goal (required)")
-	goal := flags.String("goal", "", "one-line objective (required)")
-	graphID := flags.String("graph", "goal-delivery", "workflow graph id")
+	slug := flags.String("slug", "", "run slug; derived from the objective when omitted")
+	goal := flags.String("goal", "", "one-line objective (optional when passed as plain text)")
+	graphID := flags.String("graph", "", "workflow graph id (advanced; default from command)")
 	tokenBudget := flags.Int("token-budget", 0, "stop the run past this many host-reported tokens (0 for no limit)")
 	wallclock := flags.Duration("wallclock", 0, "stop the run this long after it started (0 for no limit)")
 	if err := flags.Parse(args); err != nil {
@@ -138,8 +140,13 @@ func runStart(args []string) error {
 	if *tokenBudget < 0 || *wallclock < 0 {
 		return fmt.Errorf("a budget bounds a run, so it cannot be negative")
 	}
-	if *slug == "" || *goal == "" {
-		return fmt.Errorf("run start needs --slug and --goal")
+	text, err := goalFromFlags(flags, goal)
+	if err != nil {
+		return err
+	}
+	resolved, err := resolveStart(graphroute.CmdGoal, "", text, *slug, *graphID)
+	if err != nil {
+		return err
 	}
 
 	workspaceRoot, toolkitRoot, err := paths.resolve()
@@ -147,50 +154,24 @@ func runStart(args []string) error {
 		return err
 	}
 
-	loaded, err := graph.LoadByID(graph.DefaultDir(toolkitRoot), *graphID)
+	result, err := runstart.Start(runstart.Options{
+		WorkspaceRoot: workspaceRoot,
+		ToolkitRoot:   toolkitRoot,
+		Resolved:      resolved,
+		TokenBudget:   *tokenBudget,
+		WallclockSec:  int(wallclock.Seconds()),
+	})
 	if err != nil {
 		return err
 	}
-
-	// Refuse rather than overwrite: a second start would silently discard the
-	// evidence the first one recorded.
-	now := time.Now().UTC()
-	entry, err := state.PrepareStart(workspaceRoot, *slug, now)
-	if err != nil {
-		return err
-	}
-
-	current, err := state.NewRun(*slug, *goal, loaded.Metadata.ID, loaded.Spec.MaxTransitions, now)
-	if err != nil {
-		return err
-	}
-	current.Date = entry.Date
-	current.Version = entry.Version
-	current.TokenBudget = *tokenBudget
-	current.WallclockSeconds = int(wallclock.Seconds())
-	if err := loop.New(loaded).Enter(current); err != nil {
-		return err
-	}
-
-	payload, err := json.Marshal(map[string]string{"goal": current.Goal, "graph": current.GraphID})
-	if err != nil {
-		return fmt.Errorf("encode start event: %w", err)
-	}
-	manifest := state.ManifestPath(workspaceRoot, *slug)
-	if _, err := state.AppendRunEvent(state.EventLogPath(workspaceRoot, *slug),
-		state.Event{Type: state.EventRunStarted, Node: current.CurrentNode, At: current.CreatedAt, Payload: payload},
-	); err != nil {
-		return err
-	}
-	if err := state.Save(manifest, current); err != nil {
-		return err
-	}
+	current := result.Run
 
 	fmt.Printf("started %s\n", current.RunID)
 	fmt.Printf("  graph    %s\n", current.GraphID)
+	fmt.Printf("  slug     %s\n", resolved.Slug)
 	fmt.Printf("  node     %s\n", current.CurrentNode)
-	fmt.Printf("  state    %s\n", manifest)
-	fmt.Printf("  events   %s\n", state.EventLogPath(workspaceRoot, *slug))
+	fmt.Printf("  state    %s\n", result.Manifest)
+	fmt.Printf("  events   %s\n", result.Events)
 	return nil
 }
 
@@ -253,6 +234,15 @@ func runStatus(args []string) error {
 			fmt.Printf("  next       [%s] %s\n", node.Type, node.Description)
 			if node.Type == graph.NodeHumanGate {
 				fmt.Printf("             ask: %s\n", node.Prompt)
+			}
+		}
+		if neighbors, err := loop.New(loaded).Neighbors(current); err == nil && len(neighbors) > 0 {
+			fmt.Printf("  neighbors\n")
+			for _, nb := range neighbors {
+				fmt.Printf("    %s\n", loop.NeighborSummary(nb))
+				if nb.EvidenceHint != "" {
+					fmt.Printf("             %s\n", nb.EvidenceHint)
+				}
 			}
 		}
 	}

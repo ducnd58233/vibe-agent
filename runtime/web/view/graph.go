@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
@@ -67,6 +68,67 @@ func WalkOrder(g *graph.Graph) []string {
 		}
 	}
 	return order
+}
+
+// GraphNeighborRow is one reachable next node from the current step.
+type GraphNeighborRow struct {
+	To               string
+	Via              string
+	GuardDescription string
+	ToType           string
+	ToDescription    string
+	MatchesNow       bool
+	ActivePath       bool
+	EvidenceHint     string
+}
+
+// GraphStepView is the focused graph panel: current node plus outgoing neighbors.
+type GraphStepView struct {
+	Current   GraphNodeRow
+	Neighbors []GraphNeighborRow
+	HasStep   bool
+}
+
+// ProjectGraphStep builds the neighbor-focused graph panel for one run.
+func ProjectGraphStep(g *graph.Graph, run *state.Run) GraphStepView {
+	if g == nil || run == nil || run.CurrentNode == "" {
+		return GraphStepView{}
+	}
+	node, ok := g.Node(run.CurrentNode)
+	if !ok {
+		return GraphStepView{}
+	}
+	cur := GraphNodeRow{
+		ID:          run.CurrentNode,
+		Type:        string(node.Type),
+		Description: node.Description,
+		Prompt:      node.Prompt,
+		Check:       node.Check,
+		Current:     true,
+		Status:      string(GraphStatusAwaiting),
+	}
+	if run.Status == state.StatusFailed {
+		cur.Status = string(GraphStatusFailed)
+	}
+	runner := loop.New(g)
+	neighbors, err := runner.Neighbors(run)
+	if err != nil {
+		return GraphStepView{Current: cur, HasStep: true}
+	}
+	rows := make([]GraphNeighborRow, 0, len(neighbors))
+	for _, nb := range neighbors {
+		rows = append(rows, GraphNeighborRow{
+			To:               nb.To,
+			Via:              nb.Via,
+			GuardDescription: nb.GuardDescription,
+			ToType:           nb.ToType,
+			ToDescription:    nb.ToDescription,
+			MatchesNow:       nb.MatchesNow,
+			ActivePath:       nb.ActivePath,
+			EvidenceHint:     nb.EvidenceHint,
+		})
+	}
+	return GraphStepView{Current: cur, Neighbors: rows, HasStep: true}
 }
 
 // ProjectGraph builds Graph tab rows from a loaded graph and run manifest.

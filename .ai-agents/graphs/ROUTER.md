@@ -9,7 +9,7 @@ A graph is the control flow for a multi-phase workflow: which node runs next, an
 | Workflow / use case | Graph | Drives |
 |---------------------|-------|--------|
 | User objective to verified, shipped work with human gates | [`goal-delivery.yaml`](goal-delivery.yaml) | [`/goal`](../commands/goal.md), [`goal-driven-delivery`](../skills/goal-driven-delivery/SKILL.md) |
-| Literature → applicability → experiment → monitor → findings | [`researcher-delivery.yaml`](researcher-delivery.yaml) | [`/auto --graph researcher-delivery`](../commands/auto.md), [`researcher-harness`](../skills/researcher-harness/SKILL.md), [`/research`](../commands/research.md), [`/experiment`](../commands/experiment.md), [`/findings`](../commands/findings.md) |
+| Literature → applicability → experiment → monitor → findings | [`researcher-delivery.yaml`](researcher-delivery.yaml) | [`/auto research`](../commands/auto.md), [`/research`](../commands/research.md), [`researcher-harness`](../skills/researcher-harness/SKILL.md), [`/experiment`](../commands/experiment.md), [`/findings`](../commands/findings.md) |
 
 **Contract:** every graph validates against [`schemas/workflow-graph.schema.json`](../../schemas/workflow-graph.schema.json).
 

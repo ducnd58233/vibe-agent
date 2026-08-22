@@ -12,10 +12,11 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/auto"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/autoconfig"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/graphroute"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/runstart"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/runpath"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/validate"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
@@ -37,17 +38,53 @@ import (
 const slugWords = 4
 
 func autoCommand(args []string) error {
-	if len(args) > 0 {
-		switch args[0] {
-		case "init":
-			return autoInitCommand(args[1:])
-		case "gate":
-			return autoGateCommand(args[1:])
-		case "merge":
-			return autoMergeCommand(args[1:])
+	sub, rest := autoSubcommand(args)
+	switch sub {
+	case "init":
+		return autoInitCommand(rest)
+	case "gate":
+		return autoGateCommand(rest)
+	case "merge":
+		return autoMergeCommand(rest)
+	case "research":
+		return autoStartCommand(rest, graphroute.WorkflowResearch)
+	}
+	return autoStartCommand(args, graphroute.WorkflowDelivery)
+}
+
+// autoSubcommand finds init/gate/merge/research after global flags.
+func autoSubcommand(args []string) (string, []string) {
+	i := skipCommandFlags(args)
+	if i >= len(args) {
+		return "", args
+	}
+	switch args[i] {
+	case "init", "gate", "merge", "research":
+		rest := append(append([]string{}, args[:i]...), args[i+1:]...)
+		return args[i], rest
+	default:
+		return "", args
+	}
+}
+
+// skipCommandFlags advances past --flag and --flag=value pairs and their values.
+func skipCommandFlags(args []string) int {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			return i + 1
+		}
+		if !strings.HasPrefix(arg, "-") {
+			return i
+		}
+		if strings.Contains(arg, "=") {
+			continue
+		}
+		if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+			i++
 		}
 	}
-	return autoStartCommand(args)
+	return len(args)
 }
 
 // autoInitCommand writes the opt-in template and says what to do with it.
@@ -75,23 +112,21 @@ func autoInitCommand(args []string) error {
 
 // autoStartCommand turns one objective into a run on the auto path.
 //
-// The auto flag is set before the run enters the graph rather than through
-// `run flag`, because the first node is a gate that flag decides. Setting it
-// afterwards would mean the run parked waiting for a person and then had the
-// reason it was waiting taken away, which is a different thing from never
-// having waited.
-func autoStartCommand(args []string) error {
+// The objective may follow the command as plain text. Slug and graph are derived;
+// host agents must not ask the user for them.
+func autoStartCommand(args []string, workflow graphroute.Workflow) error {
 	flags := newFlagSet("auto")
 	paths := addRootFlags(flags)
-	goal := flags.String("goal", "", "one-line objective (required)")
-	slug := flags.String("slug", "", "run slug; derived from the goal when omitted")
-	graphID := flags.String("graph", "goal-delivery", "workflow graph id")
+	goal := flags.String("goal", "", "one-line objective (optional when passed as plain text)")
+	slug := flags.String("slug", "", "run slug; derived from the objective when omitted")
+	graphID := flags.String("graph", "", "workflow graph id (advanced; default from command)")
 	source := flags.String("task-source", "", "where the goal text came from, when it came from a task tracker")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	if *goal == "" {
-		return fmt.Errorf("auto needs --goal; one prompt is the whole input")
+	text, err := goalFromFlags(flags, goal)
+	if err != nil {
+		return err
 	}
 
 	workspaceRoot, toolkitRoot, err := paths.resolve()
@@ -115,68 +150,31 @@ func autoStartCommand(args []string) error {
 			"  answer it and run this again; nothing starts until someone has", path)
 	}
 
-	name := *slug
-	if name == "" {
-		name = auto.Slugify(*goal, slugWords)
-	}
-	if !validate.Slug(name) {
-		return fmt.Errorf("%q is not a usable slug; pass --slug", name)
-	}
-
-	loaded, err := graph.LoadByID(graph.DefaultDir(toolkitRoot), *graphID)
+	resolved, err := resolveStart(graphroute.CmdAuto, workflow, text, *slug, *graphID)
 	if err != nil {
 		return err
 	}
 
-	// Text from a task tracker is a description of work someone filed, not an
-	// instruction addressed to this process. It is wrapped where it enters, so
-	// everything downstream reads it already marked.
-	recorded := *goal
-	if *source != "" {
-		recorded = auto.Task(*source, *goal)
-	}
-
-	now := time.Now().UTC()
-	entry, err := state.PrepareStart(workspaceRoot, name, now)
-	if err != nil {
-		return err
-	}
-	current, err := state.NewRun(name, recorded, loaded.Metadata.ID, loaded.Spec.MaxTransitions, now)
-	if err != nil {
-		return err
-	}
-	current.Date = entry.Date
-	current.Version = entry.Version
-	current.TokenBudget = config.Spec.Budgets.Tokens
-	current.WallclockSeconds = config.Spec.Budgets.WallclockSeconds
-	if err := current.SetFlagAt("auto", true, now); err != nil {
-		return err
-	}
-	if err := loop.New(loaded).Enter(current); err != nil {
-		return err
-	}
-
-	payload, err := json.Marshal(map[string]any{
-		"goal": current.Goal, "graph": current.GraphID, "auto": true, "taskSource": *source,
+	result, err := runstart.Start(runstart.Options{
+		WorkspaceRoot: workspaceRoot,
+		ToolkitRoot:   toolkitRoot,
+		Resolved:      resolved,
+		Auto:          true,
+		TaskSource:    *source,
+		TokenBudget:   config.Spec.Budgets.Tokens,
+		WallclockSec:  config.Spec.Budgets.WallclockSeconds,
 	})
 	if err != nil {
-		return fmt.Errorf("encode start event: %w", err)
-	}
-	manifest := state.ManifestPath(workspaceRoot, name)
-	if _, err := state.AppendRunEvent(state.EventLogPath(workspaceRoot, name),
-		state.Event{Type: state.EventRunStarted, Node: current.CurrentNode, At: current.CreatedAt, Payload: payload},
-	); err != nil {
 		return err
 	}
-	if err := state.Save(manifest, current); err != nil {
-		return err
-	}
+	current := result.Run
 
 	fmt.Printf("started %s on the auto path\n", current.RunID)
-	fmt.Printf("  slug     %s\n", name)
+	fmt.Printf("  slug     %s\n", resolved.Slug)
+	fmt.Printf("  graph    %s\n", current.GraphID)
 	fmt.Printf("  node     %s\n", current.CurrentNode)
 	fmt.Printf("  merge    %s\n", mergeLine(config))
-	fmt.Printf("  state    %s\n", manifest)
+	fmt.Printf("  state    %s\n", result.Manifest)
 	fmt.Println("  the spec and plan gates still hold until `auto gate` finds nothing open in the document")
 	return nil
 }

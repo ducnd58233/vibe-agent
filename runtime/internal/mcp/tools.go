@@ -9,12 +9,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/autoconfig"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkpoint"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/graphroute"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/runstart"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/observability"
 )
 
@@ -109,10 +112,18 @@ func Tools(deps Deps) []Tool {
 			Handler:     func(raw json.RawMessage) (any, error) { return proposeMemory(deps, raw) },
 		},
 		{
-			Name:        "vibe_run_start",
-			Description: "Call to create a run when none exists yet for this objective. Do not call when a run for this slug is already active; use vibe_run_status instead.",
-			InputSchema: schema(`{"type":"object","required":["slug","goal"],"properties":{"slug":{"type":"string"},"goal":{"type":"string"},"graph":{"type":"string","default":"goal-delivery"}}}`),
+			Name: "vibe_run_start",
+			Description: "Call to create a run when none exists yet for this objective. Pass the user's objective as goal; derive slug when omitted. " +
+				"Use workflow research for literature/experiment loops, delivery (default) for spec/build/ship. Do not call when a run for this slug is already active; use vibe_run_status instead.",
+			InputSchema: schema(`{"type":"object","required":["goal"],"properties":{"goal":{"type":"string"},"slug":{"type":"string"},"workflow":{"type":"string","enum":["delivery","research"],"default":"delivery"},"graph":{"type":"string","description":"Advanced override only"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return runStart(deps, raw) },
+		},
+		{
+			Name: "vibe_auto_start",
+			Description: "Call to start an unattended auto run from the user's objective. Requires workspace auto opt-in. " +
+				"Use workflow research for researcher-delivery, delivery (default) for goal-delivery. Do not call when auto.yaml is unanswered or when a run for this slug already exists.",
+			InputSchema: schema(`{"type":"object","required":["goal"],"properties":{"goal":{"type":"string"},"slug":{"type":"string"},"workflow":{"type":"string","enum":["delivery","research"],"default":"delivery"},"taskSource":{"type":"string"}}}`),
+			Handler:     func(raw json.RawMessage) (any, error) { return autoStart(deps, raw) },
 		},
 		{
 			Name:        "vibe_run_status",
@@ -272,50 +283,98 @@ func proposeMemory(deps Deps, raw json.RawMessage) (any, error) {
 
 func runStart(deps Deps, raw json.RawMessage) (any, error) {
 	var args struct {
-		Slug  string `json:"slug"`
-		Goal  string `json:"goal"`
-		Graph string `json:"graph"`
+		Slug     string `json:"slug"`
+		Goal     string `json:"goal"`
+		Workflow string `json:"workflow"`
+		Graph    string `json:"graph"`
 	}
 	if err := json.Unmarshal(raw, &args); err != nil {
 		return nil, err
 	}
-	if args.Graph == "" {
-		args.Graph = "goal-delivery"
-	}
-
-	loaded, err := graph.LoadByID(graph.DefaultDir(deps.ToolkitRoot), args.Graph)
+	resolved, err := graphroute.Params{
+		Command:       graphroute.CmdGoal,
+		Workflow:      graphroute.Workflow(args.Workflow),
+		Goal:          args.Goal,
+		Slug:          args.Slug,
+		GraphOverride: args.Graph,
+	}.Resolve()
 	if err != nil {
 		return nil, err
 	}
 
-	now := deps.now()
-	entry, err := state.PrepareStart(deps.WorkspaceRoot, args.Slug, now)
+	result, err := runstart.Start(runstart.Options{
+		WorkspaceRoot: deps.WorkspaceRoot,
+		ToolkitRoot:   deps.ToolkitRoot,
+		Resolved:      resolved,
+		Now:           deps.now(),
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	run, err := state.NewRun(args.Slug, args.Goal, loaded.Metadata.ID, loaded.Spec.MaxTransitions, now)
-	if err != nil {
-		return nil, err
-	}
-	run.Date = entry.Date
-	run.Version = entry.Version
-	runner := &loop.Runner{Graph: loaded, Now: deps.now}
-	if err := runner.Enter(run); err != nil {
-		return nil, err
-	}
-	manifest := state.ManifestPath(deps.WorkspaceRoot, args.Slug)
-	if _, err := state.AppendRunEvent(state.EventLogPath(deps.WorkspaceRoot, args.Slug),
-		state.Event{Type: state.EventRunStarted, Node: run.CurrentNode, At: now}); err != nil {
-		return nil, err
-	}
-	if err := state.Save(manifest, run); err != nil {
-		return nil, err
-	}
-	deps.Session.Touch(args.Slug)
-	out := describe(loaded, run)
-	out["goal"] = run.Goal
+	deps.Session.Touch(resolved.Slug)
+	out := describeGraphRun(deps, result.Run)
+	out["goal"] = result.Run.Goal
+	out["slug"] = resolved.Slug
 	return out, nil
+}
+
+func autoStart(deps Deps, raw json.RawMessage) (any, error) {
+	var args struct {
+		Slug       string `json:"slug"`
+		Goal       string `json:"goal"`
+		Workflow   string `json:"workflow"`
+		TaskSource string `json:"taskSource"`
+	}
+	if err := json.Unmarshal(raw, &args); err != nil {
+		return nil, err
+	}
+	config, found, err := autoconfig.Load(deps.WorkspaceRoot)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		path, writeErr := autoconfig.Write(deps.WorkspaceRoot)
+		if writeErr != nil {
+			return nil, writeErr
+		}
+		return nil, fmt.Errorf("workspace has not answered the auto opt-in; wrote %s", path)
+	}
+	resolved, err := graphroute.Params{
+		Command:  graphroute.CmdAuto,
+		Workflow: graphroute.Workflow(args.Workflow),
+		Goal:     args.Goal,
+		Slug:     args.Slug,
+	}.Resolve()
+	if err != nil {
+		return nil, err
+	}
+	result, err := runstart.Start(runstart.Options{
+		WorkspaceRoot: deps.WorkspaceRoot,
+		ToolkitRoot:   deps.ToolkitRoot,
+		Resolved:      resolved,
+		Auto:          true,
+		TaskSource:    args.TaskSource,
+		TokenBudget:   config.Spec.Budgets.Tokens,
+		WallclockSec:  config.Spec.Budgets.WallclockSeconds,
+		Now:           deps.now(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	deps.Session.Touch(resolved.Slug)
+	out := describeGraphRun(deps, result.Run)
+	out["goal"] = result.Run.Goal
+	out["slug"] = resolved.Slug
+	out["auto"] = true
+	return out, nil
+}
+
+func describeGraphRun(deps Deps, run *state.Run) map[string]any {
+	loaded, err := graph.LoadByID(graph.DefaultDir(deps.ToolkitRoot), run.GraphID)
+	if err != nil {
+		return map[string]any{"runId": run.RunID, "node": run.CurrentNode, "graph": run.GraphID}
+	}
+	return describe(loaded, run)
 }
 
 func runStatus(deps Deps, raw json.RawMessage) (any, error) {
@@ -505,6 +564,31 @@ func describe(loaded *graph.Graph, run *state.Run) map[string]any {
 	}
 	out["requiredAction"] = action
 	out["graph"] = loaded.Metadata.ID
+	if neighbors, err := loop.New(loaded).Neighbors(run); err == nil && len(neighbors) > 0 {
+		out["neighbors"] = neighborPayload(neighbors)
+	}
+	return out
+}
+
+func neighborPayload(neighbors []loop.Neighbor) []map[string]any {
+	out := make([]map[string]any, 0, len(neighbors))
+	for _, nb := range neighbors {
+		row := map[string]any{
+			"to": nb.To, "via": nb.Via, "toType": nb.ToType,
+			"toDescription": nb.ToDescription, "matchesNow": nb.MatchesNow,
+			"activePath": nb.ActivePath, "evidenceHint": nb.EvidenceHint,
+		}
+		if nb.Guard != "" {
+			row["guard"] = nb.Guard
+			row["negated"] = nb.Negated
+			row["guardDescription"] = nb.GuardDescription
+			row["guardSource"] = nb.GuardSource
+		}
+		if len(nb.Resets) > 0 {
+			row["resets"] = nb.Resets
+		}
+		out = append(out, row)
+	}
 	return out
 }
 
@@ -524,6 +608,9 @@ func relevantToolsFor(node graph.Node) []string {
 	case graph.NodeVerifier:
 		out := []string{"vibe_verify"}
 		if node.Check == "experiment_done" {
+			out = append(out, "vibe_experiment_status")
+		}
+		if node.Check == "results_acceptable" {
 			out = append(out, "vibe_experiment_status")
 		}
 		return out

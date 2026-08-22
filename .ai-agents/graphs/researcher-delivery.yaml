@@ -66,6 +66,14 @@ spec:
       reads: experiment_done
       acceptsSkipped: true
 
+    - name: results_acceptable
+      description: >-
+        experiment/METRICS.json reports every declared threshold met after a
+        done run. Fails on failed runs, missing metrics, or values below the
+        bar so the graph can loop back to hypothesis.
+      source: check
+      reads: results_acceptable
+
     - name: human_redirect
       description: >-
         A live human message changed the objective mid-run. Set with
@@ -138,6 +146,14 @@ spec:
       verifier: files
       check: experiment_done
 
+    results_eval:
+      type: verifier
+      description: >-
+        Read experiment/METRICS.json against declared thresholds. Pass only
+        when every metric meets its bar; fail to loop back to hypothesis.
+      verifier: results
+      check: results_acceptable
+
     findings:
       type: artifact
       description: Findings that cite the run STATUS and experiment artifacts; no orphan claims.
@@ -161,27 +177,27 @@ spec:
     - from: literature
       to: intake
       when: human_redirect
-      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done]
+      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done, results_acceptable]
     - from: hypothesis
       to: intake
       when: human_redirect
-      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done]
+      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done, results_acceptable]
     - from: experiment_design
       to: intake
       when: human_redirect
-      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done]
+      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done, results_acceptable]
     - from: experiment_run
       to: intake
       when: human_redirect
-      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done]
+      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done, results_acceptable]
     - from: findings
       to: intake
       when: human_redirect
-      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done]
+      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done, results_acceptable]
     - from: writeup
       to: intake
       when: human_redirect
-      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done]
+      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done, results_acceptable]
 
     - from: intake
       to: literature
@@ -216,8 +232,20 @@ spec:
       to: experiment_run
       when: "!experiment_done"
     - from: experiment_monitor
-      to: findings
+      to: results_eval
       when: experiment_done
+
+    - from: results_eval
+      to: intake
+      when: human_redirect
+      resets: [intake_confirmed, applicability_approved, design_approved, experiment_done, results_acceptable]
+    - from: results_eval
+      to: hypothesis
+      when: "!results_acceptable"
+      resets: [design_approved, experiment_done, results_acceptable]
+    - from: results_eval
+      to: findings
+      when: results_acceptable
 
     - from: findings
       to: writeup
