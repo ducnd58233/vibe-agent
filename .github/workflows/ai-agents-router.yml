@@ -51,6 +51,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # runtime-version.sh reads commits since runtime/v*; depth 1 makes
+          # that tag look like a non-ancestor and yields a broken version.
+          fetch-depth: 0
 
       - name: Smoke test link script (symlinks to .ai-agents)
         run: |
@@ -96,6 +100,9 @@ jobs:
 
       - name: Verify docs layout checker fixtures
         run: bash scripts/check-docs-layout.sh
+
+      - name: Verify runtime release version derivation
+        run: bash scripts/check-runtime-version.sh
 
       # golangci-lint is installed on demand into runtime/bin by `make tools`.
       # Caching on the Makefile and go.sum means a run that changed neither
