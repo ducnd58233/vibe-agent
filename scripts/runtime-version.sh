@@ -54,6 +54,10 @@ conventional_base_since() {
   fi
 
   base="${major}.${minor}.${patch}"
+  if ! printf '%s' "$base" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+    echo "runtime-version: could not derive semver base from ${latest}" >&2
+    return 1
+  fi
   printf '%s' "$base"
 }
 
@@ -61,6 +65,10 @@ rolling_version() {
   local latest base build sha
   latest="$(latest_stable_tag)"
   base="$(conventional_base_since "$latest")"
+  if [ -z "$base" ]; then
+    echo "runtime-version: empty semver base" >&2
+    exit 1
+  fi
   if [ -n "$latest" ]; then
     build=$(git rev-list --count "${latest}..HEAD")
   else

@@ -51,6 +51,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # runtime-version.sh reads commits since runtime/v*; depth 1 makes
+          # that tag look like a non-ancestor and yields a broken version.
+          fetch-depth: 0
 
       - name: Smoke test link script (symlinks to .ai-agents)
         run: |
