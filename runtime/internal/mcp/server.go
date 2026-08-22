@@ -222,7 +222,7 @@ func (s *Server) listedTools() []Tool {
 		return s.Tools
 	}
 	allowed := map[string]bool{}
-	for _, name := range relevantToolsFor(node.Type) {
+	for _, name := range relevantToolsFor(node) {
 		allowed[name] = true
 	}
 	out := make([]Tool, 0, len(s.Tools))
