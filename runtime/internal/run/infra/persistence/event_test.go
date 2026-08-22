@@ -2,19 +2,20 @@ package persistence
 
 import (
 	"encoding/json"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/run/domain"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/run/domain"
 )
 
 func TestAppendEventNumbersSequentiallyFromOne(t *testing.T) {
 	_, path := indexedPaths(t, t.TempDir(), "slug")
 
 	for i := 0; i < 3; i++ {
-		if _, err := AppendEvent(path, domain.Event{Type: "node_entered", Node: "build", At: fixedTime()}); err != nil {
+		if _, err := AppendEvent(path, domain.Event{Type: domain.EventTransition, Node: "build", At: fixedTime()}); err != nil {
 			t.Fatalf("AppendEvent %d: %v", i, err)
 		}
 	}
@@ -38,7 +39,7 @@ func TestAppendEventNumbersSequentiallyFromOne(t *testing.T) {
 func TestAppendEventOnlyAppends(t *testing.T) {
 	_, path := indexedPaths(t, t.TempDir(), "slug")
 
-	if _, err := AppendEvent(path, domain.Event{Type: "first", At: fixedTime()}); err != nil {
+	if _, err := AppendEvent(path, domain.Event{Type: domain.EventRunStarted, At: fixedTime()}); err != nil {
 		t.Fatalf("AppendEvent: %v", err)
 	}
 	firstPass, err := os.ReadFile(filepath.Clean(path))
@@ -46,7 +47,7 @@ func TestAppendEventOnlyAppends(t *testing.T) {
 		t.Fatalf("ReadFile: %v", err)
 	}
 
-	if _, err := AppendEvent(path, domain.Event{Type: "second", At: fixedTime()}); err != nil {
+	if _, err := AppendEvent(path, domain.Event{Type: domain.EventFlagSet, At: fixedTime()}); err != nil {
 		t.Fatalf("AppendEvent: %v", err)
 	}
 	secondPass, err := os.ReadFile(filepath.Clean(path))
@@ -63,10 +64,10 @@ func TestAppendEventWritesOneJSONObjectPerLine(t *testing.T) {
 	_, path := indexedPaths(t, t.TempDir(), "slug")
 
 	payload := json.RawMessage(`{"exitCode":0,"command":"go test ./..."}`)
-	if _, err := AppendEvent(path, domain.Event{Type: "verifier_ran", Node: "test", Payload: payload, At: fixedTime()}); err != nil {
+	if _, err := AppendEvent(path, domain.Event{Type: domain.EventToolUse, Node: "test", Payload: payload, At: fixedTime()}); err != nil {
 		t.Fatalf("AppendEvent: %v", err)
 	}
-	if _, err := AppendEvent(path, domain.Event{Type: "node_entered", Node: "e2e", At: fixedTime()}); err != nil {
+	if _, err := AppendEvent(path, domain.Event{Type: domain.EventTransition, Node: "e2e", At: fixedTime()}); err != nil {
 		t.Fatalf("AppendEvent: %v", err)
 	}
 
@@ -93,9 +94,23 @@ func TestAppendEventRejectsAnEmptyType(t *testing.T) {
 	}
 }
 
+func TestAppendRunEventRejectsUnknownType(t *testing.T) {
+	_, path := indexedPaths(t, t.TempDir(), "slug")
+	if _, err := AppendRunEvent(path, domain.Event{Type: "node_entered", At: fixedTime()}); err == nil {
+		t.Error("AppendRunEvent accepted an unknown event type")
+	}
+}
+
+func TestAppendEventAllowsSessionTypes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "session.ndjson")
+	if _, err := AppendEvent(path, domain.Event{Type: "message", At: fixedTime()}); err != nil {
+		t.Fatalf("session types must share AppendEvent: %v", err)
+	}
+}
+
 func TestAppendEventReturnsTheStoredEvent(t *testing.T) {
 	_, path := indexedPaths(t, t.TempDir(), "slug")
-	stored, err := AppendEvent(path, domain.Event{Type: "node_entered", Node: "build", At: fixedTime()})
+	stored, err := AppendEvent(path, domain.Event{Type: domain.EventTransition, Node: "build", At: fixedTime()})
 	if err != nil {
 		t.Fatalf("AppendEvent: %v", err)
 	}
@@ -110,7 +125,7 @@ func TestAppendEventReturnsTheStoredEvent(t *testing.T) {
 func TestAppendEventDefaultsMissingTimestamp(t *testing.T) {
 	_, path := indexedPaths(t, t.TempDir(), "slug")
 	before := time.Now().UTC().Add(-time.Second)
-	stored, err := AppendEvent(path, domain.Event{Type: "node_entered"})
+	stored, err := AppendEvent(path, domain.Event{Type: domain.EventRunStarted})
 	if err != nil {
 		t.Fatalf("AppendEvent: %v", err)
 	}

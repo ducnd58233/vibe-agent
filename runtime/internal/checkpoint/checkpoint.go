@@ -164,8 +164,8 @@ func Apply(req Request) (*Result, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encode transition: %w", err)
 	}
-	if _, err := state.AppendEvent(logPath, state.Event{
-		Type: "transition", Node: transition.To, Payload: payload, At: now,
+	if _, err := state.AppendRunEvent(logPath, state.Event{
+		Type: state.EventTransition, Node: transition.To, Payload: payload, At: now,
 	}); err != nil {
 		return nil, err
 	}
@@ -205,8 +205,8 @@ func advanceStuckVerifier(req VerifyRequest, plan *Plan, run *state.Run, loaded 
 	if err != nil {
 		return nil, fmt.Errorf("encode transition: %w", err)
 	}
-	if _, err := state.AppendEvent(logPath, state.Event{
-		Type: "transition", Node: transition.To, Payload: payload, At: now,
+	if _, err := state.AppendRunEvent(logPath, state.Event{
+		Type: state.EventTransition, Node: transition.To, Payload: payload, At: now,
 	}); err != nil {
 		return nil, err
 	}
@@ -294,7 +294,7 @@ func replays(logPath, key string) (bool, error) {
 		return false, err
 	}
 	for i := len(events) - 1; i >= 0; i-- {
-		if events[i].Type != "transition" {
+		if events[i].Type != state.EventTransition {
 			continue
 		}
 		return transitionMatches(events[i].Payload, key), nil

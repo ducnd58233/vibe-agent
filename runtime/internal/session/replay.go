@@ -44,15 +44,15 @@ func Replay(logPath string) ([]Event, error) {
 }
 
 func parseEvent(line state.Event) (Event, bool, error) {
-	t := Type(line.Type)
-	if !t.valid() {
-		return Event{}, false, nil
-	}
 	var body Payload
 	if len(line.Payload) > 0 {
 		if err := json.Unmarshal(line.Payload, &body); err != nil {
 			return Event{}, false, fmt.Errorf("session event #%d: %w", line.Sequence, err)
 		}
+	}
+	t := NormalizeType(Type(line.Type), body.Role)
+	if !t.valid() {
+		return Event{}, false, nil
 	}
 	return Event{
 		Sequence: line.Sequence,
@@ -92,7 +92,7 @@ func ComposePrefix(events []Event, maxTurns, maxBytes int) string {
 		switch ev.Type {
 		case TypePromptSubmit:
 			lines = append(lines, "User: "+body)
-		case TypeTranscriptMessage:
+		case TypeMessage:
 			if EphemeralHostStatus(body) {
 				continue
 			}
@@ -106,6 +106,8 @@ func ComposePrefix(events []Event, maxTurns, maxBytes int) string {
 			case "question":
 				lines = append(lines, "Question: "+body)
 			}
+		case TypeThinking:
+			continue
 		}
 	}
 	if maxTurns > 0 {

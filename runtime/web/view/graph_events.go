@@ -37,7 +37,7 @@ func ProjectRunGraphEvents(events []state.Event) []EventRow {
 
 func projectRunGraphEvent(ev state.Event) (EventRow, bool) {
 	switch ev.Type {
-	case "run_started", "transition":
+	case state.EventRunStarted, state.EventTransition:
 	default:
 		return EventRow{}, false
 	}
@@ -55,7 +55,7 @@ func projectRunGraphEvent(ev state.Event) (EventRow, bool) {
 		Summary:     summary,
 		Body:        body,
 		PayloadJSON: payloadJSON,
-		EventName:   ev.Type,
+		EventName:   string(ev.Type),
 	}
 	row.SearchText = strings.ToLower(strings.Join([]string{
 		summary, body, "graph", ev.Node, fmt.Sprint(ev.Sequence),
@@ -67,7 +67,7 @@ func graphEventCopy(ev state.Event) (summary, body, payloadJSON string) {
 	node := strings.TrimSpace(ev.Node)
 	payloadJSON = string(ev.Payload)
 	switch ev.Type {
-	case "run_started":
+	case state.EventRunStarted:
 		var payload graphStartPayload
 		_ = json.Unmarshal(ev.Payload, &payload)
 		payload.Goal = redact.Text(strings.TrimSpace(payload.Goal))
@@ -81,7 +81,7 @@ func graphEventCopy(ev state.Event) (summary, body, payloadJSON string) {
 			return "Run started", "", payloadJSON
 		}
 		return "Run started", node, payloadJSON
-	case "transition":
+	case state.EventTransition:
 		var payload graphTransitionPayload
 		_ = json.Unmarshal(ev.Payload, &payload)
 		to := strings.TrimSpace(payload.To)
@@ -100,7 +100,7 @@ func graphEventCopy(ev state.Event) (summary, body, payloadJSON string) {
 		}
 		return to, strings.Join(parts, " "), payloadJSON
 	default:
-		return ev.Type, node, payloadJSON
+		return string(ev.Type), node, payloadJSON
 	}
 }
 

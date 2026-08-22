@@ -163,8 +163,8 @@ func autoStartCommand(args []string) error {
 		return fmt.Errorf("encode start event: %w", err)
 	}
 	manifest := state.ManifestPath(workspaceRoot, name)
-	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, name),
-		state.Event{Type: "run_started", Node: current.CurrentNode, At: current.CreatedAt, Payload: payload},
+	if _, err := state.AppendRunEvent(state.EventLogPath(workspaceRoot, name),
+		state.Event{Type: state.EventRunStarted, Node: current.CurrentNode, At: current.CreatedAt, Payload: payload},
 	); err != nil {
 		return err
 	}
@@ -309,8 +309,8 @@ func autoGateCommand(args []string) error {
 	if err != nil {
 		return fmt.Errorf("encode flag event: %w", err)
 	}
-	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, *slug),
-		state.Event{Type: "flag_set", Node: current.CurrentNode, At: current.UpdatedAt, Payload: payload},
+	if _, err := state.AppendRunEvent(state.EventLogPath(workspaceRoot, *slug),
+		state.Event{Type: state.EventFlagSet, Node: current.CurrentNode, At: current.UpdatedAt, Payload: payload},
 	); err != nil {
 		return err
 	}
@@ -426,8 +426,8 @@ func autoMergeCommand(args []string) error {
 	if err != nil {
 		return fmt.Errorf("encode transition: %w", err)
 	}
-	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, *slug),
-		state.Event{Type: "transition", Node: transition.To, At: current.UpdatedAt, Payload: transitionPayload},
+	if _, err := state.AppendRunEvent(state.EventLogPath(workspaceRoot, *slug),
+		state.Event{Type: state.EventTransition, Node: transition.To, At: current.UpdatedAt, Payload: transitionPayload},
 	); err != nil {
 		return err
 	}

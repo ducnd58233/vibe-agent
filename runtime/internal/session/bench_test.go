@@ -29,7 +29,7 @@ func benchReplayLogPath() (string, error) {
 				Body:   "benchmark prompt body",
 			}
 			if i%3 == 0 {
-				rec.Type = TypeTranscriptMessage
+				rec.Type = TypeMessage
 				rec.Role = "assistant"
 				rec.Body = "assistant reply"
 			}

@@ -59,7 +59,7 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 	out, err := hostPrint(ctx, host, message, opts)
 	if err != nil || strings.TrimSpace(out) == "" {
 		_, _ = session.Append(logPath, session.Record{
-			Type:   session.TypeTranscriptMessage,
+			Type:   session.TypeMessage,
 			Source: session.SourcePrint,
 			Client: host.Binary,
 			Role:   "assistant",
@@ -68,7 +68,7 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 		})
 		if stderr := printFailureStderr(err); stderr != "" {
 			_, _ = session.Append(logPath, session.Record{
-				Type:   session.TypeTranscriptMessage,
+				Type:   session.TypeMessage,
 				Source: session.SourcePrint,
 				Client: host.Binary,
 				Role:   "context",
@@ -120,7 +120,7 @@ func appendHostPrint(parent context.Context, workspaceRoot, slug string, host ho
 			body = "Host finished."
 		}
 		rec := session.Record{
-			Type:   session.TypeTranscriptMessage,
+			Type:   session.TypeForChatRole(frag.Role),
 			Source: session.SourcePrint,
 			Client: host.Binary,
 			Role:   frag.Role,

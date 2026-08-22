@@ -176,7 +176,7 @@ func TestATraceLineNamesTheToolOrTheHook(t *testing.T) {
 // and the trace is worse than it was.
 func TestALineWithNoToolOrEventFallsBackToTheKind(t *testing.T) {
 	line := formatSessionLine(session.Event{
-		Sequence: 3, Type: session.TypeTranscriptMessage, Source: session.SourceTranscript,
+		Sequence: 3, Type: session.TypeMessage, Source: session.SourceTranscript,
 		Role: "assistant", Payload: []byte(`{"body":"ready"}`),
 	})
 	if strings.Contains(line, "  ") {

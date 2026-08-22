@@ -44,8 +44,8 @@ func ambientJournalPath(workspaceRoot string) string {
 // events.ndjson unconditionally. A memory citing the wrong file is worse than
 // one citing none: it points a reader at a log that does not contain the line.
 func ambientJournal(workspaceRoot string, entry []byte) string {
-	recorded, err := state.AppendEvent(ambientJournalPath(workspaceRoot), state.Event{
-		Type:    "tool_use",
+	recorded, err := state.AppendRunEvent(ambientJournalPath(workspaceRoot), state.Event{
+		Type:    state.EventToolUse,
 		Payload: entry,
 	})
 	if err != nil {

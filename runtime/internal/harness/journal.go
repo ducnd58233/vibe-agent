@@ -135,8 +135,8 @@ func journal(req Request, body payload, failed bool) error {
 	}
 
 	for _, run := range runs {
-		recorded, err := state.AppendEvent(state.EventLogPath(req.WorkspaceRoot, run.Slug), state.Event{
-			Type:    "tool_use",
+		recorded, err := state.AppendRunEvent(state.EventLogPath(req.WorkspaceRoot, run.Slug), state.Event{
+			Type:    state.EventToolUse,
 			Node:    run.CurrentNode,
 			Payload: entry,
 		})

@@ -963,7 +963,7 @@ func writeWebFixtureSession(t *testing.T, root, slug string) {
 	records := []session.Record{
 		{Type: session.TypeSessionStart, Source: session.SourceHook, Client: "cursor", Event: "SessionStart"},
 		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "cursor", Body: "plan with key " + e2eWebSecret},
-		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "ready"},
+		{Type: session.TypeMessage, Source: session.SourceTranscript, Role: "assistant", Body: "ready"},
 	}
 	for _, rec := range records {
 		rec.At = stamp

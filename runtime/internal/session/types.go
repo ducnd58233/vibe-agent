@@ -7,6 +7,7 @@ package session
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -17,28 +18,53 @@ const LogName = "session.ndjson"
 type Type string
 
 const (
-	TypeSessionStart      Type = "session_start"
-	TypePromptSubmit      Type = "prompt_submit"
-	TypePreTool           Type = "pre_tool"
-	TypeToolUse           Type = "tool_use"
-	TypeStop              Type = "stop"
-	TypeSubagentStop      Type = "subagent_stop"
-	TypeTranscriptMessage Type = "transcript_message"
+	TypeSessionStart Type = "session_start"
+	TypePromptSubmit Type = "prompt_submit"
+	TypePreTool      Type = "pre_tool"
+	TypeToolUse      Type = "tool_use"
+	TypeStop         Type = "stop"
+	TypeSubagentStop Type = "subagent_stop"
+	// TypeMessage is projected or printed chat text (assistant, user, …).
+	TypeMessage Type = "message"
+	// TypeThinking is host reasoning that must not enter the compose prefix.
+	TypeThinking Type = "thinking"
 )
 
+// legacyTypeTranscriptMessage is the pre-split wire value. Writers never emit
+// it; parseEvent remaps it by role so leftover local logs still render.
+const legacyTypeTranscriptMessage Type = "transcript_message"
+
 var knownTypes = map[Type]struct{}{
-	TypeSessionStart:      {},
-	TypePromptSubmit:      {},
-	TypePreTool:           {},
-	TypeToolUse:           {},
-	TypeStop:              {},
-	TypeSubagentStop:      {},
-	TypeTranscriptMessage: {},
+	TypeSessionStart: {},
+	TypePromptSubmit: {},
+	TypePreTool:      {},
+	TypeToolUse:      {},
+	TypeStop:         {},
+	TypeSubagentStop: {},
+	TypeMessage:      {},
+	TypeThinking:     {},
 }
 
 func (t Type) valid() bool {
 	_, ok := knownTypes[t]
 	return ok
+}
+
+// TypeForChatRole picks message vs thinking for a transcript or print role.
+func TypeForChatRole(role string) Type {
+	if strings.EqualFold(strings.TrimSpace(role), "thinking") {
+		return TypeThinking
+	}
+	return TypeMessage
+}
+
+// NormalizeType remaps a stored type. Legacy transcript_message lines become
+// thinking or message from their payload role.
+func NormalizeType(t Type, role string) Type {
+	if t != legacyTypeTranscriptMessage {
+		return t
+	}
+	return TypeForChatRole(role)
 }
 
 // Source is where the gesture was captured.

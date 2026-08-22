@@ -17,10 +17,10 @@ func TestEventsAfterForViewChatDemotesIntermediateAssistants(t *testing.T) {
 	stamp := time.Date(2026, 8, 19, 10, 0, 0, 0, time.UTC)
 	for i, rec := range []session.Record{
 		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "cursor", Body: "start", At: stamp},
-		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "step 1", At: stamp.Add(time.Second)},
-		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "step 2", At: stamp.Add(2 * time.Second)},
+		{Type: session.TypeMessage, Source: session.SourceTranscript, Role: "assistant", Body: "step 1", At: stamp.Add(time.Second)},
+		{Type: session.TypeMessage, Source: session.SourceTranscript, Role: "assistant", Body: "step 2", At: stamp.Add(2 * time.Second)},
 		{
-			Type:    session.TypeTranscriptMessage,
+			Type:    session.TypeMessage,
 			Source:  session.SourceTranscript,
 			Role:    "assistant",
 			Body:    "final",
@@ -78,9 +78,9 @@ func TestEventsAfterForViewTrajectoryKeepsAssistantProgress(t *testing.T) {
 	stamp := time.Date(2026, 8, 19, 10, 0, 0, 0, time.UTC)
 	for i, rec := range []session.Record{
 		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "cursor", Body: "start", At: stamp},
-		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "step 1", At: stamp.Add(time.Second)},
+		{Type: session.TypeMessage, Source: session.SourceTranscript, Role: "assistant", Body: "step 1", At: stamp.Add(time.Second)},
 		{
-			Type:    session.TypeTranscriptMessage,
+			Type:    session.TypeMessage,
 			Source:  session.SourceTranscript,
 			Role:    "assistant",
 			Body:    "final",
@@ -161,17 +161,17 @@ func TestTrajectoryRowsMergesGraphTransitions(t *testing.T) {
 	testutil.EnsureRunIndex(t, root, slug)
 	stamp := time.Date(2026, 8, 19, 3, 0, 0, 0, time.UTC)
 	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
-		Type: "run_started", Node: "intake", At: stamp, Payload: []byte(`{"goal":"graph on trajectory"}`),
+		Type: state.EventRunStarted, Node: "intake", At: stamp, Payload: []byte(`{"goal":"graph on trajectory"}`),
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
-		Type: "tool_use", Node: "intake", At: stamp.Add(time.Second), Payload: []byte(`{"tool":"Bash","command":"true"}`),
+		Type: state.EventToolUse, Node: "intake", At: stamp.Add(time.Second), Payload: []byte(`{"tool":"Bash","command":"true"}`),
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
-		Type: "transition", Node: "research", At: stamp.Add(2 * time.Second),
+		Type: state.EventTransition, Node: "research", At: stamp.Add(2 * time.Second),
 		Payload: []byte(`{"from":"intake","to":"research","via":"goal_clear=true"}`),
 	}); err != nil {
 		t.Fatal(err)

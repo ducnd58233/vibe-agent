@@ -175,8 +175,8 @@ func runResume(args []string) error {
 	if err != nil {
 		return fmt.Errorf("encode resume event: %w", err)
 	}
-	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, *slug),
-		state.Event{Type: "run_resumed", Node: current.CurrentNode, At: current.UpdatedAt, Payload: payload},
+	if _, err := state.AppendRunEvent(state.EventLogPath(workspaceRoot, *slug),
+		state.Event{Type: state.EventRunResumed, Node: current.CurrentNode, At: current.UpdatedAt, Payload: payload},
 	); err != nil {
 		return err
 	}
@@ -236,8 +236,8 @@ func runAbort(args []string) error {
 	if err != nil {
 		return fmt.Errorf("encode abort event: %w", err)
 	}
-	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, *slug),
-		state.Event{Type: "run_aborted", Node: current.CurrentNode, At: current.UpdatedAt, Payload: payload},
+	if _, err := state.AppendRunEvent(state.EventLogPath(workspaceRoot, *slug),
+		state.Event{Type: state.EventRunAborted, Node: current.CurrentNode, At: current.UpdatedAt, Payload: payload},
 	); err != nil {
 		return err
 	}
@@ -334,8 +334,8 @@ func runExtend(args []string) error {
 	if err != nil {
 		return fmt.Errorf("encode extend event: %w", err)
 	}
-	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, *slug),
-		state.Event{Type: "run_extended", Node: current.CurrentNode, At: current.UpdatedAt, Payload: payload},
+	if _, err := state.AppendRunEvent(state.EventLogPath(workspaceRoot, *slug),
+		state.Event{Type: state.EventRunExtended, Node: current.CurrentNode, At: current.UpdatedAt, Payload: payload},
 	); err != nil {
 		return err
 	}

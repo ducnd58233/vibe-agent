@@ -17,10 +17,10 @@ func TestProjectRunGraphEventsMapsStartAndTransition(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows := ProjectRunGraphEvents([]state.Event{
-		{Sequence: 1, Type: "run_started", Node: "intake", At: stamp, Payload: []byte(`{"goal":"show graph rows","graph":"goal-delivery"}`)},
-		{Sequence: 2, Type: "tool_use", Node: "research", At: stamp.Add(time.Second), Payload: []byte(`{"tool":"Bash","command":"ls"}`)},
-		{Sequence: 3, Type: "transition", Node: "research", At: stamp.Add(2 * time.Second), Payload: payload},
-		{Sequence: 4, Type: "transition", Node: "research", At: stamp.Add(3 * time.Second), Payload: mustJSON(t, graphTransitionPayload{From: "research", To: "research", Via: "(fallback)"})},
+		{Sequence: 1, Type: state.EventRunStarted, Node: "intake", At: stamp, Payload: []byte(`{"goal":"show graph rows","graph":"goal-delivery"}`)},
+		{Sequence: 2, Type: state.EventToolUse, Node: "research", At: stamp.Add(time.Second), Payload: []byte(`{"tool":"Bash","command":"ls"}`)},
+		{Sequence: 3, Type: state.EventTransition, Node: "research", At: stamp.Add(2 * time.Second), Payload: payload},
+		{Sequence: 4, Type: state.EventTransition, Node: "research", At: stamp.Add(3 * time.Second), Payload: mustJSON(t, graphTransitionPayload{From: "research", To: "research", Via: "(fallback)"})},
 	})
 	if len(rows) != 3 {
 		t.Fatalf("rows = %d want 3 (journal tool_use skipped)", len(rows))
@@ -46,7 +46,7 @@ func TestProjectRunStartedRedactsGoalSecret(t *testing.T) {
 	stamp := time.Date(2026, 8, 19, 2, 0, 0, 0, time.UTC)
 	secret := "sk-0123456789abcdef0123456789ab"
 	rows := ProjectRunGraphEvents([]state.Event{
-		{Sequence: 1, Type: "run_started", Node: "intake", At: stamp, Payload: []byte(`{"goal":"ship with ` + secret + `"}`)},
+		{Sequence: 1, Type: state.EventRunStarted, Node: "intake", At: stamp, Payload: []byte(`{"goal":"ship with ` + secret + `"}`)},
 	})
 	if len(rows) != 1 {
 		t.Fatalf("rows = %d", len(rows))
@@ -62,7 +62,7 @@ func TestProjectRunStartedRedactsGoalSecret(t *testing.T) {
 func TestProjectRunStartedFallsBackToNodeWhenGoalMissing(t *testing.T) {
 	stamp := time.Date(2026, 8, 19, 2, 0, 0, 0, time.UTC)
 	rows := ProjectRunGraphEvents([]state.Event{
-		{Sequence: 1, Type: "run_started", Node: "intake", At: stamp, Payload: []byte(`{"graph":"goal-delivery"}`)},
+		{Sequence: 1, Type: state.EventRunStarted, Node: "intake", At: stamp, Payload: []byte(`{"graph":"goal-delivery"}`)},
 	})
 	if len(rows) != 1 {
 		t.Fatalf("rows = %d", len(rows))

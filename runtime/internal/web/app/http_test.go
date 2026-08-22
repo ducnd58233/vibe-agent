@@ -212,17 +212,17 @@ func TestTrajectoryShowsGraphTransitionsFromRunLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
-		Type: "run_started", Node: "intake", At: stamp, Payload: []byte(`{"goal":"show graph on trajectory","graph":"goal-delivery"}`),
+		Type: state.EventRunStarted, Node: "intake", At: stamp, Payload: []byte(`{"goal":"show graph on trajectory","graph":"goal-delivery"}`),
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
-		Type: "tool_use", Node: "intake", At: stamp.Add(time.Second), Payload: []byte(`{"tool":"Bash","command":"true"}`),
+		Type: state.EventToolUse, Node: "intake", At: stamp.Add(time.Second), Payload: []byte(`{"tool":"Bash","command":"true"}`),
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
-		Type: "transition", Node: "research", At: stamp.Add(2 * time.Second),
+		Type: state.EventTransition, Node: "research", At: stamp.Add(2 * time.Second),
 		Payload: []byte(`{"from":"intake","to":"research","via":"goal_clear=true"}`),
 	}); err != nil {
 		t.Fatal(err)
@@ -288,7 +288,7 @@ func TestSessionRendersMarkdownAndOmitsEmptyUserTokens(t *testing.T) {
 	records := []session.Record{
 		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "cursor", Body: "say hello"},
 		{Type: session.TypeToolUse, Source: session.SourceHook, Client: "cursor", Tool: "Read", Command: "README.md"},
-		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "# Hello\n\n- one\n\nhi <script>alert(1)</script>", Usage: &session.Usage{Input: 12, Output: 4}},
+		{Type: session.TypeMessage, Source: session.SourceTranscript, Role: "assistant", Body: "# Hello\n\n- one\n\nhi <script>alert(1)</script>", Usage: &session.Usage{Input: 12, Output: 4}},
 	}
 	for _, rec := range records {
 		rec.At = stamp
@@ -357,8 +357,8 @@ func TestChatRendersFoldedThinkingBeforeAssistant(t *testing.T) {
 	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
 	records := []session.Record{
 		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "cursor", Body: "read the file"},
-		{Type: session.TypeTranscriptMessage, Source: session.SourcePrint, Role: "thinking", Body: "I will open README first"},
-		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "Opened README."},
+		{Type: session.TypeThinking, Source: session.SourcePrint, Role: "thinking", Body: "I will open README first"},
+		{Type: session.TypeMessage, Source: session.SourceTranscript, Role: "assistant", Body: "Opened README."},
 	}
 	for _, rec := range records {
 		rec.At = stamp
@@ -397,7 +397,7 @@ func TestLongAssistantRowHasNoChatExpand(t *testing.T) {
 	path := session.LogPath(root, slug)
 	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
 	rec := session.Record{
-		Type:   session.TypeTranscriptMessage,
+		Type:   session.TypeMessage,
 		Source: session.SourceTranscript,
 		Role:   "assistant",
 		Body:   strings.Repeat("paragraph text. ", 40),
@@ -1062,7 +1062,7 @@ func TestChatIntakePromptRedactsSecretInGoal(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
-		Type: "run_started", Node: "intake", At: stamp,
+		Type: state.EventRunStarted, Node: "intake", At: stamp,
 		Payload: []byte(`{"goal":"ship with ` + testSecret + `","graph":"goal-delivery"}`),
 	}); err != nil {
 		t.Fatal(err)
@@ -1094,7 +1094,7 @@ func writeFixtureSession(t *testing.T) (root, slug string) {
 		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "cursor", Body: "plan the UI"},
 		{Type: session.TypeToolUse, Source: session.SourceHook, Client: "cursor", Tool: "Read", Command: "docs/SPEC.md"},
 		{Type: session.TypeToolUse, Source: session.SourceHook, Client: "codex", Tool: "bash", Command: "gh pr view"},
-		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "I will implement the shell.", Usage: &session.Usage{Input: 100, Output: 40}},
+		{Type: session.TypeMessage, Source: session.SourceTranscript, Role: "assistant", Body: "I will implement the shell.", Usage: &session.Usage{Input: 100, Output: 40}},
 	}
 	for _, rec := range records {
 		rec.At = stamp

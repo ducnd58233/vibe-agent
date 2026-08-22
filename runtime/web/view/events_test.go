@@ -17,7 +17,7 @@ func TestProjectEventsMixedRoles(t *testing.T) {
 		{Type: session.TypeSessionStart, Source: session.SourceHook, Client: "cursor", Event: "SessionStart"},
 		{Type: session.TypePromptSubmit, Source: session.SourceHook, Client: "cursor", Body: "hello"},
 		{Type: session.TypeToolUse, Source: session.SourceHook, Client: "cursor", Tool: "bash", Command: "echo hi"},
-		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "done", Usage: &session.Usage{Input: 10, Output: 5}},
+		{Type: session.TypeMessage, Source: session.SourceTranscript, Role: "assistant", Body: "done", Usage: &session.Usage{Input: 10, Output: 5}},
 	}
 	events := make([]session.Event, 0, len(records))
 	for _, rec := range records {
@@ -95,7 +95,7 @@ func TestPromoteUsageMovesStopCountsOntoAssistant(t *testing.T) {
 	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
 	for _, rec := range []session.Record{
 		{Type: session.TypePromptSubmit, Source: session.SourceHook, Body: "hi", At: stamp},
-		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: "done", At: stamp},
+		{Type: session.TypeMessage, Source: session.SourceTranscript, Role: "assistant", Body: "done", At: stamp},
 		{Type: session.TypeStop, Source: session.SourcePrint, Event: "ComposerStop", Usage: &session.Usage{Input: 9, Output: 2, CacheRead: 4}, At: stamp},
 	} {
 		if _, err := session.Append(path, rec); err != nil {
@@ -148,7 +148,7 @@ func TestChatFoldClosedOnLongAssistantBody(t *testing.T) {
 	stamp := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
 	for _, rec := range []session.Record{
 		{Type: session.TypePromptSubmit, Source: session.SourceHook, Body: short, At: stamp},
-		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "assistant", Body: long, At: stamp},
+		{Type: session.TypeMessage, Source: session.SourceTranscript, Role: "assistant", Body: long, At: stamp},
 		{Type: session.TypeToolUse, Source: session.SourceHook, Tool: "Read", Command: strings.Repeat("x", 600), At: stamp},
 	} {
 		if _, err := session.Append(path, rec); err != nil {
@@ -213,8 +213,8 @@ func TestChatRowsHidesTranscriptCommandInjection(t *testing.T) {
 	goalFile := "Drive one objective end to end.\n\n<context>\n\nFollow the skill.\n</context>\n\n## Inputs"
 	rows := []EventRow{
 		{Type: session.TypePromptSubmit, Source: session.SourcePrint, Role: "user", Body: "/goal please continue"},
-		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "user", Body: "<command-message>goal</command-message>\n<command-name>/goal</command-name>\n<command-args>please continue</command-args>"},
-		{Type: session.TypeTranscriptMessage, Source: session.SourceTranscript, Role: "user", Body: goalFile},
+		{Type: session.TypeMessage, Source: session.SourceTranscript, Role: "user", Body: "<command-message>goal</command-message>\n<command-name>/goal</command-name>\n<command-args>please continue</command-args>"},
+		{Type: session.TypeMessage, Source: session.SourceTranscript, Role: "user", Body: goalFile},
 		{Role: "assistant", Body: "done"},
 	}
 	chat := ChatRows(rows)
@@ -323,7 +323,7 @@ func TestThinkingChatRowStartsFolded(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, session.LogName)
 	rec := session.Record{
-		Type:   session.TypeTranscriptMessage,
+		Type:   session.TypeThinking,
 		Source: session.SourcePrint,
 		Role:   "thinking",
 		Body:   "planning the edit",

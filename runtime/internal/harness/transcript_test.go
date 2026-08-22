@@ -42,7 +42,7 @@ func TestTranscriptProjectsUserAndAssistant(t *testing.T) {
 	if len(transcript) != 2 {
 		t.Fatalf("transcript events = %+v", transcript)
 	}
-	if transcript[0].Type != session.TypeTranscriptMessage || transcript[1].Type != session.TypeTranscriptMessage {
+	if transcript[0].Type != session.TypeMessage || transcript[1].Type != session.TypeMessage {
 		t.Fatalf("types = %+v", transcript)
 	}
 }
@@ -115,7 +115,7 @@ func TestTranscriptSkipsDuplicateAssistantFromStop(t *testing.T) {
 	events := sessionLog(t, root)
 	transcriptCount := 0
 	for _, ev := range events {
-		if ev.Source == session.SourceTranscript && ev.Type == session.TypeTranscriptMessage {
+		if ev.Source == session.SourceTranscript && ev.Type == session.TypeMessage {
 			transcriptCount++
 		}
 	}
@@ -170,7 +170,7 @@ func TestStopCopiesUsageFromSkippedTranscriptAssistant(t *testing.T) {
 	})
 	var body session.Payload
 	for _, ev := range sessionLog(t, root) {
-		if ev.Type != session.TypeTranscriptMessage || ev.Source != session.SourceHook {
+		if ev.Type != session.TypeMessage || ev.Source != session.SourceHook {
 			continue
 		}
 		if err := json.Unmarshal(ev.Payload, &body); err != nil {
