@@ -45,7 +45,7 @@ func applyToolInput(body *payload, raw json.RawMessage) {
 		return
 	}
 	if body.ToolInput.Command == "" {
-		body.ToolInput.Command = firstRawString(input, "command")
+		body.ToolInput.Command = firstRawString(input, "command", "CommandLine")
 	}
 	if body.ToolInput.FilePath == "" {
 		body.ToolInput.FilePath = firstRawString(input, "file_path", "filePath", "path")
@@ -77,6 +77,35 @@ func (p *payload) enrichFromRaw() {
 	}
 	if raw, ok := top["tool_input"]; ok {
 		applyToolInput(p, raw)
+	}
+	if raw, ok := top["toolCall"]; ok {
+		applyToolCall(p, raw)
+	}
+	if p.TranscriptPath == "" {
+		p.TranscriptPath = firstRawString(top, "transcriptPath", "transcript_path")
+	}
+}
+
+func applyToolCall(body *payload, raw json.RawMessage) {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || raw[0] != '{' {
+		return
+	}
+	var call map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &call); err != nil {
+		return
+	}
+	if body.ToolName == "" {
+		body.ToolName = firstRawString(call, "name")
+	}
+	if args, ok := call["args"]; ok {
+		applyToolInput(body, args)
+		if body.ToolInput.Command == "" {
+			var argsMap map[string]json.RawMessage
+			if err := json.Unmarshal(args, &argsMap); err == nil {
+				body.ToolInput.Command = firstRawString(argsMap, "CommandLine", "command")
+			}
+		}
 	}
 }
 

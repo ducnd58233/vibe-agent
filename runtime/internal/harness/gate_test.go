@@ -448,6 +448,40 @@ func TestCursorGetsADenyForACredentialToo(t *testing.T) {
 	}
 }
 
+func TestAntigravityPreToolUseDenialUsesDecisionAndReason(t *testing.T) {
+	root := workspaceWithRun(t)
+	onBranch(t, root, "main")
+
+	body, err := json.Marshal(map[string]any{
+		"toolCall": map[string]any{
+			"name": "run_command",
+			"args": map[string]string{"CommandLine": "git push origin main"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var out bytes.Buffer
+	if err := Run(Request{
+		Event: EventPreToolUse, Client: ClientAntigravity, WorkspaceRoot: root,
+		ToolkitRoot: toolkitRoot, Stdin: bytes.NewReader(body),
+	}, &out); err != nil {
+		t.Fatalf("Antigravity path returned an error instead of a decision: %v", err)
+	}
+
+	var decision map[string]any
+	if err := json.Unmarshal(out.Bytes(), &decision); err != nil {
+		t.Fatalf("Antigravity decision is not JSON: %v (%q)", err, out.String())
+	}
+	if decision["decision"] != "deny" {
+		t.Fatalf("expected deny, got %v", decision["decision"])
+	}
+	if decision["reason"] == "" {
+		t.Fatal("expected a non-empty reason")
+	}
+}
+
 // The push guard reads "no active run has recorded merge_approved". That check
 // used to survive its own task, so one approval left every later push to a
 // protected branch unguarded for the life of the run.

@@ -93,7 +93,10 @@ type HostContract struct {
 }
 
 // hostContracts is the table. Order is the order the document renders in.
-var hostContracts = []HostContract{claudeContract, cursorContract, codexContract, opencodeContract}
+var hostContracts = []HostContract{
+	claudeContract, cursorContract, codexContract, opencodeContract,
+	antigravityContract, kimiContract, museContract,
+}
 
 // HostContractFor returns a host's contract.
 func HostContractFor(client Client) (HostContract, bool) {
@@ -439,5 +442,145 @@ var opencodeContract = HostContract{
 		"Registering an MCP server is not a substitute: the model decides whether to call a tool, and a control plane the model may skip is not deterministic.",
 		"No failure event and no exit status on tool.execute.after, so a failed command cannot be told from a successful one. The same gap as Codex, reached by a different route.",
 		"No end-of-turn hook, so nothing can refuse to end a turn with a run mid-graph the way stop does on Claude and Cursor.",
+	},
+}
+
+const antigravityNeverObserved = "No Antigravity hook has been observed firing from this config. " +
+	"The envelope matches https://antigravity.google/docs/hooks and nobody here has run the binary."
+
+const kimiNeverObserved = "No Kimi hook has been observed firing. Kimi documents event names and " +
+	"command wiring in config.toml but not the stdin or stdout schema, so PreToolUse refusal reuses Codex's shape."
+
+const museNeverObserved = "No Muse hook has been observed firing. Beta builds may ignore .muse/hooks.json; " +
+	"the envelope matches the Claude hook schema reported by independent measurement, not vendor confirmation here."
+
+// antigravityContract is Google Antigravity.
+var antigravityContract = HostContract{
+	Client:     ClientAntigravity,
+	ConfigPath: ".agents/hooks.json",
+	Source:     "https://antigravity.google/docs/hooks",
+	WorkspaceRoot: WorkspaceRoot{
+		Reliable: false,
+		Note: "Hook commands receive workspacePaths on stdin as an array. This toolkit passes an explicit --workspace " +
+			"from the config rather than picking one path from the array.",
+	},
+	Events: []EventContract{
+		{
+			HostKey: "PreInvocation", Event: EventUserPromptSubmit,
+			OutputKeys: []string{"injectSteps"},
+			CanInject:  true, Wired: true,
+			Verification: unverified(antigravityNeverObserved),
+			Note:         "Antigravity has no SessionStart event; run context rides on PreInvocation via injectSteps.ephemeralMessage.",
+		},
+		{
+			HostKey: "PreToolUse", Event: EventPreToolUse,
+			OutputKeys: []string{"decision", "reason", "permissionOverrides"},
+			CanRefuse:  true, Wired: true,
+			Verification: unverified(antigravityNeverObserved),
+			Note:         "Shell commands arrive as toolCall.args.CommandLine on run_command.",
+		},
+		{
+			HostKey: "PostToolUse", Event: EventPostToolUse,
+			OutputKeys: nil, Wired: true,
+			Verification: unverified(antigravityNeverObserved),
+			Note:         "Failures share this event via a top-level error string; there is no separate failure hook.",
+		},
+		{
+			HostKey: "Stop", Event: EventStop,
+			OutputKeys: []string{"decision", "reason"},
+			CanRefuse:  true, Wired: true,
+			Verification: unverified(antigravityNeverObserved),
+			Note:         "Set decision to continue to keep the loop running; any other value allows the stop.",
+		},
+	},
+	Gaps: []string{
+		"No SessionStart event; first-turn steering uses PreInvocation instead.",
+		"No PostToolUseFailure event; journal a failed tool from PostToolUse when error is non-empty.",
+		"workspacePaths is an array; a hook must not assume a single checkout root from stdin alone.",
+	},
+}
+
+// kimiContract is Kimi Code CLI.
+var kimiContract = HostContract{
+	Client:     ClientKimi,
+	ConfigPath: ".kimi/hooks.toml",
+	Source:     "https://moonshotai.github.io/kimi-cli/en/configuration/config-files.html",
+	WorkspaceRoot: WorkspaceRoot{
+		Reliable: false,
+		Note: "Hooks are configured in the user's ~/.kimi/config.toml. The workspace file is a copy-ready snippet; " +
+			"merge it into the user config or Kimi will never call these commands.",
+	},
+	Events: []EventContract{
+		{
+			HostKey: "PreToolUse", Event: EventPreToolUse,
+			OutputKeys: []string{"hookSpecificOutput.hookEventName", "hookSpecificOutput.permissionDecision", "hookSpecificOutput.permissionDecisionReason"},
+			CanRefuse:  true, Wired: true,
+			Verification: unverified(kimiNeverObserved),
+		},
+		{
+			HostKey: "PostToolUse", Event: EventPostToolUse,
+			OutputKeys: nil, Wired: true,
+			Verification: unverified(kimiNeverObserved),
+		},
+		{
+			HostKey: "Stop", Event: EventStop,
+			OutputKeys: []string{"decision", "reason"},
+			CanRefuse:  true, Wired: true,
+			Verification: unverified(kimiNeverObserved),
+			Note:         "Stop stdout schema is undocumented; this reuses Claude's decision block shape.",
+		},
+	},
+	Gaps: []string{
+		"No SessionStart or UserPromptSubmit hook events published.",
+		"Hooks live in user config.toml, not in the repository, unless someone merges the snippet.",
+		"No separate failure event documented for PostToolUse.",
+	},
+}
+
+// museContract is Muse Code.
+var museContract = HostContract{
+	Client:     ClientMuse,
+	ConfigPath: ".muse/hooks.json",
+	Source:     "https://dev.meta.ai/docs/muse-code/extending",
+	WorkspaceRoot: WorkspaceRoot{
+		Reliable: false,
+		Note:     "Project hooks at .muse/hooks.json require `muse hooks trust` before they run. Pass --workspace explicitly.",
+	},
+	Events: []EventContract{
+		{
+			HostKey: "SessionStart", Event: EventSessionStart,
+			OutputKeys: []string{"hookSpecificOutput.hookEventName", "hookSpecificOutput.additionalContext"},
+			CanInject:  true, Wired: true,
+			Verification: unverified(museNeverObserved),
+		},
+		{
+			HostKey: "UserPromptSubmit", Event: EventUserPromptSubmit,
+			OutputKeys: []string{"hookSpecificOutput.hookEventName", "hookSpecificOutput.additionalContext"},
+			CanInject:  true, Wired: true,
+			Verification: unverified(museNeverObserved),
+		},
+		{
+			HostKey: "PreToolUse", Event: EventPreToolUse,
+			OutputKeys: []string{"hookSpecificOutput.hookEventName", "hookSpecificOutput.permissionDecision", "hookSpecificOutput.permissionDecisionReason"},
+			CanRefuse:  true, Wired: true,
+			Verification: unverified(museNeverObserved),
+		},
+		{
+			HostKey: "PostToolUse", Event: EventPostToolUse,
+			OutputKeys: nil, Wired: true,
+			Verification: unverified(museNeverObserved),
+		},
+		{
+			HostKey: "Stop", Event: EventStop,
+			OutputKeys: []string{"decision", "reason"},
+			CanRefuse:  true, Wired: true,
+			Verification: unverified(museNeverObserved),
+			Note:         "Independent measurement reports a legacy decision block on Stop; not confirmed here.",
+		},
+	},
+	Gaps: []string{
+		"Project hooks require trust before they run; link script installs config only.",
+		"Some beta builds ignore .muse/hooks.json; native plugins are an alternate path not wired here.",
+		"No PostToolUseFailure event documented.",
 	},
 }

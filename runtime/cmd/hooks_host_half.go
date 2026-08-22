@@ -171,6 +171,9 @@ func isResolved(path string) bool {
 // missing or unparseable file is not an error here, because a workspace need
 // not wire every host and reporting a parse failure is the JSON schema's job.
 func readHookKeys(path string) ([]string, bool) {
+	if strings.HasSuffix(filepath.ToSlash(path), ".kimi/hooks.toml") {
+		return readKimiHookEvents(path)
+	}
 	hooks, ok := readHooksObject(path)
 	if !ok {
 		return nil, false
@@ -201,6 +204,28 @@ func readHookCommands(path string) ([]string, bool) {
 	return commands, true
 }
 
+// kimiHookEvent matches `event = "PreToolUse"` lines in a TOML hooks snippet.
+var kimiHookEvent = regexp.MustCompile(`(?m)^\s*event\s*=\s*"([^"]+)"`)
+
+func readKimiHookEvents(path string) ([]string, bool) {
+	raw, err := os.ReadFile(filepath.Clean(path))
+	if err != nil {
+		return nil, false
+	}
+	matches := kimiHookEvent.FindAllStringSubmatch(string(raw), -1)
+	if len(matches) == 0 {
+		return nil, false
+	}
+	keys := make([]string, 0, len(matches))
+	for _, match := range matches {
+		if len(match) > 1 {
+			keys = append(keys, match[1])
+		}
+	}
+	sort.Strings(keys)
+	return keys, true
+}
+
 // readHooksObject parses a JSON config and returns its hooks object.
 func readHooksObject(path string) (map[string]json.RawMessage, bool) {
 	if filepath.Ext(path) != ".json" {
@@ -209,6 +234,9 @@ func readHooksObject(path string) (map[string]json.RawMessage, bool) {
 	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, false
+	}
+	if hooks, ok := readAntigravityHooksObject(path, raw); ok {
+		return hooks, true
 	}
 	var file struct {
 		Hooks map[string]json.RawMessage `json:"hooks"`
@@ -220,6 +248,36 @@ func readHooksObject(path string) (map[string]json.RawMessage, bool) {
 		return nil, false
 	}
 	return file.Hooks, true
+}
+
+// readAntigravityHooksObject parses .agents/hooks.json, where hook-set names
+// map to objects carrying PreToolUse and siblings rather than a top-level
+// hooks key.
+func readAntigravityHooksObject(path string, raw []byte) (map[string]json.RawMessage, bool) {
+	if filepath.Base(path) != "hooks.json" || filepath.Base(filepath.Dir(path)) != ".agents" {
+		return nil, false
+	}
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &top); err != nil {
+		return nil, false
+	}
+	merged := map[string]json.RawMessage{}
+	for _, groupRaw := range top {
+		var group map[string]json.RawMessage
+		if err := json.Unmarshal(groupRaw, &group); err != nil {
+			continue
+		}
+		for key, value := range group {
+			if key == "enabled" {
+				continue
+			}
+			merged[key] = value
+		}
+	}
+	if len(merged) == 0 {
+		return nil, false
+	}
+	return merged, true
 }
 
 // collectCommands walks a hook entry for "command" strings.

@@ -45,6 +45,9 @@ var hookConfigs = []hostConfig{
 	{Path: filepath.Join(".codex", "hooks.json"), SplitsToolOutcome: false},
 	{Path: filepath.Join(".codex", "config.toml"), SplitsToolOutcome: false},
 	{Path: "opencode.json", SplitsToolOutcome: false},
+	{Path: filepath.Join(".agents", "hooks.json"), SplitsToolOutcome: false},
+	{Path: filepath.Join(".muse", "hooks.json"), SplitsToolOutcome: false},
+	{Path: filepath.Join(".kimi", "hooks.toml"), SplitsToolOutcome: false},
 }
 
 // hostConfig is one host's hook config, plus the single fact about that host's

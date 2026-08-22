@@ -46,9 +46,9 @@ func TestEveryCatalogedHostHasAReason(t *testing.T) {
 		"claude":       "the reference host; every hook event is wired and verified here",
 		"cursor-agent": "hooks through .cursor/hooks.json; refuses through JSON rather than exit codes",
 		"opencode":     "plugin at .opencode/plugin; permission.ask is its only refusal path",
-		"kimi":         "reads SKILL.md from ~/.config/agents/skills; hook payload undocumented, unwired",
-		"muse":         "scans .claude/skills and .codex/skills already; hook schema unpublished, unwired",
-		"antigravity":  "hooks.json contract published in full and deliberately not wired until someone can run it",
+		"kimi":         "skills at ~/.config/agents/skills; hooks snippet at .kimi/hooks.toml, merge into user config.toml",
+		"muse":         "skills via .codex/.claude paths; hooks at .muse/hooks.json, UNVERIFIED until trusted and observed",
+		"antigravity":  "hooks at .agents/hooks.json; PreToolUse uses decision/reason, UNVERIFIED until observed",
 	}
 
 	catalog := Catalog()

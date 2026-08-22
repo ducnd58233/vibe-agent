@@ -367,14 +367,6 @@
       const q = search.value.trim().toLowerCase();
       let visible = 0;
       if (view === "graph" && graphView) {
-        const isStepView = graphView.classList.contains("graph-view-step");
-        if (isStepView) {
-          filterClear.hidden = selectedGraphTypes().length === 0;
-          if (empty) empty.hidden = true;
-          if (chatEmpty) chatEmpty.hidden = true;
-          if (chatPrompts) chatPrompts.hidden = true;
-          return;
-        }
         const types = selectedGraphTypes();
         filterClear.hidden = types.length === 0;
         const nodes = graphView.querySelectorAll(".graph-node");

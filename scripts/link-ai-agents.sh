@@ -505,6 +505,98 @@ EOF
 EOF
     echo "Installed minimal Codex hook config at $WORKSPACE/.codex/hooks.json"
   fi
+
+  if [ ! -f "$WORKSPACE/.agents/hooks.json" ]; then
+    mkdir -p "$WORKSPACE/.agents"
+    cat > "$WORKSPACE/.agents/hooks.json" <<EOF
+{
+  "vibe-agent": {
+    "PreInvocation": [
+      {
+        "hooks": [
+          { "type": "command", "command": "$(hook_command user-prompt-submit antigravity)" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "run_command|write_to_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          { "type": "command", "command": "$(hook_command pre-tool-use antigravity)" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "run_command|write_to_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          { "type": "command", "command": "$(hook_command post-tool-use antigravity)" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "$(hook_command stop antigravity)" }
+        ]
+      }
+    ]
+  }
+}
+EOF
+    echo "Installed minimal Antigravity hook config at $WORKSPACE/.agents/hooks.json"
+  fi
+
+  if [ ! -f "$WORKSPACE/.muse/hooks.json" ]; then
+    mkdir -p "$WORKSPACE/.muse"
+    cat > "$WORKSPACE/.muse/hooks.json" <<EOF
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command session-start muse)" } ] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command user-prompt-submit muse)" } ] }
+    ],
+    "PreToolUse": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command pre-tool-use muse)" } ] }
+    ],
+    "PostToolUse": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command post-tool-use muse)" } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command stop muse)" } ] }
+    ]
+  }
+}
+EOF
+    echo "Installed minimal Muse hook config at $WORKSPACE/.muse/hooks.json (run muse hooks trust after install)"
+  fi
+
+  if [ ! -f "$WORKSPACE/.kimi/hooks.toml" ]; then
+    mkdir -p "$WORKSPACE/.kimi"
+    cat > "$WORKSPACE/.kimi/hooks.toml" <<EOF
+# Copy these [[hooks]] blocks into ~/.kimi/config.toml (Kimi reads user config only).
+
+[[hooks]]
+event = "PreToolUse"
+matcher = "Shell|WriteFile|EditFile|MultiEdit|FetchURL|SearchWeb"
+command = "$(hook_command pre-tool-use kimi)"
+timeout = 30
+
+[[hooks]]
+event = "PostToolUse"
+matcher = "Shell|WriteFile|EditFile|MultiEdit|FetchURL|SearchWeb"
+command = "$(hook_command post-tool-use kimi)"
+timeout = 30
+
+[[hooks]]
+event = "Stop"
+command = "$(hook_command stop kimi)"
+timeout = 30
+EOF
+    echo "Installed Kimi hook snippet at $WORKSPACE/.kimi/hooks.toml (merge into ~/.kimi/config.toml)"
+  fi
 }
 
 install_local_git_exclude() {
@@ -747,7 +839,7 @@ install_workspace_hook_configs
 emit_plugin_manifests "$WORKSPACE"
 install_runtime
 
-echo "Symlinks created under $WORKSPACE (.claude, .cursor, .opencode, .agents) -> $ASSETS"
+echo "Symlinks created under $WORKSPACE (.claude, .cursor, .opencode, .agents, .muse, .kimi) -> $ASSETS"
 echo "Codex custom agents synced to $WORKSPACE/.codex/agents"
 echo "Codex command skills synced to $WORKSPACE/.agents/skills as <name>"
 echo "Codex command form in a linked workspace: \$<name> (custom /prompts and top-level /vibe-* are not available in Codex CLI 0.147.0)"

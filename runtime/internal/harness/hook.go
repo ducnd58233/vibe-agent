@@ -66,6 +66,20 @@ const (
 	// like every other host's so the two sides have one source rather than two
 	// habits.
 	ClientOpencode Client = "opencode"
+
+	// ClientAntigravity is Google Antigravity. PreToolUse answers with decision
+	// and reason; PreInvocation maps to user-prompt-submit via injectSteps.
+	ClientAntigravity Client = "antigravity"
+
+	// ClientKimi is Kimi Code CLI. Only PreToolUse, PostToolUse, and Stop are
+	// published; the refusal envelope matches Codex because Kimi documents no
+	// stdout schema.
+	ClientKimi Client = "kimi"
+
+	// ClientMuse is Muse Code. The wire shape matches Claude's hookSpecificOutput
+	// per vendor-adjacent measurement; project hooks live at .muse/hooks.json and
+	// require muse hooks trust before they run.
+	ClientMuse Client = "muse"
 )
 
 // Clients is every host this build has an envelope for.
@@ -77,7 +91,10 @@ const (
 // which leaves a hook that is registered, fires on every tool call, and delivers
 // nothing. Silence is the one failure this control plane cannot see.
 func Clients() []Client {
-	return []Client{ClientClaude, ClientCursor, ClientCodex, ClientOpencode}
+	return []Client{
+		ClientClaude, ClientCursor, ClientCodex, ClientOpencode,
+		ClientAntigravity, ClientKimi, ClientMuse,
+	}
 }
 
 // KnownClient reports whether this build can answer a host.
@@ -410,6 +427,11 @@ func sessionStart(req Request, body payload, out io.Writer) error {
 	if req.Client == ClientCursor || req.Client == ClientOpencode {
 		return write(out, map[string]any{"additional_context": text})
 	}
+	if req.Client == ClientAntigravity {
+		return write(out, map[string]any{
+			"injectSteps": []map[string]any{{"ephemeralMessage": text}},
+		})
+	}
 
 	specific := map[string]any{
 		"hookEventName":     "SessionStart",
@@ -447,9 +469,15 @@ func sessionContext(req Request) string {
 	if active := activeRuns(req.WorkspaceRoot); len(active) > 0 {
 		lines = append(lines, "Active runs:")
 		for _, run := range active {
-			lines = append(lines, fmt.Sprintf(
+			line := fmt.Sprintf(
 				"  %s at node %s (%s, iteration %d/%d). Do not infer or manually advance workflow state; ask the runtime.",
-				run.Slug, orNotEntered(run.CurrentNode), run.Status, run.Iteration, run.MaxTransitions))
+				run.Slug, orNotEntered(run.CurrentNode), run.Status, run.Iteration, run.MaxTransitions)
+			if run.Flags["auto"] {
+				if hint := autoRunHint(run); hint != "" {
+					line += " " + hint
+				}
+			}
+			lines = append(lines, line)
 		}
 	} else {
 		// Name the state rather than leave it to be inferred from silence.
@@ -480,9 +508,30 @@ func steerMessage(req Request) string {
 		return ""
 	}
 	run := active[0]
-	return fmt.Sprintf(
+	msg := fmt.Sprintf(
 		"Resume run %s (goal: %s). It is at node %s. Read the run state with the runtime before doing anything else, and do not restart it or advance it by inference.",
 		run.Slug, run.Goal, orNotEntered(run.CurrentNode))
+	if run.Flags["auto"] {
+		if hint := autoRunHint(run); hint != "" {
+			msg += " " + hint
+		}
+	}
+	return msg
+}
+
+// autoRunHint tells a host session not to stop mid-pipeline on an auto run.
+func autoRunHint(run *state.Run) string {
+	switch run.GraphID {
+	case "researcher-delivery":
+		return "Auto research: continue through hypothesis, experiment_design, experiment_run, findings, and writeup without asking the human; call vibe_checkpoint after each artifact."
+	case "goal-delivery":
+		return "Auto delivery: continue every node until status is done; call vibe_checkpoint after artifacts."
+	default:
+		if run.Flags["auto"] {
+			return "Auto mode: continue until status is done without asking the human except when a gate document leaves items open."
+		}
+	}
+	return ""
 }
 
 // promptContext rides along with every prompt: the run the workspace is in the
@@ -537,6 +586,8 @@ func stop(req Request, body payload, out io.Writer, extra string) error {
 			switch req.Client {
 			case ClientCursor:
 				return write(out, map[string]any{"followup_message": reason})
+			case ClientAntigravity:
+				return write(out, map[string]any{"decision": "continue", "reason": reason})
 			case ClientOpencode:
 				// opencode exposes no end-of-turn hook, so nothing here can
 				// refuse a turn. Emitting Claude's shape would be a reply no
@@ -676,6 +727,11 @@ func emitContext(out io.Writer, client Client, event, text string) error {
 	// the plugin reading it is in this repository and was written to this shape.
 	if client == ClientCursor || client == ClientOpencode {
 		return write(out, map[string]any{"additional_context": text})
+	}
+	if client == ClientAntigravity {
+		return write(out, map[string]any{
+			"injectSteps": []map[string]any{{"ephemeralMessage": text}},
+		})
 	}
 	return write(out, map[string]any{
 		"hookSpecificOutput": map[string]any{

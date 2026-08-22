@@ -101,8 +101,8 @@ func TestSessionPageRendersEventList(t *testing.T) {
 	if strings.Contains(body, "Confirm this goal") {
 		t.Fatal("approve_spec must not reuse the intake confirm title")
 	}
-	if !strings.Contains(body, `data-testid="graph-current-node"`) || !strings.Contains(body, `data-testid="graph-neighbors"`) {
-		t.Fatal("graph view must show current node and neighbor paths, not only node ids")
+	if !strings.Contains(body, `class="graph-rail"`) || !strings.Contains(body, `data-node="approve_spec"`) {
+		t.Fatal("graph view must show the progressive rail through the current node")
 	}
 	if !strings.Contains(body, "<article class=\"event") {
 		t.Fatal("event rows must be articles")
@@ -349,7 +349,7 @@ func TestSessionRendersMarkdownAndOmitsEmptyUserTokens(t *testing.T) {
 	}
 }
 
-func TestGraphViewShowsStepPanelWithoutRailNodes(t *testing.T) {
+func TestGraphViewShowsProgressiveRail(t *testing.T) {
 	root, slug := writeFixtureSession(t)
 	handler, err := NewHandlerWithPort(root, testutil.ToolkitRoot(t), 3080)
 	if err != nil {
@@ -365,27 +365,24 @@ func TestGraphViewShowsStepPanelWithoutRailNodes(t *testing.T) {
 	if !strings.Contains(body, "is-graph-view") {
 		t.Fatal("graph view class missing")
 	}
-	if !strings.Contains(body, `class="graph-view graph-view-step"`) {
-		t.Fatal("expected step graph panel for a node with neighbors")
+	if !strings.Contains(body, `class="graph-rail"`) {
+		t.Fatal("graph tab must render the progressive node rail")
 	}
-	if !strings.Contains(body, `data-testid="graph-current-node"`) {
-		t.Fatal("step graph must name the current node")
+	if strings.Contains(body, `class="graph-view graph-view-step"`) {
+		t.Fatal("graph tab must use the rail, not the step panel")
 	}
-	if !strings.Contains(body, `data-testid="graph-neighbors"`) {
-		t.Fatal("step graph must list neighbor paths")
+	if strings.Contains(body, `data-node="plan"`) {
+		t.Fatal("future nodes must stay hidden until the run reaches them")
 	}
-	if strings.Contains(body, `class="graph-rail"`) {
-		t.Fatal("step graph must not fall back to the full rail while neighbors exist")
+	if !strings.Contains(body, `data-node="approve_spec"`) {
+		t.Fatal("current gate must appear on the rail")
 	}
-	if !strings.Contains(body, "function graphPanelHasContent()") {
-		t.Fatal("graph tab JS must treat step panels as non-empty")
-	}
-	if strings.Contains(body, "graphView.querySelectorAll(\".graph-node\").length === 0") {
-		t.Fatal("graph tab must not hide the panel solely because rail nodes are absent")
+	if !strings.Contains(body, `function graphPanelHasContent()`) {
+		t.Fatal("graph tab JS must detect rail content")
 	}
 }
 
-func TestGraphViewShowsFullRailAtTerminalNode(t *testing.T) {
+func TestGraphViewShowsRailAtTerminalNode(t *testing.T) {
 	root := t.TempDir()
 	slug := "graph-terminal"
 	run, err := state.NewRun(slug, "done run", "researcher-delivery", 200, time.Date(2026, 8, 22, 10, 0, 0, 0, time.UTC))
@@ -410,13 +407,13 @@ func TestGraphViewShowsFullRailAtTerminalNode(t *testing.T) {
 	}
 	body := rec.Body.String()
 	if strings.Contains(body, `class="graph-view graph-view-step"`) {
-		t.Fatal("terminal node must use the full rail, not the step panel")
+		t.Fatal("terminal node must use the rail, not the step panel")
 	}
 	if !strings.Contains(body, `class="graph-rail"`) {
-		t.Fatal("graph tab must render the full node rail at terminal")
+		t.Fatal("graph tab must render the node rail at terminal")
 	}
-	if !strings.Contains(body, `aria-current="true"`) {
-		t.Fatal("current terminal node must be marked on the rail")
+	if !strings.Contains(body, `data-node="done"`) {
+		t.Fatal("done terminal must appear on the rail when the run finishes")
 	}
 }
 

@@ -174,7 +174,26 @@ func ProjectGraph(g *graph.Graph, run *state.Run) []GraphNodeRow {
 		}
 		rows = append(rows, row)
 	}
-	return rows
+	return progressiveGraphRows(rows, order, cur)
+}
+
+// progressiveGraphRows limits the rail to nodes the run has already reached.
+// Later steps stay out of the UI until the run arrives at them.
+func progressiveGraphRows(rows []GraphNodeRow, order []string, current string) []GraphNodeRow {
+	if len(rows) == 0 {
+		return rows
+	}
+	if current == "" {
+		return rows[:1]
+	}
+	curIdx := indexOf(order, current)
+	if curIdx < 0 {
+		return rows
+	}
+	if curIdx+1 >= len(rows) {
+		return rows
+	}
+	return rows[:curIdx+1]
 }
 
 func nodeStatus(g *graph.Graph, run *state.Run, id string, idx, curIdx int, failedRun bool) GraphNodeStatus {

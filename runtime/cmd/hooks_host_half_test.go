@@ -170,6 +170,48 @@ func TestOnlyTheHooksObjectIsRead(t *testing.T) {
 	}
 }
 
+func TestAntigravityHookKeysAreRead(t *testing.T) {
+	root := t.TempDir()
+	writeConfig(t, root, filepath.Join(".agents", "hooks.json"), `{
+  "vibe-agent": {
+    "PreToolUse": [{"hooks": [{"command": "vibe-agent hook pre-tool-use --client antigravity"}]}],
+    "Stop": [{"hooks": [{"command": "vibe-agent hook stop --client antigravity"}]}]
+  }
+}`)
+
+	keys, ok := readHookKeys(filepath.Join(root, ".agents", "hooks.json"))
+	if !ok {
+		t.Fatal("expected antigravity hooks to parse")
+	}
+	joined := strings.Join(keys, ",")
+	for _, want := range []string{"PreToolUse", "Stop"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("keys %v missing %s", keys, want)
+		}
+	}
+}
+
+func TestKimiHookSnippetEventsAreRead(t *testing.T) {
+	root := t.TempDir()
+	writeConfig(t, root, filepath.Join(".kimi", "hooks.toml"), `
+[[hooks]]
+event = "PreToolUse"
+command = "vibe-agent hook pre-tool-use --client kimi"
+
+[[hooks]]
+event = "Stop"
+command = "vibe-agent hook stop --client kimi"
+`)
+
+	keys, ok := readHookKeys(filepath.Join(root, ".kimi", "hooks.toml"))
+	if !ok {
+		t.Fatal("expected kimi hooks snippet to parse")
+	}
+	if len(keys) != 2 {
+		t.Fatalf("keys = %v, want PreToolUse and Stop", keys)
+	}
+}
+
 // escapeJSON makes a command safe to embed in the fixtures above.
 func escapeJSON(text string) string {
 	var out []rune
