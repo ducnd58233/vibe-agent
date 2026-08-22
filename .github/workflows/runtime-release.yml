@@ -60,65 +60,17 @@ jobs:
         id: channel
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=runtime/${{ inputs.version }}" >> "$GITHUB_OUTPUT"
-            echo "version=${{ inputs.version }}"      >> "$GITHUB_OUTPUT"
-            echo "prerelease=false"                   >> "$GITHUB_OUTPUT"
-            echo "title=runtime ${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+            eval "$(bash scripts/runtime-version.sh dispatch '${{ inputs.version }}')"
           elif [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
-            version="${GITHUB_REF_NAME#runtime/}"
-            echo "tag=$GITHUB_REF_NAME"   >> "$GITHUB_OUTPUT"
-            echo "version=$version"       >> "$GITHUB_OUTPUT"
-            echo "prerelease=false"       >> "$GITHUB_OUTPUT"
-            echo "title=runtime $version" >> "$GITHUB_OUTPUT"
+            eval "$(bash scripts/runtime-version.sh stable '${{ github.ref_name }}')"
           else
-            # Rolling build off main. The bump comes from the commits since the
-            # last stable tag, because this repository writes Conventional
-            # Commits without exception and so the input is already there.
-            #
-            # It used to add one to the patch and stop. With 21 feat commits
-            # since runtime/v0.1.0 that reported 0.1.1-dev, a version which
-            # understates what is in the binary - worse than no version,
-            # because it reads as authoritative.
             git fetch --tags --quiet
-            latest=$(git tag --list 'runtime/v*' --sort=-v:refname | head -n1)
-            if [ -z "$latest" ]; then
-              base="0.1.0"
-            else
-              semver="${latest#runtime/v}"
-              major=$(echo "$semver" | cut -d. -f1)
-              minor=$(echo "$semver" | cut -d. -f2)
-              patch=$(echo "$semver" | cut -d. -f3)
-              # Fail loudly rather than bump quietly. A shallow clone cannot
-              # resolve this range, and the fallback it lands on - patch - is a
-              # plausible answer, which is what made the bug survive a release.
-              if ! git merge-base --is-ancestor "$latest" HEAD 2>/dev/null; then
-                echo "::error::${latest} is not an ancestor of HEAD. The clone is"                      "probably shallow; the release job needs fetch-depth: 0." >&2
-                exit 1
-              fi
-              subjects=$(git log --format=%s "${latest}..HEAD")
-              bodies=$(git log --format=%B "${latest}..HEAD")
-              echo "bump input: $(printf '%s' "$subjects" | grep -c . ) commits since ${latest}" >&2
-              # BREAKING CHANGE is a footer, so it is anchored at the start of
-              # a line and followed by a colon. Matching it anywhere in a body
-              # made the rule match its own documentation: the commit that
-              # introduced this block explains "a bang or a BREAKING CHANGE
-              # body bumps", and that sentence published a 1.0.0-dev off a
-              # repository with no breaking change in it.
-              if printf '%s' "$subjects" | grep -qE '^[a-z]+(\([^)]*\))?!:'                  || printf '%s' "$bodies" | grep -qE '^BREAKING[ -]CHANGE:'; then
-                major=$((major + 1)); minor=0; patch=0
-              elif printf '%s' "$subjects" | grep -qE '^feat(\([^)]*\))?:'; then
-                minor=$((minor + 1)); patch=0
-              else
-                patch=$((patch + 1))
-              fi
-              base="${major}.${minor}.${patch}"
-            fi
-            version="${base}-dev.$(git rev-parse --short HEAD)"
-            echo "tag=runtime/latest"     >> "$GITHUB_OUTPUT"
-            echo "version=$version"       >> "$GITHUB_OUTPUT"
-            echo "prerelease=true"        >> "$GITHUB_OUTPUT"
-            echo "title=runtime latest (main)" >> "$GITHUB_OUTPUT"
+            eval "$(bash scripts/runtime-version.sh rolling)"
           fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "title=$title" >> "$GITHUB_OUTPUT"
 
       # Never publish a binary that has not passed the same gates as a commit.
       - name: Verify before publishing

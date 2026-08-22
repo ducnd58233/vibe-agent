@@ -101,6 +101,25 @@ make install    # into ~/.local/bin, the same place the installers use
 make release    # all six targets plus SHA256SUMS
 ```
 
+### Published binaries
+
+CI publishes two release channels on GitHub:
+
+| Channel | Tag | When | Example version |
+|---|---|---|---|
+| Stable | `runtime/v*`, marked GitHub **Latest** | Someone tags `runtime/v0.1.0` | `v0.1.0` |
+| Rolling | `runtime/latest`, prerelease | Every push to `main` that touches `runtime/` | `0.2.0-dev.159.2a82465` |
+
+The rolling name has three parts:
+
+1. **`0.2.0`** — conventional semver preview of the next stable cut (from commits since the last stable tag).
+2. **`159`** — build counter: commits on `main` since that stable tag. It increments on every rolling publish even when the preview base stays `0.2.0`.
+3. **`2a82465`** — the git commit the binary was built from.
+
+[`scripts/install-runtime.sh`](../scripts/install-runtime.sh) resolves `latest` to the newest stable release first, then falls back to `runtime/latest`. Pass `v0.1.0` to pin a stable cut, or set channel `rolling` for the build from main.
+
+Version derivation lives in [`scripts/runtime-version.sh`](../scripts/runtime-version.sh) and is checked by [`scripts/check-runtime-version.sh`](../scripts/check-runtime-version.sh).
+
 ### Changing this module means reinstalling it
 
 **Hooks call `vibe-agent` by name, so they run whatever is on `PATH` — not the source you just edited.** A passing `go test ./...` says nothing about what a session will execute.
