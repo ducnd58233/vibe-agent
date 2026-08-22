@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "vibe-agent hook session-start --workspace \"/d/projects/vibe-agent\" --toolkit \"/d/projects/vibe-agent\" --client muse" } ] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "vibe-agent hook user-prompt-submit --workspace \"/d/projects/vibe-agent\" --toolkit \"/d/projects/vibe-agent\" --client muse" } ] }
+    ],
+    "PreToolUse": [
+      { "hooks": [ { "type": "command", "command": "vibe-agent hook pre-tool-use --workspace \"/d/projects/vibe-agent\" --toolkit \"/d/projects/vibe-agent\" --client muse" } ] }
+    ],
+    "PostToolUse": [
+      { "hooks": [ { "type": "command", "command": "vibe-agent hook post-tool-use --workspace \"/d/projects/vibe-agent\" --toolkit \"/d/projects/vibe-agent\" --client muse" } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "vibe-agent hook stop --workspace \"/d/projects/vibe-agent\" --toolkit \"/d/projects/vibe-agent\" --client muse" } ] }
+    ]
+  }
+}

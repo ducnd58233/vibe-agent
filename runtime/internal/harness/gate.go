@@ -175,18 +175,26 @@ func deliverBlock(req Request, blocked *BlockError, out io.Writer) error {
 			"permission": "deny",
 			"reason":     blocked.Reason,
 		})
-	case ClientCodex:
+	case ClientCodex, ClientKimi, ClientMuse:
 		// Codex ignores exit 2 outright. It was measured running the command
 		// anyway while the hook exited 2 and printed the refusal, and blocking
 		// it with this shape instead - the model then reported the reason back
 		// verbatim. A gate that fails open is not a gate, so this is the branch
 		// that had to be established by experiment rather than inference.
+		//
+		// Kimi publishes no stdout schema; Muse was measured independently as
+		// Claude-compatible on PreToolUse. Both reuse this shape as UNVERIFIED.
 		return write(out, map[string]any{
 			"hookSpecificOutput": map[string]any{
 				"hookEventName":            "PreToolUse",
 				"permissionDecision":       "deny",
 				"permissionDecisionReason": blocked.Reason,
 			},
+		})
+	case ClientAntigravity:
+		return write(out, map[string]any{
+			"decision": "deny",
+			"reason":   blocked.Reason,
 		})
 	case ClientClaude:
 	}

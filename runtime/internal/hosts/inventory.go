@@ -30,13 +30,9 @@ var catalog = []Host{
 	{ID: "opencode", Binary: "opencode", EvalCommand: "opencode run", PromptAsArg: true},
 
 	// Three hosts nobody here has run. Listed so Inventory answers "not on
-	// PATH" rather than saying nothing, which is the difference between a host
-	// that is absent and one this build has never heard of.
-	//
-	// Their eval commands come from vendor documentation and are recorded as
-	// unverified in host-hook-contracts.md. None is wired to a hook: reading a
-	// schema is not watching it fire, and a refusal path nobody has watched
-	// refuse anything is the defect class this repository has hit most.
+	// PATH" rather than saying nothing. Hook envelopes exist in
+	// runtime/internal/harness/contracts.go and are marked UNVERIFIED until
+	// someone watches them fire.
 	{ID: "kimi", Binary: "kimi", EvalCommand: "kimi --print", PromptAsArg: true},
 	{ID: "muse", Binary: "muse", EvalCommand: "muse exec --json", PromptAsArg: true},
 	{ID: "antigravity", Binary: "antigravity", EvalCommand: "antigravity exec", PromptAsArg: true},

@@ -177,3 +177,102 @@ Two rules govern this table:
 - No end-of-turn hook, so nothing can refuse to end a turn with a run mid-graph the way stop does on Claude and Cursor.
 
 </context>
+
+## antigravity
+
+<context>
+
+- **Config:** `.agents/hooks.json`
+- **Source:** <https://antigravity.google/docs/hooks>
+- **Workspace root:** **no reliable host variable.** Hook commands receive workspacePaths on stdin as an array. This toolkit passes an explicit --workspace from the config rather than picking one path from the array.
+
+| Host event key | vibe-agent event | Output keys the host reads | Inject | Refuse | Wired | Verified |
+|---|---|---|---|---|---|---|
+| `PreInvocation` | `user-prompt-submit` | `injectSteps` | yes | no | yes | **UNVERIFIED** |
+| `PreToolUse` | `pre-tool-use` | `decision`, `reason`, `permissionOverrides` | no | yes | yes | **UNVERIFIED** |
+| `PostToolUse` | `post-tool-use` | none | no | no | yes | **UNVERIFIED** |
+| `Stop` | `stop` | `decision`, `reason` | no | yes | yes | **UNVERIFIED** |
+
+**Notes**
+
+- `PreInvocation` - Antigravity has no SessionStart event; run context rides on PreInvocation via injectSteps.ephemeralMessage.
+- `PreToolUse` - Shell commands arrive as toolCall.args.CommandLine on run_command.
+- `PostToolUse` - Failures share this event via a top-level error string; there is no separate failure hook.
+- `Stop` - Set decision to continue to keep the loop running; any other value allows the stop.
+
+**Why the unverified rows are unverified**
+
+- `PreInvocation`, `PreToolUse`, `PostToolUse`, `Stop`
+  No Antigravity hook has been observed firing from this config. The envelope matches https://antigravity.google/docs/hooks and nobody here has run the binary.
+
+**What this host does not provide**
+
+- No SessionStart event; first-turn steering uses PreInvocation instead.
+- No PostToolUseFailure event; journal a failed tool from PostToolUse when error is non-empty.
+- workspacePaths is an array; a hook must not assume a single checkout root from stdin alone.
+
+</context>
+
+## kimi
+
+<context>
+
+- **Config:** `.kimi/hooks.toml`
+- **Source:** <https://moonshotai.github.io/kimi-cli/en/configuration/config-files.html>
+- **Workspace root:** **no reliable host variable.** Hooks are configured in the user's ~/.kimi/config.toml. The workspace file is a copy-ready snippet; merge it into the user config or Kimi will never call these commands.
+
+| Host event key | vibe-agent event | Output keys the host reads | Inject | Refuse | Wired | Verified |
+|---|---|---|---|---|---|---|
+| `PreToolUse` | `pre-tool-use` | `hookSpecificOutput.hookEventName`, `hookSpecificOutput.permissionDecision`, `hookSpecificOutput.permissionDecisionReason` | no | yes | yes | **UNVERIFIED** |
+| `PostToolUse` | `post-tool-use` | none | no | no | yes | **UNVERIFIED** |
+| `Stop` | `stop` | `decision`, `reason` | no | yes | yes | **UNVERIFIED** |
+
+**Notes**
+
+- `Stop` - Stop stdout schema is undocumented; this reuses Claude's decision block shape.
+
+**Why the unverified rows are unverified**
+
+- `PreToolUse`, `PostToolUse`, `Stop`
+  No Kimi hook has been observed firing. Kimi documents event names and command wiring in config.toml but not the stdin or stdout schema, so PreToolUse refusal reuses Codex's shape.
+
+**What this host does not provide**
+
+- No SessionStart or UserPromptSubmit hook events published.
+- Hooks live in user config.toml, not in the repository, unless someone merges the snippet.
+- No separate failure event documented for PostToolUse.
+
+</context>
+
+## muse
+
+<context>
+
+- **Config:** `.muse/hooks.json`
+- **Source:** <https://dev.meta.ai/docs/muse-code/extending>
+- **Workspace root:** **no reliable host variable.** Project hooks at .muse/hooks.json require `muse hooks trust` before they run. Pass --workspace explicitly.
+
+| Host event key | vibe-agent event | Output keys the host reads | Inject | Refuse | Wired | Verified |
+|---|---|---|---|---|---|---|
+| `SessionStart` | `session-start` | `hookSpecificOutput.hookEventName`, `hookSpecificOutput.additionalContext` | yes | no | yes | **UNVERIFIED** |
+| `UserPromptSubmit` | `user-prompt-submit` | `hookSpecificOutput.hookEventName`, `hookSpecificOutput.additionalContext` | yes | no | yes | **UNVERIFIED** |
+| `PreToolUse` | `pre-tool-use` | `hookSpecificOutput.hookEventName`, `hookSpecificOutput.permissionDecision`, `hookSpecificOutput.permissionDecisionReason` | no | yes | yes | **UNVERIFIED** |
+| `PostToolUse` | `post-tool-use` | none | no | no | yes | **UNVERIFIED** |
+| `Stop` | `stop` | `decision`, `reason` | no | yes | yes | **UNVERIFIED** |
+
+**Notes**
+
+- `Stop` - Independent measurement reports a legacy decision block on Stop; not confirmed here.
+
+**Why the unverified rows are unverified**
+
+- `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`
+  No Muse hook has been observed firing. Beta builds may ignore .muse/hooks.json; the envelope matches the Claude hook schema reported by independent measurement, not vendor confirmation here.
+
+**What this host does not provide**
+
+- Project hooks require trust before they run; link script installs config only.
+- Some beta builds ignore .muse/hooks.json; native plugins are an alternate path not wired here.
+- No PostToolUseFailure event documented.
+
+</context>
