@@ -59,7 +59,7 @@ func checkFlatSlug(dir, slug string) []Issue {
 		if _, err := os.Stat(path); err == nil {
 			issues = append(issues, Issue{
 				Path:    filepath.ToSlash(path),
-				Message: "flat docs/" + slug + "/" + stem + " is forbidden after migrate; run vibe-agent migrate docs-tmp",
+				Message: "flat docs/" + slug + "/" + stem + " is forbidden; write docs/<date>/<slug>/<version>/",
 			})
 		}
 	}

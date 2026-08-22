@@ -1,8 +1,8 @@
-# Goal verification records (`tmp/`)
+# Goal verification records
 
 <context>
 
-Local evidence from [`/goal`](../commands/goal.md) runs: test output, E2E artifacts, PR check snapshots, and external review digests. **Not committed**; add `tmp/` to the workspace `.gitignore`.
+Local evidence from [`/goal`](../commands/goal.md) runs: test output, E2E artifacts, PR check snapshots, and external review digests. **Not committed**; add `/.agent-state/` to the workspace `.gitignore`.
 </context>
 
 ## Location
@@ -12,19 +12,20 @@ Local evidence from [`/goal`](../commands/goal.md) runs: test output, E2E artifa
 Write under the **workspace root** (directory that contains `.vibe-agent/` when mounted as submodule, else the git repo root):
 
 ```text
-tmp/
-  <slug>/
-    RECORD.md              # human-readable index (updated each phase)
-    manifest.json          # machine-readable metadata (optional)
-    unit/                  # unit/integration test stdout, junit/xml if produced
-    e2e/                   # Playwright/Cypress reports, traces, screenshots
-    browser/               # DevTools MCP notes, manual browser captures
-    runtime/               # docker compose, k8s, mobile sim logs
-    pr-checks/             # gh pr checks snapshots
-    pr-reviews/            # exported PR/bot review comments
+.agent-state/runs/<YYYY-MM-DD>/<slug>/<version>/
+  RECORD.md
+  manifest.json
+  events.ndjson
+  unit/
+  e2e/
+  browser/
+  runtime/
+  pr-checks/
+  pr-reviews/
+  ship/
 ```
 
-`<slug>` matches `docs/<slug>/` for the same goal.
+`<slug>` matches `docs/<date>/<slug>/<version>/` for the same goal.
 </context>
 
 ## RECORD.md template
@@ -131,7 +132,7 @@ Add to workspace root `.gitignore`:
 ```gitignore
 # Goal verification artifacts (local only)
 /.agent-state/
-# Legacy until migrate empties tmp:
+# Leftover workspace-root tmp/ (not read by the runtime)
 /tmp/
 ```
 
@@ -143,5 +144,5 @@ Consumer repos using vibe-agent should add this line if missing.
 <required>
 
 - `gh` and docker/k8s commands need session approval per [`.ai-agents/PERMISSIONS.md`](../PERMISSIONS.md).
-- Never commit secrets from PR comments or test logs into `tmp/` if they contain credentials; redact before save.
+- Never commit secrets from PR comments or test logs into `.agent-state/` if they contain credentials; redact before save.
 </required>
