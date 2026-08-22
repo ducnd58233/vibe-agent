@@ -300,7 +300,7 @@ func checkGitignore(report *diagnostics, workspaceRoot string) {
 		"add /"+workspace.StateDirName+"/ so run evidence and derived state are not committed")
 	tmpRoot := filepath.Join(workspaceRoot, "tmp")
 	if st, err := os.Stat(tmpRoot); err == nil && st.IsDir() {
-		report.check("workspace-root tmp/ has been migrated", false,
-			"run: vibe-agent migrate docs-tmp  (runtime no longer reads tmp/; evidence lives under .agent-state/runs/)")
+		report.check("workspace-root tmp/ is gone", false,
+			"delete leftover workspace-root tmp/; evidence lives under .agent-state/runs/")
 	}
 }

@@ -114,14 +114,12 @@ path. When a rule already has a home, link to it instead of restating it.
   `{STEM}-YYYY-MM-DD.md` (and `tasks-YYYY-MM-DD.json`). Required YAML front matter on those
   markdown files: `slug`, `date`, `version` (same values as the path). `<slug>` is short kebab-case
   for the work; `version` is a positive integer global per slug. Never inside `.vibe-agent/`, never
-  scattered, never the legacy flat `docs/<slug>/` for new work (that layout is only for
-  pre-migrate trees; run `vibe-agent migrate docs-tmp`). Confirm the slug with the user when it is
+  scattered, never `docs/<slug>/` for new work. Confirm the slug with the user when it is
   not obvious.
 - **Verification evidence (MUST):** run state and logs live under
-  `tmp/<YYYY-MM-DD>/<slug>/<version>/` is legacy only until migrate; the
-  canonical tree is `.agent-state/runs/<YYYY-MM-DD>/<slug>/<version>/` (when
-  gitignored in the workspace), beside `manifest.json`.
-  Flat `tmp/<slug>/` is obsolete; run `vibe-agent migrate docs-tmp` if it still exists.
+  `.agent-state/runs/<YYYY-MM-DD>/<slug>/<version>/` (when gitignored in the
+  workspace), beside `manifest.json`. A leftover workspace-root `tmp/` tree fails
+  `vibe-agent doctor`; delete it. Evidence is not read from `tmp/`.
 - **Portable paths (MUST):** in committed docs, plans, and agent deliverables, use paths relative to the workspace root or repo ids. Do not paste machine-absolute paths (`C:\...`, `/Users/...`, `d:\...`) into files that ship in git.
 - **XML section tags (MUST):** wrap sections in the documented tag set for always-loaded charter files
   (`AGENTS.md`, `CLAUDE.md`, `CURSOR.md`, and harness-loaded nested `AGENTS.md` such as
@@ -160,7 +158,7 @@ Follow links from those files only as the task requires.
 | Delivery commands | [`.ai-agents/commands/ROUTER.md`](.ai-agents/commands/ROUTER.md) |
 | Stack detection | [`.ai-agents/stack-profiles/ROUTER.md`](.ai-agents/stack-profiles/ROUTER.md) |
 | Generated docs from commands | `docs/<date>/<slug>/<version>/` at workspace root |
-| Verification evidence | `.agent-state/runs/<date>/<slug>/<version>/` (gitignored; `migrate old `tmp/` with `vibe-agent migrate docs-tmp`) |
+| Verification evidence | `.agent-state/runs/<date>/<slug>/<version>/` (gitignored) |
 | Consumer multi-repo doc workspace | Consumer repo `AGENTS.md` (local-first overrides toolkit defaults) |
 | XML section tags | [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) section "XML section tags" |
 </references>
@@ -202,7 +200,7 @@ Follow links from those files only as the task requires.
 - **Evidence.** `/goal` records verification under `.agent-state/runs/<date>/<slug>/<version>/` when that path is gitignored in the
   workspace, redacted before write. See
   [`goal-verification-records`](.ai-agents/references/goal-verification-records.md).
-  Run `vibe-agent migrate docs-tmp` once if an old workspace-root `tmp/` tree remains.
+  A leftover workspace-root `tmp/` tree fails `vibe-agent doctor`; delete it.
 - **Commit attribution.** Never add AI or agent co-author trailers, "Generated with ..." lines, or
   robot-emoji attribution to commits or PR bodies. Commits belong to the human contributor's git
   identity, on every harness and for manual commits. How that is enforced, and what not to remove:
@@ -213,7 +211,7 @@ Follow links from those files only as the task requires.
 - **Gitignore is a commit boundary (MUST).** Before staging, read the **workspace root**
   `.gitignore`. Never commit paths it excludes. Each repo defines its own rules: many consumer repos
   track `docs/`; this toolkit gitignores `/docs/` and `/.agent-state/` (and `/tmp/`
-  while legacy run trees may still exist). Ignore rules do not untrack files
+  so a leftover tree is not offered for commit). Ignore rules do not untrack files
   already in git; remove stray tracked paths with `git rm --cached` (keep the local copy). Do not use
   `git add -f` to bypass ignore for workspace-local deliverables.
 </delivery_gates>

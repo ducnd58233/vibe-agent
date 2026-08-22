@@ -51,14 +51,12 @@ Usage:
   vibe-agent session list
   vibe-agent session show --slug <slug|ambient>
   vibe-agent web [--port 3080] [--open]
-  vibe-agent migrate docs-tmp [--dry-run] [--workspace <dir>]
   vibe-agent doctor
   vibe-agent eval routing [--trials N] [--jobs N] [--runner codex|claude|cursor|opencode|all] [--only <text>]
   vibe-agent version
 
 Run state is written to .agent-state/runs/<date>/<slug>/<version>/manifest.json
 with an append-only log at events.ndjson under that directory (gitignored).
-Use vibe-agent migrate docs-tmp once to move an old workspace-root tmp/ tree.
 
 
 "fetch" reads a URL or a file and prints the text without the markup, scripts,
@@ -207,8 +205,6 @@ func run(args []string) error {
 		return sessionCommand(args[1:])
 	case "web":
 		return webCommand(args[1:])
-	case "migrate":
-		return migrateCommand(args[1:])
 	case "doctor":
 		return doctorCommand(args[1:])
 	case "eval":

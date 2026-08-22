@@ -17,7 +17,7 @@ Follow [`goal-driven-delivery`](../skills/goal-driven-delivery/SKILL.md) and [`r
 
 - User objective (may be ambiguous at first)
 - Optional constraints (deadline, stack, out-of-scope)
-- Optional existing artifacts (`docs/<date>/<slug>/<version>/SPEC-<date>.md`, `TASKS-<date>.md`; legacy flat `docs/<slug>/` only until migrate)
+- Optional existing artifacts (`docs/<date>/<slug>/<version>/SPEC-<date>.md`, `TASKS-<date>.md`)
 </inputs>
 
 ## Runtime is required (MUST)
@@ -93,8 +93,8 @@ blocker attempts, because neither can be moved by another model turn.
 
 ### The task list (MUST)
 
-The run is driven by `docs/<date>/<slug>/<version>/tasks-<date>.json` (legacy flat
-`docs/<slug>/tasks.json` only until migrate). It is what answers `tasks_remaining`, so a task
+The run is driven by `docs/<date>/<slug>/<version>/tasks-<date>.json`.
+It is what answers `tasks_remaining`, so a task
 missing from it is a task the run will not come back for, and a status left stale is a cycle spent
 on work that was already done.
 

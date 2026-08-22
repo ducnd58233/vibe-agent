@@ -16,7 +16,8 @@
 /.codex/commands/
 /.codex/skills/
 # Goal verification artifacts from /goal (local only; see .ai-agents/references/goal-verification-records.md)
-# Run state lives at tmp/<slug>/manifest.json with the event log at tmp/<slug>/events.ndjson.
+# Canonical run state: .agent-state/runs/<date>/<slug>/<version>/. /tmp/ stays ignored
+# so a leftover tree is not offered for commit.
 /tmp/
 
 # Workspace-local runtime state: cross-run memory database, caches, runtime logs.
