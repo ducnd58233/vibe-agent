@@ -172,7 +172,8 @@ func Apply(req Request) (*Result, error) {
 	if err := state.Save(manifest, run); err != nil {
 		return nil, err
 	}
-	return &Result{Run: run, Graph: loaded, Transition: transition}, nil
+	result := &Result{Run: run, Graph: loaded, Transition: transition}
+	return followAutoGates(req, result)
 }
 
 // advanceStuckVerifier moves past a verifier node when the check already passed

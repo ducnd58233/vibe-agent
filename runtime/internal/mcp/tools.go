@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/auto"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/autoconfig"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkpoint"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch"
@@ -557,6 +558,12 @@ func describe(loaded *graph.Graph, run *state.Run) map[string]any {
 		action["prompt"] = node.Prompt
 		if node.Guards != "" {
 			action["guards"] = node.Guards
+		}
+		if run.Flags["auto"] {
+			if _, ok := auto.GateSpecFor(run.CurrentNode); ok {
+				action["completion"] = "On the auto path, call vibe_checkpoint after the gate documents are written; the runtime answers from RESEARCH, PLAN, or TASKS when nothing is open."
+				break
+			}
 		}
 		action["completion"] = "Ask the human. Only a recorded human approval advances this node."
 	case graph.NodeTerminal:

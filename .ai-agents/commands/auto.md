@@ -150,6 +150,12 @@ Applicability, Refine, and a Mermaid fence; for `approve_design` it also require
 on PLAN. An empty result is not a promise the document is complete - it is the most a text search
 can claim - which is why the gate it opens records `skipped` and never `passed`.
 
+On the auto path, `vibe-agent checkpoint` runs the same document tests when a run
+lands on `approve_applicability` or `approve_design`, then walks past the gate.
+Auto research therefore continues from literature to hypothesis and from
+experiment design to `experiment_run` without a separate gate step. [`goal.md`](goal.md)
+and `vibe-agent research` still park at those gates until a person approves.
+
 A goal that arrives over MCP is fenced where it enters run state, with the warning before the
 content, and content cannot close its own fence. Whoever filed that ticket is not the person
 running this.
