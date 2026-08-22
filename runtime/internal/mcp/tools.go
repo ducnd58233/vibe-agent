@@ -544,11 +544,19 @@ func describe(loaded *graph.Graph, run *state.Run) map[string]any {
 	switch node.Type {
 	case graph.NodeAgent:
 		action["command"] = node.Command
-		action["completion"] = "Do the work, then call vibe_checkpoint. Agent nodes produce no automatic pass."
+		if run.Flags["auto"] {
+			action["completion"] = "Do the work on host compute, then call vibe_checkpoint. Do not ask the human for next steps."
+		} else {
+			action["completion"] = "Do the work, then call vibe_checkpoint. Agent nodes produce no automatic pass."
+		}
 	case graph.NodeArtifact:
 		action["command"] = node.Command
 		action["outputs"] = node.Outputs
-		action["completion"] = "Every listed output must exist and be non-empty."
+		if run.Flags["auto"] {
+			action["completion"] = "Write every listed output with no open questions or TBD markers, then call vibe_checkpoint. Settled gate documents let the runtime skip approval gates automatically."
+		} else {
+			action["completion"] = "Every listed output must exist and be non-empty."
+		}
 	case graph.NodeVerifier:
 		action["verifier"] = string(node.Verifier)
 		action["check"] = node.Check
@@ -571,10 +579,32 @@ func describe(loaded *graph.Graph, run *state.Run) map[string]any {
 	}
 	out["requiredAction"] = action
 	out["graph"] = loaded.Metadata.ID
+	if hint := autoContinueHint(loaded.Metadata.ID, run); hint != "" {
+		out["autoContinue"] = hint
+	}
 	if neighbors, err := loop.New(loaded).Neighbors(run); err == nil && len(neighbors) > 0 {
 		out["neighbors"] = neighborPayload(neighbors)
 	}
 	return out
+}
+
+// autoContinueHint tells an auto run's host not to stop for a person mid-pipeline.
+func autoContinueHint(graphID string, run *state.Run) string {
+	if run == nil || !run.Flags["auto"] {
+		return ""
+	}
+	if run.Status == state.StatusDone || run.Status == state.StatusFailed ||
+		run.Status == state.StatusBudgetExceeded {
+		return ""
+	}
+	switch graphID {
+	case "researcher-delivery":
+		return "Auto research: complete literature, hypothesis, experiment_design, experiment_run, findings, and writeup without asking the human. Call vibe_checkpoint after each artifact and vibe_verify at verifiers until status is done, or stop only when a gate document leaves something open."
+	case "goal-delivery":
+		return "Auto delivery: complete every node until status is done without asking the human. Call vibe_checkpoint after artifacts; gates skip when SPEC, PLAN, and TASKS have no open markers."
+	default:
+		return "Auto mode: complete every node until status is done without asking the human except when a gate document leaves items open."
+	}
 }
 
 func neighborPayload(neighbors []loop.Neighbor) []map[string]any {

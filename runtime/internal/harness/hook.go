@@ -469,9 +469,15 @@ func sessionContext(req Request) string {
 	if active := activeRuns(req.WorkspaceRoot); len(active) > 0 {
 		lines = append(lines, "Active runs:")
 		for _, run := range active {
-			lines = append(lines, fmt.Sprintf(
+			line := fmt.Sprintf(
 				"  %s at node %s (%s, iteration %d/%d). Do not infer or manually advance workflow state; ask the runtime.",
-				run.Slug, orNotEntered(run.CurrentNode), run.Status, run.Iteration, run.MaxTransitions))
+				run.Slug, orNotEntered(run.CurrentNode), run.Status, run.Iteration, run.MaxTransitions)
+			if run.Flags["auto"] {
+				if hint := autoRunHint(run); hint != "" {
+					line += " " + hint
+				}
+			}
+			lines = append(lines, line)
 		}
 	} else {
 		// Name the state rather than leave it to be inferred from silence.
@@ -502,9 +508,30 @@ func steerMessage(req Request) string {
 		return ""
 	}
 	run := active[0]
-	return fmt.Sprintf(
+	msg := fmt.Sprintf(
 		"Resume run %s (goal: %s). It is at node %s. Read the run state with the runtime before doing anything else, and do not restart it or advance it by inference.",
 		run.Slug, run.Goal, orNotEntered(run.CurrentNode))
+	if run.Flags["auto"] {
+		if hint := autoRunHint(run); hint != "" {
+			msg += " " + hint
+		}
+	}
+	return msg
+}
+
+// autoRunHint tells a host session not to stop mid-pipeline on an auto run.
+func autoRunHint(run *state.Run) string {
+	switch run.GraphID {
+	case "researcher-delivery":
+		return "Auto research: continue through hypothesis, experiment_design, experiment_run, findings, and writeup without asking the human; call vibe_checkpoint after each artifact."
+	case "goal-delivery":
+		return "Auto delivery: continue every node until status is done; call vibe_checkpoint after artifacts."
+	default:
+		if run.Flags["auto"] {
+			return "Auto mode: continue until status is done without asking the human except when a gate document leaves items open."
+		}
+	}
+	return ""
 }
 
 // promptContext rides along with every prompt: the run the workspace is in the

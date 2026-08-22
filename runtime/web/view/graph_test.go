@@ -66,6 +66,51 @@ func TestProjectGraphFailedRun(t *testing.T) {
 	}
 }
 
+func TestProjectGraphHidesFutureNodes(t *testing.T) {
+	g := loadGoalDeliveryGraph(t)
+	run, err := state.NewRun("fixture", "goal", "goal-delivery", 50, time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "approve_spec"
+	run.Status = state.StatusAwaitingHuman
+	rows := ProjectGraph(g, run)
+	order := WalkOrder(g)
+	fullCount := len(order)
+	if len(rows) >= fullCount {
+		t.Fatalf("expected fewer than %d rows at approve_spec, got %d", fullCount, len(rows))
+	}
+	for _, row := range rows {
+		if row.ID == "plan" || row.ID == "build" {
+			t.Fatalf("future node %q must not appear before the run reaches it", row.ID)
+		}
+	}
+	last := rows[len(rows)-1]
+	if last.ID != "approve_spec" {
+		t.Fatalf("last visible node = %q, want approve_spec", last.ID)
+	}
+}
+
+func TestProjectGraphShowsFullPathAtTerminal(t *testing.T) {
+	g := loadGoalDeliveryGraph(t)
+	run, err := state.NewRun("fixture", "goal", "goal-delivery", 50, time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "done"
+	run.Status = state.StatusDone
+	rows := ProjectGraph(g, run)
+	foundDone := false
+	for _, row := range rows {
+		if row.ID == "done" {
+			foundDone = true
+		}
+	}
+	if !foundDone {
+		t.Fatal("done terminal must appear when the run finishes there")
+	}
+}
+
 func TestProjectGraphSkippedResearchOptional(t *testing.T) {
 	g := loadGoalDeliveryGraph(t)
 	run, err := state.NewRun("fixture", "goal", "goal-delivery", 50, time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC))

@@ -166,6 +166,26 @@ still holds the evidence. Auto is a route through the same graph, not a second i
 it.
 </context>
 
+## Auto research host obligation (MUST)
+
+<required>
+
+On `vibe-agent auto research`, the host agent still runs every node. It must **not** stop after
+literature and ask the human what to do next. Walk the graph through `hypothesis`,
+`experiment_design`, `experiment_run`, `findings`, and `writeup`, calling `vibe-agent checkpoint`
+after each artifact and `vibe-agent verify` at verifiers.
+
+Stop only when:
+
+- run status is terminal (`done`, `failed`, `budget_exceeded`), or
+- a gate document leaves open markers (Open questions, TBD, or missing Applicability / Refine /
+  Mermaid on RESEARCH, or missing Mermaid on PLAN).
+
+When RESEARCH and PLAN are settled, `vibe-agent checkpoint` and `vibe-agent auto gate` both skip
+the approval gates and advance the run. Report results when the loop finishes; do not poll the
+human mid-pipeline.
+</required>
+
 ## Routing & discovery
 
 <routing>

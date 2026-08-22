@@ -8,6 +8,7 @@ import (
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/auto"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/autoconfig"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/checkpoint"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graphroute"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
@@ -170,7 +171,13 @@ func autoStartCommand(args []string, workflow graphroute.Workflow) error {
 	fmt.Printf("  node     %s\n", current.CurrentNode)
 	fmt.Printf("  merge    %s\n", mergeLine(config))
 	fmt.Printf("  state    %s\n", result.Manifest)
-	fmt.Println("  the spec and plan gates still hold until `auto gate` finds nothing open in the document")
+	switch workflow {
+	case graphroute.WorkflowResearch:
+		fmt.Println("  auto research walks literature through writeup; call vibe_checkpoint after each artifact")
+		fmt.Println("  do not ask the human for next steps until status is done or a gate document leaves something open")
+	default:
+		fmt.Println("  gates skip when SPEC, PLAN, and TASKS have no open markers; vibe_checkpoint chains past them on the auto path")
+	}
 	return nil
 }
 
@@ -241,12 +248,26 @@ func autoGateCommand(args []string) error {
 	if err := state.Save(state.ManifestPath(workspaceRoot, *slug), current); err != nil {
 		return err
 	}
+	// TryAnswerGate settled the gate on the manifest; Advance walks past it the
+	// same way vibe_checkpoint does after an artifact node.
+	result, err := checkpoint.Apply(checkpoint.Request{
+		WorkspaceRoot: workspaceRoot,
+		GraphDir:      graph.DefaultDir(toolkitRoot),
+		Slug:          *slug,
+		Outcome:       loop.Outcome{},
+	})
+	if err != nil {
+		return err
+	}
 
 	fmt.Printf("%s = true\n", spec.Flag)
 	fmt.Printf("  %s declares nothing open, so the gate skips rather than waits\n", strings.Join(spec.Files, " and "))
 	fmt.Println("  it records skipped, not approved: nobody was asked, and run state keeps the difference")
 	if node, ok := loaded.Node(current.CurrentNode); ok {
 		fmt.Printf("  gate     %s\n", node.Description)
+	}
+	if result.Transition != nil {
+		fmt.Printf("  node     %s\n", result.Run.CurrentNode)
 	}
 	return nil
 }

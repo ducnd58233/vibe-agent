@@ -186,6 +186,75 @@ func TestASettledSpecOpensTheGateAsASkip(t *testing.T) {
 	if !reload(t, root, "spec-settled").Flags["spec_unambiguous"] {
 		t.Error("a settled spec did not set the flag")
 	}
+	reloaded := reload(t, root, "spec-settled")
+	if reloaded.CurrentNode == "approve_spec" {
+		t.Errorf("auto gate left the run at approve_spec; want it advanced past the gate (node = %q)", reloaded.CurrentNode)
+	}
+}
+
+func TestAutoGateAdvancesPastApplicability(t *testing.T) {
+	root := t.TempDir()
+	optedIn(t, root, false)
+	if err := autoCommand([]string{"--workspace", root, "--toolkit", toolkitRoot, "research", "--slug", "research-settled", "--goal", "Compare two optimizers"}); err != nil {
+		t.Fatalf("auto research start: %v", err)
+	}
+
+	run := reload(t, root, "research-settled")
+	run.CurrentNode = "approve_applicability"
+	run.Status = state.StatusAwaitingHuman
+	writeResearchGateDoc(t, root, run, settledResearchGateBody())
+	testutil.EnsureRunIndex(t, root, "research-settled")
+	if err := state.Save(state.ManifestPath(root, "research-settled"), run); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := autoGateCommand([]string{"--workspace", root, "--toolkit", toolkitRoot, "--slug", "research-settled"}); err != nil {
+		t.Fatalf("auto gate: %v", err)
+	}
+	reloaded := reload(t, root, "research-settled")
+	if reloaded.CurrentNode != "hypothesis" {
+		t.Fatalf("current node = %q, want hypothesis after auto gate advance", reloaded.CurrentNode)
+	}
+	if !reloaded.Flags["applicability_ok"] {
+		t.Error("applicability_ok was not set")
+	}
+}
+
+func writeResearchGateDoc(t *testing.T, root string, run *state.Run, body string) {
+	t.Helper()
+	dir := filepath.Join(root, "docs", run.Date, run.Slug, fmt.Sprintf("%d", run.Version))
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	name := fmt.Sprintf("RESEARCH-%s.md", run.Date)
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func settledResearchGateBody() string {
+	return strings.Join([]string{
+		"# Research",
+		"",
+		"## Open questions",
+		"",
+		"- None.",
+		"",
+		"## Applicability",
+		"",
+		"| Source | Reuse | Reject | Gap |",
+		"| --- | --- | --- | --- |",
+		"| Paper A | method X | claim Y | no finance data |",
+		"",
+		"## Refine",
+		"",
+		"- Drop claim Y; add our ticker universe.",
+		"",
+		"```mermaid",
+		"flowchart LR",
+		"  lit --> apply",
+		"```",
+	}, "\n")
 }
 
 // Outside auto mode a gate is a person's to answer, and this command must not

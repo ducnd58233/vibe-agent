@@ -1,34 +1,5 @@
 {{define "graph"}}
-{{ if .GraphStep.HasStep }}
-<div class="graph-view graph-view-step" id="graph-view" data-testid="graph-view"{{ if ne .View "graph" }} hidden inert{{ end }}>
-  <header class="graph-head">
-    <p><strong>{{ .GraphID }}</strong> · current step</p>
-    <p>At <code>{{ .GraphStep.Current.ID }}</code> <span class="mode-chip">{{ .RunStatus }}</span></p>
-  </header>
-  <article class="graph-current" data-testid="graph-current-node">
-    <span class="graph-type node-{{ .GraphStep.Current.Type }}">{{ .GraphStep.Current.Type }}</span>
-    <h3>{{ .GraphStep.Current.ID }}</h3>
-    {{ if .GraphStep.Current.Description }}<p>{{ .GraphStep.Current.Description }}</p>{{ end }}
-    {{ if .GraphStep.Current.Prompt }}<p class="graph-prompt">{{ .GraphStep.Current.Prompt }}</p>{{ end }}
-  </article>
-  {{ if .GraphStep.Neighbors }}
-  <section class="graph-neighbors" data-testid="graph-neighbors">
-    <h4>Next paths</h4>
-    <ol class="graph-neighbor-list">
-      {{ range .GraphStep.Neighbors }}
-      <li class="graph-neighbor{{ if .ActivePath }} is-active{{ end }}{{ if .MatchesNow }} is-open{{ end }}">
-        <p class="graph-neighbor-head"><code>{{ .To }}</code> <span class="graph-type node-{{ .ToType }}">{{ .ToType }}</span></p>
-        {{ if .Via }}<p class="graph-neighbor-via">when <code>{{ .Via }}</code></p>{{ else }}<p class="graph-neighbor-via">fallback</p>{{ end }}
-        {{ if .GuardDescription }}<p class="graph-neighbor-guard">{{ .GuardDescription }}</p>{{ end }}
-        {{ if .ToDescription }}<p class="graph-neighbor-desc">{{ .ToDescription }}</p>{{ end }}
-        {{ if .EvidenceHint }}<p class="graph-neighbor-hint">{{ .EvidenceHint }}</p>{{ end }}
-      </li>
-      {{ end }}
-    </ol>
-  </section>
-  {{ end }}
-</div>
-{{ else if .GraphNodes }}
+{{ if .GraphNodes }}
 <div class="graph-view" id="graph-view" data-testid="graph-view"{{ if ne .View "graph" }} hidden inert{{ end }}>
   <header class="graph-head">
     <p><strong>{{ .GraphID }}</strong> · {{ len .GraphNodes }} nodes</p>

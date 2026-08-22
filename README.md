@@ -29,6 +29,24 @@ Claude Code, Cursor, and opencode use `/`. Codex CLI uses `$`. A global install 
 
 Codex does not load custom `/prompts`; this kit installs commands as skills. Authoring and clone steps: [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md). Full command list: [`.ai-agents/commands/ROUTER.md`](.ai-agents/commands/ROUTER.md).
 
+## Supported coding hosts
+
+The runtime hooks session start, prompt submit, pre-tool gates, post-tool journaling, and stop for every host below. Delivery commands (`/goal`, `/build`, `/test`, `/ship`, `/auto`) need the `vibe-agent` binary on PATH; hook wiring alone is not enough.
+
+| Host | Binary | Hook config | Status |
+|---|---|---|---|
+| Claude Code | `claude` | `.claude/settings.json` | Verified |
+| Cursor | `cursor-agent` | `.cursor/hooks.json` | Verified |
+| Codex CLI | `codex` | `.codex/config.toml` | Verified |
+| opencode | `opencode` | `opencode.json` | Verified |
+| Google Antigravity | `antigravity` | `.agents/hooks.json` | Hook wiring shipped; payload fields UNVERIFIED until observed on a live host |
+| Kimi | `kimi` | `.kimi/hooks.toml` (merge into `~/.kimi/config.toml`) | Hook wiring shipped; Kimi reads user config only |
+| Muse | `muse` | `.muse/hooks.json` | Hook wiring shipped; run `muse hooks trust` after install |
+
+`bash scripts/link-ai-agents.sh` creates Antigravity, Kimi, and Muse hook stubs when those files are missing. `vibe-agent doctor` scans all seven configs and reports wiring status. Generated hook contracts: [`.ai-agents/references/host-hook-contracts.md`](.ai-agents/references/host-hook-contracts.md).
+
+Codex and Antigravity also get command skills under `.agents/skills/` (Agent Skills layout). Cursor and Claude keep commands under their own generated views.
+
 ## Three ways to work
 
 Pick one path. They compose the same assets; what changes is who drives each gate and which runtime graph starts.
