@@ -104,7 +104,7 @@ func Parse(raw []byte) (*File, error) {
 		return nil, fmt.Errorf("%s: schemaVersion %d, want %d", FileName, file.SchemaVersion, SchemaVersion)
 	}
 	if !validate.Slug(file.Slug) {
-		return nil, fmt.Errorf("%s: slug %q must be lowercase kebab-case", FileName, file.Slug)
+		return nil, fmt.Errorf("%s: slug %q must be kebab-case", FileName, file.Slug)
 	}
 	if !validate.Date(file.Date) {
 		return nil, fmt.Errorf("%s: date %q is not YYYY-MM-DD", FileName, file.Date)

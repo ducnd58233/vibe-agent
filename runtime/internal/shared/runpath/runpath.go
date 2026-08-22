@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/validate"
@@ -150,6 +151,13 @@ func Allocate(workspaceRoot, slug string, now time.Time) (Entry, error) {
 // Begin starts a new revision for a slug: refuses if one already exists, then
 // Allocate writes the index and returns the entry. Callers create directories by
 // saving the manifest into RunDirAt.
+//
+// Also refuses a slug that differs only in letter case from an existing one.
+// .agent-state/run-index/ and the versioned docs/ and .agent-state/runs/
+// directories sit on a case-preserving but case-insensitive filesystem on
+// Windows and macOS, where "MyFeature" and "myfeature" would silently alias
+// the same files. The check runs on every platform so behavior does not
+// depend on which OS created the run.
 func Begin(workspaceRoot, slug string, now time.Time) (Entry, error) {
 	if !validate.Slug(slug) {
 		return Entry{}, fmt.Errorf("slug %q is not usable", slug)
@@ -160,7 +168,70 @@ func Begin(workspaceRoot, slug string, now time.Time) (Entry, error) {
 	} else if !errors.Is(err, ErrNotFound) {
 		return Entry{}, err
 	}
+	existing, err := ExistingSlugs(workspaceRoot)
+	if err != nil {
+		return Entry{}, err
+	}
+	for _, other := range existing {
+		if other != slug && strings.EqualFold(other, slug) {
+			return Entry{}, fmt.Errorf("slug %q differs only in case from existing slug %q; "+
+				"case-insensitive filesystems would alias their files", slug, other)
+		}
+	}
 	return Allocate(workspaceRoot, slug, now)
+}
+
+// ExistingSlugs lists every slug this workspace has a record of, from the
+// run-index pointers and from scanning the versioned docs/ and
+// .agent-state/runs/ directories. Raw names as found on disk, not filtered by
+// validate.Slug: a case-collision check needs to see everything that could
+// alias, not just what a fresh slug would itself be allowed to be.
+func ExistingSlugs(workspaceRoot string) ([]string, error) {
+	seen := map[string]bool{}
+
+	indexDir := workspace.RunIndexDir(workspaceRoot)
+	entries, err := os.ReadDir(indexDir)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("list run index: %w", err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+		seen[strings.TrimSuffix(entry.Name(), ".json")] = true
+	}
+
+	roots := []string{
+		workspace.RunsDir(workspaceRoot),
+		filepath.Join(workspaceRoot, workspace.DocsDirName),
+	}
+	for _, root := range roots {
+		dates, err := os.ReadDir(root)
+		if err != nil {
+			continue
+		}
+		for _, dateEnt := range dates {
+			if !dateEnt.IsDir() || !validate.Date(dateEnt.Name()) {
+				continue
+			}
+			slugEntries, err := os.ReadDir(filepath.Join(root, dateEnt.Name()))
+			if err != nil {
+				continue
+			}
+			for _, slugEnt := range slugEntries {
+				if !slugEnt.IsDir() {
+					continue
+				}
+				seen[slugEnt.Name()] = true
+			}
+		}
+	}
+
+	out := make([]string, 0, len(seen))
+	for slug := range seen {
+		out = append(out, slug)
+	}
+	return out, nil
 }
 
 func scanHighest(workspaceRoot, slug string) (Entry, bool) {
