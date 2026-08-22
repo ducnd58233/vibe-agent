@@ -7,7 +7,7 @@ func Kind(ev Event) FilterKind {
 	switch ev.Type {
 	case TypeSessionStart, TypePromptSubmit, TypePreTool, TypeStop, TypeSubagentStop:
 		return FilterHook
-	case TypeTranscriptMessage:
+	case TypeMessage, TypeThinking:
 		return FilterTranscript
 	case TypeToolUse:
 		tool := strings.ToLower(evToolName(ev))

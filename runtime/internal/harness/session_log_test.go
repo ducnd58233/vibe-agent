@@ -274,7 +274,7 @@ func TestStopRecordsAssistantMessageWhenPresent(t *testing.T) {
 	if events[0].Type != session.TypeStop {
 		t.Fatalf("first event = %+v", events[0])
 	}
-	if events[1].Type != session.TypeTranscriptMessage {
+	if events[1].Type != session.TypeMessage {
 		t.Fatalf("second event = %+v", events[1])
 	}
 	path := session.LogPath(root, "demo")

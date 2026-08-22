@@ -33,7 +33,7 @@ func Append(logPath string, record Record) (Event, error) {
 		at = time.Now().UTC()
 	}
 	stored, err := state.AppendEvent(logPath, state.Event{
-		Type:    string(record.Type),
+		Type:    state.EventType(record.Type),
 		Payload: encoded,
 		At:      at,
 	})

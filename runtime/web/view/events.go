@@ -168,11 +168,13 @@ func eventRole(ev session.Event, body session.Payload) string {
 			return "hook"
 		}
 		return "user"
-	case session.TypeTranscriptMessage:
+	case session.TypeMessage:
 		if role := strings.ToLower(strings.TrimSpace(body.Role)); role != "" {
 			return role
 		}
 		return "assistant"
+	case session.TypeThinking:
+		return "thinking"
 	case session.TypePreTool:
 		return "hook"
 	case session.TypeToolUse:
@@ -220,14 +222,13 @@ func eventSummary(ev session.Event, body session.Payload) string {
 		return "Stop"
 	case session.TypeSubagentStop:
 		return "SubagentStop"
-	case session.TypeTranscriptMessage:
-		if strings.ToLower(strings.TrimSpace(body.Role)) == "thinking" {
-			return "thinking"
-		}
+	case session.TypeMessage:
 		if body.Role != "" {
 			return "projected " + strings.ToLower(body.Role) + " text"
 		}
-		return "transcript message"
+		return "message"
+	case session.TypeThinking:
+		return "thinking"
 	default:
 		if body.Event != "" {
 			return body.Event
@@ -282,7 +283,7 @@ func ChatRows(rows []EventRow) []EventRow {
 		if !ChatVisibleRole(row.Role) {
 			continue
 		}
-		if row.Type == session.TypeTranscriptMessage && row.Source == session.SourceTranscript {
+		if row.Type == session.TypeMessage && row.Source == session.SourceTranscript {
 			if row.Role == "user" && session.IsCommandInjectionUserText(row.Body) {
 				if strings.Contains(row.Body, "<command-message>") && lastPrompt != "" {
 					continue

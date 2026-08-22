@@ -131,7 +131,7 @@ func TestAbortRecordsTheReasonInTheEventLog(t *testing.T) {
 	}
 	found := false
 	for _, event := range events {
-		if event.Type == "run_aborted" && strings.Contains(string(event.Payload), "superseded by another slug") {
+		if event.Type == state.EventRunAborted && strings.Contains(string(event.Payload), "superseded by another slug") {
 			found = true
 		}
 	}

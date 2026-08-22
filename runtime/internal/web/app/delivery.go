@@ -44,8 +44,8 @@ func StartDeliveryRun(workspaceRoot, toolkitRoot, slug, goal, graphID string) er
 	if err != nil {
 		return fmt.Errorf("encode start event: %w", err)
 	}
-	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, slug),
-		state.Event{Type: "run_started", Node: current.CurrentNode, At: current.CreatedAt, Payload: payload},
+	if _, err := state.AppendRunEvent(state.EventLogPath(workspaceRoot, slug),
+		state.Event{Type: state.EventRunStarted, Node: current.CurrentNode, At: current.CreatedAt, Payload: payload},
 	); err != nil {
 		return err
 	}

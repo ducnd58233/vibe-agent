@@ -85,7 +85,7 @@ func TestReplayOrdersBySequenceAndSkipsUnknown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Append(path, Record{Type: TypeTranscriptMessage, Source: SourcePrint, Client: "cursor-agent", Role: "assistant", Body: "ok"}); err != nil {
+	if _, err := Append(path, Record{Type: TypeMessage, Source: SourcePrint, Client: "cursor-agent", Role: "assistant", Body: "ok"}); err != nil {
 		t.Fatalf("print source: %v", err)
 	}
 	f, err := os.OpenFile(filepath.Clean(path), os.O_APPEND|os.O_WRONLY, 0o600)
@@ -118,13 +118,13 @@ func TestComposePrefixRedactsAndCaps(t *testing.T) {
 	if _, err := Append(path, Record{Type: TypePromptSubmit, Source: SourceHook, Client: "claude", Body: "deploy " + secret}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Append(path, Record{Type: TypeTranscriptMessage, Source: SourcePrint, Client: "claude", Role: "assistant", Body: "ok"}); err != nil {
+	if _, err := Append(path, Record{Type: TypeMessage, Source: SourcePrint, Client: "claude", Role: "assistant", Body: "ok"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Append(path, Record{Type: TypePromptSubmit, Source: SourceHook, Client: "claude", Body: "second"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Append(path, Record{Type: TypeTranscriptMessage, Source: SourcePrint, Client: "claude", Role: "thinking", Body: "hidden"}); err != nil {
+	if _, err := Append(path, Record{Type: TypeThinking, Source: SourcePrint, Client: "claude", Role: "thinking", Body: "hidden"}); err != nil {
 		t.Fatal(err)
 	}
 	events, err := Replay(path)
@@ -175,7 +175,7 @@ func TestHasPromptSubmitBody(t *testing.T) {
 	if HasPromptSubmitBody(path, "other") {
 		t.Fatal("different body must not match")
 	}
-	if _, err := Append(path, Record{Type: TypeTranscriptMessage, Source: SourcePrint, Role: "assistant", Body: "ok"}); err != nil {
+	if _, err := Append(path, Record{Type: TypeMessage, Source: SourcePrint, Role: "assistant", Body: "ok"}); err != nil {
 		t.Fatal(err)
 	}
 	if !HasPromptSubmitBody(path, "hello") {
@@ -192,7 +192,7 @@ func TestKindMapping(t *testing.T) {
 		{"session start hook", Record{Type: TypeSessionStart, Source: SourceHook}, FilterHook},
 		{"bash tool", Record{Type: TypeToolUse, Source: SourceHook, Tool: "bash"}, FilterTool},
 		{"skill tool", Record{Type: TypeToolUse, Source: SourceHook, Tool: "Skill"}, FilterSkill},
-		{"transcript", Record{Type: TypeTranscriptMessage, Source: SourceTranscript}, FilterTranscript},
+		{"transcript", Record{Type: TypeMessage, Source: SourceTranscript}, FilterTranscript},
 	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, LogName)

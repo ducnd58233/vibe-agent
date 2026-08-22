@@ -52,7 +52,7 @@ func projectTranscript(req Request, body payload, skipAssistantBody string) {
 			continue
 		}
 		record := session.Record{
-			Type:    session.TypeTranscriptMessage,
+			Type:    session.TypeForChatRole(msg.role),
 			Source:  session.SourceTranscript,
 			Role:    msg.role,
 			Body:    msg.body,

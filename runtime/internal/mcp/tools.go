@@ -305,8 +305,8 @@ func runStart(deps Deps, raw json.RawMessage) (any, error) {
 		return nil, err
 	}
 	manifest := state.ManifestPath(deps.WorkspaceRoot, args.Slug)
-	if _, err := state.AppendEvent(state.EventLogPath(deps.WorkspaceRoot, args.Slug),
-		state.Event{Type: "run_started", Node: run.CurrentNode, At: now}); err != nil {
+	if _, err := state.AppendRunEvent(state.EventLogPath(deps.WorkspaceRoot, args.Slug),
+		state.Event{Type: state.EventRunStarted, Node: run.CurrentNode, At: now}); err != nil {
 		return nil, err
 	}
 	if err := state.Save(manifest, run); err != nil {

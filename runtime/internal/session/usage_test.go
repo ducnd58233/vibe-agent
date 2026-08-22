@@ -41,9 +41,9 @@ func TestTokensUsedSumsWhatTheHostsReported(t *testing.T) {
 	testutil.EnsureRunIndex(t, root, "demo")
 	path := LogPath(root, "demo")
 	records := []Record{
-		{Type: TypeTranscriptMessage, Source: SourcePrint, Role: "assistant", Body: "one",
+		{Type: TypeMessage, Source: SourcePrint, Role: "assistant", Body: "one",
 			Usage: &Usage{Input: 100, Output: 50}},
-		{Type: TypeTranscriptMessage, Source: SourcePrint, Role: "assistant", Body: "two",
+		{Type: TypeMessage, Source: SourcePrint, Role: "assistant", Body: "two",
 			Usage: &Usage{Total: 30}},
 		// No usage at all: hosts disagree about which turns carry counts, and a
 		// log full of untotalled turns is normal rather than broken.
@@ -70,7 +70,7 @@ func TestTokensUsedLeavesCacheReadsOut(t *testing.T) {
 	testutil.EnsureRunIndex(t, root, "demo")
 	path := LogPath(root, "demo")
 	if _, err := Append(path, Record{
-		Type: TypeTranscriptMessage, Source: SourcePrint, Role: "assistant", Body: "cached",
+		Type: TypeMessage, Source: SourcePrint, Role: "assistant", Body: "cached",
 		Usage: &Usage{Input: 10, Output: 5, CacheRead: 9000},
 	}); err != nil {
 		t.Fatal(err)

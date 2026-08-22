@@ -109,8 +109,8 @@ func runFlag(args []string) error {
 	if err != nil {
 		return fmt.Errorf("encode flag event: %w", err)
 	}
-	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, *slug),
-		state.Event{Type: "flag_set", Node: current.CurrentNode, At: current.UpdatedAt, Payload: payload},
+	if _, err := state.AppendRunEvent(state.EventLogPath(workspaceRoot, *slug),
+		state.Event{Type: state.EventFlagSet, Node: current.CurrentNode, At: current.UpdatedAt, Payload: payload},
 	); err != nil {
 		return err
 	}
@@ -177,8 +177,8 @@ func runStart(args []string) error {
 		return fmt.Errorf("encode start event: %w", err)
 	}
 	manifest := state.ManifestPath(workspaceRoot, *slug)
-	if _, err := state.AppendEvent(state.EventLogPath(workspaceRoot, *slug),
-		state.Event{Type: "run_started", Node: current.CurrentNode, At: current.CreatedAt, Payload: payload},
+	if _, err := state.AppendRunEvent(state.EventLogPath(workspaceRoot, *slug),
+		state.Event{Type: state.EventRunStarted, Node: current.CurrentNode, At: current.CreatedAt, Payload: payload},
 	); err != nil {
 		return err
 	}

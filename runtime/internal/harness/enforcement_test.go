@@ -320,7 +320,7 @@ func TestPostToolUseJournalsAgainstTheActiveRun(t *testing.T) {
 		t.Fatal("post-tool-use recorded nothing in the journal")
 	}
 	last := events[len(events)-1]
-	if last.Type != "tool_use" {
+	if last.Type != state.EventToolUse {
 		t.Errorf("journal entry has type %q, want tool_use", last.Type)
 	}
 	if !strings.Contains(string(last.Payload), "go test") {

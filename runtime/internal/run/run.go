@@ -23,6 +23,7 @@ type (
 	FailureClass = domain.FailureClass
 	Artifact     = domain.Artifact
 	Event        = domain.Event
+	EventType    = domain.EventType
 )
 
 // The provenance a check may claim, and the states a run may hold. There is
@@ -51,6 +52,14 @@ const (
 
 	EventLogName = domain.EventLogName
 	RunsDirName  = persistence.RunsDirName
+
+	EventRunStarted  = domain.EventRunStarted
+	EventTransition  = domain.EventTransition
+	EventFlagSet     = domain.EventFlagSet
+	EventToolUse     = domain.EventToolUse
+	EventRunAborted  = domain.EventRunAborted
+	EventRunResumed  = domain.EventRunResumed
+	EventRunExtended = domain.EventRunExtended
 )
 
 // Creating a run is a domain act; reading and writing one is I/O.
@@ -58,14 +67,15 @@ var (
 	NewRun         = domain.NewRun
 	FailureClasses = domain.FailureClasses
 
-	Load         = persistence.Load
-	Save         = persistence.Save
-	RunDir       = persistence.RunDir
-	RunsDir      = persistence.RunsDir
-	ManifestPath = persistence.ManifestPath
-	EventLogPath = persistence.EventLogPath
-	AppendEvent  = persistence.AppendEvent
-	ReadEvents   = persistence.ReadEvents
-	List         = persistence.List
-	PrepareStart = persistence.PrepareStart
+	Load           = persistence.Load
+	Save           = persistence.Save
+	RunDir         = persistence.RunDir
+	RunsDir        = persistence.RunsDir
+	ManifestPath   = persistence.ManifestPath
+	EventLogPath   = persistence.EventLogPath
+	AppendEvent    = persistence.AppendEvent
+	AppendRunEvent = persistence.AppendRunEvent
+	ReadEvents     = persistence.ReadEvents
+	List           = persistence.List
+	PrepareStart   = persistence.PrepareStart
 )

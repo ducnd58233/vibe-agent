@@ -94,7 +94,7 @@ func recordStop(req Request, body payload, subagent bool) {
 	})
 	if body.LastAssistantMessage != "" {
 		appendSession(req, session.Record{
-			Type:  session.TypeTranscriptMessage,
+			Type:  session.TypeMessage,
 			Role:  "assistant",
 			Body:  body.LastAssistantMessage,
 			Usage: assistantUsageFromTranscript(body, body.LastAssistantMessage),

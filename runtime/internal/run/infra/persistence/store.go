@@ -118,7 +118,9 @@ func EventLogPath(workspaceRoot, slug string) string {
 }
 
 // AppendEvent adds one line to the log and returns the stored event, including
-// the sequence number it was given.
+// the sequence number it was given. Session logs reuse this writer with their
+// own type vocabulary; run delivery logs should call AppendRunEvent so unknown
+// kinds are refused at the boundary.
 func AppendEvent(path string, event domain.Event) (domain.Event, error) {
 	if path == "" {
 		return domain.Event{}, errors.New("event log path is empty")
@@ -159,6 +161,15 @@ func AppendEvent(path string, event domain.Event) (domain.Event, error) {
 		return domain.Event{}, fmt.Errorf("sync event log: %w", err)
 	}
 	return event, nil
+}
+
+// AppendRunEvent is AppendEvent for the delivery event log: the type must be a
+// known EventType. Session.ndjson must not call this.
+func AppendRunEvent(path string, event domain.Event) (domain.Event, error) {
+	if !event.Type.Valid() {
+		return domain.Event{}, fmt.Errorf("event type %q is not a known run event", event.Type)
+	}
+	return AppendEvent(path, event)
 }
 
 // ReadEvents returns every event in the log. A missing or empty path is not an error.
