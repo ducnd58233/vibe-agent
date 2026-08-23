@@ -115,7 +115,8 @@ func DocsArtifact(stem, date string) (string, error) {
 	return stem + "-" + date + ext, nil
 }
 
-// DocsDir is the undated docs path (docs/<slug>/). Prefer DocsDirAt for new work.
+// DocsDir is the legacy flat docs path (docs/<slug>/). Prefer DocsDirAt.
+// Kept for docs migrate only; new work uses DocsDirAt.
 func DocsDir(workspaceRoot, slug string) string {
 	return filepath.Join(workspaceRoot, DocsDirName, slug)
 }

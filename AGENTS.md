@@ -120,7 +120,8 @@ path. When a rule already has a home, link to it instead of restating it.
 - **Verification evidence (MUST):** run state and logs live under
   `.agent-state/runs/<YYYY-MM-DD>/<slug>/<version>/` (when gitignored in the
   workspace), beside `manifest.json`. A leftover workspace-root `tmp/` tree fails
-  `vibe-agent doctor`; delete it. Evidence is not read from `tmp/`.
+  `vibe-agent doctor`; run `vibe-agent migrate docs-tmp` once (or delete it).
+  Evidence is not read from `tmp/`.
 - **Portable paths (MUST):** in committed docs, plans, and agent deliverables, use paths relative to the workspace root or repo ids. Do not paste machine-absolute paths (`C:\...`, `/Users/...`, `d:\...`) into files that ship in git.
 - **XML section tags (MUST):** wrap sections in the documented tag set for always-loaded charter files
   (`AGENTS.md`, `CLAUDE.md`, `CURSOR.md`, and harness-loaded nested `AGENTS.md` such as
@@ -201,7 +202,8 @@ Follow links from those files only as the task requires.
 - **Evidence.** `/goal` records verification under `.agent-state/runs/<date>/<slug>/<version>/` when that path is gitignored in the
   workspace, redacted before write. See
   [`goal-verification-records`](.ai-agents/references/goal-verification-records.md).
-  A leftover workspace-root `tmp/` tree fails `vibe-agent doctor`; delete it.
+  A leftover workspace-root `tmp/` tree fails `vibe-agent doctor`; run
+  `vibe-agent migrate docs-tmp` once if an old tree remains.
 - **Commit attribution.** Never add AI or agent co-author trailers, "Generated with ..." lines, or
   robot-emoji attribution to commits or PR bodies. Commits belong to the human contributor's git
   identity, on every harness and for manual commits. How that is enforced, and what not to remove:
