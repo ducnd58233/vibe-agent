@@ -37,7 +37,7 @@ Host agents pass the user's text as plain arguments. Slug and graph are derived;
 do not ask the user for `--goal`, `--graph`, or `--slug` unless resuming an
 existing run.
 
-If the binary is not on `PATH`, or `doctor` reports problems, **stop. Run no phase.** Report:
+If the binary is not on `PATH`, **stop. Run no phase.** Report:
 
 ```text
 /auto requires the vibe-agent runtime, which is not installed.
@@ -45,6 +45,12 @@ If the binary is not on `PATH`, or `doctor` reports problems, **stop. Run no pha
   powershell -ExecutionPolicy Bypass -File scripts/install-runtime.ps1 # Windows
 Then run `vibe-agent doctor` and start /auto again.
 ```
+
+If the binary runs but `doctor` reports problems, **stop. Run no phase.** Do **not**
+claim the runtime is missing. Report the doctor failures and fix that workspace
+first (check plan, docs layout, leftover `tmp/`, hooks). `merge: false` in the
+auto opt-in is a note, not a doctor failure: auto may still run and stops at a
+green PR for a person to merge.
 
 **Three things you must not do, in order of how much damage they cause:**
 

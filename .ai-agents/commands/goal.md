@@ -34,7 +34,7 @@ Follow [`goal-driven-delivery`](../skills/goal-driven-delivery/SKILL.md) and [`r
 vibe-agent doctor
 ```
 
-If the binary is not on `PATH`, or `doctor` reports problems, **stop. Run no phase.** Report:
+If the binary is not on `PATH`, **stop. Run no phase.** Report:
 
 ```text
 /goal requires the vibe-agent runtime, which is not installed.
@@ -43,8 +43,10 @@ If the binary is not on `PATH`, or `doctor` reports problems, **stop. Run no pha
 Then run `vibe-agent doctor` and start /goal again.
 ```
 
-Do not offer to proceed without it. Tracking phases by reading a markdown file is the failure
-mode this rule exists to remove: it is the model marking its own work complete.
+If the binary runs but `doctor` reports problems, **stop. Run no phase.** Do **not**
+claim the runtime is missing. Report the doctor failures and fix that workspace
+first. Tracking phases by reading a markdown file is the failure mode this rule
+exists to remove: it is the model marking its own work complete.
 
 ### The four parts, and what each one owns
 

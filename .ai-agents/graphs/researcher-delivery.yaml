@@ -71,8 +71,14 @@ spec:
         experiment/METRICS.json reports every declared threshold met after a
         done run. Fails on failed runs, missing metrics, or values below the
         bar so the graph can loop back to hypothesis.
+        acceptsSkipped so a workspace that never declared this check (product
+        ship, notes vault, or a goal-only checkout) does not fail doctor:
+        omitting it is the tracked statement that this checkout has no metrics
+        gate, matching experiment_done. A researcher run that skipped it would
+        walk to findings without METRICS.json.
       source: check
       reads: results_acceptable
+      acceptsSkipped: true
 
     - name: human_redirect
       description: >-
