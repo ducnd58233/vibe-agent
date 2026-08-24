@@ -182,6 +182,15 @@ The built-in scanner runs without external tools and reports files, lines, langu
 
 The score is weighted finding density per KLOC, capped at 100. It is a review signal, not proof that code is correct. The command does not spawn external linters from user-controlled paths; teams that want Semgrep, ast-grep, or benchmark gates should add them as repo-owned verifier commands.
 
+## Third-party Agent Skills
+
+`vibe-agent skills add` forwards to `npx skills add` with Claude Code, Codex, Cursor, and opencode as the default agents. `vibe-agent skills convert-report` prints host-only `SKILL.md` frontmatter without rewriting files. Neither command writes MCP configs or host hooks. Recipe and path notes: [AUTHORING.md](../.ai-agents/AUTHORING.md#third-party-agent-skills-not-this-toolkit).
+
+```sh
+vibe-agent skills add <owner/repo> -g -y
+vibe-agent skills convert-report ~/.agents/skills/<name>
+```
+
 ## The rule this module enforces
 
 A check is `passed` only when real evidence produced it. `CheckSource` has four values: `exit_code`, `file_assert`, `ci_api`, `human_event`. There is deliberately no value for model assertion, so no code path lets model output mark its own work complete.
