@@ -255,6 +255,35 @@ Subagent files are rewritten, and any asset that could not be symlinked is a cop
 stale. `--check` compares what is installed against what a fresh install would produce, `--uninstall`
 removes exactly what the manifest records and strips only the marked block from a rules file, and
 `--dry-run` writes nothing.
+
+### Third-party Agent Skills (not this toolkit)
+
+Install community skills with the shared Agent Skills CLI, or the thin vibe-agent wrapper that
+defaults to the four hosts this toolkit targets. Do not vendor third-party trees into
+`.ai-agents/`. Do not ask vibe-agent to write MCP configs or host hooks for a skill.
+
+```sh
+# All four hosts (claude-code, codex, cursor, opencode), user-level:
+vibe-agent skills add <owner/repo> -g -y
+# Or one host:
+vibe-agent skills add <owner/repo> -a cursor -g -y --skill <name>
+# Same thing without the wrapper:
+npx skills add <owner/repo> -a claude-code -a codex -a cursor -a opencode -g -y
+```
+
+On current `npx skills` builds, Cursor and OpenCode globals often land as one copy under
+`~/.agents/skills/<name>` (Codex and Cursor share that root). Claude may also receive a copy under
+`~/.claude/skills`. Prefer `~/.agents/skills` over `~/.codex/skills`; Codex reads the former.
+
+Skills built for one host sometimes carry host-only frontmatter (`disable-model-invocation`,
+`context: fork`, `allowed-tools`). Report without rewriting:
+
+```sh
+vibe-agent skills convert-report ~/.agents/skills/<name>
+```
+
+DeepSeek Harness / Cordis-style plugins are a different runtime model; they are not an Agent Skills
+converter and are not a dependency of this toolkit.
 </procedure>
 
 ## Asset inventory

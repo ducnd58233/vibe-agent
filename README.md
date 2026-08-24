@@ -20,6 +20,7 @@ There are two install shapes, and they're not alternatives — most setups end u
 |---|---|---|
 | Global: put commands on PATH (`vibe-goal`, `vibe-agent`, …) | `powershell -ExecutionPolicy Bypass -File scripts/install-global.ps1` | `sh scripts/install-global.sh` |
 | Workspace: link *this* checkout (`.claude`, `.cursor`, `.opencode`) | `powershell -ExecutionPolicy Bypass -File scripts/link-ai-agents.ps1` | `bash scripts/link-ai-agents.sh` |
+| Third-party community skills (one host or all four) | see [AUTHORING.md — Third-party Agent Skills](.ai-agents/AUTHORING.md#third-party-agent-skills-not-this-toolkit) (`vibe-agent skills add`) | same |
 
 ### Workspace install in another repo
 
