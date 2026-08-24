@@ -39,6 +39,8 @@ Usage:
   vibe-agent graph validate [--graph <id>]
   vibe-agent fetch <url|path> [--budget <tokens>] [--json] [--refresh]
   vibe-agent slop audit [path] [--format text|json] [--workers N] [--fail-on score]
+  vibe-agent skills add <owner/repo|url> [-a <agent>]... [-g] [-y] [--skill <name>]
+  vibe-agent skills convert-report <skill-dir>
   vibe-agent mcp serve
   vibe-agent run extend --slug <slug> --budget <n> --reason <text>
   vibe-agent auto init [--workspace <dir>]
@@ -73,6 +75,11 @@ budget and says how many lines were left, rather than implying the page fit.
 "slop audit" scans local code for AI-generated code slop signals. The built-in
 scanner uses go-enry language detection rather than a local extension table.
 It does not spawn external linters from user-controlled paths.
+
+"skills add" forwards to "npx skills add" with the four vibe-agent hosts as the
+default -a set. "skills convert-report" prints host-only SKILL.md frontmatter
+without rewriting files. Neither command writes MCP configs or host hooks.
+
 
 Evidence sources: exit_code, file_assert, ci_api, human_event. There is no
 source for model assertion, so nothing can mark its own work complete.
@@ -195,6 +202,8 @@ func run(args []string) error {
 		return fetchCommand(args[1:])
 	case "slop":
 		return slopCommand(args[1:])
+	case "skills":
+		return skillsCommand(args[1:])
 	case "mcp":
 		return mcpCommand(args[1:])
 	case "auto":
