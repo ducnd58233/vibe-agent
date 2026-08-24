@@ -20,7 +20,6 @@ There are two install shapes, and they're not alternatives — most setups end u
 |---|---|---|
 | Global: put commands on PATH (`vibe-goal`, `vibe-agent`, …) | `powershell -ExecutionPolicy Bypass -File scripts/install-global.ps1` | `sh scripts/install-global.sh` |
 | Workspace: link *this* checkout (`.claude`, `.cursor`, `.opencode`) | `powershell -ExecutionPolicy Bypass -File scripts/link-ai-agents.ps1` | `bash scripts/link-ai-agents.sh` |
-| Third-party community skills (one host or all four) | see [AUTHORING.md — Third-party Agent Skills](.ai-agents/AUTHORING.md#third-party-agent-skills-not-this-toolkit) (`vibe-agent skills add`) | same |
 
 ### Workspace install in another repo
 
@@ -38,6 +37,38 @@ vibe-agent doctor   # repeat until OK
 `--assets` always points at `<toolkit-root>/.ai-agents`, wherever the toolkit is mounted. The consumer
 repo stays its own repository and the source of product code; vibe-agent only supplies the shared
 assets, the same way a submodule supplies shared library code without becoming part of your app.
+
+## Add skills
+
+Install a community Agent Skill into Claude Code, Codex, Cursor, and/or opencode. This is not the
+same as editing this toolkit: do not copy third-party trees into `.ai-agents/`. `vibe-agent` must be
+on PATH (global install above) and `npx` must be available.
+
+```bash
+# All four hosts, user-level:
+vibe-agent skills add <owner/repo> -g -y
+
+# One host, one skill from a multi-skill repo:
+vibe-agent skills add <owner/repo> -a cursor -g -y --skill <name>
+
+# Same install without the wrapper:
+npx skills add <owner/repo> -a claude-code -a codex -a cursor -a opencode -g -y
+```
+
+`-a` may be `claude-code`, `codex`, `cursor`, or `opencode`. Repeat `-a` for a subset. `-g` is
+user-level; omit it to install into the current project.
+
+Skills written for one host often carry extra frontmatter. Report it; files are not rewritten. This
+command never writes MCP configs or host hooks.
+
+```bash
+vibe-agent skills convert-report ~/.agents/skills/<name>
+```
+
+Where files land, the Codex `~/.codex/skills` trap, and host-only keys: [Third-party Agent Skills in AUTHORING.md](.ai-agents/AUTHORING.md#third-party-agent-skills-not-this-toolkit).
+
+To *write* a skill this repo ships, edit [`.ai-agents/skills/`](.ai-agents/skills) and follow
+[AUTHORING.md](.ai-agents/AUTHORING.md). That is not `skills add`.
 
 ## How commands look in your host
 
@@ -212,3 +243,5 @@ Runtime flags and internals: [`runtime/README.md`](runtime/README.md).
 ## Where to edit
 
 Edit sources under [`.ai-agents/`](.ai-agents). Paths like `.claude/`, `.cursor/`, and `.codex/` are generated views; re-run the link script after changes.
+
+To install someone else's skill, use [Add skills](#add-skills), not this folder.
