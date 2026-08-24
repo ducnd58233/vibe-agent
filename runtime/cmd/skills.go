@@ -38,9 +38,10 @@ Usage:
   vibe-agent skills add <owner/repo|url> [-a <agent>]... [-g] [-y] [--skill <name>] [--list]
   vibe-agent skills convert-report <skill-dir>
 
-"add" forwards to "npx skills add". With no -a flags it targets the four
-vibe-agent hosts: claude-code, codex, cursor, opencode. It never writes MCP
-or hooks. Pass DISABLE_TELEMETRY=1 into the child environment.
+"add" forwards to "npx --yes skills add" when -y is set, so neither npx nor
+the skills CLI prompts. With no -a flags it targets the four vibe-agent
+hosts: claude-code, codex, cursor, opencode. It never writes MCP or hooks.
+Pass DISABLE_TELEMETRY=1 into the child environment.
 
 "convert-report" scans SKILL.md frontmatter for host-only keys
 (disable-model-invocation, context, allowed-tools, and similar) and prints them. It

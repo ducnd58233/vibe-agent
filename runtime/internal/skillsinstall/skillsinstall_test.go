@@ -14,17 +14,31 @@ func TestAddArgvDefaultsFourAgents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantPrefix := []string{"skills", "add", "vercel-labs/agent-skills"}
-	if !slices.Equal(argv[:3], wantPrefix) {
-		t.Fatalf("prefix = %v, want %v", argv[:3], wantPrefix)
+	wantPrefix := []string{"--yes", "skills", "add", "vercel-labs/agent-skills"}
+	if !slices.Equal(argv[:4], wantPrefix) {
+		t.Fatalf("prefix = %v, want %v", argv[:4], wantPrefix)
 	}
 	for _, agent := range DefaultAgents {
 		if !containsPair(argv, "-a", agent) {
 			t.Fatalf("missing -a %s in %v", agent, argv)
 		}
 	}
-	if !slices.Contains(argv, "-g") || !slices.Contains(argv, "-y") {
-		t.Fatalf("expected -g and -y in %v", argv)
+	if slices.Contains(argv, "mcp") || slices.Contains(argv, "hooks") || slices.Contains(argv, "--all") {
+		t.Fatalf("argv leaked MCP/hooks/--all: %v", argv)
+	}
+}
+
+func TestAddArgvRejectsStarAgent(t *testing.T) {
+	t.Parallel()
+	if _, err := AddArgv("owner/repo", AddOptions{Agents: []string{"*"}}); err == nil {
+		t.Fatal("expected error for agent *")
+	}
+}
+
+func TestAddArgvRejectsDashSource(t *testing.T) {
+	t.Parallel()
+	if _, err := AddArgv("--help", AddOptions{}); err == nil {
+		t.Fatal("expected error for dashed source")
 	}
 }
 
@@ -59,20 +73,33 @@ func TestConvertReportFindsHostOnlyKeys(t *testing.T) {
 	if err := os.Mkdir(skill, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	body := "---\nname: demo\ndescription: test\ndisable-model-invocation: true\ncontext: fork\n---\n\n# Demo\n"
+	body := "---\nname: demo\ndescription: test\ndisable-model-invocation: true\ncontext: fork\nhooks: {}\nmcpServers: {}\n---\n\n# Demo\n"
 	if err := os.WriteFile(filepath.Join(skill, "SKILL.md"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(filepath.Clean(filepath.Join(skill, "SKILL.md")))
+	if err != nil {
 		t.Fatal(err)
 	}
 	report, err := ConvertReport(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
+	after, err := os.ReadFile(filepath.Clean(filepath.Join(skill, "SKILL.md")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("convert-report rewrote SKILL.md")
+	}
 	got := map[string]bool{}
 	for _, f := range report.Findings {
 		got[f.Key] = true
 	}
-	if !got["disable-model-invocation"] || !got["context"] {
-		t.Fatalf("findings = %#v", report.Findings)
+	for _, key := range []string{"disable-model-invocation", "context", "hooks", "mcpServers"} {
+		if !got[key] {
+			t.Fatalf("missing %s in %#v", key, report.Findings)
+		}
 	}
 	text := FormatReport(report)
 	if !strings.Contains(text, "disable-model-invocation") {

@@ -49,12 +49,21 @@ type AddOptions struct {
 }
 
 // AddArgv returns the argv after the npx executable: ["skills", "add", ...].
+// AddArgv returns the argv after the npx executable.
+// When Yes is set the first token is --yes so npx itself does not prompt.
 func AddArgv(source string, opts AddOptions) ([]string, error) {
 	source = strings.TrimSpace(source)
 	if source == "" {
 		return nil, fmt.Errorf("skills add needs a source (owner/repo or URL)")
 	}
-	argv := []string{"skills", "add", source}
+	if strings.HasPrefix(source, "-") {
+		return nil, fmt.Errorf("skills add source must not start with -")
+	}
+	var argv []string
+	if opts.Yes {
+		argv = append(argv, "--yes")
+	}
+	argv = append(argv, "skills", "add", source)
 	agents := opts.Agents
 	if len(agents) == 0 && !opts.List {
 		agents = append([]string(nil), DefaultAgents...)
@@ -63,6 +72,9 @@ func AddArgv(source string, opts AddOptions) ([]string, error) {
 		agent = strings.TrimSpace(agent)
 		if agent == "" {
 			continue
+		}
+		if agent == "*" || strings.EqualFold(agent, "all") {
+			return nil, fmt.Errorf("skills add refuses agent %q; name hosts explicitly", agent)
 		}
 		argv = append(argv, "-a", agent)
 	}
@@ -77,6 +89,11 @@ func AddArgv(source string, opts AddOptions) ([]string, error) {
 	}
 	if skill := strings.TrimSpace(opts.Skill); skill != "" {
 		argv = append(argv, "--skill", skill)
+	}
+	for _, token := range argv {
+		if token == "mcp" || token == "hooks" || token == "--all" {
+			return nil, fmt.Errorf("skills add refuses token %q (MCP and hooks are out of scope)", token)
+		}
 	}
 	return argv, nil
 }
