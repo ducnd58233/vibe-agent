@@ -53,11 +53,16 @@ const (
 	// reports whether any task is still in scope.
 	VerifierTasks   VerifierKind = "tasks"
 	VerifierResults VerifierKind = "results"
+	// VerifierExpectation reads expectation/REVIEW.md on the auto path.
+	VerifierExpectation VerifierKind = "expectation"
+	// VerifierExperiment reads experiment/STATUS.md for researcher-delivery.
+	VerifierExperiment VerifierKind = "experiment"
 )
 
 func (k VerifierKind) valid() bool {
 	switch k {
-	case VerifierCommand, VerifierFiles, VerifierGit, VerifierScreen, VerifierTasks, VerifierResults:
+	case VerifierCommand, VerifierFiles, VerifierGit, VerifierScreen, VerifierTasks,
+		VerifierResults, VerifierExpectation, VerifierExperiment:
 		return true
 	}
 	return false

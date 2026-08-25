@@ -151,3 +151,12 @@ spec:
         the experiment finished done and every declared metric meets its
         threshold. Fails on failed runs or short metrics so results_eval can
         route back to hypothesis.
+
+    expectation_ok:
+      verifier: expectation
+      description: >-
+        Reads .agent-state/runs/<date>/<slug>/<version>/expectation/REVIEW.md.
+        Passes only when status is pass and every AC table row is pass. Auto
+        delivery runs this after slop and before review so a green suite that
+        still misses SPEC intent reopens plan. Missing or fail rows use
+        file_assert only; no judge LLM as evidence.
