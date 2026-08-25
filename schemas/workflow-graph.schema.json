@@ -296,9 +296,11 @@
                   "tasks",
                   "results",
                   "expectation",
+                  "release",
+                  "bughunt",
                   "experiment"
                 ],
-                "description": "Verifier implementation that produces the evidence. screen proves an app rendered rather than that a command exited; tasks reads the machine-readable task list a plan produced; expectation reads REVIEW.md on the auto path."
+                "description": "Verifier implementation that produces the evidence. screen proves an app rendered rather than that a command exited; tasks reads the machine-readable task list a plan produced; expectation/release/bughunt read REVIEW or FINDINGS markdown on the auto path."
               },
               "check": {
                 "$ref": "#/$defs/identifier",

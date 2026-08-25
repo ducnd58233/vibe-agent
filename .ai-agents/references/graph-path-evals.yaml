@@ -386,6 +386,7 @@ spec:
         - check: {name: lint, passed: true, source: exit_code}
         - {} # commit
         - check: {name: e2e, passed: true, source: exit_code}
+        - check: {name: bug_hunt_ok, passed: true, source: file_assert}
         - check: {name: slop, passed: true, source: exit_code}
         - check: {name: expectation_ok, passed: true, source: file_assert}
         - result: {changes_requested: false}
@@ -403,6 +404,7 @@ spec:
           - lint
           - commit
           - e2e
+          - bug_hunt
           - slop
           - expectation_review
           - review
@@ -423,6 +425,7 @@ spec:
         - check: {name: lint, passed: true, source: exit_code}
         - {}
         - check: {name: e2e, passed: true, source: exit_code}
+        - check: {name: bug_hunt_ok, passed: true, source: file_assert}
         - check: {name: slop, passed: true, source: exit_code}
         - check: {name: expectation_ok, passed: false, source: file_assert}
       expect:
@@ -439,6 +442,173 @@ spec:
           - lint
           - commit
           - e2e
+          - bug_hunt
           - slop
           - expectation_review
           - plan
+
+    - name: auto path runs bug hunt after e2e
+      graph: goal-delivery
+      flags: {auto: true}
+      steps:
+        - {}
+        - {}
+        - check: {name: spec_approved, skipped: true, source: file_assert}
+        - {}
+        - check: {name: plan_approved, skipped: true, source: file_assert}
+        - {}
+        - check: {name: unit, passed: true, source: exit_code}
+        - {}
+        - check: {name: lint, passed: true, source: exit_code}
+        - {}
+        - check: {name: e2e, passed: true, source: exit_code}
+        - check: {name: bug_hunt_ok, passed: true, source: file_assert}
+      expect:
+        status: running
+        path:
+          - intake
+          - spec
+          - approve_spec
+          - plan
+          - approve_plan
+          - build
+          - test
+          - simplify
+          - lint
+          - commit
+          - e2e
+          - bug_hunt
+          - slop
+
+    - name: bug hunt miss reopens plan on auto path
+      graph: goal-delivery
+      flags: {auto: true}
+      steps:
+        - {}
+        - {}
+        - check: {name: spec_approved, skipped: true, source: file_assert}
+        - {}
+        - check: {name: plan_approved, skipped: true, source: file_assert}
+        - {}
+        - check: {name: unit, passed: true, source: exit_code}
+        - {}
+        - check: {name: lint, passed: true, source: exit_code}
+        - {}
+        - check: {name: e2e, passed: true, source: exit_code}
+        - check: {name: bug_hunt_ok, passed: false, source: file_assert}
+      expect:
+        status: running
+        path:
+          - intake
+          - spec
+          - approve_spec
+          - plan
+          - approve_plan
+          - build
+          - test
+          - simplify
+          - lint
+          - commit
+          - e2e
+          - bug_hunt
+          - plan
+
+    - name: auto path runs release review after ship
+      graph: goal-delivery
+      flags: {auto: true}
+      steps:
+        - {}
+        - {}
+        - check: {name: spec_approved, skipped: true, source: file_assert}
+        - {}
+        - check: {name: plan_approved, skipped: true, source: file_assert}
+        - {}
+        - check: {name: unit, passed: true, source: exit_code}
+        - {}
+        - check: {name: lint, passed: true, source: exit_code}
+        - {}
+        - check: {name: e2e, passed: true, source: exit_code}
+        - check: {name: bug_hunt_ok, passed: true, source: file_assert}
+        - check: {name: slop, passed: true, source: exit_code}
+        - check: {name: expectation_ok, passed: true, source: file_assert}
+        - result: {changes_requested: false}
+        - check: {name: pr_open, passed: true, source: exit_code}
+        - check: {name: ci, passed: true, source: exit_code}
+        - check: {name: reviews, passed: true, source: ci_api}
+        - check: {name: ship, passed: true, source: file_assert}
+        - check: {name: release_ok, passed: true, source: file_assert}
+        - check: {name: merge_approved, passed: true, source: file_assert}
+      expect:
+        status: running
+        path:
+          - intake
+          - spec
+          - approve_spec
+          - plan
+          - approve_plan
+          - build
+          - test
+          - simplify
+          - lint
+          - commit
+          - e2e
+          - bug_hunt
+          - slop
+          - expectation_review
+          - review
+          - open_pr
+          - pr_checks
+          - external_reviews
+          - ship
+          - release_review
+          - approve_merge
+          - merge_ci
+
+    - name: release miss routes to build on auto path
+      graph: goal-delivery
+      flags: {auto: true}
+      steps:
+        - {}
+        - {}
+        - check: {name: spec_approved, skipped: true, source: file_assert}
+        - {}
+        - check: {name: plan_approved, skipped: true, source: file_assert}
+        - {}
+        - check: {name: unit, passed: true, source: exit_code}
+        - {}
+        - check: {name: lint, passed: true, source: exit_code}
+        - {}
+        - check: {name: e2e, passed: true, source: exit_code}
+        - check: {name: bug_hunt_ok, passed: true, source: file_assert}
+        - check: {name: slop, passed: true, source: exit_code}
+        - check: {name: expectation_ok, passed: true, source: file_assert}
+        - result: {changes_requested: false}
+        - check: {name: pr_open, passed: true, source: exit_code}
+        - check: {name: ci, passed: true, source: exit_code}
+        - check: {name: reviews, passed: true, source: ci_api}
+        - check: {name: ship, passed: true, source: file_assert}
+        - check: {name: release_ok, passed: false, source: file_assert}
+      expect:
+        status: running
+        path:
+          - intake
+          - spec
+          - approve_spec
+          - plan
+          - approve_plan
+          - build
+          - test
+          - simplify
+          - lint
+          - commit
+          - e2e
+          - bug_hunt
+          - slop
+          - expectation_review
+          - review
+          - open_pr
+          - pr_checks
+          - external_reviews
+          - ship
+          - release_review
+          - build

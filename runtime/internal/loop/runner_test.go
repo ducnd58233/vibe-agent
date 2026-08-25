@@ -581,6 +581,8 @@ func TestASkippedCheckSatisfiesOnlyAGuardThatOptedIn(t *testing.T) {
 		"spec_approved":  "auto mode skips the gate when the spec holds no open question; the check records skipped, never passed",
 		"plan_approved":  "the same, for the plan gate",
 		"expectation_ok": "a consumer that never declares expectation_ok must not stall; omitting it means no expectation gate",
+		"bug_hunt_ok":    "a consumer that never declares bug_hunt_ok must not stall; omitting it means no bug-hunt gate",
+		"release_ok":     "a consumer that never declares release_ok must not stall; omitting it means no release gate",
 	}
 	for name := range allowed {
 		optedIn, ok := runner.Graph.Guard(name)

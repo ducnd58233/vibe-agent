@@ -136,12 +136,13 @@ Being honest about the seam rather than describing a mode that does not exist ye
 
 **Live today:** the opt-in file, `vibe-agent auto init`, `doctor` reporting the opt-in state, the
 danger list refused before anything runs, every verifier `/goal` already runs, and the graph itself
-- the `auto` flag routes through `simplify`, `lint`, `commit`, `expectation_review` (SPEC-tied
-`expectation/REVIEW.md` via `file_assert`; miss reopens `plan`), and a watch on the default branch
-after the merge lands, and the `intake`, `approve_spec`, and `approve_plan` gates skip when the
-run's flags say a person is not needed. A skipped gate records `skipped`, never `passed`, so run
-state still says which gates a person answered. Host obligation on `expectation_review`:
-[`expectation.md`](expectation.md).
+- the `auto` flag routes through `simplify`, `lint`, `commit`, `bug_hunt` (`bug_hunt/FINDINGS.md`),
+`expectation_review` (SPEC-tied `expectation/REVIEW.md`), `release_review` (`release/REVIEW.md`)
+via `file_assert` (misses reopen `plan` or `build`), and a watch on the default branch after the
+merge lands, and the `intake`, `approve_spec`, and `approve_plan` gates skip when the run's flags
+say a person is not needed. A skipped gate records `skipped`, never `passed`, so run state still
+says which gates a person answered. Host docs: [`bug-hunt.md`](bug-hunt.md),
+[`expectation.md`](expectation.md), [`release.md`](release.md).
 
 ```sh
 vibe-agent auto "<one objective>"   # delivery graph; slug derived
