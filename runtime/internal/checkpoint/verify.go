@@ -165,6 +165,7 @@ func Resolve(req VerifyRequest) (*Plan, error) {
 			Timeout:       timeout,
 			Command:       entry.Command,
 			Args:          entry.Args,
+			Runner:        entry.Runner,
 			LogDir:        node.Check,
 			Paths:         entry.Paths,
 			Screen:        entry.Screen,

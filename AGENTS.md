@@ -24,8 +24,10 @@ The runtime owns the **outer loop**: which phase runs next, on what evidence, wi
 It also owns a **bounded inner loop** for headless steps, added under `docs/harness-autonomy/SPEC.md`
 decision D2. That reverses an earlier decision to decline inner-loop ownership, and the scope is
 narrow on purpose: it runs mechanical steps such as fixing a linter error without a host session,
-and it does not replace Claude Code, Codex, Cursor, or opencode for interactive work. Sandboxed
-execution stays declined; isolation comes from the host or from CI.
+and it does not replace Claude Code, Codex, Cursor, or opencode for interactive work. An embedded
+container or GPU sandbox inside the Go process stays declined; isolation for interactive hosts
+still comes from the host or from CI. Workspace-opted runner drivers (local or docker) invoked by
+`vibe-agent sandbox` and optional check-plan `runner:` are allowed via `.agent-state/sandbox.yaml`.
 
 **Stance:** favor reusable patterns, explicit routing, stable permission boundaries, progressive
 disclosure, and minimal duplication across tools. Every rule below follows from those five.

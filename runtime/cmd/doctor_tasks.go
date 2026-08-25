@@ -10,6 +10,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/autoconfig"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/sandbox"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/tasks"
 )
 
@@ -156,4 +157,19 @@ func checkAutoOptIn(report *diagnostics, workspaceRoot string) {
 		return
 	}
 	fmt.Printf("  note  auto mode may not merge; %s still says merge: false\n", autoconfig.FileName)
+}
+
+// checkSandboxConfig notes whether the workspace opted into runner drivers.
+// Absence is fine: checks without runner: keep running on the host.
+func checkSandboxConfig(report *diagnostics, workspaceRoot string) {
+	cfg, present, err := sandbox.Load(workspaceRoot)
+	if err != nil {
+		report.check("sandbox config loads and validates", false, err.Error())
+		return
+	}
+	if !present {
+		fmt.Printf("  note  no %s; checks without runner: stay on the host\n", sandbox.FileName)
+		return
+	}
+	report.check(fmt.Sprintf("sandbox config loads and validates (%d runners)", len(cfg.Spec.Runners)), true, "")
 }

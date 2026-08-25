@@ -49,6 +49,7 @@ func doctorCommand(args []string) error {
 	checkTaskFiles(report, workspaceRoot)
 	checkDocsLayout(report, workspaceRoot)
 	checkAutoOptIn(report, workspaceRoot)
+	checkSandboxConfig(report, workspaceRoot)
 	checkMemory(report, workspaceRoot)
 	checkRunState(report, workspaceRoot)
 	checkWebState(report, workspaceRoot)

@@ -12,6 +12,7 @@ import (
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/sandbox"
 )
 
 // DefaultCommandTimeout bounds a verifier command that did not set its own.
@@ -30,7 +31,76 @@ func (c Command) Verify(ctx context.Context, req Request) (Result, error) {
 	if req.Command == "" {
 		return Result{}, errors.New("command verifier needs a command")
 	}
+	if req.Runner != "" {
+		return c.verifyViaRunner(ctx, req)
+	}
+	return c.verifyHost(ctx, req)
+}
 
+func (c Command) verifyViaRunner(ctx context.Context, req Request) (Result, error) {
+	timeout := req.Timeout
+	if timeout <= 0 {
+		timeout = DefaultCommandTimeout
+	}
+	started := time.Now()
+	execResult := sandbox.Exec(ctx, sandbox.ExecRequest{
+		WorkspaceRoot: req.WorkspaceRoot,
+		Slug:          req.Slug,
+		UseCase:       req.Check,
+		Runner:        req.Runner,
+		Command:       req.Command,
+		Args:          req.Args,
+		Timeout:       timeout,
+	})
+	elapsed := time.Since(started)
+
+	logPath, writeErr := writeLog(req, execResult.Output)
+	if writeErr != nil {
+		return Result{}, writeErr
+	}
+
+	exitCode := execResult.ExitCode
+	timedOut := execResult.TimedOut
+	neverRan := execResult.NeverRan
+	runErr := execResult.Err
+	if timedOut {
+		exitCode = -1
+	}
+
+	result := Result{
+		Check: state.Check{
+			Passed:   runErr == nil && !timedOut && !neverRan && exitCode == 0,
+			Source:   state.SourceExitCode,
+			ExitCode: &exitCode,
+			At:       time.Now().UTC(),
+		},
+		Detail:  string(execResult.Output),
+		LogPath: logPath,
+	}
+	if logPath != "" {
+		result.Check.Ref = filepath.ToSlash(logPath)
+	}
+
+	commandLine := strings.TrimSpace(req.Command + " " + strings.Join(req.Args, " "))
+	via := fmt.Sprintf("via runner %q", req.Runner)
+	switch {
+	case neverRan && runErr != nil:
+		result.Summary = fmt.Sprintf("%s %s could not start: %v", commandLine, via, runErr)
+		result.Check.Passed = false
+	case timedOut:
+		result.Summary = fmt.Sprintf("%s %s timed out after %s", commandLine, via, timeout)
+	case neverRan:
+		result.Summary = fmt.Sprintf("%s %s could not start", commandLine, via)
+	case runErr != nil || exitCode != 0:
+		result.Summary = fmt.Sprintf("%s %s exited %d after %s", commandLine, via, exitCode, elapsed.Round(time.Millisecond))
+		result.Check.Passed = false
+	default:
+		result.Summary = fmt.Sprintf("%s %s exited 0 after %s", commandLine, via, elapsed.Round(time.Millisecond))
+	}
+	return result, nil
+}
+
+func (c Command) verifyHost(ctx context.Context, req Request) (Result, error) {
 	timeout := req.Timeout
 	if timeout <= 0 {
 		timeout = DefaultCommandTimeout
