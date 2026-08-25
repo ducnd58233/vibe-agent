@@ -28,9 +28,9 @@ spec:
       description: >-
         Auto mode is running this delivery. Set once by `vibe-agent auto`, never
         by a node. It routes the run through the extra steps auto needs -
-        simplify, lint, grouped commits, and the post-merge CI watch - and it
-        leaves every other walk exactly as it was, because a flag absent from
-        run state reads as false.
+        simplify, lint, grouped commits, expectation review, and the post-merge
+        CI watch - and it leaves every other walk exactly as it was, because a
+        flag absent from run state reads as false.
       source: flag
 
     - name: spec_unambiguous
@@ -114,6 +114,18 @@ spec:
         The skip has to come from a tracked file rather than from an argument.
       source: check
       reads: e2e
+      acceptsSkipped: true
+
+    - name: expectation_ok
+      description: >-
+        Auto-path expectation review passed: REVIEW.md status is pass and every
+        SPEC acceptance-criteria row is pass. Reachable only after slop when the
+        auto flag is set. Failures reopen plan so tasks can be refined without a
+        judge LLM as evidence. acceptsSkipped so a consumer workspace that never
+        declares the check is not broken by sharing this graph; omitting it is
+        the tracked statement that this checkout has no expectation gate.
+      source: check
+      reads: expectation_ok
       acceptsSkipped: true
 
     - name: changes_requested
@@ -242,6 +254,16 @@ spec:
       verifier: command
       check: slop
 
+    expectation_review:
+      type: verifier
+      description: >-
+        After slop on the auto path, assert SPEC acceptance criteria against
+        evidence listed in expectation/REVIEW.md. Pass continues to review.
+        Fail reopens plan so tasks can be refined when the suite was green but
+        the product missed intent. file_assert only.
+      verifier: expectation
+      check: expectation_ok
+
     simplify:
       type: agent
       description: >-
@@ -364,6 +386,7 @@ spec:
         - merge_approved
         - main_ci
         - tasks_remaining
+        - expectation_ok
     - from: spec
       to: intake
       when: human_redirect
@@ -393,6 +416,10 @@ spec:
       when: human_redirect
       resets: *redirect_resets
     - from: slop
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: expectation_review
       to: intake
       when: human_redirect
       resets: *redirect_resets
@@ -513,11 +540,35 @@ spec:
       when: "!e2e_ok"
 
     - from: slop
-      to: review
-      when: slop_ok
-    - from: slop
       to: build
       when: "!slop_ok"
+    - from: slop
+      to: expectation_review
+      when: auto
+    - from: slop
+      to: review
+      when: slop_ok
+
+    - from: expectation_review
+      to: plan
+      when: "!expectation_ok"
+      resets:
+        - unit
+        - lint
+        - e2e
+        - slop
+        - expectation_ok
+        - pr_open
+        - ci
+        - reviews
+        - ship
+        - merge_approved
+        - main_ci
+        - plan_approved
+        - tasks_remaining
+    - from: expectation_review
+      to: review
+      when: expectation_ok
 
     - from: review
       to: build
@@ -586,6 +637,7 @@ spec:
         - ship
         - merge_approved
         - main_ci
+        - expectation_ok
     - from: merge_ci
       to: task_complete
 
@@ -610,6 +662,7 @@ spec:
         - ship
         - merge_approved
         - tasks_remaining
+        - expectation_ok
     - from: task_complete
       to: done
       when: "!tasks_remaining"

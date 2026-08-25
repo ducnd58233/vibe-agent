@@ -21,6 +21,7 @@ Slash-style prompts live in this folder as `*.md`. **Claude Code** commonly reso
 | Parallel evidence investigation with audit | [`investigate.md`](investigate.md) | Multi-faceted citation question; merge required; single-lane research uses `research.md` |
 | Plan tasks from spec | [`plan.md`](plan.md) | Spec exists |
 | Implement next task (TDD) | [`build.md`](build.md) | One branch/PR per planned task; same-task feedback on same branch; new task = new branch; never merge to `main` |
+| Auto-path SPEC expectation review | [`expectation.md`](expectation.md) | Write `expectation/REVIEW.md`, then verify; fail reopens plan |
 | TDD / Prove-It | [`test.md`](test.md) | - |
 | Simplify safely | [`code-simplify.md`](code-simplify.md) | Tests protect behavior |
 | Audit AI asset health, deterministically | [`doctor.md`](doctor.md) | Validate routers, hooks, links, permissions; a judgment-level harness review is `agent-systems-auditor` |

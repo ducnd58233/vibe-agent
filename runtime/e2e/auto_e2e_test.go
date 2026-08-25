@@ -61,6 +61,9 @@ spec:
       args: [version]
     tasks_remaining:
       verifier: tasks
+    expectation_ok:
+      verifier: expectation
+      description: fixture stand-in for auto-path expectation review
 `
 
 // autoRepo is a consumer repo that declares the auto checks and one task.
@@ -76,6 +79,25 @@ func autoRepo(t *testing.T, optIn bool) string {
 			"apiVersion: vibe-agent/v1\nkind: AutoConfig\nspec:\n  merge: false\n")
 	}
 	return root
+}
+
+func writeExpectationReview(t *testing.T, root, slug string) {
+	t.Helper()
+	dir := filepath.Join(state.RunDir(root, slug), "expectation")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	body := `# Expectation review
+status: pass
+attempt: 1
+
+| AC id | Spec reference | Observed evidence path | result |
+|-------|----------------|------------------------|--------|
+| AC1   | fixture        | go version             | pass   |
+`
+	if err := os.WriteFile(filepath.Join(dir, "REVIEW.md"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // settledDocs writes the artifacts the gates read, with nothing left open.
@@ -140,6 +162,14 @@ func drive(t *testing.T, run cli, slug string, steps int) *state.Run {
 				return current
 			}
 			run.mustRun("checkpoint", "--slug", slug)
+		case current.CurrentNode == "expectation_review":
+			// Host obligation: write REVIEW.md before verify. Soft pass for the
+			// fixture so the auto walk proves the node is reachable.
+			writeExpectationReview(t, run.root, slug)
+			out, err := run.run("verify", "--slug", slug)
+			if err != nil {
+				t.Fatalf("verify at expectation_review: %v\n%s", err, out)
+			}
 		default:
 			// verify exits non-zero at a node it cannot answer, and says so. A
 			// node that is not a verifier is stepped past with a bare
