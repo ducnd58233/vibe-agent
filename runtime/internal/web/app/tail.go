@@ -14,7 +14,7 @@ func handleSessionEvents(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	}
 	slug, ok := parseSessionSubpath(r.URL.Path, "events")
 	if !ok {
-		http.NotFound(w, r)
+		writeNotFound(w, r)
 		return
 	}
 	after, ok := parseAfterQuery(r)

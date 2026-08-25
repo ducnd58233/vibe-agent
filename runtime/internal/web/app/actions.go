@@ -69,7 +69,7 @@ func handleComposerSend(w http.ResponseWriter, r *http.Request, d httpDeps) {
 	}
 	slug, ok := parseSessionSubpath(r.URL.Path, "send")
 	if !ok {
-		http.NotFound(w, r)
+		http.Redirect(w, r, "/?error=not+found", http.StatusSeeOther)
 		return
 	}
 	sessionURL := "/session/" + url.PathEscape(slug) + "?view=chat"

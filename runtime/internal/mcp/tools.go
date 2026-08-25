@@ -20,6 +20,7 @@ import (
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/runstart"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/observability"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
 // MemoryDisclaimer rides along with every retrieved memory.
@@ -181,7 +182,7 @@ func bootstrap(deps Deps, raw json.RawMessage) (any, error) {
 	out := map[string]any{
 		"workspaceRoot": deps.WorkspaceRoot,
 		"sourceOfTruth": []string{"repository code and config", "git-backed project rules", "current run state", "retrieved memory", "model assumptions"},
-		"rulesFiles":    presentFiles(deps.WorkspaceRoot, "AGENTS.md", "CLAUDE.md", "CLAUDE.local.md", "CURSOR.md"),
+		"rulesFiles":    workspace.PresentBasenames(deps.WorkspaceRoot, "AGENTS.md", "CLAUDE.md", "CLAUDE.local.md", "CURSOR.md"),
 		"routerEntry":   relativeIfPresent(deps.WorkspaceRoot, filepath.Join(deps.ToolkitRoot, ".ai-agents", "ROUTER.md")),
 		"memoryPolicy":  MemoryDisclaimer,
 	}
@@ -726,16 +727,6 @@ func renderHits(hits []memory.Hit) []map[string]any {
 		})
 	}
 	return rendered
-}
-
-func presentFiles(root string, names ...string) []string {
-	var present []string
-	for _, name := range names {
-		if _, err := os.Stat(filepath.Join(root, name)); err == nil {
-			present = append(present, name)
-		}
-	}
-	return present
 }
 
 func relativeIfPresent(root, path string) string {

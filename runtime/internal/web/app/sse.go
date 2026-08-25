@@ -18,7 +18,7 @@ func (d httpDeps) handleSessionEventsStream(w http.ResponseWriter, r *http.Reque
 	const suffix = "/events/stream"
 	slug, ok := parseSessionSuffixPath(r.URL.Path, suffix)
 	if !ok {
-		http.NotFound(w, r)
+		writeNotFound(w, r)
 		return
 	}
 	after, ok := parseAfterQuery(r)

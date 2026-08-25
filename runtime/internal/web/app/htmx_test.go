@@ -36,14 +36,21 @@ func TestWriteHTMXOrErrorUsesFragmentForHTMX(t *testing.T) {
 	}
 }
 
-func TestWriteHTMXOrErrorUsesHTTPErrorWithoutHTMX(t *testing.T) {
+func TestWriteHTMXOrErrorUsesRenderErrorWithoutHTMX(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	writeHTMXOrError(rec, req, http.StatusBadRequest, "bad path")
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d", rec.Code)
 	}
-	if rec.Body.String() != "bad path\n" {
-		t.Fatalf("body = %q", rec.Body.String())
+	body := rec.Body.String()
+	if !strings.Contains(body, "bad path") {
+		t.Fatalf("body missing detail: %q", body)
+	}
+	if !strings.Contains(body, "error-page") && !strings.Contains(body, "Bad Request") {
+		t.Fatalf("expected full error page, got %q", body)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+		t.Fatalf("content type = %q", ct)
 	}
 }
