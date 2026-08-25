@@ -1,7 +1,6 @@
 package sandbox
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -110,7 +109,7 @@ func Exec(ctx context.Context, req ExecRequest) ExecResult {
 
 	timeout := req.Timeout
 	if timeout <= 0 {
-		timeout = 30 * time.Minute
+		timeout = safexec.DefaultTimeout
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -138,27 +137,13 @@ func Exec(ctx context.Context, req ExecRequest) ExecResult {
 }
 
 func runLocal(ctx context.Context, req ExecRequest) ExecResult {
-	var captured bytes.Buffer
-	cmd, startErr := safexec.CommandContext(ctx, req.Command, req.Args...)
-	if startErr != nil {
-		return ExecResult{ExitCode: -1, NeverRan: true, Err: startErr, Output: captured.Bytes()}
-	}
-	cmd.Dir = req.WorkspaceRoot
-	cmd.Stdout = &captured
-	cmd.Stderr = &captured
-	runErr := cmd.Run()
-	timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
-	exitCode := -1
-	neverRan := cmd.ProcessState == nil
-	if !neverRan && !timedOut {
-		exitCode = cmd.ProcessState.ExitCode()
-	}
+	captured := safexec.RunCaptured(ctx, req.WorkspaceRoot, req.Command, req.Args...)
 	return ExecResult{
-		ExitCode: exitCode,
-		Output:   captured.Bytes(),
-		NeverRan: neverRan,
-		TimedOut: timedOut,
-		Err:      runErr,
+		ExitCode: captured.ExitCode,
+		Output:   captured.Output,
+		NeverRan: captured.NeverRan,
+		TimedOut: captured.TimedOut,
+		Err:      captured.Err,
 	}
 }
 
@@ -175,27 +160,13 @@ func runDocker(ctx context.Context, req ExecRequest, spec RunnerSpec) ExecResult
 		req.Command,
 	}
 	args = append(args, req.Args...)
-
-	var captured bytes.Buffer
-	cmd, startErr := safexec.CommandContext(ctx, "docker", args...)
-	if startErr != nil {
-		return ExecResult{ExitCode: -1, NeverRan: true, Err: startErr, Output: captured.Bytes()}
-	}
-	cmd.Stdout = &captured
-	cmd.Stderr = &captured
-	runErr := cmd.Run()
-	timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
-	exitCode := -1
-	neverRan := cmd.ProcessState == nil
-	if !neverRan && !timedOut {
-		exitCode = cmd.ProcessState.ExitCode()
-	}
+	captured := safexec.RunCaptured(ctx, "", "docker", args...)
 	return ExecResult{
-		ExitCode: exitCode,
-		Output:   captured.Bytes(),
-		NeverRan: neverRan,
-		TimedOut: timedOut,
-		Err:      runErr,
+		ExitCode: captured.ExitCode,
+		Output:   captured.Output,
+		NeverRan: captured.NeverRan,
+		TimedOut: captured.TimedOut,
+		Err:      captured.Err,
 	}
 }
 

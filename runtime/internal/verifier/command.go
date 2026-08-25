@@ -1,7 +1,6 @@
 package verifier
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -16,7 +15,7 @@ import (
 )
 
 // DefaultCommandTimeout bounds a verifier command that did not set its own.
-const DefaultCommandTimeout = 30 * time.Minute
+const DefaultCommandTimeout = safexec.DefaultTimeout
 
 // Command runs a subprocess and reports its exit code.
 //
@@ -108,50 +107,24 @@ func (c Command) verifyHost(ctx context.Context, req Request) (Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	var captured bytes.Buffer
-	cmd, startErr := safexec.CommandContext(ctx, req.Command, req.Args...)
-	if startErr == nil {
-		cmd.Dir = req.WorkspaceRoot
-		cmd.Stdout = &captured
-		cmd.Stderr = &captured
-	}
-
 	started := time.Now()
-	runErr := startErr
-	if cmd != nil {
-		runErr = cmd.Run()
-	}
+	captured := safexec.RunCaptured(ctx, req.WorkspaceRoot, req.Command, req.Args...)
 	elapsed := time.Since(started)
 
-	timedOut := errors.Is(ctx.Err(), context.DeadlineExceeded)
-	// A command that could not start has no ProcessState. That is the case when
-	// the plan names a tool this machine does not have, which is common enough
-	// to deserve saying plainly rather than reporting as an exit code.
-	neverRan := cmd == nil || cmd.ProcessState == nil
-	exitCode := -1
-	if !neverRan {
-		exitCode = cmd.ProcessState.ExitCode()
-	}
-
-	// A process the runtime killed never produced a verdict. Reporting its exit
-	// code as a failure would be a lie about what happened.
-	if timedOut {
-		exitCode = -1
-	}
-
-	logPath, writeErr := writeLog(req, captured.Bytes())
+	logPath, writeErr := writeLog(req, captured.Output)
 	if writeErr != nil {
 		return Result{}, writeErr
 	}
 
+	exitCode := captured.ExitCode
 	result := Result{
 		Check: state.Check{
-			Passed:   runErr == nil && !timedOut,
+			Passed:   captured.Err == nil && !captured.TimedOut,
 			Source:   state.SourceExitCode,
 			ExitCode: &exitCode,
 			At:       time.Now().UTC(),
 		},
-		Detail:  captured.String(),
+		Detail:  string(captured.Output),
 		LogPath: logPath,
 	}
 	if logPath != "" {
@@ -160,13 +133,13 @@ func (c Command) verifyHost(ctx context.Context, req Request) (Result, error) {
 
 	commandLine := strings.TrimSpace(req.Command + " " + strings.Join(req.Args, " "))
 	switch {
-	case timedOut:
+	case captured.TimedOut:
 		result.Summary = fmt.Sprintf("%s timed out after %s", commandLine, timeout)
-	case neverRan:
+	case captured.NeverRan:
 		// Not a failing check in the usual sense, but still not a passing one: the
 		// check is unproven, and unproven has to read as not passed.
-		result.Summary = fmt.Sprintf("%s could not start: %v", commandLine, runErr)
-	case runErr != nil:
+		result.Summary = fmt.Sprintf("%s could not start: %v", commandLine, captured.Err)
+	case captured.Err != nil:
 		result.Summary = fmt.Sprintf("%s exited %d after %s", commandLine, exitCode, elapsed.Round(time.Millisecond))
 	default:
 		result.Summary = fmt.Sprintf("%s exited 0 after %s", commandLine, elapsed.Round(time.Millisecond))

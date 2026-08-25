@@ -24,8 +24,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -33,6 +31,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/observability"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
 // Client is the host whose hook is firing. Payload shapes differ between them.
@@ -456,7 +455,7 @@ func sessionContext(req Request) string {
 	var lines []string
 	lines = append(lines, "vibe-agent control plane is available.")
 
-	if rules := presentFiles(req.WorkspaceRoot, "AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"); len(rules) > 0 {
+	if rules := workspace.PresentBasenames(req.WorkspaceRoot, "AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"); len(rules) > 0 {
 		lines = append(lines, "Workspace rules: "+strings.Join(rules, ", ")+". Read them before applying any toolkit default.")
 	}
 	lines = append(lines,
@@ -748,16 +747,6 @@ func emitMessage(out io.Writer, text string) error {
 func write(out io.Writer, body any) error {
 	encoder := json.NewEncoder(out)
 	return encoder.Encode(body)
-}
-
-func presentFiles(root string, names ...string) []string {
-	var present []string
-	for _, name := range names {
-		if _, err := os.Stat(filepath.Join(root, name)); err == nil {
-			present = append(present, name)
-		}
-	}
-	return present
 }
 
 // orNotEntered fills a blank with the words a reader needs, not a dash.

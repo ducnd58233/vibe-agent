@@ -11,6 +11,7 @@ package workspace
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -119,4 +120,16 @@ func DocsArtifact(stem, date string) (string, error) {
 // Kept for docs migrate only; new work uses DocsDirAt.
 func DocsDir(workspaceRoot, slug string) string {
 	return filepath.Join(workspaceRoot, DocsDirName, slug)
+}
+
+// PresentBasenames returns each name that exists as a direct child of root.
+// Used by MCP status and session-start hooks so the file list cannot drift.
+func PresentBasenames(root string, names ...string) []string {
+	var present []string
+	for _, name := range names {
+		if _, err := os.Stat(filepath.Join(root, name)); err == nil {
+			present = append(present, name)
+		}
+	}
+	return present
 }

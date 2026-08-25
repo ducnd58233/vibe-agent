@@ -26,6 +26,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/verifier"
 )
 
@@ -48,8 +49,9 @@ const FileName = "vibe-checks.yaml"
 // configuration problem.
 const HumanVerifier = "human"
 
-// DefaultTimeout bounds an entry that did not set its own.
-const DefaultTimeout = 30 * time.Minute
+// DefaultTimeout bounds an entry that did not set its own. Same value as
+// safexec.DefaultTimeout so plan resolution and subprocess paths agree.
+const DefaultTimeout = safexec.DefaultTimeout
 
 // Entry is how one check is produced.
 type Entry struct {
