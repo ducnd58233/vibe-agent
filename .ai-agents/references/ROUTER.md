@@ -36,6 +36,7 @@ Lookup table for shared checklists and pattern docs under this folder. These fil
 | Proving a mobile app rendered: crash buffer, view hierarchy, blank-frame check | [`mobile-ui-verification.md`](mobile-ui-verification.md) | `qa-testing-strategy`, `test-driven-development`, `qa-tester`, mobile stack profiles |
 | Routing fixtures: intent → expected asset, checked by `/doctor` | [`routing-evals.md`](routing-evals.md) | `agent-systems-auditor`, `using-agent-skills` |
 | Graph path fixtures: outcomes → expected node path, checked by `/doctor` and `vibe-agent eval graph` | [`graph-path-evals.yaml`](graph-path-evals.yaml) | `agent-systems-auditor`, graph authors |
+| Workspace mistakes diary (`.agent-state/MISTAKES.md`), graduation into AGENTS.md, vs memory.db | [`mistakes-log.md`](mistakes-log.md) | always-on charter; all host agents |
 
 **Workspace-specific tooling** is indexed in [`../stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md). Checklists here stay generic; load matching `*.md` profiles from that router when needed.
 </routing>
