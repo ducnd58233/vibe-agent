@@ -160,3 +160,19 @@ spec:
         delivery runs this after slop and before review so a green suite that
         still misses SPEC intent reopens plan. Missing or fail rows use
         file_assert only; no judge LLM as evidence.
+
+    bug_hunt_ok:
+      verifier: bughunt
+      description: >-
+        Reads .agent-state/runs/<date>/<slug>/<version>/bug_hunt/FINDINGS.md.
+        Passes only when status is pass and every table result cell is pass.
+        Auto delivery runs this after e2e and before slop. Fail reopens plan so
+        new failing cases become tasks. file_assert only; no sandbox in-runtime.
+
+    release_ok:
+      verifier: release
+      description: >-
+        Reads .agent-state/runs/<date>/<slug>/<version>/release/REVIEW.md.
+        Passes only when status is pass and every release gate row is pass.
+        Auto delivery runs this after ship and before approve_merge. Fail routes
+        to build. file_assert only; no judge LLM as evidence.

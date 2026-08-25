@@ -128,6 +128,24 @@ spec:
       reads: expectation_ok
       acceptsSkipped: true
 
+    - name: bug_hunt_ok
+      description: >-
+        Auto-path bug-hunt findings passed: FINDINGS.md status is pass and every
+        result cell is pass. Reachable only after e2e when the auto flag is set.
+        Failures reopen plan. acceptsSkipped for consumers that omit the check.
+      source: check
+      reads: bug_hunt_ok
+      acceptsSkipped: true
+
+    - name: release_ok
+      description: >-
+        Auto-path release readiness passed: release/REVIEW.md status is pass and
+        every gate row is pass. Reachable only after ship when the auto flag is
+        set. Failures route to build. acceptsSkipped for consumers that omit it.
+      source: check
+      reads: release_ok
+      acceptsSkipped: true
+
     - name: changes_requested
       description: Local review returned findings that must be fixed before the PR proceeds.
       source: result
@@ -245,6 +263,15 @@ spec:
       verifier: command
       check: e2e
 
+    bug_hunt:
+      type: verifier
+      description: >-
+        After e2e on the auto path, assert bug-hunt FINDINGS.md. Pass continues
+        to slop. Fail reopens plan so newly found cases become tasks. file_assert
+        only; compute stays in consumer CI or an external runner.
+      verifier: bughunt
+      check: bug_hunt_ok
+
     slop:
       type: verifier
       description: >-
@@ -324,6 +351,14 @@ spec:
       verifier: command
       check: ship
 
+    release_review:
+      type: verifier
+      description: >-
+        After ship on the auto path, assert release/REVIEW.md readiness gates.
+        Pass continues to approve_merge. Fail routes to build. file_assert only.
+      verifier: release
+      check: release_ok
+
     approve_merge:
       type: human_gate
       description: The only gate in front of an irreversible action. It precedes the merge; it never follows it.
@@ -387,6 +422,8 @@ spec:
         - main_ci
         - tasks_remaining
         - expectation_ok
+        - bug_hunt_ok
+        - release_ok
     - from: spec
       to: intake
       when: human_redirect
@@ -412,6 +449,10 @@ spec:
       when: human_redirect
       resets: *redirect_resets
     - from: e2e
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: bug_hunt
       to: intake
       when: human_redirect
       resets: *redirect_resets
@@ -452,6 +493,10 @@ spec:
       when: human_redirect
       resets: *redirect_resets
     - from: ship
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: release_review
       to: intake
       when: human_redirect
       resets: *redirect_resets
@@ -533,11 +578,37 @@ spec:
       to: e2e
 
     - from: e2e
+      to: bug_hunt
+      when: auto
+    - from: e2e
       to: slop
       when: e2e_ok
     - from: e2e
       to: build
       when: "!e2e_ok"
+
+    - from: bug_hunt
+      to: plan
+      when: "!bug_hunt_ok"
+      resets:
+        - unit
+        - lint
+        - e2e
+        - bug_hunt_ok
+        - slop
+        - expectation_ok
+        - pr_open
+        - ci
+        - reviews
+        - ship
+        - release_ok
+        - merge_approved
+        - main_ci
+        - plan_approved
+        - tasks_remaining
+    - from: bug_hunt
+      to: slop
+      when: bug_hunt_ok
 
     - from: slop
       to: build
@@ -556,12 +627,14 @@ spec:
         - unit
         - lint
         - e2e
+        - bug_hunt_ok
         - slop
         - expectation_ok
         - pr_open
         - ci
         - reviews
         - ship
+        - release_ok
         - merge_approved
         - main_ci
         - plan_approved
@@ -599,11 +672,37 @@ spec:
       when: "!reviews_passed"
 
     - from: ship
+      to: release_review
+      when: auto
+    - from: ship
       to: approve_merge
       when: ship_go
     - from: ship
       to: build
       when: "!ship_go"
+
+    - from: release_review
+      to: build
+      when: "!release_ok"
+      resets:
+        - unit
+        - lint
+        - e2e
+        - bug_hunt_ok
+        - slop
+        - expectation_ok
+        - pr_open
+        - ci
+        - reviews
+        - ship
+        - release_ok
+        - merge_approved
+        - main_ci
+        - plan_approved
+        - tasks_remaining
+    - from: release_review
+      to: approve_merge
+      when: release_ok
 
     # Same ordering rule: refuse first, then the auto branch, then the walk that
     # was already here.
@@ -630,11 +729,13 @@ spec:
         - unit
         - lint
         - e2e
+        - bug_hunt_ok
         - slop
         - pr_open
         - ci
         - reviews
         - ship
+        - release_ok
         - merge_approved
         - main_ci
         - expectation_ok
@@ -654,12 +755,14 @@ spec:
         - unit
         - lint
         - e2e
+        - bug_hunt_ok
         - slop
         - pr_open
         - main_ci
         - ci
         - reviews
         - ship
+        - release_ok
         - merge_approved
         - tasks_remaining
         - expectation_ok

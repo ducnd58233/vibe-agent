@@ -113,6 +113,7 @@ func (e Entry) runnable() bool {
 // nothing runnable is the defect it exists to catch.
 var selfConfiguring = map[string]bool{
 	"tasks": true, "shipdecision": true, "experiment": true, "results": true, "expectation": true,
+	"release": true, "bughunt": true,
 }
 
 // Spec is the plan itself.
