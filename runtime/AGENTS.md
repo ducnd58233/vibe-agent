@@ -76,6 +76,17 @@ runtime/
 
 - Run state lives under **`.agent-state/runs/<date>/<slug>/<version>/manifest.json`**. Do not write it directly; use **`checkpoint`** and **`run`** packages.
 - Session logs are append-only NDJSON. Do not truncate or rewrite them.
+
+**Stack-blind quality and checks (MUST):**
+
+These rules come from research slug `improve-inner-outer-loops`. They apply whenever you add or change verifiers, checkplan wiring, graphs, or sandbox/runner code under `runtime/`.
+
+- **Keep the runtime stack-blind.** Graph nodes and Go check keys name quality *roles* (`unit`, `lint`, `expectation_ok`, …), never languages or frameworks. Do not add `if language == …` gate logic in the control plane.
+- **Workspace owns commands.** Stack-specific tools live in the consumer (or toolkit) **`vibe-checks.yaml`**. The runtime runs what the checkplan declares; it does not ship a default analyzer per language.
+- **Evidence provenance is closed.** Checks use only **`exit_code`**, **`file_assert`**, **`ci_api`**, **`human_event`**. Do not treat a judge-LLM score or model assertion as `Passed` evidence. Do not invent a fifth `--source`.
+- **Fail-closed skip.** Optional quality cells (structure, security/deps, coverage, and future matrix rows) that the workspace never declared must **skip**, not invent a tool or pass vacuously with a hardcoded command.
+- **Two matrices, do not conflate.** Agent-eval scoreboards (SWE-bench, OpenHands Index, and similar) measure the coding agent. Codebase quality cells measure the consumer repo. Do not wire agent benches into delivery graphs or checkplans.
+- **No in-process analyzers or GPU/container sandbox.** Do not embed language-specific static analysis, SWE harness runners, or an in-process container/GPU runtime in Go. Isolation for checks that need it uses the workspace-opted **sandbox runner port** (`.agent-state/sandbox.yaml`, `vibe-agent sandbox`, optional checkplan `runner:`). Embedded container/GPU inside the Go process stays declined (root [`AGENTS.md`](../AGENTS.md)).
 </required>
 
 <rules>
@@ -247,4 +258,9 @@ CSS/HTML-only tweaks: verify at desktop (`>68.75em`) and mobile (`<48em`) per **
 9. **Magic port/timeouts** instead of **`DefaultPort`**, **`readHeaderTimeout`**, **`shutdownTimeout`** in shared httpserver.
 10. **Committing generated plugin manifests** under **`.claude-plugin/`**, **`.cursor-plugin/`**, etc. If tracked by mistake, **`git rm --cached`**.
 11. **Wrapping `http.ResponseWriter` in a struct silently drops `http.Flusher`** (and similarly `http.Hijacker`, `io.ReaderFrom`) unless the wrapper forwards it explicitly - embedding an interface only promotes that interface's own method set, not extra methods the concrete value underneath happens to have. This broke every SSE request (`stream unsupported`) when the access-log middleware's status-capturing wrapper had no `Flush()` passthrough. Any `http.ResponseWriter` wrapper needs an explicit `Flush() { if f, ok := w.ResponseWriter.(http.Flusher); ok { f.Flush() } }`-shaped method (and the `Hijacker`/`ReaderFrom` equivalents if those matter to the route).
+12. **Hardcoding a language analyzer or test runner in Go** "so every repo works." Put the command in **`vibe-checks.yaml`**; keep the graph stack-blind.
+13. **Importing SWE-bench / OpenHands Index (or any agent leaderboard) as a delivery check.** Those score agents, not consumer codebases.
+14. **Passing an optional quality check by inventing a default tool** when the workspace omitted it. Skip fail-closed instead.
+15. **Recording a judge-LLM or model opinion as check evidence.** Only `exit_code` / `file_assert` / `ci_api` / `human_event`.
+16. **Embedding a container or GPU sandbox inside the Go process.** Use the external runner port or host/CI only.
 </antipatterns>
