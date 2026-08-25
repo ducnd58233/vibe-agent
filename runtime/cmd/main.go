@@ -56,6 +56,10 @@ Usage:
   vibe-agent session show --slug <slug|ambient>
   vibe-agent web [--port 1411] [--open]
   vibe-agent migrate docs-tmp [--dry-run] [--workspace <dir>]
+  vibe-agent sandbox init [--workspace <dir>]
+  vibe-agent sandbox up --slug <slug> --use-case <name> [--runner <name>]
+  vibe-agent sandbox exec --slug <slug> --use-case <name> [--runner <name>] -- <command>...
+  vibe-agent sandbox down --slug <slug> --use-case <name>
   vibe-agent doctor
   vibe-agent eval routing [--trials N] [--jobs N] [--runner codex|claude|cursor|opencode|all] [--only <text>]
   vibe-agent version
@@ -222,6 +226,8 @@ func run(args []string) error {
 		return sessionCommand(args[1:])
 	case "web":
 		return webCommand(args[1:])
+	case "sandbox":
+		return sandboxCommand(args[1:])
 	case "migrate":
 		return migrateCommand(args[1:])
 	case "doctor":

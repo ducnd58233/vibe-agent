@@ -60,6 +60,11 @@ type Entry struct {
 	Command string   `yaml:"command"`
 	Args    []string `yaml:"args"`
 
+	// Runner names a sandbox.yaml runner. When set, the command verifier wraps
+	// the command through vibe-agent's sandbox port. Missing sandbox.yaml fails
+	// closed. Empty means the host process, unchanged from before.
+	Runner string `yaml:"runner"`
+
 	// Paths is for the files verifier.
 	Paths []string `yaml:"paths"`
 
@@ -262,6 +267,9 @@ func (p *Plan) validate() error {
 func (e Entry) validate(name string) error {
 	if !e.runnable() {
 		return fmt.Errorf("check %q declares no command, paths, or screen; there is nothing to run", name)
+	}
+	if e.Runner != "" && e.Command == "" {
+		return fmt.Errorf("check %q sets runner %q but has no command to wrap", name, e.Runner)
 	}
 	if e.Screen != nil && e.Screen.Platform == "" {
 		return fmt.Errorf("check %q has a screen block with no platform; use %s or %s",

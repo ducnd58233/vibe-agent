@@ -43,6 +43,9 @@ type Request struct {
 	// Command verifier
 	Command string
 	Args    []string
+	// Runner, when set, wraps the command through the workspace sandbox port
+	// (sandbox.yaml). Empty means run on the host as before.
+	Runner string
 	// LogDir is the subdirectory under .agent-state/runs/.../ for captured output, for
 	// example "unit" or "e2e".
 	LogDir string

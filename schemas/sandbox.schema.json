@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ducnd58233/vibe-agent/schemas/sandbox.schema.json",
+  "title": "SandboxConfig",
+  "description": "Workspace-opted runner drivers for vibe-agent sandbox. Lives at .agent-state/sandbox.yaml. Orchestrates local or docker execution; does not embed a container runtime in the Go process.",
+  "type": "object",
+  "required": ["apiVersion", "kind", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "const": "vibe-agent/v1"
+    },
+    "kind": {
+      "const": "SandboxConfig"
+    },
+    "spec": {
+      "type": "object",
+      "required": ["runners"],
+      "additionalProperties": false,
+      "properties": {
+        "defaultRunner": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_-]*$"
+        },
+        "runners": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/runner"
+          }
+        },
+        "useCases": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_-]*$"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "runner": {
+      "type": "object",
+      "required": ["driver"],
+      "additionalProperties": false,
+      "properties": {
+        "driver": {
+          "enum": ["local", "docker"]
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Required when driver is docker."
+        },
+        "workdir": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Container workdir for docker mounts. Defaults to /workspace."
+        }
+      }
+    }
+  }
+}
