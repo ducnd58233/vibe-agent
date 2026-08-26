@@ -170,7 +170,7 @@ If you want another repository to reuse this setup without copying asset files:
 1. Add this toolkit repository as a submodule at a chosen path (for example `.vibe-agent`) in the consumer repo.
 2. Use `<toolkit-root>/.ai-agents` as the canonical shared assets path.
 3. From the **consumer** workspace root, run [`scripts/link-ai-agents.ps1`](../scripts/link-ai-agents.ps1) or [`scripts/link-ai-agents.sh`](../scripts/link-ai-agents.sh) with `-WorkspaceRoot` / `--workspace` set to the consumer root and `-AssetsRoot` / `--assets` set to `<toolkit-root>/.ai-agents` (see examples above). You do not need a separate pasted copy of the junction logic.
-4. Keep a consumer-repo-specific `AGENTS.md` for product/domain constraints while shared workflows remain under `<toolkit-root>/.ai-agents`.
+4. Keep a consumer-repo-specific `AGENTS.md` for product/domain constraints while shared workflows remain under `<toolkit-root>/.ai-agents`. When an agent writes that charter (or `CURSOR.md`, `.cursor/rules/*.mdc`), keep it harness-neutral: no `vibe-agent`, `.vibe-agent/`, or toolkit path names. See [`AUTHORING.md`](AUTHORING.md) section "Consumer charter files".
 5. Review the generated hook config when the consumer repo did not already have one. Existing `.claude/settings.json`, `.cursor/hooks.json`, `.codex/hooks.json`, `.cursor/rules/`, `opencode.json`, and `.codex/config.toml` remain repository-local policy and are not overwritten.
 6. Review the consumer repo `opencode.json` permission paths (`src/**`, `tests/**`, etc.) and adapt them to that repo layout.
 </procedure>

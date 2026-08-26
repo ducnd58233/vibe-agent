@@ -40,6 +40,7 @@ Lookup table for shared checklists and pattern docs under this folder. These fil
 | Failed graph node provenance: TRACE fields, assumption ids, required FailureClass on blockers | [`failure-trace.md`](failure-trace.md) | `/goal`, `/auto`, `agent-harness-engineering`, host agents diagnosing runs |
 | Claude Code features → vibe owners (reuse / reject / gap), conditional `if`, bare-like CI recipe | [`claude-code-feature-map.md`](claude-code-feature-map.md) | `agent-harness-engineering`, hook authors, `/auto` operators |
 | DeepSeek Harness / Cordis features → vibe owners (reuse / reject / gap), host portability (Cordis not portable) | [`deepseek-harness-feature-map.md`](deepseek-harness-feature-map.md) | `agent-harness-engineering`, hook authors, `/auto` operators |
+| Harness-neutral consumer charter examples (AGENTS.md, CURSOR.md, .cursor/rules) | [`consumer-charter-authoring.md`](consumer-charter-authoring.md) | asset authors, consumer-repo setup; rule in root `AGENTS.md` |
 
 **Workspace-specific tooling** is indexed in [`../stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md). Checklists here stay generic; load matching `*.md` profiles from that router when needed.
 </routing>
