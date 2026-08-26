@@ -449,7 +449,7 @@ func runVerify(deps Deps, raw json.RawMessage) (any, error) {
 	}
 	if applied.Duplicate {
 		out["duplicate"] = true
-		out["note"] = "This exact evidence was the last checkpoint recorded, so nothing advanced."
+		out["note"] = checkpoint.DuplicateReplayNote()
 		return out, nil
 	}
 	deps.Session.NoteListChanged()
@@ -477,11 +477,8 @@ func runCheckpoint(deps Deps, raw json.RawMessage) (any, error) {
 	if err := json.Unmarshal(raw, &args); err != nil {
 		return nil, err
 	}
-	if args.Blocker != "" && args.Class == "" {
-		return nil, fmt.Errorf("blocker needs class; use one of context, tool, permission, test, ambiguity, model")
-	}
-	if args.Class != "" && args.Blocker == "" {
-		return nil, fmt.Errorf("class describes a failure, so it needs blocker")
+	if err := checkpoint.ValidateBlockerOutcome(args.Blocker, args.Class); err != nil {
+		return nil, err
 	}
 
 	outcome := loop.Outcome{
@@ -520,7 +517,7 @@ func runCheckpoint(deps Deps, raw json.RawMessage) (any, error) {
 		// caller its evidence was already recorded is more useful than either
 		// advancing twice or reporting a transition that did not happen.
 		out["duplicate"] = true
-		out["note"] = "This exact evidence was the last checkpoint recorded, so nothing advanced."
+		out["note"] = checkpoint.DuplicateReplayNote()
 		return out, nil
 	}
 	deps.Session.NoteListChanged()

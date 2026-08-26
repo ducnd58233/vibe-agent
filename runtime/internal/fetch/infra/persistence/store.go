@@ -36,7 +36,7 @@ const CacheLife = 24 * time.Hour
 // state directory, for the same reason: this is derived from a source and
 // belongs to the checkout that asked for it, not to the machine.
 func CacheDir(workspaceRoot string) string {
-	return filepath.Join(workspace.StateDir(workspaceRoot), "fetch")
+	return workspace.FetchCacheDir(workspaceRoot)
 }
 
 // MaxAssetBytes is the largest non-text source this will retrieve.

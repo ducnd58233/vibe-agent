@@ -11,6 +11,7 @@ import (
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/harness"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/docmeta"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
@@ -44,6 +45,7 @@ func doctorCommand(args []string) error {
 	// directory it was opened on, so a vendored toolkit's own settings.json is
 	// wiring for opening the toolkit itself and reaches nothing here.
 	checkHookWiring(report, workspaceRoot)
+	checkClaudeIfOutsideClaude(report, toolkitRoot)
 	checkCheckPlan(report, workspaceRoot, toolkitRoot)
 	checkHumanVerifiers(workspaceRoot)
 	checkTaskFiles(report, workspaceRoot)
@@ -304,4 +306,11 @@ func checkGitignore(report *diagnostics, workspaceRoot string) {
 		report.check("workspace-root tmp/ has been migrated", false,
 			"run: vibe-agent migrate docs-tmp  (runtime no longer reads tmp/; evidence lives under .agent-state/runs/)")
 	}
+}
+
+func checkClaudeIfOutsideClaude(report *diagnostics, toolkitRoot string) {
+	problems := harness.ClaudeIfOutsideClaude(toolkitRoot)
+	report.check("non-Claude hooks omit Claude-only if",
+		len(problems) == 0,
+		harness.FormatClaudeIfProblems(problems))
 }
