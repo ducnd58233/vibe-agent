@@ -221,6 +221,42 @@ Local-first precedence still applies at **read** time: hooks may inject toolkit 
 session. The **committed** consumer charter must not require that injection to make sense.
 </rules>
 
+## Supported harness parity
+
+<rules>
+
+This toolkit ships assets for **Claude Code, Cursor, Codex, and opencode**. When you add or change
+something a person invokes through any of them, keep parity unless the spec names a documented
+host-only gap.
+
+**In scope (parity required):**
+
+- Skills, commands, agents, routers, references, stack profiles under `.ai-agents/`
+- Hook behavior the runtime answers (session context, gates, journaling, recall)
+- Permissions and config touched by the link or global-install scripts
+- Delivery workflow nodes, check plans, and verifiers that hosts drive through hooks
+
+**Canonical edit path:** change `.ai-agents/` (or `runtime/` for the control plane), then regenerate
+harness views. Do not edit generated paths under `.claude/`, `.cursor/`, `.codex/`, or `.agents/`
+as the source of truth.
+
+**Before merge, run:**
+
+1. `bash scripts/link-ai-agents.sh` (or `.ps1` on Windows)
+2. `bash scripts/check-generated-views.sh`
+3. `bash scripts/check-ai-agents-routers.sh`
+4. After agents or commands change: `powershell -File scripts/check-codex-assets.ps1` (or `-Global` when install layout matters)
+5. After hooks or runtime change: `vibe-agent doctor` (hook resolution and host contract rows)
+6. After runtime Go change: `cd runtime && make check`
+
+**Host-only exceptions:** allowed only when the vendor API lacks the capability and the gap is
+recorded in [`host-hook-contracts.md`](references/host-hook-contracts.md). The spec must say which
+hosts are excluded and why; silent single-host features do not ship.
+
+Research-only hosts (Kimi, Muse, Antigravity) follow the same contract table but are not the parity
+bar for new toolkit features unless the work explicitly targets them.
+</rules>
+
 ## Machine-wide install
 
 <procedure>
