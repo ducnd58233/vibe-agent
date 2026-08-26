@@ -2,6 +2,7 @@
 # Fixtures for scripts/runtime-version.sh. Runs from repository root.
 #
 # Usage: bash scripts/check-runtime-version.sh
+# Fixture covers Z+N monotonic patch (find-how-ci-publish).
 
 set -euo pipefail
 
