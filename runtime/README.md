@@ -8,6 +8,8 @@ The **outer** delivery loop: run state, graph transitions, verification evidence
 
 It does not own the **inner** loop. Claude Code, Codex, Cursor, and opencode keep their own model and tool loops. This binary decides what happens between their turns. See [`loop-and-graph-engineering.md`](../.ai-agents/references/loop-and-graph-engineering.md).
 
+**Sandbox naming:** `vibe-agent sandbox` and `.agent-state/sandbox.yaml` are a workspace-opted **runner port** (`local` or `docker`). They are not Claude Code’s OS Bash sandbox (Seatbelt/bubblewrap). See [`claude-code-feature-map.md`](../.ai-agents/references/claude-code-feature-map.md) section Sandbox truth.
+
 ## Do users need Go?
 
 No. Contributors to this module need Go; users of the toolkit get a prebuilt binary. The module builds with `CGO_ENABLED=0`, so no C toolchain is needed either.
