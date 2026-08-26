@@ -156,7 +156,7 @@ func Tools(deps Deps) []Tool {
 		{
 			Name:        "vibe_checkpoint",
 			Description: "Call to record evidence (exit code, file assertion, CI response, or human approval) and advance the graph. Do not call for a verifier node's check; call vibe_verify instead.",
-			InputSchema: schema(`{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"},"check":{"type":"object","required":["name","passed","source"],"properties":{"name":{"type":"string"},"passed":{"type":"boolean"},"skipped":{"type":"boolean"},"source":{"type":"string","enum":["exit_code","file_assert","ci_api","human_event"]},"ref":{"type":"string"}}},"result":{"type":"object","additionalProperties":{"type":"boolean"}},"blocker":{"type":"string"}}}`),
+			InputSchema: schema(`{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"},"check":{"type":"object","required":["name","passed","source"],"properties":{"name":{"type":"string"},"passed":{"type":"boolean"},"skipped":{"type":"boolean"},"source":{"type":"string","enum":["exit_code","file_assert","ci_api","human_event"]},"ref":{"type":"string"}}},"result":{"type":"object","additionalProperties":{"type":"boolean"}},"blocker":{"type":"string"},"class":{"type":"string","enum":["context","tool","permission","test","ambiguity","model"],"description":"Required when blocker is set"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return runCheckpoint(deps, raw) },
 		},
 		{
@@ -472,12 +472,23 @@ func runCheckpoint(deps Deps, raw json.RawMessage) (any, error) {
 		} `json:"check"`
 		Result  map[string]bool `json:"result"`
 		Blocker string          `json:"blocker"`
+		Class   string          `json:"class"`
 	}
 	if err := json.Unmarshal(raw, &args); err != nil {
 		return nil, err
 	}
+	if args.Blocker != "" && args.Class == "" {
+		return nil, fmt.Errorf("blocker needs class; use one of context, tool, permission, test, ambiguity, model")
+	}
+	if args.Class != "" && args.Blocker == "" {
+		return nil, fmt.Errorf("class describes a failure, so it needs blocker")
+	}
 
-	outcome := loop.Outcome{Result: args.Result, Blocker: args.Blocker}
+	outcome := loop.Outcome{
+		Result:       args.Result,
+		Blocker:      args.Blocker,
+		BlockerClass: state.FailureClass(args.Class),
+	}
 	if args.Check != nil {
 		outcome.Check = &loop.NamedCheck{
 			Name: args.Check.Name,
@@ -687,6 +698,7 @@ func summarize(run *state.Run) map[string]any {
 		for _, blocker := range run.Blockers {
 			blockers = append(blockers, map[string]any{
 				"node": blocker.Node, "reason": blocker.Reason, "attempts": blocker.Attempts,
+				"class": string(blocker.Class),
 			})
 		}
 		out["blockers"] = blockers

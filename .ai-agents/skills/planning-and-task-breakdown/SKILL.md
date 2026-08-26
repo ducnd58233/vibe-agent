@@ -42,6 +42,11 @@ Before writing any code, operate in read-only mode:
 
 **Do NOT write code during planning.** The output is a plan document, not implementation.
 
+Carry forward any `A1..An` assumption ids from the SPEC into the PLAN when a task
+depends on them. If a later run invalidates an assumption, cite the id in
+[`failure-trace.md`](../../references/failure-trace.md) and replan; do not treat
+assumption truth as a Passed checkpoint.
+
 ### Step 2: Identify the Dependency Graph
 
 Map what depends on what:

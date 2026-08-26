@@ -28,7 +28,7 @@ func checkpointCommand(args []string) error {
 	failed := flags.Bool("failed", false, "record a failure")
 	skipped := flags.Bool("skipped", false, "record that the check did not run")
 	blocker := flags.String("blocker", "", "record a blocker at this node")
-	class := flags.String("class", "", "what kind of failure: context, tool, permission, test, ambiguity, or model")
+	class := flags.String("class", "", "required with --blocker; one of context, tool, permission, test, ambiguity, model")
 	results := resultFlags{}
 	flags.Var(&results, "result", "result guard as name or name=true|false; repeatable")
 	if err := flags.Parse(args); err != nil {
@@ -48,6 +48,14 @@ func checkpointCommand(args []string) error {
 
 	if *class != "" && *blocker == "" {
 		return fmt.Errorf("--class describes a failure, so it needs --blocker")
+	}
+	if *blocker != "" {
+		if *class == "" {
+			return fmt.Errorf("--blocker needs --class; use one of %s", failureClassList())
+		}
+		if !failureClassOK(*class) {
+			return fmt.Errorf("--class %q is not a failure class; use one of %s", *class, failureClassList())
+		}
 	}
 	outcome := loop.Outcome{
 		Blocker:      *blocker,
@@ -134,4 +142,23 @@ func (r *resultFlags) Set(value string) error {
 		return fmt.Errorf("--result %q needs true or false", value)
 	}
 	return nil
+}
+
+func failureClassList() string {
+	classes := state.FailureClasses()
+	parts := make([]string, len(classes))
+	for i, class := range classes {
+		parts[i] = string(class)
+	}
+	return strings.Join(parts, ", ")
+}
+
+func failureClassOK(name string) bool {
+	want := state.FailureClass(name)
+	for _, class := range state.FailureClasses() {
+		if class == want {
+			return true
+		}
+	}
+	return false
 }

@@ -37,6 +37,7 @@ Lookup table for shared checklists and pattern docs under this folder. These fil
 | Routing fixtures: intent → expected asset, checked by `/doctor` | [`routing-evals.md`](routing-evals.md) | `agent-systems-auditor`, `using-agent-skills` |
 | Graph path fixtures: outcomes → expected node path, checked by `/doctor` and `vibe-agent eval graph` | [`graph-path-evals.yaml`](graph-path-evals.yaml) | `agent-systems-auditor`, graph authors |
 | Workspace mistakes diary (`.agent-state/MISTAKES.md`), graduation into AGENTS.md, vs memory.db | [`mistakes-log.md`](mistakes-log.md) | always-on charter; all host agents |
+| Failed graph node provenance: TRACE fields, assumption ids, required FailureClass on blockers | [`failure-trace.md`](failure-trace.md) | `/goal`, `/auto`, `agent-harness-engineering`, host agents diagnosing runs |
 
 **Workspace-specific tooling** is indexed in [`../stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md). Checklists here stay generic; load matching `*.md` profiles from that router when needed.
 </routing>
