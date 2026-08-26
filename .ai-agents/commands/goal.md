@@ -81,7 +81,8 @@ researcher graph.
   declares. Substituting a weaker command is a tracked diff, not an argument.
 - **The graph wins.** When this prose and the graph disagree, the graph is canonical.
 - **A failing check is not an error.** `verify` exits 0 on failure: the run recorded it and routed
-  on it. That is the loop working.
+  on it. That is the loop working. On auto/goal hosts, write a failure TRACE before replan or
+  rebuild ([`failure-trace.md`](failure-trace.md)).
 
 ### Until done means until a terminal node
 

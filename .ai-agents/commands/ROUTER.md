@@ -24,6 +24,7 @@ Slash-style prompts live in this folder as `*.md`. **Claude Code** commonly reso
 | Auto-path SPEC expectation review | [`expectation.md`](expectation.md) | Write `expectation/REVIEW.md`, then verify; fail reopens plan |
 | Auto-path bug hunt after e2e | [`bug-hunt.md`](bug-hunt.md) | Write `bug_hunt/FINDINGS.md`, then verify; fail reopens plan |
 | Auto-path release readiness after ship | [`release.md`](release.md) | Write `release/REVIEW.md`, then verify; fail routes to build |
+| Write failure TRACE then refine tasks / rebuild | [`failure-trace.md`](failure-trace.md) | On verifier fail or third-strike; schema in `references/failure-trace.md` |
 | TDD / Prove-It | [`test.md`](test.md) | - |
 | Simplify safely | [`code-simplify.md`](code-simplify.md) | Tests protect behavior |
 | Audit AI asset health, deterministically | [`doctor.md`](doctor.md) | Validate routers, hooks, links, permissions; a judgment-level harness review is `agent-systems-auditor` |

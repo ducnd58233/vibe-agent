@@ -142,7 +142,8 @@ via `file_assert` (misses reopen `plan` or `build`), and a watch on the default 
 merge lands, and the `intake`, `approve_spec`, and `approve_plan` gates skip when the run's flags
 say a person is not needed. A skipped gate records `skipped`, never `passed`, so run state still
 says which gates a person answered. Host docs: [`bug-hunt.md`](bug-hunt.md),
-[`expectation.md`](expectation.md), [`release.md`](release.md).
+[`expectation.md`](expectation.md), [`release.md`](release.md),
+[`failure-trace.md`](failure-trace.md) (write TRACE on verifier fail or third-strike before replan).
 
 ```sh
 vibe-agent auto "<one objective>"   # delivery graph; slug derived
