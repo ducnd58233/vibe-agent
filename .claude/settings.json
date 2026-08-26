@@ -167,13 +167,26 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash|Edit|Write|NotebookEdit|WebFetch",
+        "matcher": "Edit|Write|NotebookEdit|WebFetch",
         "hooks": [
           {
             "type": "command",
             "command": "vibe-agent hook post-tool-use --workspace ${CLAUDE_PROJECT_DIR}",
             "timeout": 10000,
             "statusMessage": "vibe-journal",
+            "async": false
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git *)",
+            "command": "vibe-agent hook post-tool-use --workspace ${CLAUDE_PROJECT_DIR}",
+            "timeout": 10000,
+            "statusMessage": "vibe-journal-git",
             "async": false
           }
         ]

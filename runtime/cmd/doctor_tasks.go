@@ -159,6 +159,11 @@ func checkAutoOptIn(report *diagnostics, workspaceRoot string) {
 	fmt.Printf("  note  auto mode may not merge; %s still says merge: false\n", autoconfig.FileName)
 }
 
+// sandboxIsolationNote explains that vibe "sandbox" is a runner port, not a
+// Claude-class OS Bash sandbox. Doctor prints it when a workspace opted in so
+// operators do not confuse local/docker drivers with Seatbelt/bubblewrap.
+const sandboxIsolationNote = "sandbox.yaml is a runner port: local = no isolation; docker = bind-mount container (not Claude OS Seatbelt/bubblewrap)"
+
 // checkSandboxConfig notes whether the workspace opted into runner drivers.
 // Absence is fine: checks without runner: keep running on the host.
 func checkSandboxConfig(report *diagnostics, workspaceRoot string) {
@@ -172,4 +177,5 @@ func checkSandboxConfig(report *diagnostics, workspaceRoot string) {
 		return
 	}
 	report.check(fmt.Sprintf("sandbox config loads and validates (%d runners)", len(cfg.Spec.Runners)), true, "")
+	fmt.Printf("  note  %s\n", sandboxIsolationNote)
 }

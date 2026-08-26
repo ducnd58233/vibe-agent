@@ -38,6 +38,7 @@ Lookup table for shared checklists and pattern docs under this folder. These fil
 | Graph path fixtures: outcomes → expected node path, checked by `/doctor` and `vibe-agent eval graph` | [`graph-path-evals.yaml`](graph-path-evals.yaml) | `agent-systems-auditor`, graph authors |
 | Workspace mistakes diary (`.agent-state/MISTAKES.md`), graduation into AGENTS.md, vs memory.db | [`mistakes-log.md`](mistakes-log.md) | always-on charter; all host agents |
 | Failed graph node provenance: TRACE fields, assumption ids, required FailureClass on blockers | [`failure-trace.md`](failure-trace.md) | `/goal`, `/auto`, `agent-harness-engineering`, host agents diagnosing runs |
+| Claude Code features → vibe owners (reuse / reject / gap), conditional `if`, bare-like CI recipe | [`claude-code-feature-map.md`](claude-code-feature-map.md) | `agent-harness-engineering`, hook authors, `/auto` operators |
 
 **Workspace-specific tooling** is indexed in [`../stack-profiles/ROUTER.md`](../stack-profiles/ROUTER.md). Checklists here stay generic; load matching `*.md` profiles from that router when needed.
 </routing>
