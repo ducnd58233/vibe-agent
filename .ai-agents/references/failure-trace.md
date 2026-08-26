@@ -68,3 +68,4 @@ vibe-agent checkpoint --slug <slug> --blocker "<reason>" --class <class>
 ```
 
 `--class` is required with `--blocker`.
+
