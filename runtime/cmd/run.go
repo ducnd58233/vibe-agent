@@ -164,14 +164,7 @@ func runStart(args []string) error {
 	if err != nil {
 		return err
 	}
-	current := result.Run
-
-	fmt.Printf("started %s\n", current.RunID)
-	fmt.Printf("  graph    %s\n", current.GraphID)
-	fmt.Printf("  slug     %s\n", resolved.Slug)
-	fmt.Printf("  node     %s\n", current.CurrentNode)
-	fmt.Printf("  state    %s\n", result.Manifest)
-	fmt.Printf("  events   %s\n", result.Events)
+	printStartedRun(result, resolved.Slug, result.Events)
 	return nil
 }
 

@@ -46,16 +46,8 @@ func checkpointCommand(args []string) error {
 		return err
 	}
 
-	if *class != "" && *blocker == "" {
-		return fmt.Errorf("--class describes a failure, so it needs --blocker")
-	}
-	if *blocker != "" {
-		if *class == "" {
-			return fmt.Errorf("--blocker needs --class; use one of %s", failureClassList())
-		}
-		if !failureClassOK(*class) {
-			return fmt.Errorf("--class %q is not a failure class; use one of %s", *class, failureClassList())
-		}
+	if err := checkpoint.ValidateBlockerOutcome(*blocker, *class); err != nil {
+		return err
 	}
 	outcome := loop.Outcome{
 		Blocker:      *blocker,
@@ -97,7 +89,7 @@ func checkpointCommand(args []string) error {
 	if result.Duplicate {
 		// Said plainly rather than silently: a caller retrying a checkpoint is
 		// usually a caller that thinks the first one failed.
-		fmt.Printf("Already recorded. This exact evidence was the last checkpoint, so nothing advanced.\n")
+		fmt.Printf("%s\n", checkpoint.DuplicateReplayCLI())
 	} else {
 		via := result.Transition.Via
 		if via == "" {
@@ -142,23 +134,4 @@ func (r *resultFlags) Set(value string) error {
 		return fmt.Errorf("--result %q needs true or false", value)
 	}
 	return nil
-}
-
-func failureClassList() string {
-	classes := state.FailureClasses()
-	parts := make([]string, len(classes))
-	for i, class := range classes {
-		parts[i] = string(class)
-	}
-	return strings.Join(parts, ", ")
-}
-
-func failureClassOK(name string) bool {
-	want := state.FailureClass(name)
-	for _, class := range state.FailureClasses() {
-		if class == want {
-			return true
-		}
-	}
-	return false
 }

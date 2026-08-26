@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graphroute"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/runstart"
 )
@@ -39,10 +37,6 @@ func researchCommand(args []string) error {
 		return err
 	}
 
-	fmt.Printf("started %s\n", result.Run.RunID)
-	fmt.Printf("  graph    %s\n", result.Run.GraphID)
-	fmt.Printf("  slug     %s\n", resolved.Slug)
-	fmt.Printf("  node     %s\n", result.Run.CurrentNode)
-	fmt.Printf("  state    %s\n", result.Manifest)
+	printStartedRun(result, resolved.Slug, "")
 	return nil
 }

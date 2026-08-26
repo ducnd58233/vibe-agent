@@ -6,6 +6,17 @@ import (
 	"testing"
 )
 
+func TestFetchCacheSitsUnderTheStateDir(t *testing.T) {
+	root := filepath.FromSlash("/w")
+	cache := FetchCacheDir(root)
+	if !strings.HasPrefix(cache, StateDir(root)) {
+		t.Errorf("FetchCacheDir = %q, want it under %q", cache, StateDir(root))
+	}
+	if filepath.Base(cache) != FetchCacheDirName {
+		t.Errorf("FetchCacheDir base = %q, want %q", filepath.Base(cache), FetchCacheDirName)
+	}
+}
+
 func TestSDDCacheSitsUnderTheStateDir(t *testing.T) {
 	root := filepath.FromSlash("/w")
 	cache := SDDCacheDir(root)

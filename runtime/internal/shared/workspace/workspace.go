@@ -44,6 +44,9 @@ const (
 	// CLI and web can resolve the current (date, version) without scanning.
 	RunIndexDirName = "run-index"
 
+	// FetchCacheDirName holds extracted WebFetch documents beside other caches.
+	FetchCacheDirName = "fetch"
+
 	// EnvSDDCacheDir hands the resolved cache directory to the hook scripts.
 	// They cannot import this constant, so the runtime passes it instead of
 	// each side keeping its own copy of the layout.
@@ -63,6 +66,11 @@ func RunsDir(workspaceRoot string) string {
 // SDDCacheDir is where the WebFetch cache lives for a workspace.
 func SDDCacheDir(workspaceRoot string) string {
 	return filepath.Join(StateDir(workspaceRoot), SDDCacheDirName)
+}
+
+// FetchCacheDir is where fetched page text and assets are stored.
+func FetchCacheDir(workspaceRoot string) string {
+	return filepath.Join(StateDir(workspaceRoot), FetchCacheDirName)
 }
 
 // RunIndexDir is where per-slug current-revision pointers live.

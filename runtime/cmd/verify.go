@@ -91,7 +91,7 @@ func verifyCommand(args []string) error {
 
 	applied := result.Applied
 	if applied.Duplicate {
-		fmt.Printf("Already recorded. This exact evidence was the last checkpoint, so nothing advanced.\n")
+		fmt.Printf("%s\n", checkpoint.DuplicateReplayCLI())
 	} else {
 		via := applied.Transition.Via
 		if via == "" {
