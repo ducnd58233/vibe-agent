@@ -179,10 +179,46 @@ until it runs again the harness serves the previous text while every other check
 - Treat `<toolkit-root>/.ai-agents` as the canonical shared assets path.
 - Give the consumer repo its own root `AGENTS.md` with product and domain constraints. It wins over
   this toolkit; see local-first precedence in [`AGENTS.md`](../AGENTS.md).
+- When an agent **writes** that charter (or `CURSOR.md`, `CLAUDE.md`, `.cursor/rules/*.mdc` for the
+  product repo), follow **Consumer charter files** below. Hooks still inject toolkit context at
+  session time; the committed file must not depend on it.
 - Run the link scripts from the submodule with `-WorkspaceRoot` / `--workspace` set to the consumer
   root and `-AssetsRoot` / `--assets` set to `<toolkit-root>/.ai-agents`.
 - Treat tool permissions as repository-local policy: adapt `opencode.json`, `.claude/settings.json`,
   and local rules to that repo's layout and risk profile.
+</rules>
+
+## Consumer charter files
+
+<rules>
+
+When an agent creates or edits charter files **for a consumer/product repository** (not this toolkit
+repo), the committed text must be **harness-neutral**.
+
+**In scope:** workspace-root `AGENTS.md`, `CLAUDE.md`, `CURSOR.md`, `CLAUDE.local.md`, and
+`.cursor/rules/*.mdc` files that encode that repo's own conventions.
+
+**Out of scope:** this toolkit's root charter, `runtime/AGENTS.md`, assets under `.ai-agents/`, and
+machine-wide install blocks managed by `scripts/install-global.*` (those intentionally name the
+toolkit).
+
+**Write only:**
+
+- Product and domain rules, stack conventions, repo layout, test/lint commands, security boundaries
+  for that product.
+- Plain policy graduated from `.agent-state/MISTAKES.md` (no toolkit cross-links).
+
+**Do not write:**
+
+- The name `vibe-agent`, paths such as `.vibe-agent/` or `.ai-agents/`, or global install locations.
+- "Read AGENTS.md" when that means this toolkit's charter rather than the file being edited.
+- Instructions to run toolkit-only commands (`vibe-agent doctor`, `/ship`, and so on) unless the
+  consumer repo explicitly documents them as part of its own workflow.
+
+Examples: [consumer-charter-authoring.md](references/consumer-charter-authoring.md).
+
+Local-first precedence still applies at **read** time: hooks may inject toolkit context into a
+session. The **committed** consumer charter must not require that injection to make sense.
 </rules>
 
 ## Machine-wide install

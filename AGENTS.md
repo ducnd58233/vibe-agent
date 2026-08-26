@@ -132,6 +132,7 @@ path. When a rule already has a home, link to it instead of restating it.
   `vibe-agent doctor`; run `vibe-agent migrate docs-tmp` once (or delete it).
   Evidence is not read from `tmp/`.
 - **Portable paths (MUST):** in committed docs, plans, and agent deliverables, use paths relative to the workspace root or repo ids. Do not paste machine-absolute paths (`C:\...`, `/Users/...`, `d:\...`) into files that ship in git.
+- **Consumer charter neutrality (MUST):** when creating or editing a **consumer workspace** charter file (workspace-root `AGENTS.md`, `CLAUDE.md`, `CURSOR.md`, `CLAUDE.local.md`, or `.cursor/rules/*.mdc` that encodes that repo's own rules), write harness-neutral prose only: product, domain, stack, and repo-local conventions. Do not name `vibe-agent`, `.vibe-agent/`, toolkit install paths, `.ai-agents/`, or tell readers to open this toolkit's charter. Those files must stand alone for whatever harness the team uses. Graduating a line from `.agent-state/MISTAKES.md` into a consumer charter uses plain policy text, not toolkit pointers. This rule does **not** apply when editing **this toolkit's** root charter, nested `runtime/AGENTS.md`, or assets under [`.ai-agents/`](.ai-agents). Details: [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) section "Consumer charter files".
 - **XML section tags (MUST):** wrap sections in the documented tag set for always-loaded charter files
   (`AGENTS.md`, `CLAUDE.md`, `CURSOR.md`, and harness-loaded nested `AGENTS.md` such as
   `runtime/AGENTS.md`) and for every asset under [`.ai-agents/`](.ai-agents). Do not invent tag
@@ -172,6 +173,7 @@ Follow links from those files only as the task requires.
 | Verification evidence | `.agent-state/runs/<date>/<slug>/<version>/` (gitignored) |
 | Mistakes log | `.agent-state/MISTAKES.md` (gitignored); format [mistakes-log.md](.ai-agents/references/mistakes-log.md) |
 | Consumer multi-repo doc workspace | Consumer repo `AGENTS.md` (local-first overrides toolkit defaults) |
+| Consumer charter authoring | [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) section "Consumer charter files"; examples [consumer-charter-authoring.md](.ai-agents/references/consumer-charter-authoring.md) |
 | XML section tags | [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) section "XML section tags" |
 </references>
 
