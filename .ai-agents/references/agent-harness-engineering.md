@@ -38,6 +38,7 @@ Use this checklist for `/doctor`, `/harden`, `agent-systems-auditor`, or consume
 | Verification | Deterministic checks run before subjective review where possible | Review-only validation for testable behavior |
 | Permissions | Dangerous actions require ask/approval; secrets paths are denied | Agents can read secrets or mutate production |
 | Entropy auditing | Scheduled or pre-ship audits catch stale routers, dead links, debt, and drift | Harness quality decays as assets grow |
+| Supported harness parity | New skills, commands, hooks, and runtime gates work on Claude Code, Cursor, Codex, and opencode after link + doctor | Feature ships for one IDE only; generated views stale |
 | Intervention recording | Human overrides and blocked decisions are recorded in specs, plans, or follow-up issues | Same ambiguity recurs without learning |
 </verification>
 
