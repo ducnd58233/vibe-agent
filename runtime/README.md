@@ -108,13 +108,12 @@ CI publishes two release channels on GitHub:
 | Channel | Tag | When | Example version |
 |---|---|---|---|
 | Stable | `runtime/v*`, marked GitHub **Latest** | Someone tags `runtime/v0.1.0` | `v0.1.0` |
-| Rolling | `runtime/latest`, prerelease | Every push to `main` that touches `runtime/` | `0.2.0-dev.159.2a82465` |
+| Rolling | `runtime/latest`, prerelease | Every push to `main` that touches `runtime/` | `0.1.159-dev.2a82465` |
 
-The rolling name has three parts:
+The rolling name has two parts:
 
-1. **`0.2.0`** — conventional semver preview of the next stable cut (from commits since the last stable tag).
-2. **`159`** — build counter: commits on `main` since that stable tag. It increments on every rolling publish even when the preview base stays `0.2.0`.
-3. **`2a82465`** — the git commit the binary was built from.
+1. **`0.1.159`** — last stable `runtime/vX.Y.Z` with patch raised by the commit count since that tag (`Z+N`). Every rolling publish advances the visible triple (0.1.1, 0.1.2, …), instead of freezing after a single conventional bump.
+2. **`2a82465`** — the git commit the binary was built from (`-dev.<sha>`).
 
 [`scripts/install-runtime.sh`](../scripts/install-runtime.sh) resolves `latest` to the newest stable release first, then falls back to `runtime/latest`. Pass `v0.1.0` to pin a stable cut, or set channel `rolling` for the build from main.
 
