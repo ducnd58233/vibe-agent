@@ -48,21 +48,67 @@ eval "$(bash "$VERSION_SH" dispatch v0.2.0)"
 assert_eq "$tag" "runtime/v0.2.0" "dispatch tag"
 assert_eq "$version" "v0.2.0" "dispatch version"
 
-# rolling must include a monotonic build counter between -dev. and the commit sha.
+# rolling: X.Y.(Z+N)-dev.sha — triple advances with commit count N.
 rolling_out="$(bash "$VERSION_SH" rolling)"
 eval "$rolling_out"
 assert_eq "$tag" "runtime/latest" "rolling tag"
 assert_eq "$prerelease" "true" "rolling prerelease"
-if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+\.[0-9a-f]+$ ]]; then
-  echo "check-runtime-version: rolling version shape: want MAJOR.MINOR.PATCH-dev.N.sha, got ${version}" >&2
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9a-f]+$ ]]; then
+  echo "check-runtime-version: rolling version shape: want MAJOR.MINOR.PATCH-dev.sha, got ${version}" >&2
   fail=1
 fi
 
 latest="$(git tag --list 'runtime/v*' --sort=-v:refname | head -n1)"
 if [[ -n "$latest" ]]; then
-  want_build="$(git rev-list --count "${latest}..HEAD")"
-  assert_contains "$version" "-dev.${want_build}." "rolling build counter"
+  semver="${latest#runtime/v}"
+  z="$(echo "$semver" | cut -d. -f3)"
+  n="$(git rev-list --count "${latest}..HEAD")"
+  want_patch=$((z + n))
+  triple="${version%%-dev*}"
+  got_patch="$(echo "$triple" | cut -d. -f3)"
+  assert_eq "$got_patch" "$want_patch" "rolling patch equals Z+N"
+  # Must not freeze at the old conventional preview base.
+  if [[ "$triple" == "0.2.0" ]]; then
+    echo "check-runtime-version: rolling triple still stuck at 0.2.0" >&2
+    fail=1
+  fi
 fi
+
+# Isolated repo: N=5 then N=6 must raise the patch by exactly one.
+fixture="$(mktemp -d)"
+cleanup_fixture() { rm -rf "$fixture"; }
+trap cleanup_fixture EXIT
+(
+  set -euo pipefail
+  cd "$fixture"
+  git init -q
+  git config user.email "check@example.com"
+  git config user.name "check"
+  echo a >f && git add f && git commit -qm "init"
+  git tag runtime/v0.1.0
+  for i in 1 2 3 4 5; do
+    echo "$i" >f && git commit -qam "c$i"
+  done
+  eval "$(bash "$VERSION_SH" rolling)"
+  t5="${version%%-dev*}"
+  p5="$(echo "$t5" | cut -d. -f3)"
+  echo 6 >f && git commit -qam "c6"
+  eval "$(bash "$VERSION_SH" rolling)"
+  t6="${version%%-dev*}"
+  p6="$(echo "$t6" | cut -d. -f3)"
+  if [[ "$t5" != "0.1.5" ]]; then
+    echo "check-runtime-version: fixture N=5: want 0.1.5, got ${t5}" >&2
+    exit 1
+  fi
+  if [[ "$t6" != "0.1.6" ]]; then
+    echo "check-runtime-version: fixture N=6: want 0.1.6, got ${t6}" >&2
+    exit 1
+  fi
+  if [[ "$p6" -le "$p5" ]]; then
+    echo "check-runtime-version: fixture patch did not rise (${p5} -> ${p6})" >&2
+    exit 1
+  fi
+) || fail=1
 
 if [[ "$fail" -ne 0 ]]; then
   echo "check-runtime-version: FAILED" >&2

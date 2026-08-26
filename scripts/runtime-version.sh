@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Computes runtime release tag, version, and metadata for GitHub Releases.
 #
-# Rolling builds reuse tag runtime/latest but carry a monotonic build counter
-# (commits since the last stable runtime/v* tag) so every publish increments
-# the version string even when the conventional semver base is unchanged.
+# Rolling builds reuse tag runtime/latest. The version triple is
+# X.Y.(Z+N) from the latest stable runtime/v* tag (X.Y.Z) plus the commit
+# count N since that tag, so every publish advances the visible semver
+# (0.1.1, 0.1.2, …) instead of freezing after the first conventional bump.
+# A -dev.<sha> suffix keeps the binary tied to the commit that built it.
 #
 # Usage (from repository root):
 #   eval "$(bash scripts/runtime-version.sh rolling)"
@@ -21,61 +23,32 @@ latest_stable_tag() {
   git tag --list 'runtime/v*' --sort=-v:refname | head -n1
 }
 
-conventional_base_since() {
-  local latest="$1"
-  local base major minor patch subjects bodies
-
-  if [ -z "$latest" ]; then
-    printf '%s' '0.1.0'
-    return 0
-  fi
-
-  local semver="${latest#runtime/v}"
-  major=$(echo "$semver" | cut -d. -f1)
-  minor=$(echo "$semver" | cut -d. -f2)
-  patch=$(echo "$semver" | cut -d. -f3)
-
-  if ! git merge-base --is-ancestor "$latest" HEAD 2>/dev/null; then
-    echo "runtime-version: ${latest} is not an ancestor of HEAD (shallow clone?)" >&2
-    return 1
-  fi
-
-  subjects=$(git log --format=%s "${latest}..HEAD")
-  bodies=$(git log --format=%B "${latest}..HEAD")
-  echo "bump input: $(printf '%s' "$subjects" | grep -c .) commits since ${latest}" >&2
-
-  if printf '%s' "$subjects" | grep -qE '^[a-z]+(\([^)]*\))?!:' \
-    || printf '%s' "$bodies" | grep -qE '^BREAKING[ -]CHANGE:'; then
-    major=$((major + 1)); minor=0; patch=0
-  elif printf '%s' "$subjects" | grep -qE '^feat(\([^)]*\))?:'; then
-    minor=$((minor + 1)); patch=0
-  else
-    patch=$((patch + 1))
-  fi
-
-  base="${major}.${minor}.${patch}"
-  if ! printf '%s' "$base" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-    echo "runtime-version: could not derive semver base from ${latest}" >&2
-    return 1
-  fi
-  printf '%s' "$base"
-}
-
+# Rolling: X.Y.(Z+N)-dev.<sha> from last stable tag + commits since it.
 rolling_version() {
-  local latest base build sha
+  local latest semver major minor patch build sha
   latest="$(latest_stable_tag)"
-  base="$(conventional_base_since "$latest")"
-  if [ -z "$base" ]; then
-    echo "runtime-version: empty semver base" >&2
-    exit 1
-  fi
-  if [ -n "$latest" ]; then
-    build=$(git rev-list --count "${latest}..HEAD")
-  else
+  if [ -z "$latest" ]; then
+    major=0
+    minor=1
+    patch=0
     build=$(git rev-list --count HEAD)
+  else
+    if ! git merge-base --is-ancestor "$latest" HEAD 2>/dev/null; then
+      echo "runtime-version: ${latest} is not an ancestor of HEAD (shallow clone?)" >&2
+      exit 1
+    fi
+    semver="${latest#runtime/v}"
+    major=$(echo "$semver" | cut -d. -f1)
+    minor=$(echo "$semver" | cut -d. -f2)
+    patch=$(echo "$semver" | cut -d. -f3)
+    if ! printf '%s.%s.%s' "$major" "$minor" "$patch" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+      echo "runtime-version: could not parse semver from ${latest}" >&2
+      exit 1
+    fi
+    build=$(git rev-list --count "${latest}..HEAD")
   fi
   sha=$(git rev-parse --short HEAD)
-  printf '%s-dev.%s.%s' "$base" "$build" "$sha"
+  printf '%s.%s.%s-dev.%s' "$major" "$minor" "$((patch + build))" "$sha"
 }
 
 case "$mode" in
