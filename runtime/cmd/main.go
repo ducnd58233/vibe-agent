@@ -35,7 +35,7 @@ Usage:
   vibe-agent run abort --slug <slug> --reason <text>
   vibe-agent verify --slug <slug> [--dry-run]
   vibe-agent checkpoint --slug <slug> --check <name> --source <source> [--passed|--failed|--skipped]
-  vibe-agent checkpoint --slug <slug> --blocker <text> [--class <class>]
+  vibe-agent checkpoint --slug <slug> --blocker <text> --class <class>
   vibe-agent graph validate [--graph <id>]
   vibe-agent fetch <url|path> [--budget <tokens>] [--json] [--refresh]
   vibe-agent slop audit [path] [--format text|json] [--workers N] [--fail-on score]

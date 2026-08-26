@@ -52,13 +52,19 @@ Do not advance without human validation when the process calls for it.
 
 ### Phase 1: Specify
 
-List assumptions **before** detailed spec content:
+List assumptions **before** detailed spec content. Prefer stable ids so a later
+failure TRACE can cite them (see [`failure-trace.md`](../../references/failure-trace.md)):
 
 ```text
 ASSUMPTIONS:
-1. …
+A1. …
+A2. …
 → Correct now or I proceed.
 ```
+
+Assumption statements are authoring aids and TRACE links. They are **not**
+checkpoint evidence: never record assumption truth as `Passed` with any
+`--source`. Invalidation belongs in TRACE / tasks / replan edges.
 
 Cover at minimum:
 
