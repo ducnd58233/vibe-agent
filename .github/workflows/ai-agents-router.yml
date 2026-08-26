@@ -1,4 +1,5 @@
 name: AI agents assets check
+# bumped to retrigger path-filtered PR checks for #163
 
 on:
   # main only. A push to any other branch with a pull request open fires both
