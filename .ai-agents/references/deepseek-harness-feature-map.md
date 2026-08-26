@@ -94,4 +94,5 @@ honesty, and host-contract-limited capture.
 - Hook contracts: [`host-hook-contracts.md`](host-hook-contracts.md)
 - Authoring Cordis note: [AUTHORING.md](../AUTHORING.md)
 - Prior research slug: `deepseek-harness-telemetry`
+- Delivery research slug: `harness-deepseek-hi-n`
 </routing>
