@@ -40,6 +40,12 @@ Lookup table for shared checklists and pattern docs under this folder. These fil
 | Failed graph node provenance: TRACE fields, assumption ids, required FailureClass on blockers | [`failure-trace.md`](failure-trace.md) | `/goal`, `/auto`, `agent-harness-engineering`, host agents diagnosing runs |
 | Claude Code features → vibe owners (reuse / reject / gap), conditional `if`, bare-like CI recipe | [`claude-code-feature-map.md`](claude-code-feature-map.md) | `agent-harness-engineering`, hook authors, `/auto` operators |
 | DeepSeek Harness / Cordis features → vibe owners (reuse / reject / gap), host portability (Cordis not portable) | [`deepseek-harness-feature-map.md`](deepseek-harness-feature-map.md) | `agent-harness-engineering`, hook authors, `/auto` operators |
+| Cursor IDE agent features → vibe owners (rules, hooks UNVERIFIED, Bugbot, portability) | [`cursor-feature-map.md`](cursor-feature-map.md) | `agent-harness-engineering`, hook authors, Cursor parity work |
+| Codex CLI features → vibe owners (config.toml, sandbox_mode, permissionDecision, PostToolUse gap) | [`codex-feature-map.md`](codex-feature-map.md) | `agent-harness-engineering`, hook authors, Codex parity work |
+| opencode features → vibe owners (plugin hooks, permissions, no Stop hook) | [`opencode-feature-map.md`](opencode-feature-map.md) | `agent-harness-engineering`, hook authors, opencode parity work |
+| Antigravity features → vibe owners (research host, UNVERIFIED hooks) | [`antigravity-feature-map.md`](antigravity-feature-map.md) | `agent-harness-engineering`, future host wiring |
+| Kimi CLI features → vibe owners (TOML hooks, research host, UNVERIFIED) | [`kimi-feature-map.md`](kimi-feature-map.md) | `agent-harness-engineering`, future host wiring |
+| Muse Code features → vibe owners (Claude-like hooks, trust step, UNVERIFIED) | [`muse-feature-map.md`](muse-feature-map.md) | `agent-harness-engineering`, future host wiring |
 | Harness-neutral consumer charter examples (AGENTS.md, CURSOR.md, .cursor/rules) | [`consumer-charter-authoring.md`](consumer-charter-authoring.md) | asset authors, consumer-repo setup; rule in root `AGENTS.md` |
 | Supported harness parity checklist (Claude Code, Cursor, Codex, opencode) | [`AUTHORING.md`](../AUTHORING.md) section "Supported harness parity" | feature authors, `agent-harness-engineering`, hook/runtime changes |
 

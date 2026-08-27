@@ -91,8 +91,10 @@ honesty, and host-contract-limited capture.
 <routing>
 
 - Peer Claude map: [`claude-code-feature-map.md`](claude-code-feature-map.md)
+- Peer wired-host maps: [`cursor-feature-map.md`](cursor-feature-map.md), [`codex-feature-map.md`](codex-feature-map.md), [`opencode-feature-map.md`](opencode-feature-map.md), [`antigravity-feature-map.md`](antigravity-feature-map.md), [`kimi-feature-map.md`](kimi-feature-map.md), [`muse-feature-map.md`](muse-feature-map.md)
 - Hook contracts: [`host-hook-contracts.md`](host-hook-contracts.md)
 - Authoring Cordis note: [AUTHORING.md](../AUTHORING.md)
 - Prior research slug: `deepseek-harness-telemetry`
 - Delivery research slug: `harness-deepseek-hi-n`
+- Research slug: `feature-maps-all-supported`
 </routing>
