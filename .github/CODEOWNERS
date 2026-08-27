@@ -1,0 +1,6 @@
+# Default owner for everything in this repository.
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+* @ducnd58233
+
+# Last matching pattern wins; keep CODEOWNERS itself owned explicitly.
+.github/CODEOWNERS @ducnd58233
