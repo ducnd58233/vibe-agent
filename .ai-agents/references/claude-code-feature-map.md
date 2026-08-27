@@ -112,8 +112,11 @@ permission **auto** with vibe `/auto`.
 
 <routing>
 
+- Peer host maps: [`cursor-feature-map.md`](cursor-feature-map.md), [`codex-feature-map.md`](codex-feature-map.md), [`opencode-feature-map.md`](opencode-feature-map.md), [`antigravity-feature-map.md`](antigravity-feature-map.md), [`kimi-feature-map.md`](kimi-feature-map.md), [`muse-feature-map.md`](muse-feature-map.md)
+- Peer product map: [`deepseek-harness-feature-map.md`](deepseek-harness-feature-map.md)
 - Peer auto-loop research (different question): prior slug `how-other-agent-harnesses`
 - Hook contracts: [`host-hook-contracts.md`](host-hook-contracts.md)
 - Loop ownership: [`loop-and-graph-engineering.md`](loop-and-graph-engineering.md)
+- Research slug: `feature-maps-all-supported`
 
 </routing>
