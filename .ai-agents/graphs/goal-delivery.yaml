@@ -671,15 +671,18 @@ spec:
       to: build
       when: "!reviews_passed"
 
+    # A failed ship decision must return to build even in auto mode. The
+    # !ship_go edge comes before auto so release review is reachable only after
+    # ship_go is recorded; the auto edge then precedes the manual merge path.
+    - from: ship
+      to: build
+      when: "!ship_go"
     - from: ship
       to: release_review
       when: auto
     - from: ship
       to: approve_merge
       when: ship_go
-    - from: ship
-      to: build
-      when: "!ship_go"
 
     - from: release_review
       to: build

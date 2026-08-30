@@ -150,6 +150,24 @@ func TestSpecTransitions(t *testing.T) {
 			want:    "build",
 		},
 		{
+			name: "auto ship no-go returns to build",
+			from: "ship",
+			setup: func(run *state.Run) {
+				run.Flags["auto"] = true
+			},
+			outcome: Outcome{Check: fail("ship")},
+			want:    "build",
+		},
+		{
+			name: "auto ship go advances to release review",
+			from: "ship",
+			setup: func(run *state.Run) {
+				run.Flags["auto"] = true
+			},
+			outcome: Outcome{Check: pass("ship")},
+			want:    "release_review",
+		},
+		{
 			name:    "ship go advances to the merge gate",
 			from:    "ship",
 			outcome: Outcome{Check: pass("ship")},

@@ -3,6 +3,7 @@ package verifier
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
@@ -46,6 +47,22 @@ func TestShipDecisionFailsOnNOGO(t *testing.T) {
 	}
 	if result.Check.Passed {
 		t.Error("a NO-GO decision passed")
+	}
+}
+
+func TestShipDecisionFailsClosedOnGOWithFailedSpecialist(t *testing.T) {
+	root := t.TempDir()
+	writeDecision(t, root, "demo", "Ship Decision: GO\nSpecialist: security-auditor -> FAIL\n")
+
+	result, err := ShipDecision{}.Verify(t.Context(), Request{WorkspaceRoot: root, Slug: "demo"})
+	if err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	if result.Check.Passed {
+		t.Fatalf("a contradictory GO decision passed: %s", result.Summary)
+	}
+	if !strings.Contains(result.Summary, "did not parse") {
+		t.Errorf("summary = %q, want a parse failure", result.Summary)
 	}
 }
 

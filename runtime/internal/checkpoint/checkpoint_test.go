@@ -201,6 +201,31 @@ spec:
 	}
 }
 
+func TestAutoCheckpointRejectsCallerHumanEvidenceWhenAnAutoVerifierExists(t *testing.T) {
+	root := workspaceAuto(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      verifier: human
+      auto:
+        verifier: shipdecision
+`)
+	atTestNode(t, root)
+
+	human := unitPassed()
+	human.Check.Check.Source = state.SourceHumanEvent
+	if _, err := Apply(Request{
+		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
+		Outcome: human, Now: at(),
+	}); err == nil {
+		t.Fatal("an auto run accepted caller-supplied human_event evidence")
+	} else if !strings.Contains(err.Error(), "auto verifier") {
+		t.Errorf("wrong refusal for caller-supplied human_event: %v", err)
+	}
+}
+
 // Some checks genuinely have no runtime verifier. The escape hatch stays in git:
 // the workspace declares `verifier: human` for that check, and only then may a
 // person record it. Declaring it is a reviewable diff; typing a flag is not.

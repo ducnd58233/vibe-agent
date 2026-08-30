@@ -77,6 +77,15 @@ func TestParseRejectsGOWithBlockers(t *testing.T) {
 	}
 }
 
+func TestParseRejectsGOWithFailedSpecialist(t *testing.T) {
+	_, err := Parse(strings.NewReader(
+		"Ship Decision: GO\nSpecialist: security-auditor -> FAIL\n",
+	))
+	if err == nil {
+		t.Fatal("Parse succeeded on GO with a failed specialist, want an error")
+	}
+}
+
 func TestParseRejectsNOGOWithoutBlockers(t *testing.T) {
 	_, err := Parse(strings.NewReader("Ship Decision: NO-GO\n"))
 	if err == nil {

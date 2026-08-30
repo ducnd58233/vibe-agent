@@ -44,9 +44,10 @@ const (
 
 // Parse reads a DECISION.md body and returns the decision it records.
 //
-// Exactly one "Ship Decision: GO" or "Ship Decision: NO-GO" line is required. A GO
-// decision carrying a BLOCKER line, or a NO-GO decision carrying none, is malformed:
-// the two must agree, or the file is not trustworthy evidence of either state.
+// Exactly one "Ship Decision: GO" or "Ship Decision: NO-GO" line is required. A
+// GO decision carrying a BLOCKER or failed specialist line, or a NO-GO decision
+// carrying none, is malformed: the lines must agree, or the file is not
+// trustworthy evidence of either state.
 func Parse(r io.Reader) (*Decision, error) {
 	d := &Decision{}
 	sawDecision := false
@@ -110,6 +111,14 @@ func Parse(r io.Reader) (*Decision, error) {
 	}
 	if d.GO && len(d.Blockers) > 0 {
 		return nil, fmt.Errorf("shipdecision: GO decision carries %d blocker(s), must carry none", len(d.Blockers))
+	}
+	if d.GO {
+		for _, specialist := range d.Specialists {
+			if !specialist.Passed {
+				return nil, fmt.Errorf("shipdecision: GO decision carries failed specialist %q",
+					specialist.Name)
+			}
+		}
 	}
 	if !d.GO && len(d.Blockers) == 0 {
 		return nil, fmt.Errorf("shipdecision: NO-GO decision carries no blockers, must carry at least one")

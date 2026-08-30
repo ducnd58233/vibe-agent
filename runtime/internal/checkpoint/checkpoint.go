@@ -132,7 +132,7 @@ func Apply(req Request) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := req.authorize(loaded, run.CurrentNode); err != nil {
+	if err := req.authorize(loaded, run); err != nil {
 		return nil, err
 	}
 
@@ -265,7 +265,7 @@ func undeclaredCheckReason(plan *checkplan.Plan, check string) string {
 //
 // The rule reads from the workspace's check plan rather than from the request,
 // so widening it means editing a file in git.
-func (r Request) authorize(loaded *graph.Graph, currentNode string) error {
+func (r Request) authorize(loaded *graph.Graph, run *state.Run) error {
 	if r.Outcome.Check == nil {
 		return nil
 	}
@@ -275,7 +275,7 @@ func (r Request) authorize(loaded *graph.Graph, currentNode string) error {
 	if r.origin == originRuntime {
 		return nil
 	}
-	node, ok := loaded.Node(currentNode)
+	node, ok := loaded.Node(run.CurrentNode)
 	if !ok || node.Type != graph.NodeVerifier {
 		return nil
 	}
@@ -283,11 +283,17 @@ func (r Request) authorize(loaded *graph.Graph, currentNode string) error {
 
 	plan, err := checkplan.Load(checkplan.DefaultPath(r.WorkspaceRoot))
 	if err != nil {
-		return fmt.Errorf("node %q verifies %q, so the workspace has to declare how: %w", currentNode, name, err)
+		return fmt.Errorf("node %q verifies %q, so the workspace has to declare how: %w", run.CurrentNode, name, err)
 	}
 	entry, err := plan.Entry(name)
 	if err != nil {
 		return err
+	}
+
+	if run.Flags["auto"] && entry.Auto != nil {
+		return fmt.Errorf("check %q at node %q has an auto verifier; caller-supplied source %s is not accepted, "+
+			"run `vibe-agent verify --slug %s` so the runtime produces the evidence",
+			name, run.CurrentNode, r.Outcome.Check.Check.Source, r.Slug)
 	}
 
 	if entry.Human() {
@@ -304,7 +310,7 @@ func (r Request) authorize(loaded *graph.Graph, currentNode string) error {
 	return fmt.Errorf("check %q at node %q comes from a verifier, not from arguments; "+
 		"run `vibe-agent verify --slug %s` so %s produces the evidence, "+
 		"or declare the check %s in %s if a person decides it",
-		name, currentNode, r.Slug, verifierName(node, entry), checkplan.HumanVerifier, plan.Path())
+		name, run.CurrentNode, r.Slug, verifierName(node, entry), checkplan.HumanVerifier, plan.Path())
 }
 
 // verifierName is the implementation that will produce a check, for an error
