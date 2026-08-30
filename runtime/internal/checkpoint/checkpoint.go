@@ -26,6 +26,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/verifier"
 )
 
 // origin is who produced the evidence in a request.
@@ -35,9 +36,9 @@ import (
 // strings. origin records whether this process watched it happen.
 //
 // It is unexported, and so is the Request field holding it, which is the point:
-// no package outside this one can grant itself the runtime's authority. The only
-// way to obtain it is to call Verify, which sets it after a verifier has
-// actually returned.
+// no package outside this one can grant itself the runtime's authority. Verify
+// sets it after a verifier has returned, and Apply may set it only for a skip
+// derived from the tracked check plan in an opted-in auto run.
 type origin string
 
 const (
@@ -127,6 +128,10 @@ func Apply(req Request) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	req, err = deriveAutoSkip(req, run, loaded)
+	if err != nil {
+		return nil, err
+	}
 	if err := req.authorize(loaded, run.CurrentNode); err != nil {
 		return nil, err
 	}
@@ -176,6 +181,36 @@ func Apply(req Request) (*Result, error) {
 	return followAutoGates(req, result)
 }
 
+// deriveAutoSkip turns a bare checkpoint at an auto run's undeclared verifier
+// into the same runtime-produced skip as Verify. It exists for hosts that use
+// one checkpoint command for every node while driving an auto run. Declared
+// checks still require Verify, so this cannot bypass a real verifier.
+func deriveAutoSkip(req Request, run *state.Run, loaded *graph.Graph) (Request, error) {
+	if !run.Flags["auto"] || req.Outcome.Check != nil {
+		return req, nil
+	}
+
+	node, ok := loaded.Node(run.CurrentNode)
+	if !ok || node.Type != graph.NodeVerifier {
+		return req, nil
+	}
+
+	plan, err := checkplan.Load(checkplan.DefaultPath(req.WorkspaceRoot))
+	if err != nil {
+		return req, err
+	}
+	if plan.Has(node.Check) {
+		return req, nil
+	}
+
+	req.origin = originRuntime
+	req.Outcome.Check = &loop.NamedCheck{
+		Name:  node.Check,
+		Check: verifier.Skipped(undeclaredCheckReason(plan, node.Check), req.now()).Check,
+	}
+	return req, nil
+}
+
 // advanceStuckVerifier moves past a verifier node when the check already passed
 // but a replay left the run sitting on the node anyway.
 func advanceStuckVerifier(req VerifyRequest, plan *Plan, run *state.Run, loaded *graph.Graph) (*Result, error) {
@@ -215,6 +250,11 @@ func advanceStuckVerifier(req VerifyRequest, plan *Plan, run *state.Run, loaded 
 		return nil, err
 	}
 	return &Result{Run: run, Graph: loaded, Transition: transition}, nil
+}
+
+func undeclaredCheckReason(plan *checkplan.Plan, check string) string {
+	return fmt.Sprintf("%s declares no %s check; declared checks are %v",
+		checkplan.FileName, check, plan.Names())
 }
 
 // authorize decides whether this request may write the check at all.

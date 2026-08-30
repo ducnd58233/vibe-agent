@@ -112,8 +112,7 @@ func Resolve(req VerifyRequest) (*Plan, error) {
 	if !plan.Has(node.Check) {
 		return &Plan{
 			Node: run.CurrentNode, Check: node.Check, PlanPath: plan.Path(),
-			SkipReason: fmt.Sprintf("%s declares no %s check; declared checks are %v",
-				checkplan.FileName, node.Check, plan.Names()),
+			SkipReason: undeclaredCheckReason(plan, node.Check),
 		}, nil
 	}
 
@@ -175,9 +174,10 @@ func Resolve(req VerifyRequest) (*Plan, error) {
 
 // Verify runs the current node's verifier and checkpoints what it found.
 //
-// This is the only function in the program that produces runtime-origin
-// evidence, and it can only do so after a verifier has returned. Everything
-// else that writes a check is a caller making a claim.
+// For declared checks, this is the only function in the program that produces
+// runtime-origin evidence, and it can only do so after a verifier has returned.
+// Apply separately derives an undeclared skip from the tracked plan for an
+// opted-in auto run; everything else that writes a check is a caller claim.
 func Verify(ctx context.Context, req VerifyRequest) (*VerifyResult, error) {
 	resolved, err := Resolve(req)
 	if err != nil {

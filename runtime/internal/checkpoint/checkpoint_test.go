@@ -165,6 +165,42 @@ spec:
 	}
 }
 
+func TestAutoCheckpointCannotBypassADeclaredVerifier(t *testing.T) {
+	root := workspaceAuto(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      command: go
+      args: [version]
+    e2e:
+      command: go
+      args: [version]
+`)
+	atTestNode(t, root)
+
+	current, err := state.Load(state.ManifestPath(root, "demo"))
+	if err != nil {
+		t.Fatalf("load e2e state: %v", err)
+	}
+	current.CurrentNode = "e2e"
+	if err := state.Save(state.ManifestPath(root, "demo"), current); err != nil {
+		t.Fatalf("save e2e state: %v", err)
+	}
+
+	_, err = Apply(Request{
+		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
+		Outcome: loop.Outcome{}, Now: at(),
+	})
+	if err == nil {
+		t.Fatal("a bare auto checkpoint bypassed a declared e2e verifier")
+	}
+	if !strings.Contains(err.Error(), "must report a check") {
+		t.Errorf("the refusal does not identify the verifier boundary: %v", err)
+	}
+}
+
 // Some checks genuinely have no runtime verifier. The escape hatch stays in git:
 // the workspace declares `verifier: human` for that check, and only then may a
 // person record it. Declaring it is a reviewable diff; typing a flag is not.
@@ -409,6 +445,88 @@ spec:
 	if !strings.Contains(result.Verifier.Summary, checkplan.FileName) {
 		t.Errorf("the skip reason does not say what caused it: %q", result.Verifier.Summary)
 	}
+}
+
+func TestAnUndeclaredE2ECheckSkipsAfterAnAutoBugHuntReentry(t *testing.T) {
+	root := workspaceAuto(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      command: go
+      args: [version]
+    bug_hunt_ok:
+      verifier: bughunt
+`)
+	atTestNode(t, root)
+
+	advanceAutoCycle := func(verifyE2E bool) {
+		t.Helper()
+		current, err := state.Load(state.ManifestPath(root, "demo"))
+		if err != nil {
+			t.Fatalf("load cycle start: %v", err)
+		}
+		if current.CurrentNode == "build" {
+			apply(t, root, loop.Outcome{})
+		}
+		if _, err := Verify(t.Context(), VerifyRequest{
+			WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo", Now: at(),
+		}); err != nil {
+			t.Fatalf("verify unit: %v", err)
+		}
+		apply(t, root, loop.Outcome{})
+		if _, err := Verify(t.Context(), VerifyRequest{
+			WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo", Now: at(),
+		}); err != nil {
+			t.Fatalf("verify omitted lint: %v", err)
+		}
+		apply(t, root, loop.Outcome{})
+		var e2eCheck state.Check
+		if verifyE2E {
+			result, err := Verify(t.Context(), VerifyRequest{
+				WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo", Now: at(),
+			})
+			if err != nil {
+				t.Fatalf("verify omitted e2e: %v", err)
+			}
+			e2eCheck = result.Verifier.Check
+		} else {
+			applied := apply(t, root, loop.Outcome{})
+			e2eCheck = applied.Run.Checks["e2e"]
+		}
+		if !e2eCheck.Skipped || e2eCheck.Passed ||
+			e2eCheck.Source != state.SourceFileAssert {
+			t.Fatalf("e2e result = %+v, want file_assert skip", e2eCheck)
+		}
+		if _, err := Verify(t.Context(), VerifyRequest{
+			WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo", Now: at(),
+		}); err != nil {
+			t.Fatalf("verify bug hunt: %v", err)
+		}
+
+		current, err = state.Load(state.ManifestPath(root, "demo"))
+		if err != nil {
+			t.Fatalf("load plan re-entry: %v", err)
+		}
+		current.Flags["plan_unambiguous"] = true
+		if err := state.Save(state.ManifestPath(root, "demo"), current); err != nil {
+			t.Fatalf("save plan re-entry: %v", err)
+		}
+		apply(t, root, loop.Outcome{})
+		current, err = state.Load(state.ManifestPath(root, "demo"))
+		if err != nil {
+			t.Fatalf("load approval gate: %v", err)
+		}
+		if check, recorded := current.Checks["plan_approved"]; !recorded ||
+			!check.Skipped || check.Passed {
+			t.Fatalf("plan gate = %+v, want skipped and not passed", check)
+		}
+		apply(t, root, loop.Outcome{})
+	}
+
+	advanceAutoCycle(true)
+	advanceAutoCycle(false)
 }
 
 // skipWhen is honored at execution time, which makes a declared skip condition
