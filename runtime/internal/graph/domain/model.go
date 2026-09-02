@@ -154,6 +154,8 @@ type Node struct {
 	// verifier
 	Verifier VerifierKind `yaml:"verifier"`
 	SkipWhen string       `yaml:"skipWhen"`
+	// Required prevents an omitted check-plan entry from becoming a skip.
+	Required bool `yaml:"required"`
 
 	// verifier and human_gate
 	Check string `yaml:"check"`

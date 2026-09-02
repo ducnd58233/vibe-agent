@@ -349,7 +349,7 @@ func TestTheApprovalReferenceCarriesTheAnswerAndADigest(t *testing.T) {
 		t.Fatalf("load opt-in: %v (found %t)", err, found)
 	}
 
-	ref := approvalRef(root, config)
+	ref := auto.ApprovalReference(root, config)
 	for _, want := range []string{"auto.yaml", "merge=true", "sha256="} {
 		if !strings.Contains(ref, want) {
 			t.Errorf("reference does not contain %q: %s", want, ref)
@@ -383,8 +383,8 @@ func TestADifferentAnswerProducesADifferentReference(t *testing.T) {
 	if first.Digest() == second.Digest() {
 		t.Error("two different files fingerprinted the same")
 	}
-	if !strings.Contains(approvalRef(no, second), "merge=false") {
-		t.Errorf("a workspace that answered no recorded: %s", approvalRef(no, second))
+	if !strings.Contains(auto.ApprovalReference(no, second), "merge=false") {
+		t.Errorf("a workspace that answered no recorded: %s", auto.ApprovalReference(no, second))
 	}
 }
 

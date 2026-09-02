@@ -81,14 +81,21 @@ func declarePlan(t *testing.T, root, body string) {
 // so reaching a verifier is the only way to exercise it.
 func atTestNode(t *testing.T, root string) {
 	t.Helper()
-	apply(t, root, intakeConfirmed())           // intake -> spec
-	apply(t, root, loop.Outcome{})              // spec -> approve_spec
+	apply(t, root, intakeConfirmed()) // intake -> spec
+	current, err := state.Load(state.ManifestPath(root, "demo"))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	apply(t, root, loop.Outcome{}) // spec -> approval gate
+	if current.Flags["auto"] {
+		apply(t, root, loop.Outcome{}) // auto_research -> approve_spec
+	}
 	apply(t, root, humanCheck("spec_approved")) // -> plan
 	apply(t, root, loop.Outcome{})              // plan -> approve_plan
 	apply(t, root, humanCheck("plan_approved")) // -> build
 	apply(t, root, loop.Outcome{})              // build -> test
 
-	current, err := state.Load(state.ManifestPath(root, "demo"))
+	current, err = state.Load(state.ManifestPath(root, "demo"))
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
@@ -225,7 +232,7 @@ func workspaceAuto(t *testing.T) string {
 		t.Fatalf("load: %v", err)
 	}
 	if err := run.SetFlagAt("auto", true, at()); err != nil {
-		t.Fatalf("SetFlagAt: %v", err)
+		t.Fatalf("SetFlagAt(auto): %v", err)
 	}
 	testutil.EnsureRunIndex(t, root, "demo")
 	if err := state.Save(state.ManifestPath(root, "demo"), run); err != nil {
@@ -408,6 +415,52 @@ spec:
 	}
 	if !strings.Contains(result.Verifier.Summary, checkplan.FileName) {
 		t.Errorf("the skip reason does not say what caused it: %q", result.Verifier.Summary)
+	}
+}
+
+func TestRequiredTaskCheckCannotBeSkippedToFinish(t *testing.T) {
+	root := workspace(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      command: go
+      args: [version]
+`)
+	run, err := state.Load(state.ManifestPath(root, "demo"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.CurrentNode = "task_complete"
+	run.Status = state.StatusRunning
+	if err := state.Save(state.ManifestPath(root, "demo"), run); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = Verify(t.Context(), VerifyRequest{
+		WorkspaceRoot: root,
+		GraphDir:      graphDir,
+		Slug:          "demo",
+		Now:           at(),
+	})
+	if err == nil {
+		t.Fatal("a missing required task check ended the run")
+	}
+	if !strings.Contains(err.Error(), "requires") ||
+		!strings.Contains(err.Error(), checkplan.FileName) {
+		t.Fatalf("error = %q, want the required check and plan path", err)
+	}
+
+	current, err := state.Load(state.ManifestPath(root, "demo"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current.CurrentNode != "task_complete" {
+		t.Fatalf("current node = %q, want task_complete", current.CurrentNode)
+	}
+	if current.Status == state.StatusDone {
+		t.Fatal("the run became done without task evidence")
 	}
 }
 

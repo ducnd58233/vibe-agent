@@ -36,16 +36,31 @@ func followAutoGates(req Request, result *Result) (*Result, error) {
 		if !ok || node.Type != graph.NodeHumanGate {
 			break
 		}
-		if _, ok := auto.GateSpecFor(result.Run.CurrentNode); !ok {
-			break
-		}
 
-		answer, err := auto.TryAnswerGate(req.WorkspaceRoot, result.Graph, result.Run)
-		if err != nil {
-			return result, err
-		}
-		if !answer.Answered {
-			break
+		approvalRef := ""
+		if result.Run.CurrentNode == auto.MergeGateNode {
+			var err error
+			approvalRef, err = auto.ApproveMerge(
+				req.WorkspaceRoot, result.Run, req.now(),
+			)
+			if err != nil {
+				return result, err
+			}
+			if approvalRef == "" {
+				break
+			}
+			result.Run.Status = state.StatusRunning
+		} else {
+			if _, ok := auto.GateSpecFor(result.Run.CurrentNode); !ok {
+				break
+			}
+			answer, err := auto.TryAnswerGate(req.WorkspaceRoot, result.Graph, result.Run)
+			if err != nil {
+				return result, err
+			}
+			if !answer.Answered {
+				break
+			}
 		}
 		if err := state.Save(manifest, result.Run); err != nil {
 			return result, err
@@ -63,6 +78,7 @@ func followAutoGates(req Request, result *Result) (*Result, error) {
 		payload, err := json.Marshal(transitionEvent{
 			From: from, To: transition.To, Via: transition.Via,
 			Key: "auto-gate-" + from, Skipped: transition.Skipped,
+			Approval: approvalRef,
 		})
 		if err != nil {
 			return result, fmt.Errorf("encode transition: %w", err)

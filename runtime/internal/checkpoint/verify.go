@@ -110,6 +110,11 @@ func Resolve(req VerifyRequest) (*Plan, error) {
 	// the whole file is a workspace that has not been set up, and treating that as
 	// "no checks needed" would make an unconfigured repo the most permissive one.
 	if !plan.Has(node.Check) {
+		if node.Required {
+			return nil, fmt.Errorf("verifier node %q requires check %q in %s; "+
+				"an omitted required check cannot be skipped",
+				run.CurrentNode, node.Check, plan.Path())
+		}
 		return &Plan{
 			Node: run.CurrentNode, Check: node.Check, PlanPath: plan.Path(),
 			SkipReason: fmt.Sprintf("%s declares no %s check; declared checks are %v",

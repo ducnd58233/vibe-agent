@@ -79,6 +79,53 @@ func TestWithTheAutoFlagTestLeadsThroughSimplifyLintAndCommit(t *testing.T) {
 	}
 }
 
+func TestAutoDeliveryResearchesAndEvaluatesBeforeOpeningPR(t *testing.T) {
+	runner := newRunner(t)
+	run := newRun(t, runner)
+	run.CurrentNode = "spec"
+	run.Status = state.StatusRunning
+	run.Flags = map[string]bool{
+		"auto":             true,
+		"spec_unambiguous": true,
+		"plan_unambiguous": true,
+	}
+
+	path := walk(t, runner, run, 24, nil)
+	for _, node := range []string{
+		"auto_research",
+		"simplify",
+		"experiment_run",
+		"experiment_monitor",
+		"results_eval",
+		"open_pr",
+	} {
+		if !contains(path, node) {
+			t.Errorf("auto path %v does not contain %q", path, node)
+		}
+	}
+	for _, node := range []string{"experiment_run", "experiment_monitor", "results_eval", "open_pr"} {
+		researchIndex := indexOf(path, node)
+		if researchIndex < 0 {
+			continue
+		}
+		if node == "experiment_run" {
+			continue
+		}
+		if indexOf(path, "experiment_run") > researchIndex {
+			t.Errorf("experiment_run appears after %q in path %v", node, path)
+		}
+	}
+}
+
+func indexOf(path []string, node string) int {
+	for index, current := range path {
+		if current == node {
+			return index
+		}
+	}
+	return -1
+}
+
 // simplify is a refactor. It must not be reachable with the suite red, whatever
 // the flag says.
 func TestSimplifyIsUnreachableWhileUnitTestsFail(t *testing.T) {
@@ -207,19 +254,31 @@ func TestTheSpecGateStillHoldsForAutoUntilTheSpecIsCalledUnambiguous(t *testing.
 	run.CurrentNode = "spec"
 
 	transition := advance(t, runner, run, Outcome{})
+	if transition.To != "auto_research" {
+		t.Fatalf("spec led to %q, want auto_research", transition.To)
+	}
+
+	run.CurrentNode = "auto_research"
+	run.Status = state.StatusRunning
+	transition = advance(t, runner, run, Outcome{})
 	if transition.To != "approve_spec" {
-		t.Fatalf("spec led to %q", transition.To)
+		t.Fatalf("auto_research led to %q, want approve_spec", transition.To)
 	}
 	if run.Status != state.StatusAwaitingHuman {
 		t.Errorf("status = %q, want awaiting_human: auto alone does not answer the spec gate", run.Status)
 	}
 
 	run.Flags["spec_unambiguous"] = true
-	run.CurrentNode = "spec"
-	run.Status = state.StatusRunning
+	if _, err := runner.enterGate(run, "approve_spec", at()); err != nil {
+		t.Fatalf("enterGate: %v", err)
+	}
 	transition = advance(t, runner, run, Outcome{})
-	if !transition.Skipped {
-		t.Error("the transition did not report the gate as skipped")
+	if transition.To != "plan" {
+		t.Fatalf("settled spec gate led to %q, want plan", transition.To)
+	}
+	check, recorded := run.Checks["spec_approved"]
+	if !recorded || !check.Skipped {
+		t.Error("the spec gate was not recorded as skipped")
 	}
 	if run.Status != state.StatusRunning {
 		t.Errorf("status = %q, want running", run.Status)
