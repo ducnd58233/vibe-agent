@@ -376,9 +376,10 @@ spec:
       flags: {auto: true}
       steps:
         - {} # intake skipped via auto -> spec
-        - {} # spec -> approve_spec
+        - {} # spec -> auto_research
+        - {} # auto_research -> approve_spec
         - check: {name: spec_approved, skipped: true, source: file_assert}
-        - {} # plan
+        - {} # plan -> approve_plan
         - check: {name: plan_approved, skipped: true, source: file_assert}
         - {} # build
         - check: {name: unit, passed: true, source: exit_code}
@@ -390,11 +391,15 @@ spec:
         - check: {name: slop, passed: true, source: exit_code}
         - check: {name: expectation_ok, passed: true, source: file_assert}
         - result: {changes_requested: false}
+        - {} # experiment_run -> experiment_monitor
+        - check: {name: experiment_done, passed: true, source: file_assert}
+        - check: {name: results_acceptable, passed: true, source: file_assert}
       expect:
         status: running
         path:
           - intake
           - spec
+          - auto_research
           - approve_spec
           - plan
           - approve_plan
@@ -408,12 +413,16 @@ spec:
           - slop
           - expectation_review
           - review
+          - experiment_run
+          - experiment_monitor
+          - results_eval
           - open_pr
 
     - name: expectation miss reopens plan on auto path
       graph: goal-delivery
       flags: {auto: true}
       steps:
+        - {}
         - {}
         - {}
         - check: {name: spec_approved, skipped: true, source: file_assert}
@@ -433,6 +442,7 @@ spec:
         path:
           - intake
           - spec
+          - auto_research
           - approve_spec
           - plan
           - approve_plan
@@ -453,6 +463,7 @@ spec:
       steps:
         - {}
         - {}
+        - {}
         - check: {name: spec_approved, skipped: true, source: file_assert}
         - {}
         - check: {name: plan_approved, skipped: true, source: file_assert}
@@ -468,6 +479,7 @@ spec:
         path:
           - intake
           - spec
+          - auto_research
           - approve_spec
           - plan
           - approve_plan
@@ -486,6 +498,7 @@ spec:
       steps:
         - {}
         - {}
+        - {}
         - check: {name: spec_approved, skipped: true, source: file_assert}
         - {}
         - check: {name: plan_approved, skipped: true, source: file_assert}
@@ -501,6 +514,7 @@ spec:
         path:
           - intake
           - spec
+          - auto_research
           - approve_spec
           - plan
           - approve_plan
@@ -519,6 +533,7 @@ spec:
       steps:
         - {}
         - {}
+        - {}
         - check: {name: spec_approved, skipped: true, source: file_assert}
         - {}
         - check: {name: plan_approved, skipped: true, source: file_assert}
@@ -532,6 +547,9 @@ spec:
         - check: {name: slop, passed: true, source: exit_code}
         - check: {name: expectation_ok, passed: true, source: file_assert}
         - result: {changes_requested: false}
+        - {}
+        - check: {name: experiment_done, passed: true, source: file_assert}
+        - check: {name: results_acceptable, passed: true, source: file_assert}
         - check: {name: pr_open, passed: true, source: exit_code}
         - check: {name: ci, passed: true, source: exit_code}
         - check: {name: reviews, passed: true, source: ci_api}
@@ -543,6 +561,7 @@ spec:
         path:
           - intake
           - spec
+          - auto_research
           - approve_spec
           - plan
           - approve_plan
@@ -556,6 +575,9 @@ spec:
           - slop
           - expectation_review
           - review
+          - experiment_run
+          - experiment_monitor
+          - results_eval
           - open_pr
           - pr_checks
           - external_reviews
@@ -570,6 +592,7 @@ spec:
       steps:
         - {}
         - {}
+        - {}
         - check: {name: spec_approved, skipped: true, source: file_assert}
         - {}
         - check: {name: plan_approved, skipped: true, source: file_assert}
@@ -583,6 +606,9 @@ spec:
         - check: {name: slop, passed: true, source: exit_code}
         - check: {name: expectation_ok, passed: true, source: file_assert}
         - result: {changes_requested: false}
+        - {}
+        - check: {name: experiment_done, passed: true, source: file_assert}
+        - check: {name: results_acceptable, passed: true, source: file_assert}
         - check: {name: pr_open, passed: true, source: exit_code}
         - check: {name: ci, passed: true, source: exit_code}
         - check: {name: reviews, passed: true, source: ci_api}
@@ -593,6 +619,7 @@ spec:
         path:
           - intake
           - spec
+          - auto_research
           - approve_spec
           - plan
           - approve_plan
@@ -606,6 +633,9 @@ spec:
           - slop
           - expectation_review
           - review
+          - experiment_run
+          - experiment_monitor
+          - results_eval
           - open_pr
           - pr_checks
           - external_reviews

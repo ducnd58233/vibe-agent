@@ -116,6 +116,20 @@ spec:
       reads: e2e
       acceptsSkipped: true
 
+    - name: experiment_done
+      description: >-
+        The auto-path experiment reached a terminal STATUS.md state. A running
+        or missing status keeps the run at experiment_run.
+      source: check
+      reads: experiment_done
+
+    - name: results_acceptable
+      description: >-
+        The auto-path experiment metrics meet every threshold declared in
+        METRICS.json. A failed result sends the run back through research.
+      source: check
+      reads: results_acceptable
+
     - name: expectation_ok
       description: >-
         Auto-path expectation review passed: REVIEW.md status is pass and every
@@ -211,6 +225,16 @@ spec:
       command: research
       optional: true
 
+    auto_research:
+      type: artifact
+      description: >-
+        Expand the objective with citation-first research before planning and
+        after a failed experiment. The output must state applicability,
+        refinements, and unresolved questions.
+      command: research
+      outputs:
+        - docs/${date}/${slug}/${version}/RESEARCH-${date}.md
+
     spec:
       type: artifact
       description: Structured specification before implementation.
@@ -262,6 +286,29 @@ spec:
         skip the node by default and e2e_ok would pass it.
       verifier: command
       check: e2e
+
+    experiment_run:
+      type: agent
+      description: >-
+        Run the planned training and inference evaluation on host or CI
+        compute. Keep experiment/STATUS.md current until done or failed.
+      command: experiment
+
+    experiment_monitor:
+      type: verifier
+      description: Read experiment/STATUS.md and wait until the run is terminal.
+      verifier: experiment
+      check: experiment_done
+      required: true
+
+    results_eval:
+      type: verifier
+      description: >-
+        Compare experiment/METRICS.json with the plan thresholds. Failed
+        metrics reopen research before another implementation cycle.
+      verifier: results
+      check: results_acceptable
+      required: true
 
     bug_hunt:
       type: verifier
@@ -380,8 +427,9 @@ spec:
     task_complete:
       type: verifier
       description: Read TASKS.md and decide whether another in-scope task remains.
-      verifier: files
+      verifier: tasks
       check: tasks_remaining
+      required: true
 
     done:
       type: terminal
@@ -421,10 +469,16 @@ spec:
         - merge_approved
         - main_ci
         - tasks_remaining
+        - experiment_done
+        - results_acceptable
         - expectation_ok
         - bug_hunt_ok
         - release_ok
     - from: spec
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: auto_research
       to: intake
       when: human_redirect
       resets: *redirect_resets
@@ -449,6 +503,18 @@ spec:
       when: human_redirect
       resets: *redirect_resets
     - from: e2e
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: experiment_run
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: experiment_monitor
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: results_eval
       to: intake
       when: human_redirect
       resets: *redirect_resets
@@ -524,6 +590,13 @@ spec:
       to: spec
 
     - from: spec
+      to: auto_research
+      when: auto
+    - from: spec
+      to: approve_spec
+      when: "!auto"
+
+    - from: auto_research
       to: approve_spec
 
     - from: approve_spec
@@ -647,8 +720,31 @@ spec:
       to: build
       when: changes_requested
     - from: review
+      to: experiment_run
+      when: auto
+    - from: review
       to: open_pr
-      when: "!changes_requested"
+      when: "!auto"
+
+    - from: experiment_run
+      to: experiment_monitor
+
+    - from: experiment_monitor
+      to: experiment_run
+      when: "!experiment_done"
+    - from: experiment_monitor
+      to: results_eval
+      when: experiment_done
+
+    - from: results_eval
+      to: auto_research
+      when: "!results_acceptable"
+      resets:
+        - experiment_done
+        - results_acceptable
+    - from: results_eval
+      to: open_pr
+      when: results_acceptable
 
     - from: open_pr
       to: pr_checks

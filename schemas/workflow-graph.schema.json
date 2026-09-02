@@ -309,6 +309,10 @@
               "skipWhen": {
                 "$ref": "#/$defs/guardRef",
                 "description": "Guard name; when true the node is skipped and the check records skipped, not passed."
+              },
+              "required": {
+                "type": "boolean",
+                "description": "When true, the workspace check plan must declare this check; an omitted entry fails closed instead of being skipped."
               }
             }
           }

@@ -110,6 +110,129 @@ func TestGoalResearchCheckpointStopsAtApplicabilityGate(t *testing.T) {
 	}
 }
 
+func TestAutoCheckpointAnswersMergeApprovalFromOptIn(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".agent-state"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(root, ".agent-state", "auto.yaml"),
+		[]byte("apiVersion: vibe-agent/v1\nkind: AutoConfig\nspec:\n  merge: true\n"),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := graph.LoadByID(graphDir, "goal-delivery")
+	if err != nil {
+		t.Fatal(err)
+	}
+	run, err := state.NewRun(
+		"auto-merge", "ship the change", loaded.Metadata.ID,
+		loaded.Spec.MaxTransitions, at(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.Flags["auto"] = true
+	run.CurrentNode = "approve_merge"
+	run.Status = state.StatusAwaitingHuman
+	testutil.EnsureRunIndex(t, root, run.Slug)
+	entry, err := runpath.Resolve(root, run.Slug)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.Date = entry.Date
+	run.Version = entry.Version
+	if err := state.Save(state.ManifestPath(root, run.Slug), run); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := followAutoGates(Request{
+		WorkspaceRoot: root,
+		GraphDir:      graphDir,
+		Slug:          run.Slug,
+		Now:           at(),
+	}, &Result{
+		Run:   run,
+		Graph: loaded,
+		Transition: &loop.Transition{
+			From: "release_review",
+			To:   "approve_merge",
+		},
+	})
+	if err != nil {
+		t.Fatalf("followAutoGates: %v", err)
+	}
+	if result.Run.CurrentNode != "merge_ci" {
+		t.Fatalf("current node = %q, want merge_ci", result.Run.CurrentNode)
+	}
+	approval, ok := result.Run.Checks["merge_approved"]
+	if !ok {
+		t.Fatal("auto merge approval was not recorded")
+	}
+	if !approval.Passed || approval.Skipped {
+		t.Fatalf("merge approval = %+v, want passed and not skipped", approval)
+	}
+	if approval.Source != state.SourceFileAssert {
+		t.Fatalf("merge approval source = %q, want file_assert", approval.Source)
+	}
+	if !strings.Contains(approval.Ref, "merge=true") {
+		t.Fatalf("merge approval ref = %q, want the opt-in answer", approval.Ref)
+	}
+}
+
+func TestAutoCheckpointLeavesMergeApprovalForUnoptedWorkspace(t *testing.T) {
+	root := t.TempDir()
+	loaded, err := graph.LoadByID(graphDir, "goal-delivery")
+	if err != nil {
+		t.Fatal(err)
+	}
+	run, err := state.NewRun(
+		"auto-no-merge", "ship the change", loaded.Metadata.ID,
+		loaded.Spec.MaxTransitions, at(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.Flags["auto"] = true
+	run.CurrentNode = "approve_merge"
+	run.Status = state.StatusAwaitingHuman
+	testutil.EnsureRunIndex(t, root, run.Slug)
+	entry, err := runpath.Resolve(root, run.Slug)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.Date = entry.Date
+	run.Version = entry.Version
+	if err := state.Save(state.ManifestPath(root, run.Slug), run); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := followAutoGates(Request{
+		WorkspaceRoot: root,
+		GraphDir:      graphDir,
+		Slug:          run.Slug,
+		Now:           at(),
+	}, &Result{
+		Run:   run,
+		Graph: loaded,
+		Transition: &loop.Transition{
+			From: "release_review",
+			To:   "approve_merge",
+		},
+	})
+	if err != nil {
+		t.Fatalf("followAutoGates: %v", err)
+	}
+	if result.Run.CurrentNode != "approve_merge" {
+		t.Fatalf("current node = %q, want approve_merge", result.Run.CurrentNode)
+	}
+	if _, ok := result.Run.Checks["merge_approved"]; ok {
+		t.Fatal("merge approval was recorded without opt-in")
+	}
+}
+
 func writeResearchDoc(t *testing.T, root, date, slug string, version int, body string) {
 	t.Helper()
 	dir := filepath.Join(root, "docs", date, slug, fmt.Sprintf("%d", version))

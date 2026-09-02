@@ -70,6 +70,12 @@ spec:
     release_ok:
       verifier: release
       description: fixture stand-in for auto-path release review
+    experiment_done:
+      verifier: experiment
+      description: fixture stand-in for experiment completion
+    results_acceptable:
+      verifier: results
+      description: fixture stand-in for acceptable experiment metrics
 `
 
 // autoRepo is a consumer repo that declares the auto checks and one task.
@@ -142,6 +148,17 @@ attempt: 1
 	if err := os.WriteFile(filepath.Join(dir, "REVIEW.md"), []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func writeExperimentResults(t *testing.T, root, slug string) {
+	t.Helper()
+	dir := filepath.Join(state.RunDir(root, slug), "experiment")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(dir, "STATUS.md"), "# Experiment\n\nstatus: done\n")
+	write(t, filepath.Join(dir, "METRICS.json"),
+		`{"metrics":{"quality":1},"thresholds":{"quality":{"op":">=","value":0.5}}}`)
 }
 
 // settledDocs writes the artifacts the gates read, with nothing left open.
@@ -225,6 +242,12 @@ func drive(t *testing.T, run cli, slug string, steps int) *state.Run {
 			out, err := run.run("verify", "--slug", slug)
 			if err != nil {
 				t.Fatalf("verify at release_review: %v\n%s", err, out)
+			}
+		case current.CurrentNode == "experiment_monitor":
+			writeExperimentResults(t, run.root, slug)
+			out, err := run.run("verify", "--slug", slug)
+			if err != nil {
+				t.Fatalf("verify at experiment_monitor: %v\n%s", err, out)
 			}
 		default:
 			// verify exits non-zero at a node it cannot answer, and says so. A

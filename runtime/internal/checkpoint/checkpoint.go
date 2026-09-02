@@ -106,10 +106,11 @@ func transitionMatches(payload []byte, key string) bool {
 // transitionEvent is the payload written for every advance. Key is what makes
 // a replay recognisable.
 type transitionEvent struct {
-	From string `json:"from"`
-	To   string `json:"to"`
-	Via  string `json:"via"`
-	Key  string `json:"key,omitempty"`
+	From     string `json:"from"`
+	To       string `json:"to"`
+	Via      string `json:"via"`
+	Key      string `json:"key,omitempty"`
+	Approval string `json:"approval,omitempty"`
 	// Skipped records that the destination was a human gate the graph declared
 	// skippable and the run walked through it. In the journal because "no one
 	// was asked here" is exactly the kind of thing an audit goes looking for.
