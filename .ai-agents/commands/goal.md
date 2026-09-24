@@ -228,6 +228,9 @@ For each **incomplete** task in `TASKS.md`:
 - **NO-GO**, test/E2E failure, **pending PR checks/reviews**, or **same-task** human feedback → fix on **same branch** → re-verify → update `.agent-state/runs/<date>/<slug>/<version>/` → wait for CI/reviews again → `/ship`.
 - **Next planned task** → new branch from `main` → `/build`.
 - **Three** failed ship cycles on the same blocker → stop; report root cause; ask human.
+- **A verifier fail the graph already retries automatically** (a missed experiment threshold at
+  `results_eval`, or any other check with a fallback edge) is never `checkpoint --blocker` - let it
+  fail and loop. See [`AGENTS.md`](../../AGENTS.md) "Blocker vs. retry".
 
 Optional personas (user or phase invokes; no persona-to-persona chains): [`architect-planner`](../agents/architect-planner.md), [`test-engineer`](../agents/test-engineer.md), [`code-reviewer`](../agents/code-reviewer.md), plus conditional specialists in [`ship.md`](ship.md).
 </procedure>
