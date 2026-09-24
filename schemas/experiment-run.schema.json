@@ -50,7 +50,8 @@
             "additionalProperties": false,
             "properties": {
               "op": {
-                "enum": ["==", "!=", ">", ">=", "<", "<="]
+                "description": "Matches exactly what runtime/internal/verifier/results.go's compareMetric implements. != is deliberately absent: the real comparator has no case for it and silently returns false, so a schema advertising it here would validate a threshold every future comparator would misread the same way.",
+                "enum": ["==", ">", ">=", "<", "<="]
               },
               "value": {
                 "type": "number"
