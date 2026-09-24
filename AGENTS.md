@@ -92,6 +92,19 @@ path. When a rule already has a home, link to it instead of restating it.
   project, run the canonical CLI rather than fabricating files from memory, and capture project
   commands in a Makefile (or `package.json` scripts for Node). If a version is unclear, ask. See
   [`source-driven-development`](.ai-agents/skills/source-driven-development/SKILL.md).
+- **A build check resolves real dependencies (MUST):** a workspace's declared build or unit check
+  (in `vibe-checks.yaml` or its equivalent) installs or resolves dependencies from the manifest and
+  lockfile as part of the check (`npm ci`, `pip install -r requirements.txt`, `go build` against
+  `go.sum`, or the ecosystem's equivalent), not only a typecheck or lint against a cache that is
+  already populated. A package the model invented then fails a check with `exit_code` provenance
+  instead of failing in production, and a name that does not exist cannot later be registered by
+  someone else and installed. Where imports are not compile-checked (Python, JavaScript, most
+  scripting stacks) this is the only mechanical catch; this repo's own Go stack already gets it from
+  `go build`. Provenance: code-generating models recommended nonexistent packages for 19.7% of
+  packages across 576,000 samples from 16 models ("We Have a Package for You! A Comprehensive
+  Analysis of Package Hallucinations by Code Generating LLMs", USENIX Security 2025,
+  [repository](https://github.com/Spracks/PackageHallucination)); rule added by the
+  `agent-code-quality-hardening` delivery.
 - **Plain human writing (MUST):** plain, direct language in code, comments, commit messages, and
   replies. Comments explain why, not what. No AI-tell filler (ensure, enhance, simplify, leverage,
   utilize, seamless, robust, comprehensive, delve). No decorative symbols, icons, emojis, or the
