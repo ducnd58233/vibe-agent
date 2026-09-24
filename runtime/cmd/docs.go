@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/docgrounding"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/docsrouter"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
@@ -12,13 +13,15 @@ import (
 // docsCommand dispatches docs/ subcommands.
 func docsCommand(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("docs needs a subcommand: router")
+		return fmt.Errorf("docs needs a subcommand: router, check-claims")
 	}
 	switch args[0] {
 	case "router":
 		return docsRouter(args[1:])
+	case "check-claims":
+		return docsCheckClaims(args[1:])
 	default:
-		return fmt.Errorf("unknown docs subcommand %q; try router", args[0])
+		return fmt.Errorf("unknown docs subcommand %q; try router, check-claims", args[0])
 	}
 }
 
@@ -46,4 +49,37 @@ func docsRouter(args []string) error {
 	}
 	fmt.Printf("wrote %s\n", path)
 	return nil
+}
+
+// docsCheckClaims is a /review warning, not a vibe-checks.yaml gate: it flags
+// a backtick-quoted path in a doc that does not resolve in the repo tree, so
+// a reviewer spends attention on what a machine cannot say instead of
+// re-deriving what it can. Exits non-zero on a finding so a caller can choose
+// to treat it as a warning or a blocker.
+func docsCheckClaims(args []string) error {
+	flags := newFlagSet("docs check-claims")
+	paths := addRootFlags(flags)
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() != 1 {
+		return fmt.Errorf("docs check-claims needs exactly one markdown file path")
+	}
+	workspaceRoot, _, err := paths.resolve()
+	if err != nil {
+		return err
+	}
+	target := flags.Arg(0)
+	issues, err := docgrounding.Check(workspaceRoot, target)
+	if err != nil {
+		return err
+	}
+	if len(issues) == 0 {
+		fmt.Printf("ok    %s: every backtick-quoted path resolves\n", target)
+		return nil
+	}
+	for _, issue := range issues {
+		fmt.Printf("WARN  %s:%d: %q does not resolve in the repo tree\n", target, issue.Line, issue.Path)
+	}
+	return fmt.Errorf("%d unresolved path reference(s) in %s", len(issues), target)
 }

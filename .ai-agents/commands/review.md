@@ -37,6 +37,8 @@ Review current changes (staged diff, branch, or paths the user specifies) across
 
 Categorize findings as **Critical**, **Important**, or **Suggestion**. Include `file:line` and concrete fixes.
 
+**Grounding, when the diff touches a `docs/**/*.md` deliverable (MUST):** run `vibe-agent docs check-claims <path>` before writing findings for that file. It flags a backtick-quoted file path that does not resolve in the repo tree - the same repo-fact discipline `docs/ROUTER.md` generation and the slug-continuation lookup already require. A finding is a warning, not a `vibe-checks.yaml` gate: decide whether it is a genuinely fabricated path or a reasonable shorthand worth tightening, the same way you already judge a `slop audit` finding. For a claim the checker cannot mechanically verify (a factual assertion about the codebase, not just a path), use the [`source-auditor`](../agents/source-auditor.md) agent - already built for RESEARCH's external citations - on SPEC/PLAN/RESEARCH claims about the codebase too, not RESEARCH alone.
+
 Optional: spawn the **`code-reviewer`** subagent ([`agents/code-reviewer.md`](../agents/code-reviewer.md)) for a dedicated review session.
 </procedure>
 
