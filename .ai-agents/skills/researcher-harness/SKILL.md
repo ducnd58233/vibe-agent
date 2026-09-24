@@ -30,6 +30,42 @@ Anti-fabrication: no model assertion as check evidence. Gates use `file_assert` 
 GPU/sandbox: unsupported in-process. Document host/CI as the compute port.
 </procedure>
 
+## Experiment ledger, across runs (MUST when comparing iterations)
+
+<required>
+
+`experiment/STATUS.md` and `METRICS.json` under a delivery run's own
+`.agent-state/runs/<date>/<slug>/<version>/` are scoped to **one graph
+traversal** - they answer "is this run's experiment done, and did it pass,"
+then the run finishes and that evidence stops mattering. Comparing many
+iterations of a method for a paper, report, or competition submission needs a
+record that outlives any one run.
+
+Use `experiments/<project-slug>/<run-id>/`, a separate top-level convention -
+not under `.agent-state/` (ephemeral, gitignored, local; wrong home for
+something meant to be compared later) and not under one run's
+`docs/<date>/<slug>/<version>/` (scoped to a single delivery, not a series):
+
+```text
+experiments/<project-slug>/<run-id>/
+  config.json    # hyperparameters, model/version, dataset version, seed
+  metrics.json    # {"metrics": {...}, "thresholds": {...}}
+  SUMMARY.md       # one paragraph: what changed since the last run-id, and why
+  code.sha         # git commit this run executed against
+```
+
+`config.json` and `metrics.json` each validate against
+[`schemas/experiment-run.schema.json`](../../../schemas/experiment-run.schema.json)
+(`$defs/config`, `$defs/metrics`) - the same `{metrics, thresholds}` shape
+`experiment/METRICS.json` already uses, so one parser reads both, and every
+run in a series shares the same fields to diff against. A worked example:
+[`experiments/_example/001/`](../../../experiments/_example/001/).
+
+Whether `experiments/` is gitignored is this project's own `AGENTS.md`
+choice, the same as `docs/` already is - a research or competition repo will
+usually track it, since comparing runs later for a writeup is the point.
+</required>
+
 ## Routing & discovery
 
 <routing>
