@@ -365,6 +365,45 @@ func TestBothEdgesLeavingAMergeResetTheSameChecks(t *testing.T) {
 	}
 }
 
+// The four auto-path "_ok" checks (bug_hunt_ok, expectation_ok, release_ok,
+// review_ok) all sit on a fixed-path-per-run artifact
+// (bug_hunt/FINDINGS.md, expectation/REVIEW.md, release/REVIEW.md,
+// review/REVIEW.md), reused across every task in the run rather than written
+// fresh per task. Wherever one is reset for a new cycle, the others must be
+// too, or a later task's run status shows an earlier task's stale pass next
+// to checks that were correctly cleared - exactly the self-report problem
+// docs/2026-09-24/agent-code-quality-hardening exists to close, just moved
+// from "no check at all" to "a check nobody re-earned."
+func TestTheFourAutoPathReviewChecksAreResetTogether(t *testing.T) {
+	runner := newRunner(t)
+	siblings := []string{"bug_hunt_ok", "expectation_ok", "release_ok", "review_ok"}
+
+	for _, edge := range runner.Graph.Spec.Edges {
+		if len(edge.Resets) == 0 {
+			continue
+		}
+		present := map[string]bool{}
+		for _, name := range edge.Resets {
+			present[name] = true
+		}
+		anyPresent := false
+		for _, name := range siblings {
+			if present[name] {
+				anyPresent = true
+				break
+			}
+		}
+		if !anyPresent {
+			continue
+		}
+		for _, name := range siblings {
+			if !present[name] {
+				t.Errorf("edge %s -> %s resets some of %v but not %q", edge.From, edge.To, siblings, name)
+			}
+		}
+	}
+}
+
 // review is a type: agent node, so Advance never requires a check to leave it
 // - only a type: verifier node does. Before review_ok existed, the auto edge
 // out of review read the auto flag alone, so an empty Outcome (no evidence of
