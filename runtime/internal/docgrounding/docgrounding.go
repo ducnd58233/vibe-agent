@@ -84,7 +84,34 @@ func looksLikePath(s string) bool {
 	if strings.HasPrefix(s, "/") && !strings.Contains(s[1:], "/") {
 		return false // a slash command, e.g. "/vibe-auto" or "/review" - single segment after the slash
 	}
+	if looksLikeBranchName(s) {
+		return false // a git branch, e.g. "feat/some-slug-t1-thing" - not a path in this repo's tree
+	}
 	return true
+}
+
+// branchPrefixes are this repo's own conventional-commit-shaped branch types,
+// seen throughout docs/**/TASKS-*.md "**Branch:**" lines.
+// "docs" is deliberately excluded: it is a real top-level directory in this
+// repo (docs/<date>/<slug>/<version>/), and no branch in this repo's own
+// history uses it as a type prefix - the collision would make the checker
+// blind to exactly the paths it exists to verify.
+var branchPrefixes = map[string]bool{
+	"feat": true, "fix": true, "chore": true, "refactor": true,
+	"test": true, "build": true, "ci": true, "perf": true, "style": true,
+	"revert": true, "bugfix": true, "hotfix": true,
+}
+
+// looksLikeBranchName reports whether s is shaped like "<type>/<rest>" for a
+// known conventional-commit branch type, with no file extension - a real path
+// under one of these directory names (rare, and always has an extension in
+// this repo) is not excluded by the extension check.
+func looksLikeBranchName(s string) bool {
+	first, rest, ok := strings.Cut(s, "/")
+	if !ok || !branchPrefixes[first] || rest == "" {
+		return false
+	}
+	return !strings.Contains(rest, ".")
 }
 
 // pathExists checks candidate, and candidate with a trailing "/" or
