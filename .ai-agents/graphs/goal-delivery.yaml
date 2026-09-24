@@ -616,6 +616,14 @@ spec:
       to: plan
       when: "!plan_approved"
 
+    # This edge is presently unreachable: Runner.Advance() (runtime/internal/
+    # loop/runner.go) resolves a blocker outcome itself - StatusFailed on the
+    # 3rd identical (node, reason) attempt, StatusAwaitingHuman before that -
+    # and returns before ever calling resolve(), which is what evaluates the
+    # "blocked" guard this edge depends on. Left as documentation of intent
+    # pending a real fix to that control flow; deliberately out of scope for
+    # workspace slug research-experiment-persistence (see that delivery's
+    # SPEC Non-goals).
     - from: build
       to: failed
       when: blocked
