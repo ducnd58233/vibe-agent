@@ -95,8 +95,11 @@ path. When a rule already has a home, link to it instead of restating it.
 - **A build check resolves real dependencies (MUST):** a workspace's declared build or unit check
   (in `vibe-checks.yaml` or its equivalent) installs or resolves dependencies from the manifest and
   lockfile as part of the check (`npm ci`, `pip install -r requirements.txt`, `go build` against
-  `go.sum`, or the ecosystem's equivalent), not only a typecheck or lint against a cache that is
-  already populated. A package the model invented then fails a check with `exit_code` provenance
+  `go.sum`, or the ecosystem's equivalent) and then imports or runs the code against that install (a
+  unit suite does both), not only a typecheck or lint against a cache that is already populated. The
+  install catches an invented name added to the manifest; the import catches one used without being
+  declared, which a successful install says nothing about. A package the model invented then fails a
+  check with `exit_code` provenance
   instead of failing in production, and a name that does not exist cannot later be registered by
   someone else and installed. Where imports are not compile-checked (Python, JavaScript, most
   scripting stacks) this is the only mechanical catch; this repo's own Go stack already gets it from
