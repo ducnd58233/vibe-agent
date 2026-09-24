@@ -45,11 +45,9 @@ func TestApplyAllowsTheFirstVisitToAutoResearchRegardlessOfContent(t *testing.T)
 	atAutoResearch(t, root)
 	writeResearchArtifact(t, root, "first attempt, whatever it says\n")
 
-	if _, err := Apply(Request{
-		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
-		Outcome: loop.Outcome{}, Now: at(),
-	}); err != nil {
-		t.Fatalf("a first visit must never be refused: %v", err)
+	result := apply(t, root, loop.Outcome{})
+	if result.Transition == nil || result.Transition.From != "auto_research" {
+		t.Fatalf("a first visit must actually advance past auto_research: %+v", result.Transition)
 	}
 }
 
@@ -62,25 +60,17 @@ func TestApplyRefusesAnIdenticalResubmissionAtAutoResearch(t *testing.T) {
 	atAutoResearch(t, root)
 	content := "the approach and findings, unchanged across attempts\n"
 	writeResearchArtifact(t, root, content)
-
-	// First visit: accepted, and the snapshot is recorded.
-	if _, err := Apply(Request{
-		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
-		Outcome: loop.Outcome{}, Now: at(),
-	}); err != nil {
-		t.Fatalf("first visit: %v", err)
-	}
+	apply(t, root, loop.Outcome{}) // first visit: accepted, snapshot recorded
 
 	// Simulate the retry cycle landing back at auto_research with the exact
 	// same content already on disk.
 	atAutoResearch(t, root)
 	writeResearchArtifact(t, root, content)
 
-	_, err := Apply(Request{
+	if _, err := Apply(Request{
 		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
 		Outcome: loop.Outcome{}, Now: at(),
-	})
-	if err == nil {
+	}); err == nil {
 		t.Fatal("an identical resubmission at auto_research must be refused")
 	}
 }
@@ -89,22 +79,13 @@ func TestApplyAllowsAGenuinelyRevisedResubmissionAtAutoResearch(t *testing.T) {
 	root := t.TempDir()
 	atAutoResearch(t, root)
 	writeResearchArtifact(t, root, "The approach is X.\nTried A.\nTried B.\nConclusion: unclear.\n")
-
-	if _, err := Apply(Request{
-		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
-		Outcome: loop.Outcome{}, Now: at(),
-	}); err != nil {
-		t.Fatalf("first visit: %v", err)
-	}
+	apply(t, root, loop.Outcome{})
 
 	atAutoResearch(t, root)
 	writeResearchArtifact(t, root, "The approach is Y.\nTried C.\nTried D.\nConclusion: works.\n")
-
-	if _, err := Apply(Request{
-		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
-		Outcome: loop.Outcome{}, Now: at(),
-	}); err != nil {
-		t.Errorf("a genuinely revised resubmission must be allowed: %v", err)
+	result := apply(t, root, loop.Outcome{})
+	if result.Transition == nil || result.Transition.From != "auto_research" {
+		t.Fatalf("a genuine revision must actually advance past auto_research: %+v", result.Transition)
 	}
 }
 
@@ -116,22 +97,12 @@ func TestApplyDoesNotApplyTheNoProgressCheckToABlockerOutcome(t *testing.T) {
 	atAutoResearch(t, root)
 	content := "same content every time\n"
 	writeResearchArtifact(t, root, content)
-
-	if _, err := Apply(Request{
-		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
-		Outcome: loop.Outcome{}, Now: at(),
-	}); err != nil {
-		t.Fatalf("first visit: %v", err)
-	}
+	apply(t, root, loop.Outcome{})
 
 	atAutoResearch(t, root)
 	writeResearchArtifact(t, root, content)
-
-	if _, err := Apply(Request{
-		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
-		Outcome: loop.Outcome{Blocker: "research tool unavailable", BlockerClass: state.FailureTool},
-		Now:     at(),
-	}); err != nil {
-		t.Errorf("a blocker outcome must not be refused by the no-progress check: %v", err)
+	result := apply(t, root, loop.Outcome{Blocker: "research tool unavailable", BlockerClass: state.FailureTool})
+	if result.Run.Status != state.StatusAwaitingHuman {
+		t.Fatalf("a blocker outcome must take its own path, not the no-progress check's: status=%s", result.Run.Status)
 	}
 }
