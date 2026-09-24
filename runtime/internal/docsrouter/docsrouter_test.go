@@ -6,8 +6,10 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/docsrouter"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/runpath"
 )
 
@@ -72,6 +74,29 @@ func TestTitleForMatchesGenerate(t *testing.T) {
 	got := docsrouter.TitleFor(root, "docs-tmp-versioned-paths")
 	if got != "Versioned docs/tmp layout" {
 		t.Fatalf("TitleFor = %q", got)
+	}
+}
+
+func TestFallbackTitleTruncatesOnRuneBoundaries(t *testing.T) {
+	// A goal long enough to truncate, with a multi-byte rune sitting exactly
+	// where a byte-index slice at 80 would split it. Real data: this repo's
+	// own l-m-th-n and m-r-ng-repo slugs carry Vietnamese goal text.
+	goal := strings.Repeat("x", 79) + "ế" + strings.Repeat("y", 20)
+	root := t.TempDir()
+	if err := runpath.SaveIndex(root, runpath.Entry{Slug: "probe-slug", Date: "2026-09-24", Version: 1}); err != nil {
+		t.Fatal(err)
+	}
+	manifest := &state.Run{
+		RunID: "run_probe", GraphID: "goal-delivery", Slug: "probe-slug",
+		Goal: goal, SchemaVersion: 1, Status: state.StatusRunning, MaxTransitions: 100,
+	}
+	if err := state.Save(state.ManifestPath(root, "probe-slug"), manifest); err != nil {
+		t.Fatal(err)
+	}
+
+	got := docsrouter.TitleFor(root, "probe-slug")
+	if !utf8.ValidString(got) {
+		t.Fatalf("TitleFor produced invalid UTF-8: %q", got)
 	}
 }
 

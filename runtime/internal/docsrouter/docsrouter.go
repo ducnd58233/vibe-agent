@@ -108,10 +108,17 @@ func fallbackTitle(workspaceRoot, slug string) string {
 	if err != nil || current.Goal == "" {
 		return "(no SPEC written for this slug)"
 	}
-	goal := current.Goal
-	const max = 80
-	if len(goal) > max {
-		goal = goal[:max] + "..."
+	return truncateRunes(current.Goal, 80) + " (no SPEC written)"
+}
+
+// truncateRunes cuts s to at most max runes, not bytes: a byte-index slice on
+// a multi-byte objective (this repo has real Vietnamese goal text - see
+// l-m-th-n, m-r-ng-repo) can land inside a UTF-8 sequence and produce invalid
+// output. Found by constructing exactly that case during T3's bug hunt.
+func truncateRunes(s string, max int) string {
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
 	}
-	return goal + " (no SPEC written)"
+	return string(runes[:max]) + "..."
 }
