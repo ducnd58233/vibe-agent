@@ -594,7 +594,7 @@ func stop(req Request, body payload, out io.Writer, extra string) error {
 	// has had its extra turn. Blocking again is how this becomes a loop.
 	if len(runs) > 0 && !body.StopHookActive {
 		if reason := blockReason(runs); reason != "" {
-			recordStopNotice(req.WorkspaceRoot, runs)
+			recordStopNotice(req, runs)
 			return writeBlockDecision(out, req.Client, reason)
 		}
 	}
@@ -702,17 +702,19 @@ func researchLoopBlockReason(runs []*state.Run) string {
 // recordStopNotice persists run.UpdatedAt as of this block, for every loop-
 // node run this call is about to block, so a later stop call - possibly with
 // the host's retry-after-block signal set - can tell whether anything
-// happened in between. Errors are swallowed: a hook that fails a session
-// because it could not write this bookkeeping field would be a worse failure
-// than not narrowing the exemption this one time.
-func recordStopNotice(workspaceRoot string, runs []*state.Run) {
+// happened in between. A write failure is logged, not surfaced: a hook that
+// fails a session because it could not write this bookkeeping field would be
+// a worse failure than not narrowing the exemption this one time.
+func recordStopNotice(req Request, runs []*state.Run) {
 	for _, run := range runs {
 		if !advanceable(run) || !inResearchLoop(run) {
 			continue
 		}
 		notice := run.UpdatedAt
 		run.StopNoticeAt = &notice
-		_ = state.Save(state.ManifestPath(workspaceRoot, run.Slug), run)
+		if err := state.Save(state.ManifestPath(req.WorkspaceRoot, run.Slug), run); err != nil && req.Log != nil {
+			req.Log.Debug("stop notice not recorded", "slug", run.Slug, "error", err.Error())
+		}
 	}
 }
 
