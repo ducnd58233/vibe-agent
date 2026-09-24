@@ -61,6 +61,7 @@ Usage:
   vibe-agent sandbox exec --slug <slug> --use-case <name> [--runner <name>] -- <command>...
   vibe-agent sandbox down --slug <slug> --use-case <name>
   vibe-agent doctor
+  vibe-agent docs router [--workspace <dir>]
   vibe-agent eval routing [--trials N] [--jobs N] [--runner codex|claude|cursor|opencode|all] [--only <text>]
   vibe-agent version
 
@@ -79,6 +80,12 @@ budget and says how many lines were left, rather than implying the page fit.
 "slop audit" scans local code for AI-generated code slop signals. The built-in
 scanner uses go-enry language detection rather than a local extension table.
 It does not spawn external linters from user-controlled paths.
+
+"docs router" regenerates docs/ROUTER.md, a standing index of every slug this
+workspace knows about (from the run-index and docs/ tree), sorted by slug so a
+human can look up existing work by topic instead of only by datetime path. Not
+itself a dated deliverable; safe to run any time, and a no-op regeneration
+produces an identical file.
 
 "skills add" forwards to "npx skills add" with the four vibe-agent hosts as the
 default -a set. "skills convert-report" prints host-only SKILL.md frontmatter
@@ -232,6 +239,8 @@ func run(args []string) error {
 		return migrateCommand(args[1:])
 	case "doctor":
 		return doctorCommand(args[1:])
+	case "docs":
+		return docsCommand(args[1:])
 	case "eval":
 		return evalCommand(args[1:])
 	case "version":

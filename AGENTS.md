@@ -195,6 +195,7 @@ Follow links from those files only as the task requires.
 | Delivery commands | [`.ai-agents/commands/ROUTER.md`](.ai-agents/commands/ROUTER.md) |
 | Stack detection | [`.ai-agents/stack-profiles/ROUTER.md`](.ai-agents/stack-profiles/ROUTER.md) |
 | Generated docs from commands | `docs/<date>/<slug>/<version>/` at workspace root |
+| Looking up existing work by slug/topic | `docs/ROUTER.md` (regenerate with `vibe-agent docs router`), or `vibe-agent run list --titles` |
 | Verification evidence | `.agent-state/runs/<date>/<slug>/<version>/` (gitignored) |
 | Mistakes log | `.agent-state/MISTAKES.md` (gitignored); format [mistakes-log.md](.ai-agents/references/mistakes-log.md) |
 | Consumer multi-repo doc workspace | Consumer repo `AGENTS.md` (local-first overrides toolkit defaults) |

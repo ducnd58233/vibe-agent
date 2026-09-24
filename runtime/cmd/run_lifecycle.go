@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/docsrouter"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
@@ -40,6 +41,7 @@ func runList(args []string) error {
 	flags := newFlagSet("run list")
 	paths := addRootFlags(flags)
 	status := flags.String("status", "", "only runs with this status")
+	titles := flags.Bool("titles", false, "append each run's title (SPEC H1, or manifest goal if no SPEC)")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -65,9 +67,24 @@ func runList(args []string) error {
 			continue
 		}
 		if shown == 0 {
-			fmt.Printf("%-34s %-16s %-18s %-9s %s\n", "SLUG", "STATUS", "NODE", "ITERATION", "IDLE")
+			if *titles {
+				fmt.Printf("%-34s %-16s %-18s %-9s %-8s %s\n", "SLUG", "STATUS", "NODE", "ITERATION", "IDLE", "TITLE")
+			} else {
+				fmt.Printf("%-34s %-16s %-18s %-9s %s\n", "SLUG", "STATUS", "NODE", "ITERATION", "IDLE")
+			}
 		}
 		shown++
+		if *titles {
+			fmt.Printf("%-34s %-16s %-18s %-9s %-8s %s\n",
+				slug,
+				current.Status,
+				orDash(current.CurrentNode),
+				fmt.Sprintf("%d/%d", current.Iteration, current.MaxTransitions),
+				idleFor(now, current.UpdatedAt),
+				docsrouter.TitleFor(workspaceRoot, slug),
+			)
+			continue
+		}
 		fmt.Printf("%-34s %-16s %-18s %-9s %s\n",
 			slug,
 			current.Status,
