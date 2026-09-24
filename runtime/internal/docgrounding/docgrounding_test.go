@@ -177,3 +177,30 @@ func TestCheckSkipsFencedCodeBlocks(t *testing.T) {
 		t.Fatalf("a fenced code example should not be flagged: %+v", issues)
 	}
 }
+
+func TestCheckSkipsGitBranchNames(t *testing.T) {
+	root := t.TempDir()
+	doc := write(t, root, "docs/demo.md", "**Branch:** `feat/some-slug-t1-thing`\n")
+
+	issues, err := docgrounding.Check(root, doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(issues) != 0 {
+		t.Fatalf("a conventional-commit-shaped branch name is not a path and should not be flagged: %+v", issues)
+	}
+}
+
+func TestCheckStillFlagsADanglingDocsDirectory(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, "docs/2026-09-24/real-slug/1/SPEC-2026-09-24.md", "# real\n")
+	doc := write(t, root, "docs/demo.md", "See `docs/2026-09-24/real-slug/1` and `docs/2026-09-24/fake-slug/1` for details.\n")
+
+	issues, err := docgrounding.Check(root, doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(issues) != 1 || issues[0].Path != "docs/2026-09-24/fake-slug/1" {
+		t.Fatalf("a bare docs/<date>/<slug>/<version> directory reference must still be checked - \"docs\" is a real top-level directory, not a branch prefix: issues = %+v", issues)
+	}
+}
