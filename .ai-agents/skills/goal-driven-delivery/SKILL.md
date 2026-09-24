@@ -14,7 +14,7 @@ disable-model-invocation: true
 
 <context>
 
-Turn a user objective into verified, shippable work by running a **phased pipeline** with explicit checkpoints. Re-read artifacts on disk (`docs/<slug>/SPEC.md`, `TASKS.md`) at each phase instead of relying on chat memory.
+Turn a user objective into verified, shippable work by running a **phased pipeline** with explicit checkpoints. Re-read artifacts on disk (`docs/<date>/<slug>/<version>/SPEC-<date>.md`, `TASKS-<date>.md`) at each phase instead of relying on chat memory.
 
 This skill is the body behind [`/goal`](../../commands/goal.md). It **composes** existing commands; it does not spawn persona chains (see [`orchestration-patterns.md`](../../references/orchestration-patterns.md) anti-pattern B).
 
@@ -59,7 +59,7 @@ Invoke via [`/goal`](../../commands/goal.md) when the user wants autonomous-styl
 
 Work is **done** only when **all** hold:
 
-1. Every task in `docs/<slug>/TASKS.md` is complete (or scope was explicitly reduced with human approval).
+1. Every task in `docs/<date>/<slug>/<version>/TASKS-<date>.md` is complete (or scope was explicitly reduced with human approval).
 2. Repo verification commands from the spec pass (tests, lint, typecheck, build as documented).
 3. **E2E / full-runtime verification** passed when the change is in scope (see Phase 5b and [`goal-verification-records.md`](../../references/goal-verification-records.md)).
 4. **PR CI checks** and **configured external PR reviews** (CodeRabbit, Cursor Bugbot, other bots) are complete or explicitly waived by the human.
@@ -88,7 +88,7 @@ INTAKE → [RESEARCH] → SPEC → PLAN → BUILD (per task) → TEST → REVIEW
 
 1. Restate the objective in one paragraph. List unknowns.
 2. **MUST ask** focused questions when requirements are ambiguous, conflicting, or underspecified. Do not write product code until clarified ([`AGENTS.md`](../../../AGENTS.md)).
-3. Pick `docs/<slug>/` (kebab-case). Confirm `<slug>` with the human when not obvious.
+3. Pick `<slug>` (kebab-case). Confirm `<slug>` with the human when not obvious; the run will live at `docs/<date>/<slug>/<version>/`.
 4. Record **ASSUMPTIONS** explicitly; mark any that still need confirmation.
 5. Define a measurable **done** line (tests, behavior, files) for this goal.
 
@@ -108,7 +108,7 @@ INTAKE → [RESEARCH] → SPEC → PLAN → BUILD (per task) → TEST → REVIEW
 | [`data-analyst`](../../agents/data-analyst.md) | Persona |
 | [`/investigate`](../../commands/investigate.md) | Multi-lane evidence questions (not for pure local-repo tree reads) |
 
-Save outputs under `docs/<slug>/` when useful (for example `RESEARCH.md`). Mark `UNVERIFIED` items.
+Save outputs under `docs/<date>/<slug>/<version>/` when useful (for example `RESEARCH-<date>.md`). Mark `UNVERIFIED` items.
 
 **Exit:** Enough evidence to spec, or human accepts proceeding with stated gaps.
 
@@ -116,7 +116,7 @@ Save outputs under `docs/<slug>/` when useful (for example `RESEARCH.md`). Mark 
 
 Follow [`/spec`](../../commands/spec.md) and [`spec-driven-development`](../spec-driven-development/SKILL.md).
 
-- Write `docs/<slug>/SPEC.md`.
+- Write `docs/<date>/<slug>/<version>/SPEC-<date>.md`.
 - Include success criteria, boundaries (Always / Ask / Never), and real workspace commands.
 - **Checkpoint:** present spec; do not plan or implement until human approves when the process requires it.
 
@@ -126,7 +126,7 @@ Optional: [`architect-planner`](../../agents/architect-planner.md) for large arc
 
 Follow [`/plan`](../../commands/plan.md) and [`planning-and-task-breakdown`](../planning-and-task-breakdown/SKILL.md).
 
-- Write `docs/<slug>/PLAN.md`, `docs/<slug>/TASKS.md`, and `docs/<slug>/tasks.json`.
+- Write `docs/<date>/<slug>/<version>/PLAN-<date>.md`, `docs/<date>/<slug>/<version>/TASKS-<date>.md`, and `docs/<date>/<slug>/<version>/tasks-<date>.json`.
 - Each task gets a **status marker, a description, and its own acceptance criteria** as checkboxes.
   A task missing any of the three is not a task yet. Status vocabulary and the rule that TASKS.md
   and `tasks.json` are one edit: [`planning-and-task-breakdown`](../planning-and-task-breakdown/SKILL.md),
@@ -244,7 +244,7 @@ ELSE:
 <verification>
 
 - [ ] Ambiguity resolved or explicitly assumed before implementation
-- [ ] `docs/<slug>/SPEC.md` and `TASKS.md` exist and were re-read during execution
+- [ ] `docs/<date>/<slug>/<version>/SPEC-<date>.md` and `TASKS-<date>.md` exist and were re-read during execution
 - [ ] `tasks.json` agrees with `TASKS.md`, and every task there is `done` or `canceled` with a reason
 - [ ] Each planned task used its own branch; same-task fixes reused branch
 - [ ] Tests/lint/build run with observed results saved under `tmp/<slug>/`
