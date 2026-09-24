@@ -50,7 +50,7 @@ func Generate(workspaceRoot string) (string, error) {
 			continue // no run-index entry and nothing on disk; nothing to route to
 		}
 		relPath := filepath.ToSlash(filepath.Join(workspace.DocsDirName, entry.Date, slug, strconv.Itoa(entry.Version))) + "/"
-		fmt.Fprintf(&b, "| %s | %d | %s | %s | `%s` |\n", slug, entry.Version, entry.Date, TitleFor(workspaceRoot, slug), relPath)
+		fmt.Fprintf(&b, "| %s | %d | %s | %s | `%s` |\n", slug, entry.Version, entry.Date, titleForEntry(workspaceRoot, entry), relPath)
 	}
 	return b.String(), nil
 }
@@ -63,10 +63,17 @@ func TitleFor(workspaceRoot, slug string) string {
 	if err != nil {
 		return fallbackTitle(workspaceRoot, slug)
 	}
+	return titleForEntry(workspaceRoot, entry)
+}
+
+// titleForEntry is TitleFor for a caller that already resolved the entry
+// (Generate walks every slug's entry anyway; resolving it again per row would
+// be a second run-index read for the same slug).
+func titleForEntry(workspaceRoot string, entry runpath.Entry) string {
 	if title := specTitle(workspaceRoot, entry); title != "" {
 		return title
 	}
-	return fallbackTitle(workspaceRoot, slug)
+	return fallbackTitle(workspaceRoot, entry.Slug)
 }
 
 // specTitle reads the H1 line ("# Spec: ...") from the revision's SPEC file,
