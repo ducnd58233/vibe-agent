@@ -191,6 +191,10 @@ Stop only when:
 - a gate document leaves open markers (Open questions, TBD, or missing Applicability / Refine /
   Mermaid on RESEARCH, or missing Mermaid on PLAN).
 
+A missed metrics threshold at `results_eval` is neither of those - it is a verifier fail the graph
+already retries automatically. Never record it as `checkpoint --blocker`; see
+[`AGENTS.md`](../../AGENTS.md) "Blocker vs. retry".
+
 When RESEARCH and PLAN are settled, `vibe-agent checkpoint` and `vibe-agent auto gate` both skip
 the approval gates and advance the run. Report results when the loop finishes; do not poll the
 human mid-pipeline.

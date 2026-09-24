@@ -238,6 +238,16 @@ Follow links from those files only as the task requires.
   and `ship` via `file_assert` on `.agent-state/runs/<date>/<slug>/<version>/ship/DECISION.md` written by `/ship`.
   No new checkpoint evidence source was added (`exit_code`, `file_assert`, `ci_api`, `human_event`
   remain the set). `/goal` is unchanged. Spec for this delivery: workspace slug `auto-ship-reviews`.
+- **Blocker vs. retry (MUST).** `vibe-agent checkpoint --blocker` is for a step with no fallback
+  edge at all: a missing tool, a permission wall, or a request with more than one reading
+  (`FailureClass` values `tool`, `permission`, `ambiguity`). A verifier failure the graph already
+  retries automatically - a missed experiment metrics threshold at `results_eval`, or any other
+  check the graph routes back from on failure - is `FailureTest` ("the work being wrong, reported by
+  a check") and must be left to fail and loop, never recorded as a blocker. Recording one anyway
+  moves the run to `StatusAwaitingHuman` on the very first call, which parks it outside the retry
+  loop the graph was built to run automatically. Traced by reading
+  `runtime/internal/loop/runner.go`'s `Advance()`. Spec for this delivery: workspace slug
+  `research-experiment-persistence`.
 - **Evidence.** `/goal` records verification under `.agent-state/runs/<date>/<slug>/<version>/` when that path is gitignored in the
   workspace, redacted before write. See
   [`goal-verification-records`](.ai-agents/references/goal-verification-records.md).
