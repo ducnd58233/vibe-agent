@@ -62,6 +62,7 @@ Usage:
   vibe-agent sandbox down --slug <slug> --use-case <name>
   vibe-agent doctor
   vibe-agent docs router [--workspace <dir>]
+  vibe-agent docs check-claims <markdown-file> [--workspace <dir>]
   vibe-agent eval routing [--trials N] [--jobs N] [--runner codex|claude|cursor|opencode|all] [--only <text>]
   vibe-agent version
 
@@ -86,6 +87,12 @@ workspace knows about (from the run-index and docs/ tree), sorted by slug so a
 human can look up existing work by topic instead of only by datetime path. Not
 itself a dated deliverable; safe to run any time, and a no-op regeneration
 produces an identical file.
+
+"docs check-claims" flags a backtick-quoted path in a doc that does not
+resolve in the repo tree. A /review warning, not a vibe-checks.yaml gate: it
+exits non-zero on a finding so a caller decides whether that blocks. Template
+placeholders (docs/<date>/<slug>/) and paths a line explicitly marks planned
+are not flagged.
 
 "skills add" forwards to "npx skills add" with the four vibe-agent hosts as the
 default -a set. "skills convert-report" prints host-only SKILL.md frontmatter

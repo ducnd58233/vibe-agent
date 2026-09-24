@@ -28,7 +28,7 @@ var forbiddenStateKey = regexp.MustCompile(`(?m)^\s*"?(currentNode|checks|maxTra
 // shows a currentNode/checks example inside a ```json fence, and that is
 // documentation, not a leak.
 func checkNoGraphState(rel string, raw []byte) *Issue {
-	m := forbiddenStateKey.FindSubmatch(stripFencedCode(raw))
+	m := forbiddenStateKey.FindSubmatch(StripFencedCode(raw))
 	if m == nil {
 		return nil
 	}
@@ -38,10 +38,10 @@ func checkNoGraphState(rel string, raw []byte) *Issue {
 	}
 }
 
-// stripFencedCode blanks the content of every ``` ... ``` block, keeping line
+// StripFencedCode blanks the content of every ``` ... ``` block, keeping line
 // numbers stable and leaving the fence markers themselves so nothing outside
 // a block shifts position.
-func stripFencedCode(raw []byte) []byte {
+func StripFencedCode(raw []byte) []byte {
 	lines := strings.Split(string(raw), "\n")
 	inFence := false
 	for i, line := range lines {
