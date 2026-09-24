@@ -150,6 +150,14 @@ func Apply(req Request) (*Result, error) {
 		run.TokensUsed = req.TokensUsed
 	}
 
+	// A blocker is an unrelated escape valve (AGENTS.md "Blocker vs. retry")
+	// and resolves before this would ever apply, so it is excluded here too.
+	if req.Outcome.Blocker == "" {
+		if err := checkProgress(req.WorkspaceRoot, run); err != nil {
+			return nil, err
+		}
+	}
+
 	now := req.now()
 	from := run.CurrentNode
 	transition, err := loop.New(loaded).Advance(run, req.Outcome)
