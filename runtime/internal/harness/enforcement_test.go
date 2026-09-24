@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
@@ -141,6 +142,103 @@ func TestCursorStopContinuesWithAFollowupMessage(t *testing.T) {
 	body := decode(t, output)
 	if followup, _ := body["followup_message"].(string); !strings.Contains(followup, "demo") {
 		t.Errorf("Cursor stop did not send a followup message: %s", output)
+	}
+}
+
+// --- Change 3: a research/experiment loop node does not get the one-time pass ---
+
+// Without this, an agent parked mid-loop gets the nudge once, tries to stop
+// again without recording anything, and the second attempt is let through -
+// indistinguishable from the outside from a run that simply finished.
+func TestStopRefusesASecondAttemptAtAResearchLoopNodeWithNoNewEvidence(t *testing.T) {
+	root := workspaceWithRun(t, func(run *state.Run) { run.CurrentNode = "experiment_run" })
+
+	first := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	if decode(t, first)["decision"] != "block" {
+		t.Fatalf("first stop attempt at a loop node should block normally: %s", first)
+	}
+
+	second := invoke(t, Request{
+		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{"stop_hook_active":true}`),
+	})
+	if decode(t, second)["decision"] != "block" {
+		t.Errorf("a second stop attempt at a loop node with nothing recorded since the first block must still be refused: %s", second)
+	}
+}
+
+// The narrowing is scoped to loop nodes only - every other run keeps exactly
+// the behavior TestStopDoesNotBlockWhenItIsAlreadyBlocking already pins.
+func TestStopStillAllowsASecondAttemptAtAnUnrelatedNode(t *testing.T) {
+	root := workspaceWithRun(t) // CurrentNode "test", not a loop node
+
+	first := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	if decode(t, first)["decision"] != "block" {
+		t.Fatalf("first stop attempt should block normally: %s", first)
+	}
+
+	second := invoke(t, Request{
+		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{"stop_hook_active":true}`),
+	})
+	if decode(t, second)["decision"] == "block" {
+		t.Errorf("an unrelated node must keep the existing one-time exemption: %s", second)
+	}
+}
+
+// New evidence recorded between the two attempts lifts the narrowing: the
+// point is to force a real action, not to double-block every loop node.
+func TestStopAllowsASecondAttemptAtALoopNodeAfterNewEvidence(t *testing.T) {
+	root := workspaceWithRun(t, func(run *state.Run) { run.CurrentNode = "experiment_run" })
+
+	first := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	if decode(t, first)["decision"] != "block" {
+		t.Fatalf("first stop attempt at a loop node should block normally: %s", first)
+	}
+
+	run, err := state.Load(state.ManifestPath(root, "demo"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	run.UpdatedAt = run.UpdatedAt.Add(time.Minute) // simulates a checkpoint/verify call in between
+	if err := state.Save(state.ManifestPath(root, "demo"), run); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	second := invoke(t, Request{
+		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{"stop_hook_active":true}`),
+	})
+	if decode(t, second)["decision"] == "block" {
+		t.Errorf("new evidence recorded since the first block should lift the narrowing: %s", second)
+	}
+}
+
+// A stale notice from a prior visit to the loop must not block a run that has
+// genuinely moved forward since - a retry cycle can re-enter the same node.
+func TestStopAllowsReentryToALoopNodeAfterAStaleNotice(t *testing.T) {
+	root := workspaceWithRun(t, func(run *state.Run) { run.CurrentNode = "experiment_run" })
+
+	first := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	if decode(t, first)["decision"] != "block" {
+		t.Fatalf("first stop attempt should block: %s", first)
+	}
+
+	run, err := state.Load(state.ManifestPath(root, "demo"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	run.UpdatedAt = run.UpdatedAt.Add(time.Hour)
+	if err := state.Save(state.ManifestPath(root, "demo"), run); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	second := invoke(t, Request{
+		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{"stop_hook_active":true}`),
+	})
+	if decode(t, second)["decision"] == "block" {
+		t.Errorf("a stale notice from a prior cycle should not block a run that has genuinely moved forward: %s", second)
 	}
 }
 

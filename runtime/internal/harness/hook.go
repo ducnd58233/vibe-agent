@@ -578,23 +578,24 @@ func promptContext(req Request, prompt string) string {
 func stop(req Request, body payload, out io.Writer, extra string) error {
 	runs := activeRuns(req.WorkspaceRoot)
 
+	// Every other run gets the one-time exemption below; a run parked at its
+	// own graph's research/experiment loop does not, unless something was
+	// actually recorded since the prior block. Without this, the exemption is
+	// exactly the gap that lets an agent give up on that loop: receive the
+	// nudge once, try to stop again without calling checkpoint or verify, and
+	// succeed on the second attempt.
+	if len(runs) > 0 && body.StopHookActive {
+		if reason := researchLoopBlockReason(runs); reason != "" {
+			return writeBlockDecision(out, req.Client, reason)
+		}
+	}
+
 	// StopHookActive means a previous Stop hook already blocked and the model
 	// has had its extra turn. Blocking again is how this becomes a loop.
 	if len(runs) > 0 && !body.StopHookActive {
 		if reason := blockReason(runs); reason != "" {
-			switch req.Client {
-			case ClientCursor:
-				return write(out, map[string]any{"followup_message": reason})
-			case ClientAntigravity:
-				return write(out, map[string]any{"decision": "continue", "reason": reason})
-			case ClientOpencode:
-				// opencode exposes no end-of-turn hook, so nothing here can
-				// refuse a turn. Emitting Claude's shape would be a reply no
-				// reader parses, which is the silent divergence this package
-				// keeps finding; saying nothing is the honest answer.
-				return nil
-			}
-			return write(out, map[string]any{"decision": "block", "reason": reason})
+			recordStopNotice(req.WorkspaceRoot, runs)
+			return writeBlockDecision(out, req.Client, reason)
 		}
 	}
 
@@ -619,6 +620,83 @@ func stop(req Request, body payload, out io.Writer, extra string) error {
 		return nil
 	}
 	return emitMessage(out, strings.Join(parts, "\n\n"))
+}
+
+// writeBlockDecision emits the client-specific shape for refusing to end the
+// turn. Shared by the two callers that decide separately whether to refuse.
+func writeBlockDecision(out io.Writer, client Client, reason string) error {
+	switch client {
+	case ClientCursor:
+		return write(out, map[string]any{"followup_message": reason})
+	case ClientAntigravity:
+		return write(out, map[string]any{"decision": "continue", "reason": reason})
+	case ClientOpencode:
+		// opencode exposes no end-of-turn hook, so nothing here can refuse a
+		// turn. Emitting Claude's shape would be a reply no reader parses,
+		// which is the silent divergence this package keeps finding; saying
+		// nothing is the honest answer.
+		return nil
+	}
+	return write(out, map[string]any{"decision": "block", "reason": reason})
+}
+
+// researchLoopNodes names each graph's own experiment retry cycle, where a
+// missed threshold routes back automatically rather than needing a human or a
+// blocker (see AGENTS.md "Blocker vs. retry"). Keyed by graph id, not one flat
+// node list, so a future graph reusing one of these node names for something
+// unrelated does not inherit this exemption narrowing by accident.
+var researchLoopNodes = map[string]map[string]bool{
+	"goal-delivery": {
+		"experiment_run": true, "experiment_monitor": true,
+		"results_eval": true, "auto_research": true,
+	},
+	"researcher-delivery": {
+		"experiment_run": true, "experiment_monitor": true,
+		"results_eval": true, "hypothesis": true, "experiment_design": true,
+	},
+}
+
+func inResearchLoop(run *state.Run) bool {
+	return researchLoopNodes[run.GraphID][run.CurrentNode]
+}
+
+// researchLoopBlockReason refuses a second consecutive stop attempt for a run
+// parked at one of its own graph's research/experiment loop nodes, when
+// nothing has been recorded since the last time this hook blocked it.
+func researchLoopBlockReason(runs []*state.Run) string {
+	var lines []string
+	for _, run := range runs {
+		if !advanceable(run) || !inResearchLoop(run) {
+			continue
+		}
+		if run.StopNoticeAt == nil || run.UpdatedAt.After(*run.StopNoticeAt) {
+			continue // never blocked before, or new evidence arrived since
+		}
+		lines = append(lines, reminderLine(run))
+	}
+	if len(lines) == 0 {
+		return ""
+	}
+	lines = append(lines,
+		"Do not end the turn with a run mid-graph. Record the real result with vibe-agent checkpoint, or record a blocker if the step cannot pass. Model assertion is not evidence.")
+	return strings.Join(lines, "\n")
+}
+
+// recordStopNotice persists run.UpdatedAt as of this block, for every loop-
+// node run this call is about to block, so a later stop call - possibly with
+// the host's retry-after-block signal set - can tell whether anything
+// happened in between. Errors are swallowed: a hook that fails a session
+// because it could not write this bookkeeping field would be a worse failure
+// than not narrowing the exemption this one time.
+func recordStopNotice(workspaceRoot string, runs []*state.Run) {
+	for _, run := range runs {
+		if !advanceable(run) || !inResearchLoop(run) {
+			continue
+		}
+		notice := run.UpdatedAt
+		run.StopNoticeAt = &notice
+		_ = state.Save(state.ManifestPath(workspaceRoot, run.Slug), run)
+	}
 }
 
 // blockReason returns why the turn may not end, or "" when every active run is
