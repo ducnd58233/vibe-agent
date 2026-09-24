@@ -45,7 +45,7 @@ Pick from the argument; default to **build**.
 4. **Implementation or punch list** - code changes, or prioritized findings for audit mode
 5. **Verification evidence** - gate results, screenshots, accessibility audit; `UNVERIFIED` with reason where a check could not run
 
-Audit-mode reports and any other markdown deliverable go under `docs/<slug>/` at the workspace root, per the "Generated docs output location" rule in [`AGENTS.md`](../../AGENTS.md).
+Audit-mode reports and any other markdown deliverable go under `docs/<date>/<slug>/<version>/` at the workspace root, per the "Generated docs location" rule in [`AGENTS.md`](../../AGENTS.md).
 </outputs>
 
 ## How

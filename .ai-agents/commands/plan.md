@@ -25,7 +25,7 @@ it up, and a criteria-less task is finished whenever somebody says so.
 
 Any task touching auth, user data, logging, error handling, or a client surface carries a **redaction acceptance criterion** stated in observable terms ("the audit log records the user ID and not the token"), so `/build` and `/test` have something to verify rather than a reminder to be careful. See [`secure-by-default`](../skills/secure-by-default/SKILL.md).
 
-Write outputs to `docs/<slug>/PLAN.md`, `docs/<slug>/TASKS.md`, and `docs/<slug>/tasks.json` at the workspace root (the directory that contains `.vibe-agent/`; the repo root when this toolkit is used standalone), reusing the same `<slug>` as the spec for this work. See the "Generated docs output location" rule in [`AGENTS.md`](../../AGENTS.md). Present for human review before implementation.
+Write outputs to `docs/<date>/<slug>/<version>/PLAN-<date>.md`, `docs/<date>/<slug>/<version>/TASKS-<date>.md`, and `docs/<date>/<slug>/<version>/tasks-<date>.json` at the workspace root (the directory that contains `.vibe-agent/`; the repo root when this toolkit is used standalone), reusing the same `<slug>` as the spec for this work. See the "Generated docs location" rule in [`AGENTS.md`](../../AGENTS.md). Present for human review before implementation.
 
 `tasks.json` is the same list in the shape a verifier can read, against [`schemas/tasks.schema.json`](../../schemas/tasks.schema.json). It is what answers `tasks_remaining`, so a task missing from it is a task the run will not come back for. `TASKS.md` stays the file a person reviews; `doctor` reports when the two disagree on count and does not refuse.
 </procedure>

@@ -47,12 +47,12 @@ Merge to `main` happens only after [`ship.md`](ship.md) returns **Ship Decision:
 
 For **one** task only (then stop or ask before starting the next task on a new branch):
 
-0. **Read the task list first.** `docs/<slug>/tasks.json` and `TASKS.md`. Take the first `queued`
+0. **Read the task list first.** `docs/<date>/<slug>/<version>/tasks-<date>.json` and `TASKS-<date>.md`. Take the first `queued`
    task whose dependencies are all `done`; never restart one already `done`; a `blocked` one needs
    its blocker resolved or the task re-planned. Set it `in_progress` in both files. Rules:
    [`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md), section
    **Task status (MUST)**.
-1. Read acceptance criteria from `docs/<slug>/TASKS.md` (or the path the human gave).
+1. Read acceptance criteria from `docs/<date>/<slug>/<version>/TASKS-<date>.md` (or the path the human gave).
 2. Create or confirm the dedicated task branch (rules above).
 3. Load context ([`context-engineering`](../skills/context-engineering/SKILL.md) as needed).
 4. RED - failing test for new behavior.

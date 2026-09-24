@@ -29,7 +29,7 @@ If your environment uses linked discovery paths, run [`scripts/link-ai-agents.ps
 
 - **Prompt body:** Full markdown content - instructions the command injects or follows.
 - **Optional frontmatter:** If your toolchain supports metadata for commands, align with team convention.
-- **Doc output location (MUST, if the command writes a markdown deliverable):** Write it under `docs/<slug>/` at the workspace root (the directory containing `.vibe-agent/`, or the repo root when this toolkit is standalone), using a short kebab-case `<slug>` for the work. Do not write into `.vibe-agent/`. See the "Generated docs output location" rule in [`AGENTS.md`](../../AGENTS.md).
+- **Doc output location (MUST, if the command writes a markdown deliverable):** Write it under `docs/<date>/<slug>/<version>/` at the workspace root (the directory containing `.vibe-agent/`, or the repo root when this toolkit is standalone), using a short kebab-case `<slug>` for the work and the dated basename `{STEM}-<date>.md`. Do not write into `.vibe-agent/`. See the "Generated docs location" rule in [`AGENTS.md`](../../AGENTS.md).
 
 ---
 </procedure>

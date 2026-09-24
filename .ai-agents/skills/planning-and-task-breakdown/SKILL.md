@@ -159,8 +159,8 @@ A task list is written twice, and both copies are part of the same edit:
 
 | File | Read by | Status lives in |
 |---|---|---|
-| `docs/<slug>/TASKS.md` | a person | the task heading: `### T1: Title  [queued]` |
-| `docs/<slug>/tasks.json` | the runtime | the `status` field |
+| `docs/<date>/<slug>/<version>/TASKS-<date>.md` | a person | the task heading: `### T1: Title  [queued]` |
+| `docs/<date>/<slug>/<version>/tasks-<date>.json` | the runtime | the `status` field |
 
 The vocabulary is the one [`schemas/tasks.schema.json`](../../../schemas/tasks.schema.json) already
 defines, lowercase, in both files:
@@ -224,7 +224,7 @@ If a task is L or larger, it should be broken into smaller tasks. An agent perfo
 
 <context>
 
-**Output location:** Write the plan to `docs/<slug>/PLAN.md` and the task list to `docs/<slug>/TASKS.md` at the workspace root (the directory containing `.vibe-agent/`, or the repo root when this toolkit is standalone), reusing the same `<slug>` as the spec. See the "Generated docs output location" rule in [`AGENTS.md`](../../../AGENTS.md).
+**Output location:** Write the plan to `docs/<date>/<slug>/<version>/PLAN-<date>.md` and the task list to `docs/<date>/<slug>/<version>/TASKS-<date>.md` at the workspace root (the directory containing `.vibe-agent/`, or the repo root when this toolkit is standalone), reusing the same `<slug>` as the spec. See the "Generated docs location" rule in [`AGENTS.md`](../../../AGENTS.md).
 
 ```markdown
 # Implementation Plan: [Feature/Project Name]
@@ -319,7 +319,7 @@ Before starting implementation, confirm:
 - [ ] Task dependencies are identified and ordered correctly
 - [ ] No task touches more than ~5 files
 - [ ] Checkpoints exist between major phases
-- [ ] Plan and tasks written to `docs/<slug>/` at the workspace root (sibling of `.vibe-agent/`)
+- [ ] Plan and tasks written to `docs/<date>/<slug>/<version>/` at the workspace root (sibling of `.vibe-agent/`)
 - [ ] The human has reviewed and approved the plan
 </verification>
 

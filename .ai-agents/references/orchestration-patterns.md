@@ -93,7 +93,7 @@ Single slash command that walks the sequential pipeline with clarify-first intak
 
 **Not the same as:** Claude Code or Codex native `/goal` harness loops (evaluator-driven turns). Toolkit `/goal` composes existing commands with checkpoints.
 
-**Anti-drift:** re-read `docs/<slug>/SPEC.md` and `TASKS.md` each phase; report `GOAL STATUS` after each phase.
+**Anti-drift:** re-read `docs/<date>/<slug>/<version>/SPEC-<date>.md` and `TASKS-<date>.md` each phase; report `GOAL STATUS` after each phase.
 
 **Executable form:** the transitions above are defined in [`graphs/goal-delivery.yaml`](../graphs/goal-delivery.yaml) and validated by `scripts/check-graphs.py`. When the graph and a prose description disagree, the graph wins; two copies of the control flow drift. See [`loop-and-graph-engineering.md`](loop-and-graph-engineering.md) for when a workflow earns a graph at all, and [`graphs/TEMPLATE.md`](../graphs/TEMPLATE.md) for the authoring contract.
 

@@ -129,7 +129,7 @@ spec:
     tasks_remaining:
       verifier: tasks
       description: >-
-        Reads docs/<slug>/tasks.json and the matching TASKS.md. Passes while any
+        Reads docs/<date>/<slug>/<version>/tasks-<date>.json and the matching TASKS-<date>.md. Passes while any
         task is not settled, including a task marked done whose acceptance-
         criteria checkboxes are still open or whose TASKS prose is missing.
         Goal and auto share this check. Doctor refuses the same incomplete-done

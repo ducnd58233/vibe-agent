@@ -67,7 +67,7 @@ which is a reviewed diff rather than a decision taken once in a conversation.
 
 Emit **Ship Decision: GO | NO-GO** with blockers, recommended fixes, acknowledged risks, **rollback plan**, and appended specialist reports.
 
-### Decision file (MUST, when running under a tracked `docs/<slug>/`)
+### Decision file (MUST, when running under a tracked `docs/<date>/<slug>/<version>/`)
 
 Write `tmp/<slug>/ship/DECISION.md` in this exact shape, so a verifier can read it later instead of
 a person re-deriving it from chat prose. One line per element, no other text:
