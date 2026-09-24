@@ -164,12 +164,16 @@ Merge to `main` only after **GO** and **explicit human approval** ([`build.md`](
 
 1. Restate the objective and list unknowns.
 2. **Ask** focused questions when requirements are ambiguous or conflicting ([`karpathy-guardrails`](../skills/karpathy-guardrails/SKILL.md), [`AGENTS.md`](../../AGENTS.md)). Do not implement until clarified.
-3. Choose `docs/<date>/<slug>/<version>/`; confirm `<slug>` with the human when not obvious. The
+3. **Check for an existing slug to continue before minting a new one.** Run `vibe-agent run list --titles`
+   (or read `docs/ROUTER.md`) and compare the incoming objective against existing titles. If one
+   already covers this request, continue that slug (a new version, per the versioning rule in
+   `AGENTS.md`) instead of forking a new one. Fork a new slug only when nothing existing covers it.
+4. Choose `docs/<date>/<slug>/<version>/`; confirm `<slug>` with the human when not obvious. The
    slug is a short English gloss of the objective, never a mechanical transliteration of
    non-English input (`AGENTS.md` "A slug is English"). When the task is small enough that no
    SPEC/PLAN is warranted, still start the run with `--slug no-docs-<short-name>` rather than skip
    slug creation (`AGENTS.md` "A 'no docs needed' decision still gets a slug").
-4. State **ASSUMPTIONS** and the measurable **done** line.
+5. State **ASSUMPTIONS** and the measurable **done** line.
 
 Skip to Phase 4 only if a **human-approved** `TASKS.md` already exists and the user asked to continue implementation.
 

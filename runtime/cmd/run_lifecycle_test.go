@@ -157,6 +157,15 @@ func TestListFiltersByStatus(t *testing.T) {
 	}
 }
 
+func TestListWithTitlesDoesNotError(t *testing.T) {
+	root := t.TempDir()
+	stoppedRun(t, root, "titled-run", state.StatusFailed)
+
+	if err := runList([]string{"--workspace", root, "--titles"}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestIdleForUsesTheCoarsestUsefulUnit(t *testing.T) {
 	now := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
 	for _, testCase := range []struct {
