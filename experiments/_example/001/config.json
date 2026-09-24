@@ -1,0 +1,9 @@
+{
+  "model": "claude-sonnet-5",
+  "dataset": "internal-eval-set-v3",
+  "hyperparameters": {
+    "temperature": 0.2,
+    "top_k": 40
+  },
+  "seed": 42
+}

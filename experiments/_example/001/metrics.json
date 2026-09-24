@@ -1,0 +1,9 @@
+{
+  "metrics": {
+    "accuracy": 0.84,
+    "latency_ms_p50": 620
+  },
+  "thresholds": {
+    "accuracy": { "op": ">=", "value": 0.8 }
+  }
+}

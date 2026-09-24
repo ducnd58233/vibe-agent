@@ -271,7 +271,7 @@ def main() -> int:
         print(f"check-schemas: missing {schemas_dir}", file=sys.stderr)
         return 1
 
-    names = ["workflow-graph", "run-state", "memory-record", "check-plan", "tasks", "auto", "sandbox"]
+    names = ["workflow-graph", "run-state", "memory-record", "check-plan", "tasks", "auto", "sandbox", "experiment-run"]
     schemas: dict[str, dict] = {}
     failures = 0
 
@@ -312,6 +312,7 @@ def main() -> int:
     failures += fixtures[0]
     failures += check_workspace_plan(root, schemas["check-plan"])
     failures += check_auto_template(root, schemas["auto"])
+    failures += check_experiment_fixtures(root, schemas["experiment-run"])
 
     print()
     if failures:
@@ -383,6 +384,37 @@ def check_auto_template(root: Path, auto_schema: dict) -> int:
     for error in errors[:3]:
         print(f"          {list(error.path)}: {error.message}", file=sys.stderr)
     return 1
+
+
+def check_experiment_fixtures(root: Path, experiment_schema: dict) -> int:
+    """Validate the example experiment run against config/metrics $defs.
+
+    experiments/_example/001/ is real, checked-in documentation of the shape
+    (schemas/experiment-run.schema.json section 4.7 of
+    docs/2026-09-24/restructure-vibe-agent-docs/1/SPEC-2026-09-24.md), not a
+    throwaway test-only fixture - a project starting its own experiments/
+    tree can copy it.
+    """
+    example_dir = root / "experiments" / "_example" / "001"
+    failures = 0
+    for stem, def_name in (("config", "config"), ("metrics", "metrics")):
+        path = example_dir / f"{stem}.json"
+        label = f"experiments/_example/001/{stem}.json validates against experiment-run.schema.json#/$defs/{def_name}"
+        if not path.is_file():
+            print(f"  FAIL  {path} is missing", file=sys.stderr)
+            failures += 1
+            continue
+        instance = json.loads(path.read_text(encoding="utf-8"))
+        sub_schema = {**experiment_schema["$defs"][def_name], "$schema": experiment_schema["$schema"]}
+        errors = list(Draft202012Validator(sub_schema).iter_errors(instance))
+        if not errors:
+            print(f"  ok    {label}")
+            continue
+        failures += 1
+        print(f"  FAIL  {label}", file=sys.stderr)
+        for error in errors[:3]:
+            print(f"          {list(error.path)}: {error.message}", file=sys.stderr)
+    return failures
 
 
 def check_go_fixtures(root: Path, run_schema: dict) -> tuple[int, int]:
