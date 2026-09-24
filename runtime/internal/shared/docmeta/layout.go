@@ -3,11 +3,59 @@ package docmeta
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/validate"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
+
+// forbiddenStateKey matches a run-manifest key written as a mapping key, so
+// that "checks" here is manifest.json's checks map and not the ordinary
+// English word appearing in a sentence like "run the checks before shipping".
+// Anchored to the start of a line (YAML) or after a quote (JSON), each
+// followed by a colon, is what a key declaration looks like and prose never
+// does.
+var forbiddenStateKey = regexp.MustCompile(`(?m)^\s*"?(currentNode|checks|maxTransitions)"?\s*:`)
+
+// checkNoGraphState reports run/graph state leaking into a docs/ deliverable.
+// Status/content separation (AGENTS.md "Generated docs location") means a
+// generated doc never carries currentNode, checks, or maxTransitions - those
+// stay in .agent-state/runs/.../manifest.json, never in docs/.
+//
+// Fenced code blocks are excluded: a spec explaining the run-state schema
+// (docs/2026-07-29/loop-graph-runtime designed this exact schema) legitimately
+// shows a currentNode/checks example inside a ```json fence, and that is
+// documentation, not a leak.
+func checkNoGraphState(rel string, raw []byte) *Issue {
+	m := forbiddenStateKey.FindSubmatch(stripFencedCode(raw))
+	if m == nil {
+		return nil
+	}
+	return &Issue{
+		Path:    rel,
+		Message: "run/graph state key " + string(m[1]) + " must not appear under docs/; it belongs in .agent-state/runs/.../manifest.json",
+	}
+}
+
+// stripFencedCode blanks the content of every ``` ... ``` block, keeping line
+// numbers stable and leaving the fence markers themselves so nothing outside
+// a block shifts position.
+func stripFencedCode(raw []byte) []byte {
+	lines := strings.Split(string(raw), "\n")
+	inFence := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			lines[i] = ""
+		}
+	}
+	return []byte(strings.Join(lines, "\n"))
+}
 
 // Issue is one layout or metadata problem under docs/.
 type Issue struct {
@@ -124,6 +172,9 @@ func checkRevision(dir, date string) ([]Issue, error) {
 					Path:    rel,
 					Message: "front matter: " + err.Error(),
 				})
+			}
+			if issue := checkNoGraphState(rel, raw); issue != nil {
+				issues = append(issues, *issue)
 			}
 		}
 	}

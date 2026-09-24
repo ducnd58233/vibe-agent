@@ -126,6 +126,30 @@ path. When a rule already has a home, link to it instead of restating it.
   collision (case-preserving filesystems on Windows and macOS would alias their files); `version` is
   a positive integer global per slug. Never inside `.vibe-agent/`, never scattered, never
   `docs/<slug>/` for new work. Confirm the slug with the user when it is not obvious.
+- **Docs carry content, never run state (MUST):** a generated deliverable under `docs/` never
+  contains graph or run state (`currentNode`, `checks`, `maxTransitions`, or any other
+  `run-state.schema.json` field) outside a fenced code example that is explicitly documenting the
+  schema. That state lives only in `.agent-state/runs/<date>/<slug>/<version>/manifest.json`.
+  `vibe-agent doctor` fails on a violation; see `docmeta.checkNoGraphState`.
+- **A slug is English (MUST):** a slug is a short English gloss of the objective, chosen by the
+  agent, never a mechanical transliteration of non-English input. `auto.Slugify` keeps only
+  `[a-z0-9]`, so a diacritic in non-English text is treated as a word break and leaves bare
+  consonant fragments (`l-m-th-n`, `m-r-ng-repo` are real slugs this produced before the rule
+  existed) - a mistake that survives `validate.Slug`'s kebab-case check because the fragments are
+  still valid kebab-case. `graphroute.Resolve` refuses to auto-derive a slug from an objective
+  containing a non-ASCII letter; pass `--slug` explicitly for a non-English objective instead.
+  `vibe-agent doctor` also warns, non-blocking, on an explicitly-passed slug that
+  `docmeta.LooksTransliterated` flags as a heuristic net, not the enforcement.
+- **A "no docs needed" decision still gets a slug (MUST):** when a task's scope is small enough
+  that no SPEC/PLAN is warranted (see `spec-driven-development`'s "When NOT to use"), start the run
+  with an explicit `--slug no-docs-<short-name>` rather than skip slug creation entirely. The
+  decision stays auditable in `run list` and the run-index even though no `docs/<date>/<slug>/<version>/`
+  tree gets populated. **Put `--slug` before the objective** (`run start --slug no-docs-x "<goal>"`,
+  not `run start "<goal>" --slug no-docs-x`): Go's `flag` package stops parsing at the first
+  non-flag argument, so a flag placed after the quoted objective is silently ignored rather than
+  refused - confirmed against this binary while writing this rule. The CLI's own usage strings
+  showing `"<objective>" [--slug <slug>]` are stale on this point; fixing that argument-parsing
+  behavior is a separate, unscoped finding, not part of this rule.
 - **Verification evidence (MUST):** run state and logs live under
   `.agent-state/runs/<YYYY-MM-DD>/<slug>/<version>/` (when gitignored in the
   workspace), beside `manifest.json`. A leftover workspace-root `tmp/` tree fails

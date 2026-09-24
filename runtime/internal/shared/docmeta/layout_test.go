@@ -69,3 +69,67 @@ func TestCheckWorkspaceAcceptsValidRevision(t *testing.T) {
 		t.Fatalf("issues = %+v", issues)
 	}
 }
+
+func TestCheckWorkspaceFailsGraphStateKeyInDoc(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "docs", "2026-08-21", "demo", "1")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	body := []byte("---\nslug: demo\ndate: 2026-08-21\nversion: 1\n---\n\n# Spec\n\n" +
+		"currentNode: build\n")
+	if err := os.WriteFile(filepath.Join(dir, "SPEC-2026-08-21.md"), body, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	issues, err := docmeta.CheckWorkspace(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(issues) == 0 {
+		t.Fatal("a currentNode key under docs/ produced no issue")
+	}
+	if !strings.Contains(issues[0].Message, "currentNode") {
+		t.Fatalf("issue = %+v", issues[0])
+	}
+}
+
+func TestCheckWorkspaceAcceptsSchemaExampleInFencedBlock(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "docs", "2026-08-21", "demo", "1")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	body := []byte("---\nslug: demo\ndate: 2026-08-21\nversion: 1\n---\n\n" +
+		"# Spec\n\nRun state schema:\n\n```json\n{\n  \"currentNode\": \"test\",\n  \"checks\": {}\n}\n```\n")
+	if err := os.WriteFile(filepath.Join(dir, "SPEC-2026-08-21.md"), body, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	issues, err := docmeta.CheckWorkspace(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(issues) != 0 {
+		t.Fatalf("a fenced schema example should not be flagged: %+v", issues)
+	}
+}
+
+func TestCheckWorkspaceAcceptsHumanReadableStatusCell(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "docs", "2026-08-21", "demo", "1")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	body := []byte("---\nslug: demo\ndate: 2026-08-21\nversion: 1\n---\n\n# Spec\n\n" +
+		"| Field | Value |\n|-------|-------|\n| Status | Ready to plan |\n\n" +
+		"Run the checks before shipping.\n")
+	if err := os.WriteFile(filepath.Join(dir, "SPEC-2026-08-21.md"), body, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	issues, err := docmeta.CheckWorkspace(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(issues) != 0 {
+		t.Fatalf("a human-readable Status cell and the word checks in prose should not be flagged: %+v", issues)
+	}
+}
