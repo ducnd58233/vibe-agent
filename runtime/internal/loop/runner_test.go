@@ -583,6 +583,7 @@ func TestASkippedCheckSatisfiesOnlyAGuardThatOptedIn(t *testing.T) {
 		"expectation_ok": "a consumer that never declares expectation_ok must not stall; omitting it means no expectation gate",
 		"bug_hunt_ok":    "a consumer that never declares bug_hunt_ok must not stall; omitting it means no bug-hunt gate",
 		"release_ok":     "a consumer that never declares release_ok must not stall; omitting it means no release gate",
+		"review_ok":      "a consumer that never declares review_ok must not stall; omitting it means no review gate",
 	}
 	for name := range allowed {
 		optedIn, ok := runner.Graph.Guard(name)

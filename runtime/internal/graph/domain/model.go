@@ -59,6 +59,8 @@ const (
 	VerifierRelease VerifierKind = "release"
 	// VerifierBugHunt reads bug_hunt/FINDINGS.md on the auto path after e2e.
 	VerifierBugHunt VerifierKind = "bughunt"
+	// VerifierReview reads review/REVIEW.md on the auto path after review.
+	VerifierReview VerifierKind = "review"
 	// VerifierExperiment reads experiment/STATUS.md for researcher-delivery.
 	VerifierExperiment VerifierKind = "experiment"
 )
@@ -66,7 +68,7 @@ const (
 func (k VerifierKind) valid() bool {
 	switch k {
 	case VerifierCommand, VerifierFiles, VerifierGit, VerifierScreen, VerifierTasks,
-		VerifierResults, VerifierExpectation, VerifierRelease, VerifierBugHunt, VerifierExperiment:
+		VerifierResults, VerifierExpectation, VerifierRelease, VerifierBugHunt, VerifierReview, VerifierExperiment:
 		return true
 	}
 	return false
