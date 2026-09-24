@@ -198,6 +198,15 @@ already retries automatically. Never record it as `checkpoint --blocker`; see
 When RESEARCH and PLAN are settled, `vibe-agent checkpoint` and `vibe-agent auto gate` both skip
 the approval gates and advance the run. Report results when the loop finishes; do not poll the
 human mid-pipeline.
+
+**The same obligation applies to `goal-delivery`'s embedded retry cycle.** A `/auto` product
+delivery whose SPEC includes an experiment walks `experiment_run -> experiment_monitor ->
+results_eval -> auto_research -> approve_spec -> ... -> build` on a missed threshold, the same shape
+as `researcher-delivery`'s loop, inside the same run. Continue through it the same way - `checkpoint`
+after each artifact, `verify` at each verifier - and stop only at a terminal status or an open
+marker, never at a self-judged "this seems infeasible." This holds whether the run was started with
+`vibe-agent auto` or `vibe-agent run start` (the `/goal` command surface): once a run has the `auto`
+flag set, this obligation applies to it, regardless of which command started it.
 </required>
 
 ## Routing & discovery
