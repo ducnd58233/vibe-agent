@@ -160,6 +160,18 @@ spec:
       reads: release_ok
       acceptsSkipped: true
 
+    - name: review_ok
+      description: >-
+        Auto-path review passed: review/REVIEW.md names all five axes
+        (correctness, readability, architecture, security, performance).
+        Reachable only after review when the auto flag is set. A mechanical
+        presence check, not a quality judgment - see review_ok in
+        vibe-checks.yaml. Failures return to review so the write-up can be
+        finished. acceptsSkipped for consumers that omit it.
+      source: check
+      reads: review_ok
+      acceptsSkipped: true
+
     - name: changes_requested
       description: Local review returned findings that must be fixed before the PR proceeds.
       source: result
@@ -371,6 +383,16 @@ spec:
       type: agent
       description: Local five-axis review before the PR goes out.
       command: review
+
+    review_ok:
+      type: verifier
+      description: >-
+        After review on the auto path, assert review/REVIEW.md names all five
+        axes. Pass continues to experiment_run. Fail returns to review so the
+        write-up can be finished. file_assert only; the axes' findings are not
+        graded here, only that a real review was written down.
+      verifier: review
+      check: review_ok
 
     open_pr:
       type: verifier
@@ -728,11 +750,18 @@ spec:
       to: build
       when: changes_requested
     - from: review
-      to: experiment_run
+      to: review_ok
       when: auto
     - from: review
       to: open_pr
       when: "!auto"
+
+    - from: review_ok
+      to: review
+      when: "!review_ok"
+    - from: review_ok
+      to: experiment_run
+      when: review_ok
 
     - from: experiment_run
       to: experiment_monitor

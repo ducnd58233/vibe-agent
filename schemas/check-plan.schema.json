@@ -176,6 +176,14 @@
         {
           "properties": {
             "verifier": {
+              "const": "review"
+            }
+          },
+          "required": ["verifier"]
+        },
+        {
+          "properties": {
+            "verifier": {
               "const": "human"
             }
           },
@@ -184,8 +192,8 @@
       ],
       "properties": {
         "verifier": {
-          "enum": ["command", "files", "git", "screen", "tasks", "shipdecision", "reviewbots", "experiment", "results", "expectation", "release", "bughunt", "human"],
-          "description": "Overrides the graph node's verifier kind. `human` means no runtime verifier can produce this check and a person decides it, which is the only route by which caller-supplied evidence reaches a verifier node. `tasks`, `shipdecision`, `experiment`, `results`, `expectation`, `release`, and `bughunt` find their own input from the workspace root and the run's slug, so they need no command, path, or screen."
+          "enum": ["command", "files", "git", "screen", "tasks", "shipdecision", "reviewbots", "experiment", "results", "expectation", "release", "bughunt", "review", "human"],
+          "description": "Overrides the graph node's verifier kind. `human` means no runtime verifier can produce this check and a person decides it, which is the only route by which caller-supplied evidence reaches a verifier node. `tasks`, `shipdecision`, `experiment`, `results`, `expectation`, `release`, `bughunt`, and `review` find their own input from the workspace root and the run's slug, so they need no command, path, or screen."
         },
         "auto": {
           "$ref": "#/$defs/autoEntry",
@@ -267,11 +275,15 @@
         {
           "properties": { "verifier": { "const": "bughunt" } },
           "required": ["verifier"]
+        },
+        {
+          "properties": { "verifier": { "const": "review" } },
+          "required": ["verifier"]
         }
       ],
       "properties": {
         "verifier": {
-          "enum": ["command", "files", "git", "screen", "tasks", "shipdecision", "reviewbots", "experiment", "results", "expectation", "release", "bughunt"]
+          "enum": ["command", "files", "git", "screen", "tasks", "shipdecision", "reviewbots", "experiment", "results", "expectation", "release", "bughunt", "review"]
         },
         "command": {
           "type": "string",

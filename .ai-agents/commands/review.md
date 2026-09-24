@@ -42,6 +42,43 @@ Categorize findings as **Critical**, **Important**, or **Suggestion**. Include `
 Optional: spawn the **`code-reviewer`** subagent ([`agents/code-reviewer.md`](../agents/code-reviewer.md)) for a dedicated review session.
 </procedure>
 
+## REVIEW.md contract (MUST on the auto path)
+
+<required>
+
+On the auto path, `review_ok` in `goal-delivery.yaml` `file_assert`s this file before the run
+continues to `experiment_run`: a self-report accepted with no check at all is exactly the gap
+`docs/2026-09-24/agent-code-quality-hardening` closed (self-report is weak evidence precisely
+because generator and evaluator share the same failure modes - `arXiv:2606.05976`). The check is
+mechanical presence of the five axis names, not a quality judgment: it cannot tell a real review from
+a perfunctory one, only that one was written down. Write:
+
+`.agent-state/runs/<date>/<slug>/<version>/review/REVIEW.md`
+
+```markdown
+# Review
+
+## Correctness
+<findings, or "No issues found.">
+
+## Readability
+...
+
+## Architecture
+...
+
+## Security
+...
+
+## Performance
+...
+```
+
+Every axis heading must appear even when a section has no findings - the check reads for the axis
+names, not for content under them. On `/goal` (no auto flag), write the same file as a matter of
+discipline; nothing in the graph verifies it there today.
+</required>
+
 ## Routing & discovery
 
 <routing>

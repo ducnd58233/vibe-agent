@@ -364,3 +364,23 @@ func TestBothEdgesLeavingAMergeResetTheSameChecks(t *testing.T) {
 		}
 	}
 }
+
+// review is a type: agent node, so Advance never requires a check to leave it
+// - only a type: verifier node does. Before review_ok existed, the auto edge
+// out of review read the auto flag alone, so an empty Outcome (no evidence of
+// any kind, not even a bogus checkpoint) was enough to reach experiment_run.
+// That is the self-report gap docs/2026-09-24/agent-code-quality-hardening
+// researched: review is graded on its own narrative with no file-backed
+// verifier, unlike bug_hunt/expectation_review/release_review.
+func TestReviewRequiresRealEvidenceOnTheAutoPath(t *testing.T) {
+	runner := newRunner(t)
+	run := newRun(t, runner)
+	run.CurrentNode = "review"
+	run.Status = state.StatusRunning
+	run.Flags = map[string]bool{"auto": true}
+
+	transition := advance(t, runner, run, Outcome{})
+	if transition.To == "experiment_run" {
+		t.Fatalf("review advanced straight to experiment_run on no evidence at all")
+	}
+}

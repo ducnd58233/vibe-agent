@@ -391,6 +391,7 @@ spec:
         - check: {name: slop, passed: true, source: exit_code}
         - check: {name: expectation_ok, passed: true, source: file_assert}
         - result: {changes_requested: false}
+        - check: {name: review_ok, passed: true, source: file_assert}
         - {} # experiment_run -> experiment_monitor
         - check: {name: experiment_done, passed: true, source: file_assert}
         - check: {name: results_acceptable, passed: true, source: file_assert}
@@ -413,6 +414,7 @@ spec:
           - slop
           - expectation_review
           - review
+          - review_ok
           - experiment_run
           - experiment_monitor
           - results_eval
@@ -547,6 +549,7 @@ spec:
         - check: {name: slop, passed: true, source: exit_code}
         - check: {name: expectation_ok, passed: true, source: file_assert}
         - result: {changes_requested: false}
+        - check: {name: review_ok, passed: true, source: file_assert}
         - {}
         - check: {name: experiment_done, passed: true, source: file_assert}
         - check: {name: results_acceptable, passed: true, source: file_assert}
@@ -575,6 +578,7 @@ spec:
           - slop
           - expectation_review
           - review
+          - review_ok
           - experiment_run
           - experiment_monitor
           - results_eval
@@ -606,6 +610,7 @@ spec:
         - check: {name: slop, passed: true, source: exit_code}
         - check: {name: expectation_ok, passed: true, source: file_assert}
         - result: {changes_requested: false}
+        - check: {name: review_ok, passed: true, source: file_assert}
         - {}
         - check: {name: experiment_done, passed: true, source: file_assert}
         - check: {name: results_acceptable, passed: true, source: file_assert}
@@ -633,6 +638,7 @@ spec:
           - slop
           - expectation_review
           - review
+          - review_ok
           - experiment_run
           - experiment_monitor
           - results_eval

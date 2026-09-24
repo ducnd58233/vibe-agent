@@ -176,3 +176,14 @@ spec:
         Passes only when status is pass and every release gate row is pass.
         Auto delivery runs this after ship and before approve_merge. Fail routes
         to build. file_assert only; no judge LLM as evidence.
+
+    review_ok:
+      verifier: review
+      description: >-
+        Reads .agent-state/runs/<date>/<slug>/<version>/review/REVIEW.md.
+        Passes only when the five review axes (correctness, readability,
+        architecture, security, performance) are all named. Auto delivery runs
+        this after review and before experiment_run. Fail returns to review so
+        the write-up can be finished. file_assert only; a mechanical presence
+        check, not a quality judgment - the axes' findings are review's own,
+        not graded here.

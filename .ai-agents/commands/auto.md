@@ -137,12 +137,13 @@ Being honest about the seam rather than describing a mode that does not exist ye
 **Live today:** the opt-in file, `vibe-agent auto init`, `doctor` reporting the opt-in state, the
 danger list refused before anything runs, every verifier `/goal` already runs, and the graph itself
 - the `auto` flag routes through `simplify`, `lint`, `commit`, `bug_hunt` (`bug_hunt/FINDINGS.md`),
-`expectation_review` (SPEC-tied `expectation/REVIEW.md`), `release_review` (`release/REVIEW.md`)
-via `file_assert` (misses reopen `plan` or `build`), and a watch on the default branch after the
-merge lands, and the `intake`, `approve_spec`, and `approve_plan` gates skip when the run's flags
-say a person is not needed. A skipped gate records `skipped`, never `passed`, so run state still
-says which gates a person answered. Host docs: [`bug-hunt.md`](bug-hunt.md),
-[`expectation.md`](expectation.md), [`release.md`](release.md),
+`expectation_review` (SPEC-tied `expectation/REVIEW.md`), `review_ok` (`review/REVIEW.md`, all five
+axis names), `release_review` (`release/REVIEW.md`) via `file_assert` (misses reopen `plan`, `build`,
+or `review`), and a watch on the default branch after the merge lands, and the `intake`,
+`approve_spec`, and `approve_plan` gates skip when the run's flags say a person is not needed. A
+skipped gate records `skipped`, never `passed`, so run state still says which gates a person
+answered. Host docs: [`bug-hunt.md`](bug-hunt.md), [`expectation.md`](expectation.md),
+[`review.md`](review.md), [`release.md`](release.md),
 [`failure-trace.md`](failure-trace.md) (write TRACE on verifier fail or third-strike before replan).
 
 ```sh
