@@ -54,6 +54,7 @@ func doctorCommand(args []string) error {
 	checkSandboxConfig(report, workspaceRoot)
 	checkMemory(report, workspaceRoot)
 	checkRunState(report, workspaceRoot)
+	checkSlugLanguage(workspaceRoot)
 	checkWebState(report, workspaceRoot)
 	checkGitignore(report, workspaceRoot)
 
@@ -266,6 +267,26 @@ func idleRun(current *state.Run, now time.Time) string {
 	}
 	return fmt.Sprintf("run %s is %s idle at %s (%s)",
 		current.Slug, idleFor(now, current.UpdatedAt), current.CurrentNode, current.Status)
+}
+
+// checkSlugLanguage warns, without failing, on a run slug that looks like it
+// was transliterated from non-English text rather than chosen as an English
+// gloss of the objective (AGENTS.md "Generated docs location"). It is a note
+// because docmeta.LooksTransliterated is a heuristic net, not the rule: the
+// rule is enforced at the source, in graphroute.Resolve, for a slug this CLI
+// derives itself. This only catches an explicit --slug the CLI cannot trace
+// back to an objective.
+func checkSlugLanguage(workspaceRoot string) {
+	slugs, err := state.List(workspaceRoot)
+	if err != nil {
+		return
+	}
+	for _, slug := range slugs {
+		if docmeta.LooksTransliterated(slug) {
+			fmt.Printf("  note  slug %q looks transliterated rather than English; "+
+				"a slug should be a short English gloss of the objective\n", slug)
+		}
+	}
 }
 
 func checkWebState(report *diagnostics, workspaceRoot string) {

@@ -8,6 +8,7 @@ package graphroute
 import (
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/auto"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/validate"
@@ -101,6 +102,13 @@ func (p Params) Resolve() (Resolved, error) {
 	}
 	slug := strings.TrimSpace(p.Slug)
 	if slug == "" {
+		if r := firstNonASCIILetter(goal); r != 0 {
+			return Resolved{}, fmt.Errorf(
+				"objective contains %q, so a slug cannot be derived from it safely: "+
+					"stripping accents from non-English text leaves bare consonant fragments "+
+					"(observed in this repo: l-m-th-n, m-r-ng-repo). "+
+					"Restate the objective as a short English gloss, or pass --slug explicitly", r)
+		}
 		slug = auto.Slugify(goal, words)
 	}
 	if !validate.Slug(slug) {
@@ -108,4 +116,22 @@ func (p Params) Resolve() (Resolved, error) {
 	}
 
 	return Resolved{GraphID: graphID, Slug: slug, Goal: goal}, nil
+}
+
+// firstNonASCIILetter returns the first non-ASCII letter in s, or 0 if none.
+//
+// A slug is derived by keeping only [a-z0-9] and treating everything else as
+// a word break (auto.Slugify). Run on text that was never English, every
+// accented letter is a break too, so a diacritic-stripped word like "kiểm"
+// becomes "ki" and "m" as two separate fragments. The result still matches
+// the kebab-case slug pattern, so nothing downstream catches it - this check
+// looks at the objective text itself, before that damage happens, rather
+// than guess at consonant fragments after the fact.
+func firstNonASCIILetter(s string) rune {
+	for _, r := range s {
+		if r > unicode.MaxASCII && unicode.IsLetter(r) {
+			return r
+		}
+	}
+	return 0
 }

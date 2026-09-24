@@ -26,6 +26,25 @@ func TestResolveDerivesSlug(t *testing.T) {
 	}
 }
 
+func TestResolveRefusesNonEnglishObjectiveWithoutExplicitSlug(t *testing.T) {
+	t.Parallel()
+	_, err := Params{Command: CmdAuto, Goal: "Kiểm tra runtime trước khi merge"}.Resolve()
+	if err == nil {
+		t.Fatal("expected refusal for a non-English objective with no explicit slug")
+	}
+}
+
+func TestResolveAcceptsNonEnglishObjectiveWithExplicitSlug(t *testing.T) {
+	t.Parallel()
+	got, err := Params{Command: CmdAuto, Goal: "Kiểm tra runtime trước khi merge", Slug: "check-runtime-before-merge"}.Resolve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Slug != "check-runtime-before-merge" {
+		t.Fatalf("slug = %q", got.Slug)
+	}
+}
+
 func TestResolveResearchWorkflow(t *testing.T) {
 	t.Parallel()
 	got, err := Params{
