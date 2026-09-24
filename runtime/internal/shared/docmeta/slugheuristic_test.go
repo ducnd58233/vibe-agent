@@ -24,6 +24,7 @@ func TestLooksTransliteratedAcceptsRealEnglishSlugs(t *testing.T) {
 		"by-the-way",   // short real English words without a,e,i,o,u
 		"mcp-token-t4", // technical abbreviation + version marker, not a language issue
 		"mcp-token-t5",
+		"BUS-STOP-HUB", // AGENTS.md allows either case for a slug
 	} {
 		if docmeta.LooksTransliterated(slug) {
 			t.Errorf("LooksTransliterated(%q) = true, want false", slug)

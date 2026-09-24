@@ -19,7 +19,10 @@ import (
 // such fragments is the signal; one is treated as an ordinary short English
 // word ("by", "my", "in").
 func LooksTransliterated(slug string) bool {
-	segments := strings.Split(slug, "-")
+	// AGENTS.md allows either case for a slug; hasVowel only recognizes
+	// lowercase, so an uppercase English slug (BUS-STOP-HUB) would otherwise
+	// look exactly like a bare consonant fragment.
+	segments := strings.Split(strings.ToLower(slug), "-")
 	bareConsonantCount := 0
 	for _, seg := range segments {
 		if len(seg) > 0 && len(seg) <= 4 && !hasVowel(seg) && !hasDigit(seg) {
