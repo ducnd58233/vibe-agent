@@ -660,17 +660,27 @@ func inResearchLoop(run *state.Run) bool {
 	return researchLoopNodes[run.GraphID][run.CurrentNode]
 }
 
-// researchLoopBlockReason refuses a second consecutive stop attempt for a run
-// parked at one of its own graph's research/experiment loop nodes, when
-// nothing has been recorded since the last time this hook blocked it.
-func researchLoopBlockReason(runs []*state.Run) string {
+// stuckSinceLastNotice reports whether run is a research-loop run this hook
+// already blocked once, with nothing recorded since. Shared by
+// researchLoopBlockReason (decides whether to refuse again) and
+// recordStopNotice (decides which runs to stamp) so the two conditions cannot
+// drift apart.
+func stuckSinceLastNotice(run *state.Run) bool {
+	if !advanceable(run) || !inResearchLoop(run) {
+		return false
+	}
+	return run.StopNoticeAt != nil && !run.UpdatedAt.After(*run.StopNoticeAt)
+}
+
+// filteredBlockReason builds the standard block-reason shape - one line per
+// selected run, then the shared instruction - for whichever subset of runs
+// include picks. blockReason and researchLoopBlockReason differ only in that
+// predicate.
+func filteredBlockReason(runs []*state.Run, include func(*state.Run) bool) string {
 	var lines []string
 	for _, run := range runs {
-		if !advanceable(run) || !inResearchLoop(run) {
+		if !include(run) {
 			continue
-		}
-		if run.StopNoticeAt == nil || run.UpdatedAt.After(*run.StopNoticeAt) {
-			continue // never blocked before, or new evidence arrived since
 		}
 		lines = append(lines, reminderLine(run))
 	}
@@ -680,6 +690,13 @@ func researchLoopBlockReason(runs []*state.Run) string {
 	lines = append(lines,
 		"Do not end the turn with a run mid-graph. Record the real result with vibe-agent checkpoint, or record a blocker if the step cannot pass. Model assertion is not evidence.")
 	return strings.Join(lines, "\n")
+}
+
+// researchLoopBlockReason refuses a second consecutive stop attempt for a run
+// parked at one of its own graph's research/experiment loop nodes, when
+// nothing has been recorded since the last time this hook blocked it.
+func researchLoopBlockReason(runs []*state.Run) string {
+	return filteredBlockReason(runs, stuckSinceLastNotice)
 }
 
 // recordStopNotice persists run.UpdatedAt as of this block, for every loop-
@@ -702,19 +719,7 @@ func recordStopNotice(workspaceRoot string, runs []*state.Run) {
 // blockReason returns why the turn may not end, or "" when every active run is
 // somewhere the model cannot move it from.
 func blockReason(runs []*state.Run) string {
-	var lines []string
-	for _, run := range runs {
-		if !advanceable(run) {
-			continue
-		}
-		lines = append(lines, reminderLine(run))
-	}
-	if len(lines) == 0 {
-		return ""
-	}
-	lines = append(lines,
-		"Do not end the turn with a run mid-graph. Record the real result with vibe-agent checkpoint, or record a blocker if the step cannot pass. Model assertion is not evidence.")
-	return strings.Join(lines, "\n")
+	return filteredBlockReason(runs, advanceable)
 }
 
 // advanceable reports whether another turn could plausibly move this state.
