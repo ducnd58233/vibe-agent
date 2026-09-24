@@ -194,6 +194,15 @@ type Run struct {
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+
+	// StopNoticeAt is UpdatedAt as of the last time the Stop hook refused to
+	// end a turn for this run at a research/experiment loop node. Compared
+	// against the current UpdatedAt on the next stop call: unchanged means
+	// nothing was recorded in between, which is what forces a second refusal
+	// even when the host's own retry-after-block signal says to back off.
+	// nil until the first such block. Not a checkpoint evidence source - pure
+	// hook bookkeeping, read and written only by the harness package.
+	StopNoticeAt *time.Time `json:"stopNoticeAt,omitempty"`
 }
 
 var (

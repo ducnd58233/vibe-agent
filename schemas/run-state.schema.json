@@ -164,6 +164,11 @@
     "updatedAt": {
       "type": "string",
       "format": "date-time"
+    },
+    "stopNoticeAt": {
+      "description": "updatedAt as of the last time the Stop hook refused to end a turn for this run at a research/experiment loop node. Hook bookkeeping, not checkpoint evidence.",
+      "type": "string",
+      "format": "date-time"
     }
   },
   "$defs": {
