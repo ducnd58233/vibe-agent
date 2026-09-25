@@ -24,13 +24,13 @@ type Tasks struct{}
 
 func (Tasks) Kind() string { return "tasks" }
 
-func (Tasks) Verify(_ context.Context, req Request) (Result, error) {
+func (Tasks) Verify(ctx context.Context, req Request) (Result, error) {
 	if req.Slug == "" {
 		return Result{}, fmt.Errorf("tasks verifier needs a slug to find the task list")
 	}
 
 	path := tasks.Path(req.WorkspaceRoot, req.Slug)
-	file, err := tasks.Load(req.WorkspaceRoot, req.Slug)
+	file, err := tasks.LoadContext(ctx, req.WorkspaceRoot, req.Slug)
 	if err != nil {
 		return Result{}, fmt.Errorf("read %s: %w", relativeTo(req.WorkspaceRoot, path), err)
 	}

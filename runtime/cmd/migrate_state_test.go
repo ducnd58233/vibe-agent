@@ -56,6 +56,23 @@ func TestMigrateStateMovesFetchCacheFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	tasksDir := workspace.DocsDirAt(root, "2026-09-25", "migrate-demo", 1)
+	if err := os.MkdirAll(tasksDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	tasksRaw := []byte(`{
+  "schemaVersion": 1,
+  "slug": "migrate-demo",
+  "date": "2026-09-25",
+  "version": 1,
+  "tasks": [{"id": "T1", "title": "one", "status": "queued"}]
+}
+`)
+	tasksPath := filepath.Join(tasksDir, "tasks-2026-09-25.json")
+	if err := os.WriteFile(tasksPath, tasksRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := migrateStateCommand([]string{"--workspace", root, "--toolkit", toolkitRoot}); err != nil {
 		t.Fatalf("migrate state: %v", err)
 	}
@@ -68,6 +85,9 @@ func TestMigrateStateMovesFetchCacheFiles(t *testing.T) {
 	}
 	if _, err := os.Stat(journalPath); err == nil {
 		t.Error("the legacy ambient journal file still exists after migrate state")
+	}
+	if _, err := os.Stat(tasksPath); err == nil {
+		t.Error("the legacy tasks JSON file still exists after migrate state")
 	}
 
 	db, err := database.Open(t.Context(), workspace.MemoryDBPath(root))
@@ -99,6 +119,13 @@ func TestMigrateStateMovesFetchCacheFiles(t *testing.T) {
 	}
 	if journalCount != 1 {
 		t.Errorf("journal_entries has %d ambient rows, want 1", journalCount)
+	}
+	var taskCount int
+	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM task_lists`).Scan(&taskCount); err != nil {
+		t.Fatal(err)
+	}
+	if taskCount != 1 {
+		t.Errorf("task_lists has %d rows, want 1", taskCount)
 	}
 }
 

@@ -58,8 +58,7 @@ func checkTaskFiles(report *diagnostics, workspaceRoot string) {
 
 	checked := 0
 	for _, slug := range slugs {
-		path := tasks.Path(workspaceRoot, slug)
-		if _, statErr := os.Stat(path); statErr != nil {
+		if !tasks.HasTaskList(workspaceRoot, slug) {
 			continue
 		}
 		file, loadErr := tasks.Load(workspaceRoot, slug)
@@ -79,8 +78,8 @@ func checkTaskFiles(report *diagnostics, workspaceRoot string) {
 			}
 			prose = string(raw)
 			if headings := len(taskHeading.FindAllString(prose, -1)); headings != len(file.Tasks) {
-				fmt.Printf("  note  %s: TASKS prose names %d task(s), %s holds %d; the prose file may carry context the list does not\n",
-					slug, headings, filepath.Base(path), len(file.Tasks))
+				fmt.Printf("  note  %s: TASKS prose names %d task(s), task list holds %d; the prose file may carry context the list does not\n",
+					slug, headings, len(file.Tasks))
 			}
 		}
 
@@ -116,7 +115,7 @@ func checkTaskFiles(report *diagnostics, workspaceRoot string) {
 		}
 	}
 	if checked == 0 {
-		fmt.Printf("  note  no %s in this workspace; tasks_remaining needs one where a graph reads it\n", tasks.FileName)
+		fmt.Printf("  note  no task list in this workspace; tasks_remaining needs one where a graph reads it\n")
 	}
 }
 
