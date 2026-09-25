@@ -147,17 +147,33 @@ func listSlugsFromDB(workspaceRoot string, seen map[string]bool) error {
 }
 
 func loadRunFromDB(ctx context.Context, db *sql.DB, loc runLocation) (*domain.Run, error) {
-	var body string
+	var runID, body string
 	err := db.QueryRowContext(ctx, `
-        SELECT body FROM runs WHERE slug = ? AND date = ? AND version = ?`,
-		loc.Slug, loc.Date, loc.Version).Scan(&body)
+        SELECT run_id, body FROM runs WHERE slug = ? AND date = ? AND version = ?`,
+		loc.Slug, loc.Date, loc.Version).Scan(&runID, &body)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, sql.ErrNoRows
 	}
 	if err != nil {
 		return nil, err
 	}
-	return decodeRunBody(body)
+	run, err := decodeRunBody(body)
+	if err != nil {
+		return nil, err
+	}
+	checks, err := loadRunChecks(ctx, db, runID)
+	if err != nil {
+		return nil, err
+	}
+	// Table rows win when present so a thin body is authoritative after Save.
+	// Legacy rows that still embed checks in body keep working until rewritten.
+	if len(checks) > 0 {
+		run.Checks = checks
+		if err := run.Validate(); err != nil {
+			return nil, fmt.Errorf("run state is invalid: %w", err)
+		}
+	}
+	return run, nil
 }
 
 func decodeRunBody(body string) (*domain.Run, error) {
@@ -171,8 +187,85 @@ func decodeRunBody(body string) (*domain.Run, error) {
 	return &run, nil
 }
 
+// encodeThinRunBody marshals the run without checks so Save can store them in
+// run_checks instead of rewriting them inside the JSON blob on every update.
+func encodeThinRunBody(run *domain.Run) ([]byte, error) {
+	thin := *run
+	thin.Checks = nil
+	return json.Marshal(&thin)
+}
+
+func loadRunChecks(ctx context.Context, db *sql.DB, runID string) (map[string]domain.Check, error) {
+	rows, err := db.QueryContext(ctx, `
+        SELECT name, passed, skipped, source, ref, exit_code, at
+        FROM run_checks WHERE run_id = ?`, runID)
+	if err != nil {
+		return nil, fmt.Errorf("query run_checks: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := map[string]domain.Check{}
+	for rows.Next() {
+		var (
+			name, source, ref, at string
+			passed, skipped       int
+			exitCode              sql.NullInt64
+		)
+		if err := rows.Scan(&name, &passed, &skipped, &source, &ref, &exitCode, &at); err != nil {
+			return nil, fmt.Errorf("scan run_checks: %w", err)
+		}
+		parsedAt, err := time.Parse(time.RFC3339, at)
+		if err != nil {
+			return nil, fmt.Errorf("parse run_checks.at for %s: %w", name, err)
+		}
+		check := domain.Check{
+			Passed:  passed != 0,
+			Skipped: skipped != 0,
+			Source:  domain.CheckSource(source),
+			Ref:     ref,
+			At:      parsedAt.UTC(),
+		}
+		if exitCode.Valid {
+			code := int(exitCode.Int64)
+			check.ExitCode = &code
+		}
+		out[name] = check
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func replaceRunChecks(ctx context.Context, db *sql.DB, runID string, checks map[string]domain.Check) error {
+	if _, err := db.ExecContext(ctx, `DELETE FROM run_checks WHERE run_id = ?`, runID); err != nil {
+		return fmt.Errorf("clear run_checks for %s: %w", runID, err)
+	}
+	for name, check := range checks {
+		var exit any
+		if check.ExitCode != nil {
+			exit = *check.ExitCode
+		}
+		passed, skipped := 0, 0
+		if check.Passed {
+			passed = 1
+		}
+		if check.Skipped {
+			skipped = 1
+		}
+		at := check.At.UTC().Format(time.RFC3339)
+		if _, err := db.ExecContext(ctx, `
+            INSERT INTO run_checks (run_id, name, passed, skipped, source, ref, exit_code, at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			runID, name, passed, skipped, string(check.Source), check.Ref, exit, at); err != nil {
+			return fmt.Errorf("insert run_checks %s/%s: %w", runID, name, err)
+		}
+	}
+	return nil
+}
+
 func upsertRun(ctx context.Context, db *sql.DB, run *domain.Run, loc runLocation) error {
-	body, err := json.Marshal(run)
+	body, err := encodeThinRunBody(run)
 	if err != nil {
 		return fmt.Errorf("encode run state: %w", err)
 	}
@@ -211,6 +304,9 @@ func upsertRun(ctx context.Context, db *sql.DB, run *domain.Run, loc runLocation
 		run.TokensUsed, run.StoppedBy, string(body), now, now)
 	if err != nil {
 		return fmt.Errorf("upsert run %s: %w", run.RunID, err)
+	}
+	if err := replaceRunChecks(ctx, db, run.RunID, run.Checks); err != nil {
+		return err
 	}
 	return nil
 }
@@ -421,8 +517,8 @@ func readEventsSQL(path string) ([]domain.Event, bool, error) {
 	return events, true, nil
 }
 
-// deleteRunSQLRow removes one runs row and its events. Tests use this to force
-// a file-only Load after forging a manifest on disk.
+// deleteRunSQLRow removes one runs row and its events/checks. Tests use this
+// to force a file-only Load after forging a manifest on disk.
 func deleteRunSQLRow(workspaceRoot, runID string) error {
 	ctx := context.Background()
 	db, err := openDB(ctx, workspaceRoot)
@@ -430,6 +526,9 @@ func deleteRunSQLRow(workspaceRoot, runID string) error {
 		return err
 	}
 	defer func() { _ = db.Close() }()
+	if _, err := db.ExecContext(ctx, `DELETE FROM run_checks WHERE run_id = ?`, runID); err != nil {
+		return err
+	}
 	if _, err := db.ExecContext(ctx, `DELETE FROM run_events WHERE run_id = ?`, runID); err != nil {
 		return err
 	}
