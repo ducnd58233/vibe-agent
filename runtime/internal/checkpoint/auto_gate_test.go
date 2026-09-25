@@ -43,7 +43,7 @@ func TestAutoResearchCheckpointSkipsApplicabilityGate(t *testing.T) {
 
 	writeResearchDoc(t, root, entry.Date, entry.Slug, entry.Version, settledResearchBody())
 
-	result, err := Apply(Request{
+	result, err := Apply(t.Context(), Request{
 		WorkspaceRoot: root,
 		GraphDir:      graphDir,
 		Slug:          run.Slug,
@@ -92,7 +92,7 @@ func TestGoalResearchCheckpointStopsAtApplicabilityGate(t *testing.T) {
 
 	writeResearchDoc(t, root, entry.Date, entry.Slug, entry.Version, settledResearchBody())
 
-	result, err := Apply(Request{
+	result, err := Apply(t.Context(), Request{
 		WorkspaceRoot: root,
 		GraphDir:      graphDir,
 		Slug:          run.Slug,

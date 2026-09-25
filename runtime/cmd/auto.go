@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -250,7 +251,7 @@ func autoGateCommand(args []string) error {
 	}
 	// TryAnswerGate settled the gate on the manifest; Advance walks past it the
 	// same way vibe_checkpoint does after an artifact node.
-	result, err := checkpoint.Apply(checkpoint.Request{
+	result, err := checkpoint.Apply(context.Background(), checkpoint.Request{
 		WorkspaceRoot: workspaceRoot,
 		GraphDir:      graph.DefaultDir(toolkitRoot),
 		Slug:          *slug,

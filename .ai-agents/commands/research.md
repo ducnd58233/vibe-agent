@@ -35,6 +35,14 @@ Diagrams: [`diagram-authoring`](../references/diagram-authoring.md). Cursor rule
 8. Final digest section
 
 When writing under `docs/<date>/<slug>/<version>/`, use basename `RESEARCH-<date>.md`.
+
+**Every cited URL must resolve (MUST).** Run `vibe-agent docs check-citations <RESEARCH file>`
+before checkpointing. `checkpoint` runs the same check at `auto_research` and `literature` and
+refuses to leave the node while any cited URL (outside fenced code) fails; it fails closed offline,
+and it refuses private and loopback addresses. A live link is necessary, not sufficient: open the
+primary source and check the claim beside it, because across 14 models link validity stayed above
+94% while factual accuracy against the cited source was 39-77% (arXiv:2605.06635), and 3-13% of
+citation URLs are fabricated outright (arXiv:2604.03173).
 </outputs>
 
 ```sh
