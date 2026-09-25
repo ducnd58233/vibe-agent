@@ -24,7 +24,7 @@ Write a structured specification before implementation. The spec is the shared t
 
 **When NOT to use:** One-line fixes; changes with obvious, local scope. Still start the run with an
 explicit `--slug no-docs-<short-name>` in that case, rather than skip slug creation - the decision
-not to write docs stays auditable in `run list` and the run-index. See `AGENTS.md` "A 'no docs
+not to write docs stays auditable in `run list` and the `runs` table. See `AGENTS.md` "A 'no docs
 needed' decision still gets a slug".
 
 ## Routing & discovery
