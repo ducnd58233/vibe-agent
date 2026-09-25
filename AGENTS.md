@@ -148,7 +148,8 @@ path. When a rule already has a home, link to it instead of restating it.
 - **Docs carry content, never run state (MUST):** a generated deliverable under `docs/` never
   contains graph or run state (`currentNode`, `checks`, `maxTransitions`, or any other
   `run-state.schema.json` field) outside a fenced code example that is explicitly documenting the
-  schema. That state lives only in `.agent-state/runs/<date>/<slug>/<version>/manifest.json`.
+  schema. That state lives only in the `runs` table of `.agent-state/memory.db`
+  (inspect with `vibe-agent run status` / `run list`).
   `vibe-agent doctor` fails on a violation; see `docmeta.checkNoGraphState`.
 - **A slug is English (MUST):** a slug is a short English gloss of the objective, chosen by the
   agent, never a mechanical transliteration of non-English input. `auto.Slugify` keeps only
@@ -169,11 +170,11 @@ path. When a rule already has a home, link to it instead of restating it.
   refused - confirmed against this binary while writing this rule. The CLI's own usage strings
   showing `"<objective>" [--slug <slug>]` are stale on this point; fixing that argument-parsing
   behavior is a separate, unscoped finding, not part of this rule.
-- **Verification evidence (MUST):** run state and logs live under
+- **Verification evidence (MUST):** verification logs and review artifacts live under
   `.agent-state/runs/<YYYY-MM-DD>/<slug>/<version>/` (when gitignored in the
-  workspace), beside `manifest.json`. A leftover workspace-root `tmp/` tree fails
-  `vibe-agent doctor`; run `vibe-agent migrate docs-tmp` once (or delete it).
-  Evidence is not read from `tmp/`.
+  workspace). Graph state is in `memory.db`, not in that tree. A leftover
+  workspace-root `tmp/` tree fails `vibe-agent doctor`; run
+  `vibe-agent migrate docs-tmp` once (or delete it). Evidence is not read from `tmp/`.
 - **Portable paths (MUST):** in committed docs, plans, and agent deliverables, use paths relative to the workspace root or repo ids. Do not paste machine-absolute paths (`C:\...`, `/Users/...`, `d:\...`) into files that ship in git. For code and scripts, see **Paths in code are anchored, not absolute** below.
 - **Paths in code are anchored, not absolute (MUST):** source code, scripts, and config an agent
   writes or edits never hardcode a machine-absolute path (`C:\...`, `/Users/...`, `/home/...`) that

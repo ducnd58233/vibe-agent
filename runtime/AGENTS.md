@@ -74,7 +74,10 @@ runtime/
 
 **Run and session state (MUST):**
 
-- Run state lives under **`.agent-state/runs/<date>/<slug>/<version>/manifest.json`**. Do not write it directly; use **`checkpoint`** and **`run`** packages.
+- Run graph state lives in the **`runs`** and **`run_events`** tables of
+  **`.agent-state/memory.db`**. Do not write it directly; use **`checkpoint`** and
+  **`run`** packages. Verification evidence (unit logs, `ship/DECISION.md`, and so
+  on) stays under **`.agent-state/runs/<date>/<slug>/<version>/`**.
 - Session logs are append-only NDJSON. Do not truncate or rewrite them.
 
 **Stack-blind quality and checks (MUST):**

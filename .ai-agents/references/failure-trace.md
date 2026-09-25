@@ -22,12 +22,12 @@ checkpoint that leaves the failed node. See [`../commands/failure-trace.md`](../
 
 | Field | Filled from |
 |-------|-------------|
-| `run_id` | `manifest.json` `runId` |
-| `slug` | manifest |
+| `run_id` | `runs.id` in `memory.db` (`vibe-agent run status`) |
+| `slug` | run row / `run status` |
 | `failed_node` | `Blocker.Node` or `currentNode` |
 | `failure_class` | `Blocker.Class` (`context`, `tool`, `permission`, `test`, `ambiguity`, `model`) |
 | `symptom` | `Blocker.Reason` or verifier log basename |
-| `events_ref` | `events.ndjson#<sequence>` |
+| `events_ref` | `run_events` sequence for the run (`run_events#<sequence>`) |
 | `upstream_artifacts` | Relative paths under `docs/<date>/<slug>/<version>/` |
 | `assumption_ids` | Ids (`A1`..) listed in those artifacts; empty if none |
 | `checks_failed` | Check keys with `passed: false` and not skipped |
