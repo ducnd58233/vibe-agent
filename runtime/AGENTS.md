@@ -122,6 +122,10 @@ These rules come from research slug `improve-inner-outer-loops`. They apply when
   lives under **`runtime/migrations/`** (golang-migrate up/down pairs). `Open` applies
   pending migrations via embed; packages must not `CREATE TABLE` on open. Developer CLI:
   `make -C runtime new-migrate|migrate-up|migrate-down`.
+- Makefile `DATABASE_URL` defaults to `sqlite://$(CURDIR)/../.agent-state/memory.db`.
+  Scheme is **`sqlite://`**, not `sqlite3://` (modernc `-tags sqlite`). Path is anchored
+  with `$(CURDIR)` so it does not depend on the caller's cwd; override when the workspace
+  root is not the parent of `runtime/`.
 
 ## Agent memory boundary (MUST)
 
