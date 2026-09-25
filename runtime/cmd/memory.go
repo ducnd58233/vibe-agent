@@ -101,11 +101,40 @@ func memorySetStatus(args []string, action string) error {
 	if *id == "" {
 		return fmt.Errorf("memory %s needs --id; run `vibe-agent memory list` to find one", action)
 	}
+	return withMemory(paths, func(store *memory.Store) error {
+		ctx := context.Background()
+		now := time.Now().UTC()
+
+		if action == "forget" {
+			// Invalidate rather than SetStatus: closing the validity interval is
+			// what records when the fact stopped being true, which is the part an
+			// as-of query needs and a status flag cannot carry.
+			if err := store.Invalidate(ctx, *id, now); err != nil {
+				return err
+			}
+			fmt.Printf("%s is closed as of now and will not be retrieved.\n", *id)
+			return nil
+		}
+
+		// SourceHumanStatement is the honest provenance here: a person at a terminal
+		// vouched for it. Recording it as a command result would forge the evidence
+		// this whole store exists to keep honest.
+		record, err := store.Confirm(ctx, *id, memory.SourceHumanStatement, "human confirmation via vibe-agent memory confirm", now)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s is confirmed and will be retrieved into future sessions.\n", record.ID)
+		return nil
+	})
+}
+
+// withMemory runs one edit against the workspace's existing memory database.
+// It never creates one, and a failed close is reported rather than dropped.
+func withMemory(paths *rootFlags, edit func(*memory.Store) error) (err error) {
 	workspaceRoot, _, err := paths.resolve()
 	if err != nil {
 		return err
 	}
-
 	store, exists, err := openExistingMemory(workspaceRoot)
 	if err != nil {
 		return err
@@ -113,31 +142,8 @@ func memorySetStatus(args []string, action string) error {
 	if !exists {
 		return fmt.Errorf("no memory database at %s", memory.DBPath(workspaceRoot))
 	}
-	defer func() { _ = store.Close() }()
-
-	ctx := context.Background()
-	now := time.Now().UTC()
-
-	if action == "forget" {
-		// Invalidate rather than SetStatus: closing the validity interval is
-		// what records when the fact stopped being true, which is the part an
-		// as-of query needs and a status flag cannot carry.
-		if err := store.Invalidate(ctx, *id, now); err != nil {
-			return err
-		}
-		fmt.Printf("%s is closed as of now and will not be retrieved.\n", *id)
-		return nil
-	}
-
-	// SourceHumanStatement is the honest provenance here: a person at a terminal
-	// vouched for it. Recording it as a command result would forge the evidence
-	// this whole store exists to keep honest.
-	record, err := store.Confirm(ctx, *id, memory.SourceHumanStatement, "human confirmation via vibe-agent memory confirm", now)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%s is confirmed and will be retrieved into future sessions.\n", record.ID)
-	return nil
+	defer func() { err = errors.Join(err, store.Close()) }()
+	return edit(store)
 }
 
 func orUnknown(author string) string {
@@ -168,24 +174,13 @@ func memoryReview(args []string) error {
 	if *id == "" || strings.TrimSpace(*agent) == "" {
 		return fmt.Errorf("memory review needs --id and --agent; run `vibe-agent memory list` to find an id")
 	}
-	workspaceRoot, _, err := paths.resolve()
-	if err != nil {
-		return err
-	}
-	store, exists, err := openExistingMemory(workspaceRoot)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return fmt.Errorf("no memory database at %s", memory.DBPath(workspaceRoot))
-	}
-	defer func() { _ = store.Close() }()
-
-	if err := store.AddReviewer(context.Background(), *id, *agent, time.Now().UTC()); err != nil {
-		return err
-	}
-	fmt.Printf("%s: review by %s recorded. Its status is unchanged; confirming is separate.\n", *id, strings.TrimSpace(*agent))
-	return nil
+	return withMemory(paths, func(store *memory.Store) error {
+		if err := store.AddReviewer(context.Background(), *id, *agent, time.Now().UTC()); err != nil {
+			return err
+		}
+		fmt.Printf("%s: review by %s recorded. Its status is unchanged; confirming is separate.\n", *id, strings.TrimSpace(*agent))
+		return nil
+	})
 }
 
 // openExistingMemory opens the store without creating one, so a command run in
