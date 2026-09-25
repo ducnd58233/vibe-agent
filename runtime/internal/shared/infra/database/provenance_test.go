@@ -57,6 +57,32 @@ func TestCreateTableWithProvenanceAddsAllFourColumns(t *testing.T) {
 	}
 }
 
+// A name that is not a safe identifier is refused rather than interpolated
+// into the statement - the one place this function cannot use a placeholder.
+func TestCreateTableWithProvenanceRefusesAnUnsafeName(t *testing.T) {
+	ctx := context.Background()
+	db, err := Open(ctx, ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close: %v", err)
+		}
+	})
+
+	for _, name := range []string{
+		"widgets; DROP TABLE memories",
+		"widgets)",
+		"Widgets",
+		"",
+	} {
+		if err := CreateTableWithProvenance(ctx, db, name, `id TEXT PRIMARY KEY`); err == nil {
+			t.Errorf("name %q was accepted", name)
+		}
+	}
+}
+
 // A second call is what every caller does on every open; it must not fail
 // against a table that already exists.
 func TestCreateTableWithProvenanceIsIdempotent(t *testing.T) {
