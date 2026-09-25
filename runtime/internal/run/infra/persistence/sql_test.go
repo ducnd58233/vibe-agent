@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -211,5 +212,104 @@ func TestPrepareStartStillAllocatesDirs(t *testing.T) {
 	runDir := workspace.RunDirAt(root, entry.Date, entry.Slug, entry.Version)
 	if _, err := os.Stat(runDir); err != nil {
 		t.Fatalf("run dir missing: %v", err)
+	}
+}
+
+func TestSaveStoresChecksInRunChecksNotBody(t *testing.T) {
+	root := t.TempDir()
+	run := newTestRun(t)
+	run.Date = "2026-07-29"
+	run.Version = 1
+	path, _ := indexedPaths(t, root, run.Slug)
+	if err := run.SetCheck("unit", domain.Check{
+		Passed: true, Source: domain.SourceExitCode, Ref: "unit.log", At: fixedTime(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Save(path, run); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.Remove(path)
+
+	db, err := openDB(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	var body string
+	if err := db.QueryRowContext(context.Background(),
+		`SELECT body FROM runs WHERE run_id = ?`, run.RunID).Scan(&body); err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal([]byte(body), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := doc["checks"]; ok {
+		t.Fatalf("body still embeds checks: %s", body)
+	}
+
+	var count int
+	if err := db.QueryRowContext(context.Background(),
+		`SELECT COUNT(*) FROM run_checks WHERE run_id = ?`, run.RunID).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("run_checks count = %d, want 1", count)
+	}
+
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := loaded.Checks["unit"]
+	if !got.Passed || got.Source != domain.SourceExitCode || got.Ref != "unit.log" {
+		t.Fatalf("loaded check = %+v", got)
+	}
+}
+
+func TestLoadFallsBackToBodyChecksWhenTableEmpty(t *testing.T) {
+	root := t.TempDir()
+	run := newTestRun(t)
+	run.Date = "2026-07-29"
+	run.Version = 1
+	if err := run.SetCheck("lint", domain.Check{
+		Passed: true, Source: domain.SourceExitCode, At: fixedTime(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	path, _ := indexedPaths(t, root, run.Slug)
+
+	ctx := context.Background()
+	db, err := openDB(ctx, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	raw, err := json.Marshal(run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := fixedTime().Format(time.RFC3339)
+	_, err = db.ExecContext(ctx, `
+        INSERT INTO runs (
+            run_id, slug, date, version, graph_id, current_node, status,
+            iteration, max_transitions, token_budget, wallclock_seconds,
+            tokens_used, stopped_by, body, created_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, '', ?, '', ?, ?)`,
+		run.RunID, run.Slug, run.Date, run.Version, run.GraphID, run.CurrentNode,
+		string(run.Status), run.Iteration, run.MaxTransitions, string(raw), now, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := loaded.Checks["lint"]; !got.Passed {
+		t.Fatalf("legacy body checks lost: %+v", loaded.Checks)
 	}
 }
