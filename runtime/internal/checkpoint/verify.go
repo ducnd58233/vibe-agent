@@ -210,7 +210,7 @@ func Verify(ctx context.Context, req VerifyRequest) (*VerifyResult, error) {
 		}
 	}
 
-	applied, err := Apply(Request{
+	applied, err := Apply(ctx, Request{
 		WorkspaceRoot: req.WorkspaceRoot,
 		GraphDir:      req.GraphDir,
 		Slug:          req.Slug,

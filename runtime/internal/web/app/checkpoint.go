@@ -62,7 +62,7 @@ func handleSessionCheckpoint(w http.ResponseWriter, r *http.Request, d httpDeps)
 	if ref == "" {
 		ref = "web human_gate"
 	}
-	_, err = checkpoint.Apply(checkpoint.Request{
+	_, err = checkpoint.Apply(r.Context(), checkpoint.Request{
 		WorkspaceRoot: ws,
 		GraphDir:      graph.DefaultDir(d.toolkitRoot),
 		Slug:          slug,

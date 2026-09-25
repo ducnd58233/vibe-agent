@@ -57,7 +57,7 @@ func intakeConfirmed() loop.Outcome {
 
 func apply(t *testing.T, root string, outcome loop.Outcome) *Result {
 	t.Helper()
-	result, err := Apply(Request{
+	result, err := Apply(t.Context(), Request{
 		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
 		Outcome: outcome, Now: at(),
 	})
@@ -134,7 +134,7 @@ spec:
 `)
 	atTestNode(t, root)
 
-	_, err := Apply(Request{
+	_, err := Apply(t.Context(), Request{
 		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
 		Outcome: unitPassed(), Now: at(),
 	})
@@ -160,7 +160,7 @@ spec:
 `)
 	atTestNode(t, root)
 
-	result, err := Apply(Request{
+	result, err := Apply(t.Context(), Request{
 		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
 		Outcome: unitPassed(), origin: originRuntime, Now: at(),
 	})
@@ -189,7 +189,7 @@ spec:
 
 	human := unitPassed()
 	human.Check.Check.Source = state.SourceHumanEvent
-	result, err := Apply(Request{
+	result, err := Apply(t.Context(), Request{
 		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
 		Outcome: human, Now: at(),
 	})
@@ -214,7 +214,7 @@ spec:
 `)
 	atTestNode(t, root)
 
-	if _, err := Apply(Request{
+	if _, err := Apply(t.Context(), Request{
 		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
 		Outcome: unitPassed(), Now: at(),
 	}); err == nil {
@@ -373,7 +373,7 @@ spec:
 `)
 	atTestNode(t, root)
 
-	_, err := Apply(Request{
+	_, err := Apply(t.Context(), Request{
 		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
 		Outcome: unitPassed(), Now: at(),
 	})

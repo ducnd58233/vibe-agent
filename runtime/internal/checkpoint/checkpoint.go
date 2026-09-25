@@ -14,6 +14,7 @@
 package checkpoint
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -71,6 +72,9 @@ type Request struct {
 	// that has the log, because this package must not reach into another
 	// module's persistence to find one.
 	TokensUsed int
+	// Citations checks a research digest's URLs. Nil means the public
+	// internet; tests inject a fake.
+	Citations CitationCheck
 }
 
 func (r Request) now() time.Time {
@@ -118,7 +122,7 @@ type transitionEvent struct {
 }
 
 // Apply records the outcome and advances the state.
-func Apply(req Request) (*Result, error) {
+func Apply(ctx context.Context, req Request) (*Result, error) {
 	manifest := state.ManifestPath(req.WorkspaceRoot, req.Slug)
 	run, err := state.Load(manifest)
 	if err != nil {
@@ -154,6 +158,9 @@ func Apply(req Request) (*Result, error) {
 	// and resolves before this would ever apply, so it is excluded here too.
 	if req.Outcome.Blocker == "" {
 		if err := checkProgress(req.WorkspaceRoot, run); err != nil {
+			return nil, err
+		}
+		if err := checkCitations(ctx, req.WorkspaceRoot, run, req.Citations); err != nil {
 			return nil, err
 		}
 	}

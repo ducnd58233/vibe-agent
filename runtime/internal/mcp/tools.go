@@ -499,7 +499,7 @@ func runCheckpoint(deps Deps, raw json.RawMessage) (any, error) {
 		}
 	}
 
-	result, err := checkpoint.Apply(checkpoint.Request{
+	result, err := checkpoint.Apply(context.Background(), checkpoint.Request{
 		WorkspaceRoot: deps.WorkspaceRoot,
 		GraphDir:      graph.DefaultDir(deps.ToolkitRoot),
 		Slug:          args.Slug,

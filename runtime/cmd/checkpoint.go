@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -74,7 +75,7 @@ func checkpointCommand(args []string) error {
 	// is a budget input, and losing it must not cost the evidence.
 	tokens, _ := session.TokensUsed(session.LogPath(workspaceRoot, *slug))
 
-	result, err := checkpoint.Apply(checkpoint.Request{
+	result, err := checkpoint.Apply(context.Background(), checkpoint.Request{
 		WorkspaceRoot: workspaceRoot,
 		GraphDir:      graph.DefaultDir(toolkitRoot),
 		Slug:          *slug,

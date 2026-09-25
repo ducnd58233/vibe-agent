@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/citations"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/docgrounding"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/docsrouter"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
@@ -13,15 +15,17 @@ import (
 // docsCommand dispatches docs/ subcommands.
 func docsCommand(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("docs needs a subcommand: router, check-claims")
+		return fmt.Errorf("docs needs a subcommand: router, check-claims, check-citations")
 	}
 	switch args[0] {
 	case "router":
 		return docsRouter(args[1:])
 	case "check-claims":
 		return docsCheckClaims(args[1:])
+	case "check-citations":
+		return docsCheckCitations(args[1:])
 	default:
-		return fmt.Errorf("unknown docs subcommand %q; try router, check-claims", args[0])
+		return fmt.Errorf("unknown docs subcommand %q; try router, check-claims, check-citations", args[0])
 	}
 }
 
@@ -82,4 +86,32 @@ func docsCheckClaims(args []string) error {
 		fmt.Printf("WARN  %s:%d: %q does not resolve in the repo tree\n", target, issue.Line, issue.Path)
 	}
 	return fmt.Errorf("%d unresolved path reference(s) in %s", len(issues), target)
+}
+
+// docsCheckCitations requests every http(s) URL a markdown file cites, outside
+// fenced code, and fails on any that does not resolve. The same check gates the
+// research nodes at checkpoint time.
+func docsCheckCitations(args []string) error {
+	flags := newFlagSet("docs check-citations")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() != 1 {
+		return fmt.Errorf("docs check-citations needs exactly one markdown file path")
+	}
+	target := flags.Arg(0)
+	raw, err := os.ReadFile(filepath.Clean(target))
+	if err != nil {
+		return err
+	}
+	urls := citations.Extract(raw)
+	failures := citations.Default().Check(context.Background(), urls)
+	for _, failure := range failures {
+		fmt.Printf("FAIL  %s\n", failure)
+	}
+	if len(failures) > 0 {
+		return fmt.Errorf("%d of %d cited URL(s) in %s do not resolve", len(failures), len(urls), target)
+	}
+	fmt.Printf("ok    %s: all %d cited URL(s) resolve\n", target, len(urls))
+	return nil
 }

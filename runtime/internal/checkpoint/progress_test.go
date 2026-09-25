@@ -67,7 +67,7 @@ func TestApplyRefusesAnIdenticalResubmissionAtAutoResearch(t *testing.T) {
 	atAutoResearch(t, root)
 	writeResearchArtifact(t, root, content)
 
-	if _, err := Apply(Request{
+	if _, err := Apply(t.Context(), Request{
 		WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo",
 		Outcome: loop.Outcome{}, Now: at(),
 	}); err == nil {
