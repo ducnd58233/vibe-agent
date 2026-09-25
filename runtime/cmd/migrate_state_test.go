@@ -8,7 +8,10 @@ import (
 	"time"
 
 	fetchpersistence "github.com/ducnd58233/vibe-agent/runtime/internal/fetch/infra/persistence"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/run/domain"
+	runpersistence "github.com/ducnd58233/vibe-agent/runtime/internal/run/infra/persistence"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/database"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/runpath"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
@@ -73,6 +76,26 @@ func TestMigrateStateMovesFetchCacheFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	run, err := domain.NewRun("migrate-demo", "goal", "goal-delivery", 50, time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.Date = "2026-09-25"
+	run.Version = 1
+	if _, err := runpath.Allocate(root, run.Slug, time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := runpersistence.ManifestPath(root, run.Slug)
+	if err := runpersistence.Save(manifestPath, run); err != nil {
+		t.Fatal(err)
+	}
+	eventsPath := runpersistence.EventLogPath(root, run.Slug)
+	if _, err := runpersistence.AppendRunEvent(eventsPath, domain.Event{
+		Type: domain.EventRunStarted, At: time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := migrateStateCommand([]string{"--workspace", root, "--toolkit", toolkitRoot}); err != nil {
 		t.Fatalf("migrate state: %v", err)
 	}
@@ -88,6 +111,15 @@ func TestMigrateStateMovesFetchCacheFiles(t *testing.T) {
 	}
 	if _, err := os.Stat(tasksPath); err == nil {
 		t.Error("the legacy tasks JSON file still exists after migrate state")
+	}
+	if _, err := os.Stat(manifestPath); err == nil {
+		t.Error("the legacy run manifest still exists after migrate state")
+	}
+	if _, err := os.Stat(eventsPath); err == nil {
+		t.Error("the legacy run events log still exists after migrate state")
+	}
+	if _, err := os.Stat(runpath.IndexPath(root, run.Slug)); err == nil {
+		t.Error("the legacy run-index file still exists after migrate state")
 	}
 
 	db, err := database.Open(t.Context(), workspace.MemoryDBPath(root))
@@ -126,6 +158,19 @@ func TestMigrateStateMovesFetchCacheFiles(t *testing.T) {
 	}
 	if taskCount != 1 {
 		t.Errorf("task_lists has %d rows, want 1", taskCount)
+	}
+	var runsCount, runEventsCount int
+	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM runs`).Scan(&runsCount); err != nil {
+		t.Fatal(err)
+	}
+	if runsCount != 1 {
+		t.Errorf("runs has %d rows, want 1", runsCount)
+	}
+	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM run_events`).Scan(&runEventsCount); err != nil {
+		t.Fatal(err)
+	}
+	if runEventsCount != 1 {
+		t.Errorf("run_events has %d rows, want 1", runEventsCount)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 
 	fetchpersistence "github.com/ducnd58233/vibe-agent/runtime/internal/fetch/infra/persistence"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/harness"
+	runpersistence "github.com/ducnd58233/vibe-agent/runtime/internal/run/infra/persistence"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/tasks"
 )
 
@@ -51,6 +52,12 @@ func migrateStateCommand(args []string) error {
 		return fmt.Errorf("migrate task lists: %w", err)
 	}
 	fmt.Printf("task lists: %d row(s) moved to task_lists\n", taskMigrated)
+
+	runMigrated, err := runpersistence.Backfill(ctx, workspaceRoot)
+	if err != nil {
+		return fmt.Errorf("migrate runs: %w", err)
+	}
+	fmt.Printf("runs: %d row(s) moved to runs\n", runMigrated)
 
 	return nil
 }

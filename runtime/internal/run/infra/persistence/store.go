@@ -47,8 +47,15 @@ func ManifestPath(workspaceRoot, slug string) string {
 	return filepath.Join(dir, "manifest.json")
 }
 
-// Load reads and validates a manifest.
+// Load reads and validates a manifest. Prefers a runs-table row when one
+// exists for the path's slug/date/version; otherwise reads the file.
 func Load(path string) (*domain.Run, error) {
+	if run, ok, err := loadRunSQL(path); err != nil {
+		return nil, err
+	} else if ok {
+		return run, nil
+	}
+
 	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, fmt.Errorf("read run state: %w", err)
@@ -67,10 +74,19 @@ func Load(path string) (*domain.Run, error) {
 
 // Save writes the manifest atomically: a temp file in the same directory, then
 // a rename. A crash mid-write leaves the previous manifest intact rather than a
-// truncated one.
+// truncated one. Always upserts the runs table. The on-disk file is updated only
+// while a legacy file or run-index still exists; after Backfill removes both,
+// Save is SQL-only so migrate does not recreate what it just deleted.
 func Save(path string, run *domain.Run) error {
 	if err := run.Validate(); err != nil {
 		return fmt.Errorf("refusing to save invalid run state: %w", err)
+	}
+
+	if err := saveRunSQL(path, run); err != nil {
+		return err
+	}
+	if !shouldWriteLegacyRunFile(path) {
+		return nil
 	}
 
 	dir := filepath.Dir(path)
@@ -108,6 +124,21 @@ func Save(path string, run *domain.Run) error {
 	return nil
 }
 
+// shouldWriteLegacyRunFile is true while dual-write is still needed: the
+// manifest already exists on disk, or a run-index pointer still names this
+// slug. After Backfill deletes both, new Saves stay in SQL only.
+func shouldWriteLegacyRunFile(path string) bool {
+	if _, err := os.Stat(path); err == nil {
+		return true
+	}
+	loc, base, ok := parseRunPath(path)
+	if !ok || base != "manifest.json" {
+		return false
+	}
+	_, err := os.Stat(runpath.IndexPath(loc.WorkspaceRoot, loc.Slug))
+	return err == nil
+}
+
 // EventLogPath is the event log for a slug. Empty when no run is indexed.
 func EventLogPath(workspaceRoot, slug string) string {
 	dir := RunDir(workspaceRoot, slug)
@@ -120,7 +151,8 @@ func EventLogPath(workspaceRoot, slug string) string {
 // AppendEvent adds one line to the log and returns the stored event, including
 // the sequence number it was given. Session logs reuse this writer with their
 // own type vocabulary; run delivery logs should call AppendRunEvent so unknown
-// kinds are refused at the boundary.
+// kinds are refused at the boundary. For a run events path, also inserts a
+// run_events row when the parent run is known.
 func AppendEvent(path string, event domain.Event) (domain.Event, error) {
 	if path == "" {
 		return domain.Event{}, errors.New("event log path is empty")
@@ -137,15 +169,27 @@ func AppendEvent(path string, event domain.Event) (domain.Event, error) {
 		return domain.Event{}, fmt.Errorf("create run directory: %w", err)
 	}
 
-	existing, err := countLines(path)
+	// SQL append assigns Sequence when the run is known; otherwise count the file.
+	wroteSQL, err := appendEventSQL(path, &event)
 	if err != nil {
 		return domain.Event{}, err
 	}
-	event.Sequence = existing + 1
+	if !wroteSQL {
+		existing, err := countLines(path)
+		if err != nil {
+			return domain.Event{}, err
+		}
+		event.Sequence = existing + 1
+	}
 
 	encoded, err := json.Marshal(event)
 	if err != nil {
 		return domain.Event{}, fmt.Errorf("encode event: %w", err)
+	}
+
+	// Dual-write the file while a legacy events log or run-index still exists.
+	if !shouldWriteLegacyEventFile(path) {
+		return event, nil
 	}
 
 	file, err := os.OpenFile(filepath.Clean(path), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
@@ -163,6 +207,23 @@ func AppendEvent(path string, event domain.Event) (domain.Event, error) {
 	return event, nil
 }
 
+func shouldWriteLegacyEventFile(path string) bool {
+	loc, base, ok := parseRunPath(path)
+	if !ok || base != domain.EventLogName {
+		// Session logs and other non-run paths still live on disk.
+		return true
+	}
+	if _, err := os.Stat(path); err == nil {
+		return true
+	}
+	manifest := filepath.Join(filepath.Dir(path), "manifest.json")
+	if _, err := os.Stat(manifest); err == nil {
+		return true
+	}
+	_, err := os.Stat(runpath.IndexPath(loc.WorkspaceRoot, loc.Slug))
+	return err == nil
+}
+
 // AppendRunEvent is AppendEvent for the delivery event log: the type must be a
 // known EventType. Session.ndjson must not call this.
 func AppendRunEvent(path string, event domain.Event) (domain.Event, error) {
@@ -172,11 +233,18 @@ func AppendRunEvent(path string, event domain.Event) (domain.Event, error) {
 	return AppendEvent(path, event)
 }
 
-// ReadEvents returns every event in the log. A missing or empty path is not an error.
+// ReadEvents returns every event in the log. A missing or empty path is not an
+// error. Prefers run_events rows when any exist for the path's run.
 func ReadEvents(path string) ([]domain.Event, error) {
 	if path == "" {
 		return nil, nil
 	}
+	if events, ok, err := readEventsSQL(path); err != nil {
+		return nil, err
+	} else if ok {
+		return events, nil
+	}
+
 	file, err := os.Open(filepath.Clean(path))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -251,10 +319,14 @@ func PrepareStart(workspaceRoot, slug string, now time.Time) (runpath.Entry, err
 	return entry, nil
 }
 
-// List returns slugs that have a readable manifest under .agent-state/runs/
-// or a run-index pointer to one.
+// List returns slugs that have a readable manifest under .agent-state/runs/,
+// a run-index pointer to one, or a row in the runs table.
 func List(workspaceRoot string) ([]string, error) {
 	seen := map[string]bool{}
+
+	if err := listSlugsFromDB(workspaceRoot, seen); err != nil {
+		return nil, err
+	}
 
 	indexDir := workspace.RunIndexDir(workspaceRoot)
 	if entries, err := os.ReadDir(indexDir); err == nil {

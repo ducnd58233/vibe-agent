@@ -307,11 +307,17 @@ func shellVerdict(req Request, command string) *BlockError {
 // runStateFile matches a run's own bookkeeping under .agent-state/runs/.
 var runStateFile = regexp.MustCompile(`(^|/)\.agent-state/runs/[^/]+/[^/]+/[0-9]+/(manifest\.json|events\.ndjson)$`)
 
+// memoryDBFile matches the shared workspace database that holds runs and
+// run_events after the file manifests are gone. A Write/Edit of that file is
+// the post-migration equivalent of hand-editing a manifest.
+var memoryDBFile = regexp.MustCompile(`(^|/)\.agent-state/memory\.db(-wal|-shm)?$`)
+
 // shellWriters are the commands that change a file rather than read it. A
 // redirection is handled separately, since it has no command word of its own.
 var shellWriters = map[string]bool{
 	"rm": true, "mv": true, "cp": true, "tee": true,
 	"truncate": true, "dd": true, "sed": true, "install": true, "ln": true,
+	"sqlite3": true, "sqlite": true,
 }
 
 // stateWriteVerdict refuses to let anything but the runtime write a run's own
@@ -355,21 +361,24 @@ func stateWriteVerdict(req Request, body payload) *BlockError {
 	if target, found := shellWritesRunState(command, req.WorkspaceRoot); found {
 		return &BlockError{Reason: stateWriteReason(target)}
 	}
+	if shellMutatesRunTables(command) {
+		return &BlockError{Reason: stateWriteReason("runs/run_events via sqlite")}
+	}
 	return nil
 }
 
 func stateWriteReason(target string) string {
 	return strings.Join([]string{
 		fmt.Sprintf("Blocked: %s is run state, and only the runtime writes it.", target),
-		"A hand-edited manifest is model output that every later guard reads as recorded evidence.",
+		"A hand-edited run row is model output that every later guard reads as recorded evidence.",
 		"Record the result properly instead:",
 		"  vibe-agent checkpoint --slug <slug> --check <name> --source <exit_code|file_assert|ci_api|human_event> --passed",
-		"Reading these files is fine. Writing them is not.",
+		"Reading run state is fine. Writing it by hand is not.",
 	}, "\n")
 }
 
-// protectedRunFile reports whether a path points at a run's manifest or event
-// log, whichever way the caller happened to spell it.
+// protectedRunFile reports whether a path points at a run's manifest, event
+// log, or the shared memory.db that holds those rows after migration.
 func protectedRunFile(path, workspaceRoot string) bool {
 	trimmed := strings.Trim(strings.TrimSpace(path), `"'`)
 	if trimmed == "" {
@@ -381,7 +390,8 @@ func protectedRunFile(path, workspaceRoot string) bool {
 			native = relative
 		}
 	}
-	return runStateFile.MatchString(filepath.ToSlash(native))
+	slash := filepath.ToSlash(native)
+	return runStateFile.MatchString(slash) || memoryDBFile.MatchString(slash)
 }
 
 // shellWritesRunState finds a run state file on the receiving end of a shell
@@ -412,6 +422,25 @@ func shellWritesRunState(command, workspaceRoot string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// shellMutatesRunTables catches a raw SQL write aimed at the runs or
+// run_events tables. After manifests live in memory.db, that is the hand-edit
+// path the Write/Edit tools no longer name.
+func shellMutatesRunTables(command string) bool {
+	lower := strings.ToLower(command)
+	if !strings.Contains(lower, "sqlite") {
+		return false
+	}
+	writes := strings.Contains(lower, "insert") ||
+		strings.Contains(lower, "update") ||
+		strings.Contains(lower, "delete") ||
+		strings.Contains(lower, "replace") ||
+		strings.Contains(lower, "drop")
+	if !writes {
+		return false
+	}
+	return strings.Contains(lower, "runs") || strings.Contains(lower, "run_events")
 }
 
 func baseName(field string) string {

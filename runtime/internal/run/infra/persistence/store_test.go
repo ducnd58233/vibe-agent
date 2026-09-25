@@ -66,6 +66,10 @@ func TestLoadRejectsAForgedCheckSource(t *testing.T) {
 	if err := os.WriteFile(path, forged, 0o600); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
+	// Save also wrote the good row to SQL; drop it so Load reads the forged file.
+	if err := deleteRunSQLRow(dir, run.RunID); err != nil {
+		t.Fatalf("deleteRunSQLRow: %v", err)
+	}
 
 	if _, err := Load(path); err == nil {
 		t.Error("Load accepted a manifest whose check claims source \"model\"")
