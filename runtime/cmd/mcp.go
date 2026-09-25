@@ -48,7 +48,7 @@ func mcpCommand(args []string) error {
 		ToolkitRoot:   toolkitRoot,
 		// The workspace path is the workspace identity: memories never cross
 		// repositories, and two checkouts of the same repo are two workspaces.
-		WorkspaceID: workspaceRoot,
+		WorkspaceID: memory.WorkspaceKey(workspaceRoot),
 		Memory:      store,
 		Log:         log,
 	})

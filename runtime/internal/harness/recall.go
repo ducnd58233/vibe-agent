@@ -30,7 +30,7 @@ func recall(workspaceRoot, query string) string {
 	defer func() { _ = store.Close() }()
 
 	hits, err := store.Search(context.Background(), memory.Query{
-		WorkspaceID: workspaceRoot,
+		WorkspaceID: memory.WorkspaceKey(workspaceRoot),
 		Text:        query,
 		Limit:       RecallLimit,
 	})

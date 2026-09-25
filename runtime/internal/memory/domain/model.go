@@ -13,6 +13,7 @@ package domain
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -86,6 +87,33 @@ func (s SourceType) Valid() bool {
 }
 
 // Record is one memory.
+// LocalWorkspace is the key for the workspace that owns the database file.
+const LocalWorkspace = "."
+
+// WorkspaceKey is the WorkspaceID to store and query under for a workspace.
+//
+// The database lives inside the workspace it serves (.agent-state/memory.db),
+// so the file already scopes its rows. Keying them by the absolute workspace
+// path instead tied every memory to one checkout location: a moved repository,
+// or the same one opened through another path form, found nothing. The root is
+// accepted so callers read naturally and the key can grow a real identity
+// later without touching them.
+func WorkspaceKey(_ string) string { return LocalWorkspace }
+
+// Author formats Record.CreatedBy: the host client, then "/model" when the
+// model is known. Either part may be empty; both empty means unknown.
+func Author(client, model string) string {
+	client, model = strings.TrimSpace(client), strings.TrimSpace(model)
+	switch {
+	case client == "":
+		return model
+	case model == "":
+		return client
+	default:
+		return client + "/" + model
+	}
+}
+
 type Record struct {
 	ID          string     `json:"id"`
 	WorkspaceID string     `json:"workspaceId"`
@@ -114,6 +142,14 @@ type Record struct {
 	// A nil ValidTo means the fact is still held.
 	ValidFrom time.Time  `json:"validFrom"`
 	ValidTo   *time.Time `json:"validTo,omitempty"`
+
+	// CreatedBy is the agent that wrote the memory: the host client, with the
+	// model after a slash when it is known ("codex/gpt-5"). Empty means the row
+	// predates this field; nothing is inferred for it.
+	CreatedBy string `json:"createdBy,omitempty"`
+	// ReviewedBy lists, once each and in order, the agents that audited this
+	// memory. It is collaboration metadata, never checkpoint evidence.
+	ReviewedBy []string `json:"reviewedByAgents,omitempty"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`

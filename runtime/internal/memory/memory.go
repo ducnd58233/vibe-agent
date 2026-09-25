@@ -58,6 +58,12 @@ const (
 // asset rather than in a store nobody reads.
 func ProposePromotions(records []Record) []Promotion { return domain.ProposePromotions(records) }
 
+// WorkspaceKey is the portable WorkspaceID for a workspace's own database.
+func WorkspaceKey(workspaceRoot string) string { return domain.WorkspaceKey(workspaceRoot) }
+
+// Author formats Record.CreatedBy from a host client and, when known, a model.
+func Author(client, model string) string { return domain.Author(client, model) }
+
 // DBPath is where a workspace keeps its memory database.
 func DBPath(workspaceRoot string) string { return persistence.DBPath(workspaceRoot) }
 

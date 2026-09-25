@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -43,6 +44,8 @@ CREATE TABLE IF NOT EXISTS memories (
     expires_at    TEXT,
     valid_from    TEXT NOT NULL DEFAULT '',
     valid_to      TEXT,
+    created_by    TEXT NOT NULL DEFAULT '',
+    reviewed_by_agents TEXT NOT NULL DEFAULT '',
     created_at    TEXT NOT NULL,
     updated_at    TEXT NOT NULL
 );
@@ -125,6 +128,8 @@ func migrate(ctx context.Context, db *sql.DB) error {
 	for _, column := range []struct{ name, definition string }{
 		{"valid_from", `valid_from TEXT NOT NULL DEFAULT ''`},
 		{"valid_to", `valid_to TEXT`},
+		{"created_by", `created_by TEXT NOT NULL DEFAULT ''`},
+		{"reviewed_by_agents", `reviewed_by_agents TEXT NOT NULL DEFAULT ''`},
 	} {
 		if present[column.name] {
 			continue
@@ -132,6 +137,15 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		if _, err := db.ExecContext(ctx, `ALTER TABLE memories ADD COLUMN `+column.definition); err != nil {
 			return fmt.Errorf("add memory column %s: %w", column.name, err)
 		}
+	}
+
+	// Rows keyed by the absolute workspace path belong to this file's own
+	// workspace, whatever path form wrote them. Rekey them so a moved checkout
+	// still finds its memories. Only absolute-looking keys are touched.
+	if _, err := db.ExecContext(ctx, `UPDATE memories SET workspace_id = ?
+        WHERE workspace_id LIKE '/%' OR workspace_id LIKE '~%' OR workspace_id GLOB '[A-Za-z]:*'`,
+		domain.LocalWorkspace); err != nil {
+		return fmt.Errorf("rekey memories to the local workspace: %w", err)
 	}
 
 	// Rows written before the interval existed were true from when they were
@@ -243,6 +257,27 @@ func (s *Store) Invalidate(ctx context.Context, id string, at time.Time) error {
 	return nil
 }
 
+// AddReviewer records that an agent audited a memory. Each agent is listed
+// once, in the order they first reviewed it. Reviewing does not confirm: a
+// review is collaboration metadata, and confirmation still needs a verifier
+// result or a human event.
+func (s *Store) AddReviewer(ctx context.Context, id, agent string, now time.Time) error {
+	agent = strings.TrimSpace(agent)
+	if agent == "" || strings.ContainsAny(agent, "\r\n") {
+		return errors.New("a reviewer needs a one-line agent name")
+	}
+	record, err := s.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if slices.Contains(record.ReviewedBy, agent) {
+		return nil
+	}
+	record.ReviewedBy = append(record.ReviewedBy, agent)
+	record.UpdatedAt = now.UTC()
+	return s.update(ctx, record)
+}
+
 // RecordUse counts a successful reuse, which feeds promotion proposals.
 func (s *Store) RecordUse(ctx context.Context, id string, now time.Time) error {
 	_, err := s.db.ExecContext(ctx,
@@ -292,13 +327,15 @@ func (s *Store) insert(ctx context.Context, record domain.Record) error {
 	if _, err := tx.ExecContext(ctx, `
         INSERT INTO memories (id, workspace_id, kind, content, tags, confidence,
             status, source_type, source_ref, evidence, supersedes_id, used_count,
-            expires_at, valid_from, valid_to, created_at, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            expires_at, valid_from, valid_to, created_by, reviewed_by_agents,
+            created_at, updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		record.ID, record.WorkspaceID, string(record.Kind), record.Content,
 		strings.Join(record.Tags, " "), record.Confidence, string(record.Status),
 		string(record.SourceType), record.SourceRef, strings.Join(record.Evidence, "\n"),
 		record.SupersedesID, record.UsedCount, formatTimePtr(record.ExpiresAt),
 		record.ValidFrom.UTC().Format(ExpiryLayout), formatTimePtr(record.ValidTo),
+		record.CreatedBy, strings.Join(record.ReviewedBy, "\n"),
 		record.CreatedAt.Format(time.RFC3339Nano), record.UpdatedAt.Format(time.RFC3339Nano),
 	); err != nil {
 		return fmt.Errorf("insert memory: %w", err)
@@ -322,14 +359,15 @@ func (s *Store) update(ctx context.Context, record domain.Record) error {
 	if _, err := tx.ExecContext(ctx, `
         UPDATE memories SET kind=?, content=?, tags=?, confidence=?, status=?,
             source_type=?, source_ref=?, evidence=?, supersedes_id=?,
-            used_count=?, expires_at=?, valid_from=?, valid_to=?, updated_at=?
+            used_count=?, expires_at=?, valid_from=?, valid_to=?, reviewed_by_agents=?,
+            updated_at=?
         WHERE id=?`,
 		string(record.Kind), record.Content, strings.Join(record.Tags, " "),
 		record.Confidence, string(record.Status), string(record.SourceType),
 		record.SourceRef, strings.Join(record.Evidence, "\n"), record.SupersedesID,
 		record.UsedCount, formatTimePtr(record.ExpiresAt),
 		record.ValidFrom.UTC().Format(ExpiryLayout), formatTimePtr(record.ValidTo),
-		record.UpdatedAt.Format(time.RFC3339Nano), record.ID,
+		strings.Join(record.ReviewedBy, "\n"), record.UpdatedAt.Format(time.RFC3339Nano), record.ID,
 	); err != nil {
 		return fmt.Errorf("update memory: %w", err)
 	}
@@ -372,7 +410,7 @@ func (s *Store) mergeEvidence(ctx context.Context, id string, candidate domain.R
 const selectColumns = `
 SELECT id, workspace_id, kind, content, tags, confidence, status, source_type,
        source_ref, evidence, supersedes_id, used_count, expires_at,
-       valid_from, valid_to, created_at, updated_at
+       valid_from, valid_to, created_by, reviewed_by_agents, created_at, updated_at
 FROM memories`
 
 func scanRecords(rows *sql.Rows) ([]domain.Record, error) {
@@ -400,6 +438,7 @@ func scanRecord(scan func(...any) error, extra ...any) (domain.Record, error) {
 		expiresAt    sql.NullString
 		validFrom    string
 		validTo      sql.NullString
+		reviewedBy   string
 		createdAt    string
 		updatedAt    string
 		kind         string
@@ -409,7 +448,7 @@ func scanRecord(scan func(...any) error, extra ...any) (domain.Record, error) {
 	targets := append([]any{&record.ID, &record.WorkspaceID, &kind, &record.Content,
 		&tags, &record.Confidence, &status, &sourceType, &sourceRef, &evidence,
 		&supersedesID, &record.UsedCount, &expiresAt, &validFrom, &validTo,
-		&createdAt, &updatedAt}, extra...)
+		&record.CreatedBy, &reviewedBy, &createdAt, &updatedAt}, extra...)
 
 	if err := scan(targets...); err != nil {
 		return domain.Record{}, fmt.Errorf("scan memory: %w", err)
@@ -424,6 +463,9 @@ func scanRecord(scan func(...any) error, extra ...any) (domain.Record, error) {
 	}
 	if evidence != "" {
 		record.Evidence = strings.Split(evidence, "\n")
+	}
+	if reviewedBy != "" {
+		record.ReviewedBy = strings.Split(reviewedBy, "\n")
 	}
 	record.ExpiresAt = parseTimePtr(expiresAt)
 	record.ValidFrom = parseTime(validFrom)

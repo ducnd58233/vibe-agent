@@ -110,7 +110,7 @@ func Tools(deps Deps) []Tool {
 		{
 			Name:        "vibe_memory_propose",
 			Description: "Call after establishing something evidence-backed worth remembering across runs. Do not call with a claim that has no cited evidence; it will be rejected.",
-			InputSchema: schema(`{"type":"object","required":["kind","content","evidence","sourceType"],"properties":{"kind":{"type":"string","enum":["semantic","episodic","correction","preference"]},"content":{"type":"string"},"evidence":{"type":"array","minItems":1,"items":{"type":"string"}},"sourceType":{"type":"string","enum":["command_result","file_content","ci_api","human_statement","review_comment"]},"sourceRef":{"type":"string"},"confidence":{"type":"number","minimum":0,"maximum":1},"tags":{"type":"array","items":{"type":"string"}}}}`),
+			InputSchema: schema(`{"type":"object","required":["kind","content","evidence","sourceType"],"properties":{"kind":{"type":"string","enum":["semantic","episodic","correction","preference"]},"content":{"type":"string"},"evidence":{"type":"array","minItems":1,"items":{"type":"string"}},"sourceType":{"type":"string","enum":["command_result","file_content","ci_api","human_statement","review_comment"]},"sourceRef":{"type":"string"},"confidence":{"type":"number","minimum":0,"maximum":1},"tags":{"type":"array","items":{"type":"string"}},"model":{"type":"string","description":"Your model id, when you know it; recorded with the host as the memory's author"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return proposeMemory(deps, raw) },
 		},
 		{
@@ -251,6 +251,7 @@ func proposeMemory(deps Deps, raw json.RawMessage) (any, error) {
 		SourceRef  string   `json:"sourceRef"`
 		Confidence float64  `json:"confidence"`
 		Tags       []string `json:"tags"`
+		Model      string   `json:"model"`
 	}
 	if err := json.Unmarshal(raw, &args); err != nil {
 		return nil, err
@@ -269,6 +270,7 @@ func proposeMemory(deps Deps, raw json.RawMessage) (any, error) {
 		SourceType:  memory.SourceType(args.SourceType),
 		SourceRef:   args.SourceRef,
 		Evidence:    args.Evidence,
+		CreatedBy:   memory.Author(deps.Session.Client(), args.Model),
 	}, deps.now())
 	if err != nil {
 		return nil, err
@@ -278,6 +280,11 @@ func proposeMemory(deps Deps, raw json.RawMessage) (any, error) {
 	if decision.Verdict != memory.VerdictReject {
 		out["id"] = stored.ID
 		out["status"] = string(stored.Status)
+		// On a merge this is the original author, which is the honest answer:
+		// the new evidence joined a memory someone else already wrote.
+		if stored.CreatedBy != "" {
+			out["createdBy"] = stored.CreatedBy
+		}
 		out["note"] = "Stored as proposed. Confirmation requires a verifier result or a human event."
 	}
 	return out, nil

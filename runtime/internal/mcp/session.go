@@ -1,6 +1,9 @@
 package mcp
 
-import "sync"
+import (
+	"strings"
+	"sync"
+)
 
 // Session holds the MCP-host-scoped active run and a pending list-changed flag.
 //
@@ -11,6 +14,7 @@ type Session struct {
 	mu                 sync.Mutex
 	ActiveSlug         string
 	PendingListChanged bool
+	clientName         string
 }
 
 // Touch records the slug the host just used.
@@ -21,6 +25,26 @@ func (s *Session) Touch(slug string) {
 	s.mu.Lock()
 	s.ActiveSlug = slug
 	s.mu.Unlock()
+}
+
+// SetClient records the host name the client sent in initialize.clientInfo.
+func (s *Session) SetClient(name string) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	s.clientName = strings.TrimSpace(name)
+	s.mu.Unlock()
+}
+
+// Client returns the host name from initialize, or empty when none was sent.
+func (s *Session) Client() string {
+	if s == nil {
+		return ""
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.clientName
 }
 
 // NoteListChanged arms a tools/list_changed notification for the next Serve write.

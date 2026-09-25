@@ -136,6 +136,11 @@ What an agent needs to remember and a person does not need to read goes into `me
 - **Proposals only.** Model output can propose a memory; confirmation needs a verifier result or a
   human event (`memory/domain/policy.go`, `Filter.Decide`). A retrieved memory is supporting
   context: the repository wins when they disagree.
+- **Say who wrote it.** A memory records its author (`created_by`: host client, then `/model` when
+  known) and the agents that audited it (`reviewed_by_agents`, via `vibe-agent memory review`), so
+  harnesses sharing a workspace can weigh each other's rows. Both are collaboration metadata: a
+  review does not confirm, and neither is checkpoint evidence. Rows are keyed to the workspace that
+  owns the file (`memory.WorkspaceKey`), never to an absolute path.
 - **No credentials, ever.** The policy rejects a candidate whose content or evidence matches
   `redact.ContainsCredential`. Do not split, encode, or paraphrase a secret to get it past the filter.
 - **New agent-only state in the runtime** gets a table in its module's `infra/persistence` through

@@ -30,10 +30,15 @@
     "workspaceId": {
       "type": "string",
       "minLength": 1,
-      "description": "Stable id for the workspace. Retrieval is always filtered by this; memories never leak across workspaces."
+      "description": "Workspace key. The database lives inside its workspace, so the owning workspace is \".\"; older rows keyed by an absolute path are rekeyed on open. Retrieval is always filtered by this."
     },
     "kind": {
-      "enum": ["semantic", "episodic", "correction", "preference"],
+      "enum": [
+        "semantic",
+        "episodic",
+        "correction",
+        "preference"
+      ],
       "description": "Procedural memory is deliberately absent. A workflow worth keeping is promoted to a SKILL.md, an AGENTS.md rule, a stack profile, or a deterministic check, not stored here."
     },
     "content": {
@@ -56,7 +61,12 @@
       "maximum": 1
     },
     "status": {
-      "enum": ["proposed", "confirmed", "stale", "rejected"],
+      "enum": [
+        "proposed",
+        "confirmed",
+        "stale",
+        "rejected"
+      ],
       "description": "Model output can only produce 'proposed'. Only a verifier result or a human event moves a record to 'confirmed'."
     },
     "sourceType": {
@@ -70,7 +80,10 @@
       "description": "How the memory was obtained. 'model_inference' is deliberately absent."
     },
     "sourceRef": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Pointer to the originating run and event, for example 'run_2026-07-29T10-22-03Z_loop-graph-runtime/events.ndjson#42'."
     },
     "evidence": {
@@ -85,7 +98,10 @@
       }
     },
     "supersedesId": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "pattern": "^mem_[0-9A-HJKMNP-TV-Z]{26}$",
       "description": "When set, the referenced record moves to 'stale' on confirmation."
     },
@@ -96,8 +112,37 @@
       "description": "Successful reuses. Repeated reuse triggers a promotion proposal to a durable rule; the runtime proposes, it does not write the rule."
     },
     "expiresAt": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time"
+    },
+    "validFrom": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the fact started being true. Differs from createdAt, when this store learned it."
+    },
+    "validTo": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "When the fact stopped being true; absent while it still holds."
+    },
+    "createdBy": {
+      "type": "string",
+      "description": "Agent that wrote the memory: host client, then /model when known (codex/gpt-5). Absent on rows that predate the field. Collaboration metadata, not evidence."
+    },
+    "reviewedByAgents": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Agents that audited this memory, once each, in first-review order. A review does not confirm."
     },
     "createdAt": {
       "type": "string",

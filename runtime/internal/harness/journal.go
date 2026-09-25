@@ -129,7 +129,7 @@ func journal(req Request, body payload, failed bool) error {
 	runs := activeRuns(req.WorkspaceRoot)
 	if len(runs) == 0 {
 		if ref := ambientJournal(req.WorkspaceRoot, entry); ref != "" && failed {
-			proposeFailure(req.WorkspaceRoot, "", "", command, result, ref)
+			proposeFailure(req.WorkspaceRoot, string(req.Client), "", "", command, result, ref)
 		}
 		return nil
 	}
@@ -144,7 +144,7 @@ func journal(req Request, body payload, failed bool) error {
 			continue
 		}
 		if failed {
-			proposeFailure(req.WorkspaceRoot, run.Slug, run.CurrentNode, command, result, recorded.Ref())
+			proposeFailure(req.WorkspaceRoot, string(req.Client), run.Slug, run.CurrentNode, command, result, recorded.Ref())
 		}
 	}
 	return nil
@@ -214,7 +214,7 @@ const FailureMemoryLife = 7 * 24 * time.Hour
 // inside a run is: the host reported the exit code. An empty slug is that case,
 // and it changes the wording of the evidence line and drops the run tag. It does
 // not change whether the memory is written.
-func proposeFailure(workspaceRoot, slug, node, command string, result response, ref string) {
+func proposeFailure(workspaceRoot, client, slug, node, command string, result response, ref string) {
 	if !memorable(command) || result.Interrupted {
 		return
 	}
@@ -235,7 +235,7 @@ func proposeFailure(workspaceRoot, slug, node, command string, result response, 
 	ctx := context.Background()
 
 	stored, decision, err := store.Propose(ctx, memory.Record{
-		WorkspaceID: workspaceRoot,
+		WorkspaceID: memory.WorkspaceKey(workspaceRoot),
 		Kind:        memory.KindEpisodic,
 		Content:     fmt.Sprintf("%s %s in this workspace", command, exitsPhrase(result.exit())),
 		Tags:        failureTags(slug),
@@ -244,6 +244,7 @@ func proposeFailure(workspaceRoot, slug, node, command string, result response, 
 		SourceRef:   ref,
 		Evidence:    evidence,
 		ExpiresAt:   &expires,
+		CreatedBy:   memory.Author(client, ""),
 	}, now)
 	if err != nil || decision.Verdict == memory.VerdictReject {
 		return
