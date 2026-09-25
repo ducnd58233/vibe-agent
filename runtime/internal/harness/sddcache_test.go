@@ -1,15 +1,16 @@
 package harness
 
 import (
+	"bufio"
 	"bytes"
 	"context"
-	"database/sql"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/database"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
@@ -86,27 +87,42 @@ func TestACacheRefusalIsDeliveredInEachHostsShape(t *testing.T) {
 // opencode session wrote its cache into another host's directory. Nothing
 // failed, nothing was reported, and the cache looked like it was working.
 func TestTheCacheScriptsTakeTheirDatabasePathFromTheRuntime(t *testing.T) {
+	hooks := filepath.Join(toolkitRoot, ".ai-agents", "hooks")
+
+	commonRaw, err := os.ReadFile(filepath.Clean(filepath.Join(hooks, "sdd-cache-common.py")))
+	if err != nil {
+		t.Fatalf("sdd-cache-common.py: %v", err)
+	}
+	common := string(commonRaw)
+	if !strings.Contains(common, workspace.EnvMemoryDBPath) {
+		t.Errorf("sdd-cache-common.py does not read %s, so the runtime cannot place its database",
+			workspace.EnvMemoryDBPath)
+	}
+	for _, host := range []string{".claude", ".cursor", ".codex", ".opencode"} {
+		if strings.Contains(common, host+"/sdd-cache") || strings.Contains(common, `"`+host+`"`) {
+			t.Errorf("sdd-cache-common.py still names %s for the cache; derived state has one home", host)
+		}
+	}
+	if !strings.Contains(common, workspace.StateDirName) {
+		t.Errorf("sdd-cache-common.py has no %s fallback for a standalone run", workspace.StateDirName)
+	}
+	if !strings.Contains(common, "sqlite3") {
+		t.Error("sdd-cache-common.py does not open the database directly, so it is still file-based")
+	}
+
 	for _, name := range []string{"sdd-cache-pre.py", "sdd-cache-post.py"} {
-		raw, err := os.ReadFile(filepath.Clean(filepath.Join(toolkitRoot, ".ai-agents", "hooks", name)))
+		raw, err := os.ReadFile(filepath.Clean(filepath.Join(hooks, name)))
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
 		source := string(raw)
-
-		if !strings.Contains(source, workspace.EnvMemoryDBPath) {
-			t.Errorf("%s does not read %s, so the runtime cannot place its database",
-				name, workspace.EnvMemoryDBPath)
+		if !strings.Contains(source, "sdd-cache-common.py") {
+			t.Errorf("%s does not load sdd-cache-common.py, so it may carry its own copy of the path logic", name)
 		}
 		for _, host := range []string{".claude", ".cursor", ".codex", ".opencode"} {
 			if strings.Contains(source, host+"/sdd-cache") || strings.Contains(source, `"`+host+`"`) {
 				t.Errorf("%s still names %s for the cache; derived state has one home", name, host)
 			}
-		}
-		if !strings.Contains(source, workspace.StateDirName) {
-			t.Errorf("%s has no %s fallback for a standalone run", name, workspace.StateDirName)
-		}
-		if !strings.Contains(source, "sqlite3") {
-			t.Errorf("%s does not open the database directly, so it is still file-based", name)
 		}
 	}
 }
@@ -137,7 +153,7 @@ func TestAConcurrentPythonWriteWaitsOnAGoTransaction(t *testing.T) {
 			t.Errorf("close: %v", err)
 		}
 	})
-	if err := createSDDCacheTableForTest(ctx, db); err != nil {
+	if err := createSDDCacheTable(ctx, db); err != nil {
 		t.Fatal(err)
 	}
 
@@ -151,11 +167,15 @@ func TestAConcurrentPythonWriteWaitsOnAGoTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Prints "ready" the instant the connection and pragmas are set, right
+	// before attempting the write - Go blocks on that line instead of
+	// guessing how long a subprocess start takes, which a fixed sleep would.
 	script := `
 import sqlite3, sys
 conn = sqlite3.connect(sys.argv[1], timeout=5)
 conn.execute("PRAGMA busy_timeout = 5000")
 conn.execute("PRAGMA journal_mode = WAL")
+print("ready", flush=True)
 conn.execute(
     "INSERT INTO sdd_cache (key, url, content, fetched_at, created_at, updated_at) "
     "VALUES ('py-written', 'https://example.com/py', 'y', 0, '', '')"
@@ -166,13 +186,18 @@ conn.close()
 	cmd := exec.CommandContext(ctx, pythonInterpreter(t), "-c", script, dbPath) //nolint:gosec // G204: script is a fixed literal above; dbPath is this test's own t.TempDir() path, not external input. vibe-agent: allow-suppression
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
 
-	// Give the subprocess time to actually attempt the write and start
-	// waiting on the lock before this releases it.
-	time.Sleep(100 * time.Millisecond)
+	ready, err := bufio.NewReader(stdout).ReadString('\n')
+	if err != nil || strings.TrimSpace(ready) != "ready" {
+		t.Fatalf("python did not signal readiness: %q, %v\n%s", ready, err, stderr.String())
+	}
 	if err := tx.Commit(); err != nil {
 		t.Fatal(err)
 	}
@@ -190,15 +215,70 @@ conn.close()
 	}
 }
 
-func createSDDCacheTableForTest(ctx context.Context, db *sql.DB) error {
-	return database.CreateTableWithProvenance(ctx, db, "sdd_cache", `
-        key           TEXT PRIMARY KEY,
-        url           TEXT NOT NULL,
-        prompt        TEXT NOT NULL DEFAULT '',
-        etag          TEXT NOT NULL DEFAULT '',
-        last_modified TEXT NOT NULL DEFAULT '',
-        content       TEXT NOT NULL,
-        fetched_at    INTEGER NOT NULL`)
+// A table Go creates through the real production schema (createSDDCacheTable,
+// not a copy in this test file) must be readable through the real hook
+// module's own read shape - not just through an inline script that happens to
+// match by coincidence. This is the direction TestBackfillMovesEveryExisting
+// FileThenDeletesIt (fetch's) and the Python-only sdd-cache-test.py contract
+// check do not cover: Go writes, Python's own code reads.
+func TestAGoCreatedRowIsReadableThroughThePythonHookModule(t *testing.T) {
+	root := t.TempDir()
+	dbPath := workspace.MemoryDBPath(root)
+	ctx := context.Background()
+
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	db, err := database.Open(ctx, dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close: %v", err)
+		}
+	})
+	if err := createSDDCacheTable(ctx, db); err != nil {
+		t.Fatal(err)
+	}
+	url := "https://example.com/go-row"
+	sum := sha256.Sum256([]byte(url))
+	key := hex.EncodeToString(sum[:])[:32]
+	if _, err := db.ExecContext(ctx, `
+        INSERT INTO sdd_cache (key, url, prompt, etag, last_modified, content, fetched_at, created_at, updated_at)
+        VALUES (?, ?, 'go prompt', 'W/"g"', '', 'go content', 0, '', '')`, key, url); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	script := `
+import importlib.util, sys
+
+spec = importlib.util.spec_from_file_location("sdd_cache_common", sys.argv[2])
+common = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(common)
+
+import os
+os.environ["VIBE_MEMORY_DB_PATH"] = sys.argv[1]
+conn = common.open_cache_db()
+row = conn.execute(
+    "SELECT prompt, etag, content FROM sdd_cache WHERE key = ?",
+    (common.cache_key_for_url("https://example.com/go-row"),),
+).fetchone()
+conn.close()
+print("MATCH" if row == ("go prompt", 'W/"g"', "go content") else f"MISMATCH {row!r}")
+`
+	commonPath := filepath.Join(toolkitRoot, ".ai-agents", "hooks", "sdd-cache-common.py")
+	//nolint:gosec // G204: script is a fixed literal above; dbPath and commonPath are this test's own paths, not external input. vibe-agent: allow-suppression
+	out, err := exec.CommandContext(ctx, pythonInterpreter(t), "-c", script, dbPath, commonPath).Output()
+	if err != nil {
+		t.Fatalf("python read: %v", err)
+	}
+	if strings.TrimSpace(string(out)) != "MATCH" {
+		t.Errorf("python's own read shape did not find the Go-written row: %s", out)
+	}
 }
 
 func pythonInterpreter(t *testing.T) string {

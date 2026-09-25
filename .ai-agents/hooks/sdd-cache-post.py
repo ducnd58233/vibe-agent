@@ -1,30 +1,24 @@
 from __future__ import annotations
 
-import hashlib
-import json
-import os
+import importlib.util
 import sqlite3
-import sys
 import time
 import urllib.request
 from pathlib import Path
 
 
-def _read_input() -> dict[str, object]:
-    # Decode explicitly: stdin defaults to the locale encoding (cp1252 on Windows),
-    # which corrupts non-ASCII URLs and paths before they are resolved.
-    raw = sys.stdin.buffer.read().decode("utf-8", errors="replace").strip()
-    if not raw:
-        return {}
-    try:
-        loaded = json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
-    return loaded if isinstance(loaded, dict) else {}
+def _load_common():
+    spec = importlib.util.spec_from_file_location(
+        "sdd_cache_common", Path(__file__).resolve().parent / "sdd-cache-common.py"
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load sdd-cache-common.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
-def _project_root() -> Path:
-    return Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
+_common = _load_common()
 
 
 def _extract_content(tool_response: object) -> str:
@@ -47,48 +41,8 @@ def _head_validators(url: str) -> tuple[str, str]:
     return etag, last_modified
 
 
-def _memory_db_path() -> Path:
-    # The runtime passes the resolved path so both sides cannot drift.
-    # The fallback is for a standalone run, and names the same layout.
-    configured = os.environ.get("VIBE_MEMORY_DB_PATH", "").strip()
-    if configured:
-        return Path(configured)
-    return _project_root() / ".agent-state" / "memory.db"
-
-
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS sdd_cache (
-    key                TEXT PRIMARY KEY,
-    url                TEXT NOT NULL,
-    prompt             TEXT NOT NULL DEFAULT '',
-    etag               TEXT NOT NULL DEFAULT '',
-    last_modified      TEXT NOT NULL DEFAULT '',
-    content            TEXT NOT NULL,
-    fetched_at         INTEGER NOT NULL,
-    created_by         TEXT NOT NULL DEFAULT '',
-    reviewed_by_agents TEXT NOT NULL DEFAULT '',
-    created_at         TEXT NOT NULL,
-    updated_at         TEXT NOT NULL
-)
-"""
-
-
-def _open_cache_db() -> sqlite3.Connection:
-    path = _memory_db_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path), timeout=5)
-    conn.execute("PRAGMA busy_timeout = 5000")
-    conn.execute("PRAGMA journal_mode = WAL")
-    conn.execute(_SCHEMA)
-    return conn
-
-
-def _cache_key_for_url(url: str) -> str:
-    return hashlib.sha256(url.encode("utf-8")).hexdigest()[:32]
-
-
 def main() -> int:
-    payload = _read_input()
+    payload = _common.read_input()
     tool_input = payload.get("tool_input")
     if not isinstance(tool_input, dict):
         return 0
@@ -112,7 +66,7 @@ def main() -> int:
 
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     try:
-        conn = _open_cache_db()
+        conn = _common.open_cache_db()
     except Exception:
         return 0
     try:
@@ -131,7 +85,7 @@ def main() -> int:
                 updated_at    = excluded.updated_at
             """,
             (
-                _cache_key_for_url(url),
+                _common.cache_key_for_url(url),
                 url,
                 prompt_text,
                 etag,

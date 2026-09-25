@@ -2,11 +2,14 @@
 """Offline round-trip check for the sdd-cache hooks' SQLite table.
 
 Both hooks make a network call before touching the cache (a HEAD request),
-so a test that exercises main() needs the network. This instead loads each
-script as a module and drives its database functions directly: post's exact
-INSERT, pre's exact SELECT, against a temp copy of the schema. This is the
-contract test across the language boundary Go and Python share memory.db
-through.
+so a test that exercises main() needs the network. This instead drives the
+shared sdd-cache-common.py module directly: post's exact INSERT shape, pre's
+exact SELECT shape, against a temp copy of the one schema both hooks load
+from that single file - so there is nothing left to drift between them.
+
+Also asserts pre.py and post.py both actually load sdd-cache-common.py rather
+than keeping their own copy of the schema, since a second copy is exactly how
+this table's predecessor bug (silent, unreported divergence) would return.
 
 Picked up automatically by scripts/pre-commit.sh's `.ai-agents/hooks/*-test.py`
 loop when a staged change touches this directory.
@@ -18,6 +21,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import sqlite3
 import sys
 import tempfile
 import time
@@ -36,20 +40,29 @@ def _load(path: Path, name: str) -> ModuleType:
 
 def main() -> int:
     hooks = Path(__file__).resolve().parent
-    pre = _load(hooks / "sdd-cache-pre.py", "sdd_cache_pre")
-    post = _load(hooks / "sdd-cache-post.py", "sdd_cache_post")
+    common = _load(hooks / "sdd-cache-common.py", "sdd_cache_common")
 
     failures = 0
+
+    for name in ("sdd-cache-pre.py", "sdd-cache-post.py"):
+        source = (hooks / name).read_text(encoding="utf-8")
+        if "sdd-cache-common.py" not in source:
+            failures += 1
+            print(f"  FAIL  {name} does not load sdd-cache-common.py", file=sys.stderr)
+        elif "CREATE TABLE" in source:
+            failures += 1
+            print(f"  FAIL  {name} still declares its own schema instead of loading sdd-cache-common.py", file=sys.stderr)
+        else:
+            print(f"  ok    {name} loads the shared module and has no schema of its own")
+
     with tempfile.TemporaryDirectory() as tmp:
         db_path = Path(tmp) / "memory.db"
         os.environ["VIBE_MEMORY_DB_PATH"] = str(db_path)
 
-        # post's own _open_cache_db, so this exercises its real schema DDL,
-        # not a copy of it written for this check.
-        conn = post._open_cache_db()
+        conn = common.open_cache_db()
         now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         url = "https://example.com/contract-check"
-        key = post._cache_key_for_url(url)
+        key = common.cache_key_for_url(url)
         conn.execute(
             """
             INSERT INTO sdd_cache
@@ -75,32 +88,49 @@ def main() -> int:
             print(f"  FAIL  sdd_cache is missing columns: {sorted(missing)}", file=sys.stderr)
         else:
             print("  ok    sdd_cache has every column both hooks and the provenance contract expect")
-        conn.close()
 
-        # pre reads through its own _open_cache_db against the same file, and
-        # must find the row post just wrote with pre's own SELECT shape.
-        conn = pre._open_cache_db()
         row = conn.execute(
             "SELECT prompt, etag, last_modified, content, fetched_at "
             "FROM sdd_cache WHERE key = ?",
-            (pre._cache_key_for_url(url),),
+            (key,),
         ).fetchone()
         conn.close()
 
         if row is None:
             failures += 1
-            print("  FAIL  pre-cache could not find the row post-cache wrote", file=sys.stderr)
+            print("  FAIL  the row just written could not be read back", file=sys.stderr)
         elif row[0] != "the prompt" or row[3] != "cached body":
             failures += 1
             print(f"  FAIL  round-tripped row does not match what was written: {row}", file=sys.stderr)
         else:
-            print("  ok    a row written by sdd-cache-post is read back correctly by sdd-cache-pre")
+            print("  ok    a row written through the shared open_cache_db is read back correctly")
 
-        if pre._cache_key_for_url(url) != post._cache_key_for_url(url):
-            failures += 1
-            print("  FAIL  pre and post derive different keys for the same url", file=sys.stderr)
+    # Both hooks catch sqlite3.Error around every write/read and fail silent
+    # (return 0) rather than crash a tool call over cache bookkeeping. This
+    # confirms that assumption against the real exception type SQLite raises
+    # once a lock is held past a connection's own busy_timeout, not just
+    # against a short, uncontended hold like the Go/Python concurrency test
+    # above (which only proves the wait succeeds within the timeout).
+    with tempfile.TemporaryDirectory() as tmp:
+        db_path = Path(tmp) / "locked.db"
+        holder = sqlite3.connect(str(db_path), timeout=5)
+        holder.execute("PRAGMA journal_mode = WAL")
+        holder.execute("CREATE TABLE t (id INTEGER PRIMARY KEY)")
+        holder.execute("BEGIN IMMEDIATE")
+        holder.execute("INSERT INTO t DEFAULT VALUES")
+
+        waiter = sqlite3.connect(str(db_path), timeout=0.2)
+        try:
+            waiter.execute("INSERT INTO t DEFAULT VALUES")
+        except sqlite3.Error:
+            print("  ok    a write past busy_timeout raises sqlite3.Error, matching both hooks' except clause")
         else:
-            print("  ok    pre and post derive the same cache key for the same url")
+            failures += 1
+            print("  FAIL  a write past busy_timeout did not raise sqlite3.Error", file=sys.stderr)
+        finally:
+            waiter.close()
+            holder.rollback()
+            holder.close()
 
     if failures:
         print(f"\nsdd-cache contract check: {failures} failure(s)", file=sys.stderr)
