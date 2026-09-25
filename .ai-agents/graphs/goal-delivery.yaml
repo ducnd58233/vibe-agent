@@ -268,7 +268,6 @@ spec:
       outputs:
         - docs/${date}/${slug}/${version}/PLAN-${date}.md
         - docs/${date}/${slug}/${version}/TASKS-${date}.md
-        - docs/${date}/${slug}/${version}/tasks-${date}.json
 
     approve_plan:
       type: human_gate

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/docsrouter"
@@ -19,12 +20,11 @@ func writeSpec(t *testing.T, root, date, slug string, version int, title string)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	body := "---\nslug: " + slug + "\ndate: " + date + "\nversion: " + strconv.Itoa(version) + "\n---\n\n# Spec: " + title + "\n"
-	if err := os.WriteFile(filepath.Join(dir, "SPEC-"+date+".md"), []byte(body), 0o600); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".agent-state", "runs", date, slug, strconv.Itoa(version)), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	err := runpath.SaveIndex(root, runpath.Entry{Slug: slug, Date: date, Version: version})
-	if err != nil {
+	body := "---\nslug: " + slug + "\ndate: " + date + "\nversion: " + strconv.Itoa(version) + "\n---\n\n# Spec: " + title + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "SPEC-"+date+".md"), []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -50,9 +50,8 @@ func TestGenerateListsSlugWithSpecTitle(t *testing.T) {
 
 func TestGenerateFallsBackToManifestGoalWithNoSpec(t *testing.T) {
 	root := t.TempDir()
-	// A slug with a run-index entry but no SPEC file (e.g. a no-docs-* run).
-	err := runpath.SaveIndex(root, runpath.Entry{Slug: "no-docs-fix-typo", Date: "2026-09-24", Version: 1})
-	if err != nil {
+	// A slug with a run directory but no SPEC file (e.g. a no-docs-* run).
+	if err := os.MkdirAll(filepath.Join(root, ".agent-state", "runs", "2026-09-24", "no-docs-fix-typo", "1"), 0o750); err != nil {
 		t.Fatal(err)
 	}
 	out, err := docsrouter.Generate(root)
@@ -83,7 +82,7 @@ func TestFallbackTitleTruncatesOnRuneBoundaries(t *testing.T) {
 	// own l-m-th-n and m-r-ng-repo slugs carry Vietnamese goal text.
 	goal := strings.Repeat("x", 79) + "ế" + strings.Repeat("y", 20)
 	root := t.TempDir()
-	if err := runpath.SaveIndex(root, runpath.Entry{Slug: "probe-slug", Date: "2026-09-24", Version: 1}); err != nil {
+	if _, err := runpath.Allocate(root, "probe-slug", time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)); err != nil {
 		t.Fatal(err)
 	}
 	manifest := &state.Run{

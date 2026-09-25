@@ -8,16 +8,24 @@ import (
 	"testing"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/tasks"
 )
 
 func workspaceWithTasks(t *testing.T, body string) string {
 	t.Helper()
 	root := t.TempDir()
-	dir := filepath.Join(root, "docs", "demo")
-	if err := os.MkdirAll(dir, 0o750); err != nil {
+	parsed, err := tasks.Parse([]byte(body))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "tasks.json"), []byte(body), 0o600); err != nil {
+	if err := os.MkdirAll(workspace.RunDirAt(root, parsed.Date, parsed.Slug, parsed.Version), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(workspace.DocsDirAt(root, parsed.Date, parsed.Slug, parsed.Version), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := tasks.Save(root, parsed); err != nil {
 		t.Fatal(err)
 	}
 	return root
@@ -99,13 +107,17 @@ func TestTasksKeepsDoneWithOpenAcceptanceBoxes(t *testing.T) {
 
 func writeTasksProse(t *testing.T, root, body string) {
 	t.Helper()
-	path := filepath.Join(root, "docs", "demo", "TASKS.md")
+	dir := workspace.DocsDirAt(root, "2026-08-21", "demo", 1)
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "TASKS-2026-08-21.md")
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
 
-// Treating an absent file as an empty one would end a run on a file somebody
+// Treating an absent list as an empty one would end a run on a row somebody
 // forgot to write.
 func TestAMissingTaskListIsAnErrorRatherThanAnEnding(t *testing.T) {
 	if _, err := (Tasks{}).Verify(context.Background(), Request{WorkspaceRoot: t.TempDir(), Slug: "demo"}); err == nil {

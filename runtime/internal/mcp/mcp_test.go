@@ -15,6 +15,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/tasks"
 )
 
 const toolkitRoot = "../../.."
@@ -568,7 +569,14 @@ func writeTaskList(t *testing.T, root, slug, date string, version int, tasksJSON
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "tasks-"+date+".json"), []byte(tasksJSON), 0o600); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".agent-state", "runs", date, slug, strconv.Itoa(version)), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := tasks.Parse([]byte(tasksJSON))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tasks.Save(root, parsed); err != nil {
 		t.Fatal(err)
 	}
 	if tasksMD != "" {

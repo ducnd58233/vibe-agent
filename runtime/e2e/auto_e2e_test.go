@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/tasks"
 )
 
 // The auto path, driven end to end against the built binary.
@@ -172,7 +173,6 @@ func settledDocs(t *testing.T, root, slug string, done bool) {
 	spec := fmt.Sprintf("SPEC-%s.md", current.Date)
 	plan := fmt.Sprintf("PLAN-%s.md", current.Date)
 	tasksMD := fmt.Sprintf("TASKS-%s.md", current.Date)
-	tasksJSON := fmt.Sprintf("tasks-%s.json", current.Date)
 	write(t, filepath.Join(docs, spec), "# Spec\n\n## Open questions\n\n- None.\n")
 	write(t, filepath.Join(docs, plan), "# Plan\n\n## Open questions\n\n- None.\n")
 
@@ -187,9 +187,15 @@ func settledDocs(t *testing.T, root, slug string, done bool) {
 	write(t, filepath.Join(docs, tasksMD), fmt.Sprintf(
 		"# Tasks\n\n## T1: the only task  [%s]\n\n**Acceptance criteria:**\n%s\n",
 		headingStatus, acBox))
-	write(t, filepath.Join(docs, tasksJSON),
-		fmt.Sprintf(`{"schemaVersion":1,"slug":%q,"date":%q,"version":%d,"tasks":[{"id":"T1","title":"the only task","status":%q}]}`,
-			slug, current.Date, current.Version, status))
+	parsed, err := tasks.Parse([]byte(fmt.Sprintf(
+		`{"schemaVersion":1,"slug":%q,"date":%q,"version":%d,"tasks":[{"id":"T1","title":"the only task","status":%q}]}`,
+		slug, current.Date, current.Version, status)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tasks.Save(root, parsed); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // drive walks the run forward, verifying at verifier nodes and stepping through

@@ -73,9 +73,7 @@ func TestLatestEntryAndResolveUseRunsTable(t *testing.T) {
 	if err := os.Remove(path); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Remove(runpath.IndexPath(root, run.Slug)); err != nil {
-		t.Fatal(err)
-	}
+	_ = os.Remove(runpath.IndexPath(root, run.Slug))
 
 	entry, ok, err := LatestEntry(root, run.Slug)
 	if err != nil || !ok {
@@ -106,9 +104,7 @@ func TestListIncludesSlugsFromRunsTable(t *testing.T) {
 	if err := os.Remove(path); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Remove(runpath.IndexPath(root, run.Slug)); err != nil {
-		t.Fatal(err)
-	}
+	_ = os.Remove(runpath.IndexPath(root, run.Slug))
 	// Remove the versioned directory so the filesystem walk sees nothing.
 	if err := os.RemoveAll(workspace.RunsDir(root)); err != nil {
 		t.Fatal(err)

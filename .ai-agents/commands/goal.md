@@ -104,18 +104,18 @@ blocker attempts, because neither can be moved by another model turn.
 
 ### The task list (MUST)
 
-The run is driven by `docs/<date>/<slug>/<version>/tasks-<date>.json`.
-It is what answers `tasks_remaining`, so a task
-missing from it is a task the run will not come back for, and a status left stale is a cycle spent
-on work that was already done.
+The run is driven by the `task_lists` row in `.agent-state/memory.db` (same schema as
+[`schemas/tasks.schema.json`](../../schemas/tasks.schema.json)). It is what answers `tasks_remaining`,
+so a task missing from it is a task the run will not come back for, and a status left stale is a
+cycle spent on work that was already done. Do not write `docs/**/tasks-*.json`.
 
 - **Read it before every task.** Take the first `queued` task whose dependencies are all `done`.
   Never restart one already `done`. A `blocked` one needs its blocker resolved or the task
   re-planned.
 - **Write the status when it changes**, `in_progress` on start and `done` when the acceptance
-  criteria pass, in `tasks.json` **and** `TASKS.md`, ticking the acceptance checkboxes as they are
+  criteria pass, in `task_lists` **and** `TASKS.md`, ticking the acceptance checkboxes as they are
   met.
-- **Write it before the verifier reads it.** `task_complete` decides on `tasks.json`. A status
+- **Write it before the verifier reads it.** `task_complete` decides on `task_lists`. A status
   recorded after that node ran costs a full build cycle for a task that was already finished.
 - **Every task carries a status marker, a description, and its own acceptance criteria.** A plan
   that produces tasks without all three has not finished Phase 3.
@@ -199,7 +199,7 @@ Checkpoint: human approves spec before plan/build when the team process requires
 
 ## Phase 3 - Plan
 
-Run [`/plan`](plan.md) ([`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md)) → `docs/<date>/<slug>/<version>/PLAN-<date>.md`, `TASKS-<date>.md`, `tasks-<date>.json`.
+Run [`/plan`](plan.md) ([`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md)) → `docs/<date>/<slug>/<version>/PLAN-<date>.md`, `TASKS-<date>.md`, and a `task_lists` row.
 
 Each task records a delivery branch. One planned task = one branch = one PR; same-task feedback stays on that branch ([`build.md`](build.md)).
 

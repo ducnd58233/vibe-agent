@@ -126,10 +126,11 @@ Optional: [`architect-planner`](../../agents/architect-planner.md) for large arc
 
 Follow [`/plan`](../../commands/plan.md) and [`planning-and-task-breakdown`](../planning-and-task-breakdown/SKILL.md).
 
-- Write `docs/<date>/<slug>/<version>/PLAN-<date>.md`, `docs/<date>/<slug>/<version>/TASKS-<date>.md`, and `docs/<date>/<slug>/<version>/tasks-<date>.json`.
+- Write `docs/<date>/<slug>/<version>/PLAN-<date>.md` and `docs/<date>/<slug>/<version>/TASKS-<date>.md`,
+  and persist the same list into `task_lists` (not a `tasks-*.json` file under `docs/`).
 - Each task gets a **status marker, a description, and its own acceptance criteria** as checkboxes.
   A task missing any of the three is not a task yet. Status vocabulary and the rule that TASKS.md
-  and `tasks.json` are one edit: [`planning-and-task-breakdown`](../planning-and-task-breakdown/SKILL.md),
+  and `task_lists` are one edit: [`planning-and-task-breakdown`](../planning-and-task-breakdown/SKILL.md),
   section **Task status (MUST)**.
 - Each task gets a **delivery branch** name in the task block.
 - **Checkpoint:** human reviews plan before `/build` when required.
@@ -138,9 +139,9 @@ Follow [`/plan`](../../commands/plan.md) and [`planning-and-task-breakdown`](../
 
 Follow [`/build`](../../commands/build.md) for **one task per invocation**:
 
-Read `tasks.json` first and take the first `queued` task whose dependencies are all `done`. Set it
+Read `task_lists` first and take the first `queued` task whose dependencies are all `done`. Set it
 `in_progress` on start and `done` when its acceptance criteria pass, in both files, before the next
-verifier reads the list - `task_complete` decides on `tasks.json`, so a late status costs a whole
+verifier reads the list - `task_complete` decides on `task_lists`, so a late status costs a whole
 build cycle for work already finished.
 
 - [`test-driven-development`](../test-driven-development/SKILL.md)
@@ -245,7 +246,7 @@ ELSE:
 
 - [ ] Ambiguity resolved or explicitly assumed before implementation
 - [ ] `docs/<date>/<slug>/<version>/SPEC-<date>.md` and `TASKS-<date>.md` exist and were re-read during execution
-- [ ] `tasks.json` agrees with `TASKS.md`, and every task there is `done` or `canceled` with a reason
+- [ ] `task_lists` agrees with `TASKS.md`, and every task there is `done` or `canceled` with a reason
 - [ ] Each planned task used its own branch; same-task fixes reused branch
 - [ ] Tests/lint/build run with observed results saved under `tmp/<slug>/`
 - [ ] E2E/runtime run when in scope; artifacts in `tmp/<slug>/`

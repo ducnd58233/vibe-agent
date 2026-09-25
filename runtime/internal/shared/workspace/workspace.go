@@ -40,8 +40,8 @@ const (
 	// which is always ignored. Layout is docs/<date>/<slug>/<version>/.
 	DocsDirName = "docs"
 
-	// RunIndexDirName holds one JSON pointer per slug under StateDirName so
-	// CLI and web can resolve the current (date, version) without scanning.
+	// RunIndexDirName is the legacy per-slug pointer directory. Nothing writes
+	// here any more; dual-write and backfill still look for leftover files.
 	RunIndexDirName = "run-index"
 
 	// FetchCacheDirName holds extracted WebFetch documents beside other caches.
@@ -87,7 +87,7 @@ func MemoryDBPath(workspaceRoot string) string {
 	return filepath.Join(StateDir(workspaceRoot), MemoryDBName)
 }
 
-// RunIndexDir is where per-slug current-revision pointers live.
+// RunIndexDir is the legacy pointer directory. Kept for leftover-file detection.
 func RunIndexDir(workspaceRoot string) string {
 	return filepath.Join(StateDir(workspaceRoot), RunIndexDirName)
 }

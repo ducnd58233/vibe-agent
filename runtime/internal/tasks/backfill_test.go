@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/runpath"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/tasks"
 )
@@ -30,13 +29,11 @@ func writeSampleJSON(t *testing.T, root string) string {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(dir, "tasks-2026-09-25.json")
-	if err := os.WriteFile(path, []byte(sample), 0o600); err != nil {
+	if err := os.MkdirAll(workspace.RunDirAt(root, "2026-09-25", "demo-task-sql", 1), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := runpath.SaveIndex(root, runpath.Entry{
-		Slug: "demo-task-sql", Date: "2026-09-25", Version: 1,
-	}); err != nil {
+	path := filepath.Join(dir, "tasks-2026-09-25.json")
+	if err := os.WriteFile(path, []byte(sample), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return path
@@ -68,9 +65,7 @@ func TestBackfillMovesEveryTasksJSONIntoTaskListsThenDeletesTheFile(t *testing.T
 
 func TestSaveRoundTripsThroughTaskLists(t *testing.T) {
 	root := t.TempDir()
-	if err := runpath.SaveIndex(root, runpath.Entry{
-		Slug: "demo-task-sql", Date: "2026-09-25", Version: 1,
-	}); err != nil {
+	if err := os.MkdirAll(workspace.RunDirAt(root, "2026-09-25", "demo-task-sql", 1), 0o750); err != nil {
 		t.Fatal(err)
 	}
 	parsed, err := tasks.Parse([]byte(sample))
@@ -89,12 +84,18 @@ func TestSaveRoundTripsThroughTaskLists(t *testing.T) {
 	}
 }
 
-func TestLoadFallsBackToALegacyFileBeforeBackfill(t *testing.T) {
+func TestLoadRequiresTaskListsRow(t *testing.T) {
 	root := t.TempDir()
 	writeSampleJSON(t, root)
+	if _, err := tasks.Load(root, "demo-task-sql"); err == nil {
+		t.Fatal("Load succeeded from a leftover JSON file; task lists are SQL-only")
+	}
+	if _, err := tasks.Backfill(context.Background(), root); err != nil {
+		t.Fatal(err)
+	}
 	file, err := tasks.Load(root, "demo-task-sql")
 	if err != nil {
-		t.Fatalf("load from file: %v", err)
+		t.Fatalf("load after backfill: %v", err)
 	}
 	if file.Slug != "demo-task-sql" {
 		t.Errorf("slug = %q", file.Slug)

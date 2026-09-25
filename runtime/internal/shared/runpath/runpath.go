@@ -2,12 +2,13 @@
 //
 // Layout: docs/<YYYY-MM-DD>/<slug>/<version>/ and
 // .agent-state/runs/<YYYY-MM-DD>/<slug>/<version>/. Version numbers are global
-// per slug. The current revision is recorded under
-// .agent-state/run-index/<slug>.json so CLI and web do not scan on every call.
+// per slug. The current revision comes from the runs table when wired, else
+// from scanning those versioned directories. A leftover .agent-state/run-index/
+// file is only consulted for dual-write detection elsewhere, not as the
+// source of truth for Resolve.
 package runpath
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -20,9 +21,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
-const indexSchemaVersion = 1
-
-// ErrNotFound means no index entry and no versioned directory for the slug.
+// ErrNotFound means no runs-table row and no versioned directory for the slug.
 var ErrNotFound = errors.New("run path not found")
 
 // ResolveSQL looks up the latest (date, version) for a slug in the runs table.
@@ -38,7 +37,8 @@ type Entry struct {
 	Version       int    `json:"version"`
 }
 
-// IndexPath is the JSON file for one slug's current revision.
+// IndexPath is the legacy JSON pointer path for one slug. Kept so dual-write
+// and backfill can detect a leftover file; nothing writes this path any more.
 func IndexPath(workspaceRoot, slug string) string {
 	return filepath.Join(workspace.RunIndexDir(workspaceRoot), slug+".json")
 }
@@ -61,68 +61,11 @@ func RunDir(workspaceRoot, slug string) (string, error) {
 	return workspace.RunDirAt(workspaceRoot, entry.Date, entry.Slug, entry.Version), nil
 }
 
-// SaveIndex writes the current-revision pointer for a slug.
-func SaveIndex(workspaceRoot string, entry Entry) error {
-	if !validate.Slug(entry.Slug) {
-		return fmt.Errorf("slug %q is not usable", entry.Slug)
-	}
-	if err := workspace.CheckRevision(entry.Date, entry.Version); err != nil {
-		return err
-	}
-	entry.SchemaVersion = indexSchemaVersion
-	dir := workspace.RunIndexDir(workspaceRoot)
-	if err := os.MkdirAll(dir, 0o750); err != nil {
-		return fmt.Errorf("create run index dir: %w", err)
-	}
-	raw, err := json.MarshalIndent(entry, "", "  ")
-	if err != nil {
-		return fmt.Errorf("encode run index: %w", err)
-	}
-	path := IndexPath(workspaceRoot, entry.Slug)
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, append(raw, '\n'), 0o600); err != nil {
-		return fmt.Errorf("write run index: %w", err)
-	}
-	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
-		return fmt.Errorf("replace run index: %w", err)
-	}
-	return nil
-}
-
-// LoadIndex reads the pointer file. Missing file returns ErrNotFound.
-func LoadIndex(workspaceRoot, slug string) (Entry, error) {
-	raw, err := os.ReadFile(IndexPath(workspaceRoot, slug))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return Entry{}, ErrNotFound
-		}
-		return Entry{}, fmt.Errorf("read run index: %w", err)
-	}
-	var entry Entry
-	if err := json.Unmarshal(raw, &entry); err != nil {
-		return Entry{}, fmt.Errorf("parse run index: %w", err)
-	}
-	if entry.Slug == "" {
-		entry.Slug = slug
-	}
-	if err := workspace.CheckRevision(entry.Date, entry.Version); err != nil {
-		return Entry{}, err
-	}
-	return entry, nil
-}
-
-// Resolve returns the current entry for a slug: index first, then the runs
-// table when wired, else scan disk for the highest version under
-// .agent-state/runs and docs/.
+// Resolve returns the current entry for a slug: the runs table when wired,
+// else scan disk for the highest version under .agent-state/runs and docs/.
 func Resolve(workspaceRoot, slug string) (Entry, error) {
 	if !validate.Slug(slug) {
 		return Entry{}, fmt.Errorf("slug %q is not usable", slug)
-	}
-	if entry, err := LoadIndex(workspaceRoot, slug); err == nil {
-		return entry, nil
-	} else if !errors.Is(err, ErrNotFound) {
-		return Entry{}, err
 	}
 	if ResolveSQL != nil {
 		if entry, ok := ResolveSQL(workspaceRoot, slug); ok {
@@ -136,8 +79,10 @@ func Resolve(workspaceRoot, slug string) (Entry, error) {
 	return entry, nil
 }
 
-// Allocate picks today's date and the next global version for the slug, writes
-// the index, and returns the entry. It does not create the docs or runs dirs.
+// Allocate picks today's date and the next global version for the slug,
+// creates the versioned run directory so Resolve can find it without a
+// run-index file, and returns the entry. It does not create the docs dir or
+// write a manifest; callers do that.
 func Allocate(workspaceRoot, slug string, now time.Time) (Entry, error) {
 	if !validate.Slug(slug) {
 		return Entry{}, fmt.Errorf("slug %q is not usable", slug)
@@ -152,23 +97,26 @@ func Allocate(workspaceRoot, slug string, now time.Time) (Entry, error) {
 	} else if !errors.Is(err, ErrNotFound) {
 		return Entry{}, err
 	}
-	entry := Entry{SchemaVersion: indexSchemaVersion, Slug: slug, Date: date, Version: next}
-	if err := SaveIndex(workspaceRoot, entry); err != nil {
-		return Entry{}, err
+	entry := Entry{Slug: slug, Date: date, Version: next}
+	dir := workspace.RunDirAt(workspaceRoot, entry.Date, entry.Slug, entry.Version)
+	if dir == "" {
+		return Entry{}, fmt.Errorf("run directory for %s@%s/%d is empty", slug, date, next)
+	}
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return Entry{}, fmt.Errorf("create run directory: %w", err)
 	}
 	return entry, nil
 }
 
 // Begin starts a new revision for a slug: refuses if one already exists, then
-// Allocate writes the index and returns the entry. Callers create directories by
-// saving the manifest into RunDirAt.
+// Allocate returns the entry. Callers create documentation directories by
+// saving into DocsDirAt / RunDirAt.
 //
 // Also refuses a slug that differs only in letter case from an existing one.
-// .agent-state/run-index/ and the versioned docs/ and .agent-state/runs/
-// directories sit on a case-preserving but case-insensitive filesystem on
-// Windows and macOS, where "MyFeature" and "myfeature" would silently alias
-// the same files. The check runs on every platform so behavior does not
-// depend on which OS created the run.
+// Versioned docs/ and .agent-state/runs/ directories sit on a case-preserving
+// but case-insensitive filesystem on Windows and macOS, where "MyFeature" and
+// "myfeature" would silently alias the same files. The check runs on every
+// platform so behavior does not depend on which OS created the run.
 func Begin(workspaceRoot, slug string, now time.Time) (Entry, error) {
 	if !validate.Slug(slug) {
 		return Entry{}, fmt.Errorf("slug %q is not usable", slug)
@@ -192,8 +140,8 @@ func Begin(workspaceRoot, slug string, now time.Time) (Entry, error) {
 	return Allocate(workspaceRoot, slug, now)
 }
 
-// ExistingSlugs lists every slug this workspace has a record of, from the
-// run-index pointers and from scanning the versioned docs/ and
+// ExistingSlugs lists every slug this workspace has a record of, from leftover
+// run-index pointers (pre-backfill) and from scanning the versioned docs/ and
 // .agent-state/runs/ directories. Raw names as found on disk, not filtered by
 // validate.Slug: a case-collision check needs to see everything that could
 // alias, not just what a fresh slug would itself be allowed to be.

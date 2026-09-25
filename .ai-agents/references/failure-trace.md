@@ -46,7 +46,7 @@ checkpoint that leaves the failed node. See [`../commands/failure-trace.md`](../
 ## Task patch
 
 When `refine_target` is `plan`, or when assumption ids are invalidated, patch
-`tasks-<date>.json` and `TASKS.md` before rebuild: insert or reorder tasks that
+`task_lists` and `TASKS.md` before rebuild: insert or reorder tasks that
 name the broken assumption or failing acceptance criterion. Do not treat
 assumption truth as a Passed check. Done tasks settle only when each section has
 an `**Acceptance criteria:**` block with every checkbox checked; status alone
