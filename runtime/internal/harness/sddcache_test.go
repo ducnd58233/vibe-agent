@@ -153,9 +153,6 @@ func TestAConcurrentPythonWriteWaitsOnAGoTransaction(t *testing.T) {
 			t.Errorf("close: %v", err)
 		}
 	})
-	if err := createSDDCacheTable(ctx, db); err != nil {
-		t.Fatal(err)
-	}
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -215,12 +212,12 @@ conn.close()
 	}
 }
 
-// A table Go creates through the real production schema (createSDDCacheTable,
-// not a copy in this test file) must be readable through the real hook
-// module's own read shape - not just through an inline script that happens to
-// match by coincidence. This is the direction TestBackfillMovesEveryExisting
-// FileThenDeletesIt (fetch's) and the Python-only sdd-cache-test.py contract
-// check do not cover: Go writes, Python's own code reads.
+// A row written through database.Open's migrated schema must be readable
+// through the real hook module's own read shape - not just through an inline
+// script that happens to match by coincidence. This is the direction
+// TestBackfillMovesEveryExisting FileThenDeletesIt (fetch's) and the
+// Python-only sdd-cache-test.py contract check do not cover: Go writes,
+// Python's own code reads.
 func TestAGoCreatedRowIsReadableThroughThePythonHookModule(t *testing.T) {
 	root := t.TempDir()
 	dbPath := workspace.MemoryDBPath(root)
@@ -238,9 +235,6 @@ func TestAGoCreatedRowIsReadableThroughThePythonHookModule(t *testing.T) {
 			t.Errorf("close: %v", err)
 		}
 	})
-	if err := createSDDCacheTable(ctx, db); err != nil {
-		t.Fatal(err)
-	}
 	url := "https://example.com/go-row"
 	sum := sha256.Sum256([]byte(url))
 	key := hex.EncodeToString(sum[:])[:32]

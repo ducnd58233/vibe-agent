@@ -2,7 +2,6 @@ package harness
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,26 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/database"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/harness/infra/persistence"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
-
-// sddCacheTable is the row store the Python hooks read and write directly
-// through stdlib sqlite3 (sdd-cache-pre.py, sdd-cache-post.py). Its DDL is
-// duplicated in both languages on purpose (SPEC A8): Python cannot import
-// this constant, and this string is the contract both sides hold to.
-const sddCacheTable = "sdd_cache"
-
-func createSDDCacheTable(ctx context.Context, db *sql.DB) error {
-	return database.CreateTableWithProvenance(ctx, db, sddCacheTable, `
-        key           TEXT PRIMARY KEY,
-        url           TEXT NOT NULL,
-        prompt        TEXT NOT NULL DEFAULT '',
-        etag          TEXT NOT NULL DEFAULT '',
-        last_modified TEXT NOT NULL DEFAULT '',
-        content       TEXT NOT NULL,
-        fetched_at    INTEGER NOT NULL`)
-}
 
 // legacySDDCacheEntry is the pre-database on-disk shape one cache entry used
 // to have, written by the Python hooks before they moved to sqlite3.
@@ -56,18 +38,11 @@ func SDDCacheBackfill(ctx context.Context, workspaceRoot string) (int, error) {
 		return 0, fmt.Errorf("read %s: %w", dir, err)
 	}
 
-	path := workspace.MemoryDBPath(workspaceRoot)
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return 0, fmt.Errorf("create state directory: %w", err)
-	}
-	db, err := database.Open(ctx, path)
+	db, err := persistence.OpenSDDCache(ctx, workspaceRoot)
 	if err != nil {
 		return 0, fmt.Errorf("open sdd-cache: %w", err)
 	}
 	defer func() { _ = db.Close() }()
-	if err := createSDDCacheTable(ctx, db); err != nil {
-		return 0, err
-	}
 
 	migrated := 0
 	for _, entry := range entries {
@@ -104,10 +79,6 @@ func SDDCacheBackfill(ctx context.Context, workspaceRoot string) (int, error) {
 		migrated++
 	}
 
-	// Unlike fetch's cache dir, sdd-cache has no assets/ subdirectory to keep -
-	// once every file is a row, the directory itself is done. Remove ignores
-	// ENOTEMPTY/ENOENT silently: a stray file a later run adds, or a directory
-	// removed by a previous run, are both fine outcomes, not failures.
 	_ = os.Remove(dir)
 	return migrated, nil
 }

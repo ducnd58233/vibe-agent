@@ -49,8 +49,16 @@ export CGO_ENABLED := 0
 TOOLS_DIR    := $(CURDIR)/bin
 GOLANGCI     := $(TOOLS_DIR)/golangci-lint$(EXE)
 GOLANGCI_REF ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.1
+MIGRATE      := $(TOOLS_DIR)/migrate$(EXE)
+MIGRATE_REF  ?= github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.3
+MIGRATIONS_DIR := migrations
+# File-backed SQLite URL for the CLI. Override for a different workspace.
+# The agent binary applies the same SQL via embed on database.Open; these
+# targets are for developers inspecting or forcing a local memory.db.
+DATABASE_URL ?= sqlite3://$(CURDIR)/../.agent-state/memory.db
 
-.PHONY: all build test bench vet fmt fmt-check lint golangci tools check release clean install help
+.PHONY: all build test bench vet fmt fmt-check lint golangci tools check release clean install help \
+	new-migrate migrate-up migrate-down
 
 all: check build
 
@@ -105,11 +113,30 @@ fmt-check:
 		echo "gofmt needed on:"; echo "$$unformatted"; exit 1; \
 	fi
 
-## tools: install the pinned linters into ./bin
-tools: $(GOLANGCI)
+## tools: install the pinned linters and migrate CLI into ./bin
+tools: $(GOLANGCI) $(MIGRATE)
 
 $(GOLANGCI):
 	GOBIN=$(TOOLS_DIR) go install $(GOLANGCI_REF)
+
+# sqlite tag pulls modernc (no CGO), matching database.Open's driver.
+$(MIGRATE):
+	GOBIN=$(TOOLS_DIR) go install -tags 'sqlite' $(MIGRATE_REF)
+
+## new-migrate: create a migration pair. usage: make new-migrate name=add_foo
+new-migrate: $(MIGRATE)
+ifndef name
+	$(error usage: make new-migrate name=<migration_name>)
+endif
+	$(MIGRATE) create -ext sql -dir $(MIGRATIONS_DIR) -seq $(name)
+
+## migrate-up: apply all pending SQL under migrations/ to DATABASE_URL
+migrate-up: $(MIGRATE)
+	$(MIGRATE) -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" up
+
+## migrate-down: roll back one migration on DATABASE_URL
+migrate-down: $(MIGRATE)
+	$(MIGRATE) -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" down 1
 
 ## golangci: the configured linter set, see .golangci.yml
 golangci: $(GOLANGCI)

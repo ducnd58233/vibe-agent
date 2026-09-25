@@ -28,39 +28,6 @@ func DBPath(workspaceRoot string) string {
 	return workspace.MemoryDBPath(workspaceRoot)
 }
 
-const schema = `
-CREATE TABLE IF NOT EXISTS memories (
-    id            TEXT PRIMARY KEY,
-    workspace_id  TEXT NOT NULL,
-    kind          TEXT NOT NULL,
-    content       TEXT NOT NULL,
-    tags          TEXT NOT NULL DEFAULT '',
-    confidence    REAL NOT NULL,
-    status        TEXT NOT NULL,
-    source_type   TEXT NOT NULL,
-    source_ref    TEXT,
-    evidence      TEXT NOT NULL,
-    supersedes_id TEXT,
-    used_count    INTEGER NOT NULL DEFAULT 0,
-    expires_at    TEXT,
-    valid_from    TEXT NOT NULL DEFAULT '',
-    valid_to      TEXT,
-    created_by    TEXT NOT NULL DEFAULT '',
-    reviewed_by_agents TEXT NOT NULL DEFAULT '',
-    created_at    TEXT NOT NULL,
-    updated_at    TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS memories_workspace_status
-    ON memories(workspace_id, status, kind);
-
-CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
-    memory_id UNINDEXED,
-    content,
-    tags
-);
-`
-
 // Store is the memory database.
 type Store struct {
 	db *sql.DB
@@ -68,9 +35,8 @@ type Store struct {
 
 // Open creates or opens the memory database for a workspace.
 //
-// The context covers the schema work Open does: creating tables and adding the
-// columns an older database is missing. A caller that gave up waiting should not
-// leave a migration running behind it.
+// Tables come from runtime/migrations via database.Open. migrate still adds
+// columns an older pre-migrate file is missing.
 func Open(ctx context.Context, workspaceRoot string) (*Store, error) {
 	path := DBPath(workspaceRoot)
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
@@ -85,10 +51,6 @@ func OpenAt(ctx context.Context, path string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open memory database: %w", err)
 	}
-	if _, err := db.ExecContext(ctx, schema); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("apply memory schema: %w", err)
-	}
 	if err := migrate(ctx, db); err != nil {
 		_ = db.Close()
 		return nil, err
@@ -98,9 +60,8 @@ func OpenAt(ctx context.Context, path string) (*Store, error) {
 
 // migrate adds columns to a database created by an earlier version.
 //
-// CREATE TABLE IF NOT EXISTS does nothing to a table that already exists, so a
-// workspace that has been storing memories since before the validity interval
-// would otherwise fail every query against the new columns.
+// Baseline migrations create the current shape; this covers a stamped
+// workspace whose memories table predates provenance or validity columns.
 func migrate(ctx context.Context, db *sql.DB) error {
 	rows, err := db.QueryContext(ctx, `PRAGMA table_info(memories)`)
 	if err != nil {

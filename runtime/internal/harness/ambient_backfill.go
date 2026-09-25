@@ -2,12 +2,12 @@ package harness
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/harness/infra/persistence"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
@@ -43,41 +43,26 @@ func AmbientJournalBackfill(ctx context.Context, workspaceRoot string) (int, err
 		return 0, fmt.Errorf("read %s: %w", path, err)
 	}
 	if len(events) == 0 {
-		// Nothing to migrate, but a zero-byte or blank-lines-only file is still
-		// a file: remove it so the "gone once migrated" contract holds even for
-		// this corner case. Best-effort, same as the sibling backfills' cleanup.
 		_ = os.Remove(path)
 		return 0, nil
 	}
 
-	db, err := openJournalDB(ctx, workspaceRoot)
+	db, err := persistence.Open(ctx, workspaceRoot)
 	if err != nil {
 		return 0, fmt.Errorf("open journal: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
-	migrated, err := insertLegacyAmbientEvents(ctx, db, events)
-	if err != nil {
-		return migrated, err
-	}
-	if err := os.Remove(path); err != nil {
-		return migrated, fmt.Errorf("remove %s: %w", path, err)
-	}
-	return migrated, nil
-}
-
-func insertLegacyAmbientEvents(ctx context.Context, db *sql.DB, events []state.Event) (int, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	migrated := 0
 	for _, event := range events {
-		at := event.At.UTC().Format(time.RFC3339)
-		if _, err := db.ExecContext(ctx, `
-            INSERT INTO journal_entries (run_id, type, node, at, payload, created_by, created_at, updated_at)
-            VALUES (NULL, ?, ?, ?, ?, '', ?, ?)`,
-			string(event.Type), event.Node, at, string(event.Payload), now, now); err != nil {
+		if err := persistence.InsertLegacyEvent(ctx, db, event, now); err != nil {
 			return migrated, fmt.Errorf("insert journal_entries row %d: %w", event.Sequence, err)
 		}
 		migrated++
+	}
+	if err := os.Remove(path); err != nil {
+		return migrated, fmt.Errorf("remove %s: %w", path, err)
 	}
 	return migrated, nil
 }

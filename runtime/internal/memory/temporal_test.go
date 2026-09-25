@@ -1,12 +1,12 @@
 package memory
 
 import (
-	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/database"
+	_ "modernc.org/sqlite"
 )
 
 func day(n int) time.Time {
@@ -58,13 +58,12 @@ func contents(hits []Hit) []string {
 }
 
 // The riskiest path in this change is the one no new workspace takes: a
-// database written before the validity interval existed. CREATE TABLE IF NOT
-// EXISTS does nothing to it, so without the migration every query would fail on
-// a missing column.
+// database written before the validity interval existed. Seed with a raw
+// connection so database.Open's baseline migration is not applied first.
 func TestADatabaseFromBeforeTheIntervalStillOpens(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "memory.db")
 
-	old, err := database.Open(context.Background(), path)
+	old, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatalf("open raw: %v", err)
 	}
@@ -84,9 +83,12 @@ func TestADatabaseFromBeforeTheIntervalStillOpens(t *testing.T) {
             '2026-07-01T09:00:00Z', '2026-07-01T09:00:00Z');
         INSERT INTO memories_fts (memory_id, content, tags)
         VALUES ('mem_legacy', 'the build runs on node 20', '');`); err != nil {
+		_ = old.Close()
 		t.Fatalf("seed legacy schema: %v", err)
 	}
-	_ = old.Close()
+	if err := old.Close(); err != nil {
+		t.Fatalf("close raw: %v", err)
+	}
 
 	store, err := OpenAt(t.Context(), path)
 	if err != nil {

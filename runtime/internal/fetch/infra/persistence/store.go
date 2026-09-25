@@ -135,22 +135,8 @@ func cacheKey(source string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// fetchCacheTable is the row store for fetched document text and metadata.
-// Large binaries never land here - AssetDir stays files, referenced by path
-// from a Document's LocalPath field, exactly as before this table existed.
-const fetchCacheTable = "fetch_cache"
-
-func createFetchCacheTable(ctx context.Context, db *sql.DB) error {
-	return database.CreateTableWithProvenance(ctx, db, fetchCacheTable, `
-        key        TEXT PRIMARY KEY,
-        source     TEXT NOT NULL,
-        fetched_at TEXT NOT NULL,
-        body       TEXT NOT NULL`)
-}
-
-// withFetchCache opens the shared database, makes sure this store's table
-// exists, runs fn, and always closes the connection - one place that opens
-// and closes it instead of one per caller, so cleanup is written once.
+// withFetchCache opens the shared database, runs fn, and always closes the
+// connection. Schema comes from runtime/migrations via database.Open.
 //
 // A fresh connection per call rather than one held by Store: the Store port
 // has no Close, and a workspace-scoped SQLite file is cheap to open.
@@ -164,9 +150,6 @@ func withFetchCache(ctx context.Context, workspaceRoot string, fn func(*sql.DB) 
 		return fmt.Errorf("open fetch cache: %w", err)
 	}
 	defer func() { _ = db.Close() }()
-	if err := createFetchCacheTable(ctx, db); err != nil {
-		return err
-	}
 	return fn(db)
 }
 

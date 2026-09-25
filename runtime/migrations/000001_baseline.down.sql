@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS memories_fts;
+DROP INDEX IF EXISTS memories_workspace_status;
+DROP TABLE IF EXISTS memories;
+DROP TABLE IF EXISTS sdd_cache;
+DROP TABLE IF EXISTS journal_entries;
+DROP TABLE IF EXISTS fetch_cache;
+DROP TABLE IF EXISTS task_lists;
+DROP INDEX IF EXISTS idx_run_events_run_sequence;
+DROP TABLE IF EXISTS run_events;
+DROP INDEX IF EXISTS idx_runs_slug_version;
+DROP TABLE IF EXISTS runs;

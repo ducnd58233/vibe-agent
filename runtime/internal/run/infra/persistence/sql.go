@@ -18,11 +18,6 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
-const (
-	runsTable      = "runs"
-	runEventsTable = "run_events"
-)
-
 func init() {
 	// runpath must not import this package; Resolve asks here when the
 	// run-index file is gone after backfill.
@@ -35,63 +30,14 @@ func init() {
 	}
 }
 
-// createTables makes the runs and run_events tables, with provenance columns
-// and the lookup indexes List / Resolve / event reads need.
-func createTables(ctx context.Context, db *sql.DB) error {
-	if err := database.CreateTableWithProvenance(ctx, db, runsTable, `
-        run_id            TEXT PRIMARY KEY,
-        slug              TEXT NOT NULL,
-        date              TEXT NOT NULL,
-        version           INTEGER NOT NULL,
-        graph_id          TEXT NOT NULL,
-        current_node      TEXT NOT NULL,
-        status            TEXT NOT NULL,
-        iteration         INTEGER NOT NULL,
-        max_transitions   INTEGER NOT NULL,
-        token_budget      INTEGER NOT NULL DEFAULT 0,
-        wallclock_seconds INTEGER NOT NULL DEFAULT 0,
-        tokens_used       INTEGER NOT NULL DEFAULT 0,
-        stopped_by        TEXT NOT NULL DEFAULT '',
-        body              TEXT NOT NULL`); err != nil {
-		return err
-	}
-	if err := database.CreateTableWithProvenance(ctx, db, runEventsTable, `
-        id       INTEGER PRIMARY KEY AUTOINCREMENT,
-        run_id   TEXT NOT NULL REFERENCES runs(run_id),
-        sequence INTEGER NOT NULL,
-        type     TEXT NOT NULL,
-        node     TEXT NOT NULL DEFAULT '',
-        at       TEXT NOT NULL,
-        payload  TEXT NOT NULL DEFAULT ''`); err != nil {
-		return err
-	}
-	if _, err := db.ExecContext(ctx,
-		`CREATE INDEX IF NOT EXISTS idx_runs_slug_version ON runs(slug, version)`); err != nil {
-		return fmt.Errorf("create runs slug/version index: %w", err)
-	}
-	if _, err := db.ExecContext(ctx,
-		`CREATE INDEX IF NOT EXISTS idx_run_events_run_sequence ON run_events(run_id, sequence)`); err != nil {
-		return fmt.Errorf("create run_events sequence index: %w", err)
-	}
-	return nil
-}
-
-// openDB opens the shared workspace database and ensures this package's tables
-// exist. Caller closes the connection.
+// openDB opens the shared workspace database. Schema is applied by
+// database.Open from runtime/migrations. Caller closes the connection.
 func openDB(ctx context.Context, workspaceRoot string) (*sql.DB, error) {
 	path := workspace.MemoryDBPath(workspaceRoot)
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return nil, err
 	}
-	db, err := database.Open(ctx, path)
-	if err != nil {
-		return nil, err
-	}
-	if err := createTables(ctx, db); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	return db, nil
+	return database.Open(ctx, path)
 }
 
 // runLocation is one versioned run directory under .agent-state/runs/.
