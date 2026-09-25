@@ -149,12 +149,12 @@ func TestADatabaseFromBeforeProvenanceStillOpens(t *testing.T) {
 // every row unreachable. The database already lives inside its workspace, so
 // the key is a portable constant and older absolute keys are rewritten.
 func TestMemoriesKeyedByAnAbsolutePathSurviveAMove(t *testing.T) {
-	if WorkspaceKey(`D:\projects\old-home`) != WorkspaceKey("/home/someone/new-home") {
+	if WorkspaceKey(`E:\work\old-home`) != WorkspaceKey("/srv/checkouts/new-home") {
 		t.Fatal("the same workspace gets a different key from a different path")
 	}
 	store := openLegacy(t, map[string]string{
-		"mem_win":   `D:\projects\old-home`,
-		"mem_posix": "/d/projects/old-home",
+		"mem_win":   `E:\work\old-home`,
+		"mem_posix": "/mnt/e/work/old-home",
 		"mem_named": "ws",
 	})
 	records, err := store.List(t.Context(), WorkspaceKey("wherever/it/lives/now"))
