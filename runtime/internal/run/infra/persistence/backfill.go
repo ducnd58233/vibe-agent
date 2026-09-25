@@ -33,13 +33,18 @@ func Backfill(ctx context.Context, workspaceRoot string) (int, error) {
 
 	migrated := 0
 	for _, manifestPath := range manifests {
-		run, err := loadRunFromFile(manifestPath)
-		if err != nil {
-			return migrated, fmt.Errorf("read %s: %w", manifestPath, err)
-		}
 		loc, _, ok := parseRunPath(manifestPath)
 		if !ok {
-			return migrated, fmt.Errorf("path %s is not a versioned run manifest", manifestPath)
+			// Consumer trees sometimes keep unrelated manifest.json files under
+			// runs/ (vault backups, tooling dumps). Those are not versioned run
+			// paths; skipping keeps migrate state usable on real workspaces.
+			fmt.Fprintf(os.Stderr, "migrate runs: skip non-run manifest %s\n", manifestPath)
+			continue
+		}
+		run, err := loadRunFromFile(manifestPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "migrate runs: skip unreadable run manifest %s: %v\n", manifestPath, err)
+			continue
 		}
 		if err := upsertRun(ctx, db, run, loc); err != nil {
 			return migrated, err

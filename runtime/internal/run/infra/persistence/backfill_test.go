@@ -212,3 +212,39 @@ func TestBackfillLeavesEvidenceSubdirs(t *testing.T) {
 		}
 	}
 }
+
+func TestBackfillSkipsNonRunManifestUnderRunsTree(t *testing.T) {
+	root := t.TempDir()
+	run := newTestRun(t)
+	run.Date = "2026-07-29"
+	run.Version = 1
+	path, _ := indexedPaths(t, root, run.Slug)
+	if err := Save(path, run); err != nil {
+		t.Fatal(err)
+	}
+	if err := deleteRunSQLRow(root, run.RunID); err != nil {
+		t.Fatal(err)
+	}
+
+	// A vault-style dump named manifest.json under runs/ but not a versioned
+	// run path (extra path segment with a non-integer version).
+	junkDir := filepath.Join(workspace.RunsDir(root), "2026-07-16", "vault-backups", "1", "20260712-162809")
+	if err := os.MkdirAll(junkDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	junk := filepath.Join(junkDir, "manifest.json")
+	if err := os.WriteFile(junk, []byte(`[{"path":"note.md"}]`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	migrated, err := Backfill(context.Background(), root)
+	if err != nil {
+		t.Fatalf("Backfill: %v", err)
+	}
+	if migrated != 1 {
+		t.Fatalf("migrated = %d, want 1 (real run only)", migrated)
+	}
+	if _, err := os.Stat(junk); err != nil {
+		t.Fatalf("non-run manifest should remain: %v", err)
+	}
+}
