@@ -13,18 +13,18 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
-func writeLegacyAmbientLine(t *testing.T, path string, event state.Event) {
+func writeLegacyAmbientJournal(t *testing.T, path string, events []state.Event) {
 	t.Helper()
-	raw, err := json.Marshal(event)
-	if err != nil {
-		t.Fatal(err)
+	var raw []byte
+	for _, event := range events {
+		line, err := json.Marshal(event)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw = append(raw, line...)
+		raw = append(raw, '\n')
 	}
-	f, err := os.OpenFile(filepath.Clean(path), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = f.Close() }()
-	if _, err := f.Write(append(raw, '\n')); err != nil {
+	if err := os.WriteFile(filepath.Clean(path), raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -42,9 +42,7 @@ func TestAmbientJournalBackfillMovesEveryExistingLineThenDeletesTheFile(t *testi
 		{Sequence: 2, Type: state.EventToolUse, Payload: json.RawMessage(`{"tool":"Edit","file":"x.go"}`),
 			At: time.Date(2026, 9, 1, 0, 1, 0, 0, time.UTC)},
 	}
-	for _, event := range events {
-		writeLegacyAmbientLine(t, path, event)
-	}
+	writeLegacyAmbientJournal(t, path, events)
 
 	migrated, err := AmbientJournalBackfill(context.Background(), root)
 	if err != nil {

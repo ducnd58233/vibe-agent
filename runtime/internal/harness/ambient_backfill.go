@@ -32,10 +32,8 @@ func AmbientJournalBackfill(ctx context.Context, workspaceRoot string) (int, err
 	if err != nil {
 		return 0, fmt.Errorf("read %s: %w", path, err)
 	}
-	if events == nil {
-		if _, statErr := os.Stat(path); statErr != nil {
-			return 0, nil
-		}
+	if len(events) == 0 {
+		return 0, nil
 	}
 
 	dbPath := workspace.MemoryDBPath(workspaceRoot)

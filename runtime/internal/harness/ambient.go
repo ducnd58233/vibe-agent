@@ -56,19 +56,32 @@ func createJournalTable(ctx context.Context, db *sql.DB) error {
 // a file, since there is no file any more. A memory citing the wrong place is
 // worse than one citing none: it points a reader at something that does not
 // contain the line.
+//
+// Every failure below is real (returned, not logged and dropped); this is the
+// one place that turns "real" into "silent", because a hook that fails a tool
+// call over its own bookkeeping is worse than one that records nothing.
 func ambientJournal(workspaceRoot string, entry []byte) string {
+	ref, err := insertAmbientJournalRow(workspaceRoot, entry)
+	if err != nil {
+		// Bookkeeping never fails a session; see the doc comment above.
+		return ""
+	}
+	return ref
+}
+
+func insertAmbientJournalRow(workspaceRoot string, entry []byte) (string, error) {
 	ctx := context.Background()
 	path := workspace.MemoryDBPath(workspaceRoot)
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return ""
+		return "", err
 	}
 	db, err := database.Open(ctx, path)
 	if err != nil {
-		return ""
+		return "", err
 	}
 	defer func() { _ = db.Close() }()
 	if err := createJournalTable(ctx, db); err != nil {
-		return ""
+		return "", err
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -77,12 +90,11 @@ func ambientJournal(workspaceRoot string, entry []byte) string {
         VALUES (NULL, ?, '', ?, ?, '', ?, ?)`,
 		string(state.EventToolUse), now, string(entry), now, now)
 	if err != nil {
-		// Same rule as the run path: bookkeeping never fails a session.
-		return ""
+		return "", err
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return fmt.Sprintf("%s#%d", journalTable, id)
+	return fmt.Sprintf("%s#%d", journalTable, id), nil
 }
