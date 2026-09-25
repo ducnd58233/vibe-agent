@@ -19,7 +19,7 @@ func TestOpenAppliesBaselineMigrations(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 
 	for _, table := range []string{
-		"runs", "run_events", "task_lists", "fetch_cache",
+		"runs", "run_events", "run_checks", "task_lists", "fetch_cache",
 		"journal_entries", "sdd_cache", "memories",
 	} {
 		var n int
@@ -74,8 +74,8 @@ func TestOpenMigratesPreMigrateDatabaseWithoutLosingTables(t *testing.T) {
 	if err := db.QueryRowContext(ctx, `SELECT version, dirty FROM schema_migrations`).Scan(&version, &dirty); err != nil {
 		t.Fatal(err)
 	}
-	if version != 1 || dirty {
-		t.Errorf("schema_migrations = %d dirty=%v, want 1 false", version, dirty)
+	if version != 2 || dirty {
+		t.Errorf("schema_migrations = %d dirty=%v, want 2 false", version, dirty)
 	}
 	var runs int
 	if err := db.QueryRowContext(ctx,
@@ -84,5 +84,13 @@ func TestOpenMigratesPreMigrateDatabaseWithoutLosingTables(t *testing.T) {
 	}
 	if runs != 1 {
 		t.Error("pre-migrate Open did not create the rest of the baseline tables")
+	}
+	var checks int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='run_checks'`).Scan(&checks); err != nil {
+		t.Fatal(err)
+	}
+	if checks != 1 {
+		t.Error("pre-migrate Open did not apply run_checks migration")
 	}
 }
