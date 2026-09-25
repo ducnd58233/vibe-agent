@@ -18,13 +18,14 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
-// dbFileName is this store's file inside the workspace state directory.
-// It is gitignored: memory is per-workspace state, not a versioned asset.
-const dbFileName = "memory.db"
-
 // DBPath is the memory database for a workspace.
+//
+// This is a thin wrapper: the path itself lives in internal/shared/workspace
+// so fetch, tasks, run, and harness can open the same file for their own
+// tables without importing this package (runtime/AGENTS.md's dependency
+// direction rule).
 func DBPath(workspaceRoot string) string {
-	return filepath.Join(workspace.StateDir(workspaceRoot), dbFileName)
+	return workspace.MemoryDBPath(workspaceRoot)
 }
 
 const schema = `

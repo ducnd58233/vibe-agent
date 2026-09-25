@@ -51,6 +51,14 @@ const (
 	// They cannot import this constant, so the runtime passes it instead of
 	// each side keeping its own copy of the layout.
 	EnvSDDCacheDir = "VIBE_SDD_CACHE_DIR"
+
+	// MemoryDBName is the one SQLite file every domain module's state tables
+	// share. It lived only inside internal/memory/infra/persistence at first,
+	// which is the same shape of problem this package's own doc comment
+	// describes for ".agent-state" itself: a name several modules must agree
+	// on belongs to neither of them. fetch, tasks, run, and harness each open
+	// this same file for their own tables without importing internal/memory.
+	MemoryDBName = "memory.db"
 )
 
 // StateDir is where derived state lives for a workspace.
@@ -71,6 +79,11 @@ func SDDCacheDir(workspaceRoot string) string {
 // FetchCacheDir is where fetched page text and assets are stored.
 func FetchCacheDir(workspaceRoot string) string {
 	return filepath.Join(StateDir(workspaceRoot), FetchCacheDirName)
+}
+
+// MemoryDBPath is the shared SQLite database for a workspace.
+func MemoryDBPath(workspaceRoot string) string {
+	return filepath.Join(StateDir(workspaceRoot), MemoryDBName)
 }
 
 // RunIndexDir is where per-slug current-revision pointers live.
