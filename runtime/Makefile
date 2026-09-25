@@ -56,10 +56,16 @@ MIGRATIONS_DIR := migrations
 # The agent binary applies the same SQL via embed on database.Open; these
 # targets are for developers inspecting or forcing a local memory.db.
 #
-# Scheme must be sqlite:// (not sqlite3://): `go install -tags sqlite` pulls
-# modernc and registers that name. A path relative to runtime/ works on
-# Windows and Unix; absolute file: URLs are easy to get wrong here.
-DATABASE_URL ?= sqlite://../.agent-state/memory.db
+# Scheme must be sqlite:// (not sqlite3://). `go install -tags sqlite` pulls
+# modernc and registers that name; sqlite3:// fails with "unknown driver".
+#
+# Path uses $(CURDIR), not a bare relative segment. CURDIR is this Makefile's
+# directory (runtime/), so the default resolves to the workspace
+# .agent-state/memory.db whether make is invoked as `make -C runtime` or from
+# another cwd. A bare `../.agent-state/...` follows the caller's cwd and breaks
+# when the toolkit lives under a consumer path or make is run from elsewhere.
+# Override DATABASE_URL when memory.db is not at $(CURDIR)/../.agent-state/.
+DATABASE_URL ?= sqlite://$(CURDIR)/../.agent-state/memory.db
 
 .PHONY: all build test bench vet fmt fmt-check lint golangci tools check release clean install help \
 	new-migrate migrate-up migrate-down
