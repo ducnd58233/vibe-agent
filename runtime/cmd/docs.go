@@ -29,7 +29,7 @@ func docsCommand(args []string) error {
 	}
 }
 
-// docsRouter regenerates docs/ROUTER.md from this workspace's run-index and
+// docsRouter regenerates docs/ROUTER.md from this workspace's runs table and
 // docs/ tree. Safe to run any time; a no-op regeneration produces an
 // identical file, so it is not a deliverable a person needs to review as a
 // diff each time.

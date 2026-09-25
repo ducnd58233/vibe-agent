@@ -182,3 +182,14 @@ func TestCheckRevisionRejectsBadSegments(t *testing.T) {
 		t.Fatal("version 0 should yield empty RunDirAt")
 	}
 }
+
+func TestAllocateDoesNotCreateRunIndex(t *testing.T) {
+	root := t.TempDir()
+	now := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
+	if _, err := runpath.Allocate(root, "no-index", now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(workspace.RunIndexDir(root)); !os.IsNotExist(err) {
+		t.Fatalf("Allocate must not create run-index; Stat err = %v", err)
+	}
+}

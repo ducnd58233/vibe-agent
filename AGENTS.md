@@ -162,7 +162,7 @@ path. When a rule already has a home, link to it instead of restating it.
 - **A "no docs needed" decision still gets a slug (MUST):** when a task's scope is small enough
   that no SPEC/PLAN is warranted (see `spec-driven-development`'s "When NOT to use"), start the run
   with an explicit `--slug no-docs-<short-name>` rather than skip slug creation entirely. The
-  decision stays auditable in `run list` and the run-index even though no `docs/<date>/<slug>/<version>/`
+  decision stays auditable in `run list` and the `runs` table even though no `docs/<date>/<slug>/<version>/`
   tree gets populated. **Put `--slug` before the objective** (`run start --slug no-docs-x "<goal>"`,
   not `run start "<goal>" --slug no-docs-x`): Go's `flag` package stops parsing at the first
   non-flag argument, so a flag placed after the quoted objective is silently ignored rather than

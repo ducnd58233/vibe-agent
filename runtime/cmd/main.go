@@ -83,7 +83,7 @@ scanner uses go-enry language detection rather than a local extension table.
 It does not spawn external linters from user-controlled paths.
 
 "docs router" regenerates docs/ROUTER.md, a standing index of every slug this
-workspace knows about (from the run-index and docs/ tree), sorted by slug so a
+workspace knows about (from the runs table and docs/ tree), sorted by slug so a
 human can look up existing work by topic instead of only by datetime path. Not
 itself a dated deliverable; safe to run any time, and a no-op regeneration
 produces an identical file.
