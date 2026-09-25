@@ -8,13 +8,24 @@ import (
 )
 
 func migrateCommand(args []string) error {
-	if len(args) == 0 || args[0] != "docs-tmp" {
-		return fmt.Errorf("usage: vibe-agent migrate docs-tmp [--dry-run] [--workspace <dir>]")
+	if len(args) == 0 {
+		return fmt.Errorf("usage: vibe-agent migrate docs-tmp|state [--dry-run] [--workspace <dir>]")
 	}
+	switch args[0] {
+	case "docs-tmp":
+		return migrateDocsTmp(args[1:])
+	case "state":
+		return migrateStateCommand(args[1:])
+	default:
+		return fmt.Errorf("usage: vibe-agent migrate docs-tmp|state [--dry-run] [--workspace <dir>]")
+	}
+}
+
+func migrateDocsTmp(args []string) error {
 	flags := newFlagSet("migrate docs-tmp")
 	paths := addRootFlags(flags)
 	dryRun := flags.Bool("dry-run", false, "list planned moves without writing")
-	if err := flags.Parse(args[1:]); err != nil {
+	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	workspaceRoot, _, err := paths.resolve()

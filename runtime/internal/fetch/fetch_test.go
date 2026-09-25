@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch/app/usecases"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/database"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
 const page = `<html><head><title>Guide</title><script>var x=1</script></head>
@@ -144,13 +146,25 @@ func TestTheCacheLivesInTheWorkspaceStateDirectory(t *testing.T) {
 	root := t.TempDir()
 	get(t, root, server.URL, Options{})
 
-	dir := CacheDir(root)
-	if !strings.Contains(filepath.ToSlash(dir), "/.agent-state/") {
-		t.Errorf("cache directory %s is outside the workspace state directory", dir)
+	dbPath := workspace.MemoryDBPath(root)
+	if !strings.Contains(filepath.ToSlash(dbPath), "/.agent-state/") {
+		t.Errorf("cache database %s is outside the workspace state directory", dbPath)
 	}
-	entries, err := os.ReadDir(dir)
-	if err != nil || len(entries) == 0 {
-		t.Fatalf("nothing cached in %s: %v", dir, err)
+	db, err := database.Open(t.Context(), dbPath)
+	if err != nil {
+		t.Fatalf("open cache database: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close: %v", err)
+		}
+	})
+	var count int
+	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM fetch_cache`).Scan(&count); err != nil {
+		t.Fatalf("count fetch_cache rows: %v", err)
+	}
+	if count == 0 {
+		t.Fatalf("nothing cached in %s", dbPath)
 	}
 }
 
