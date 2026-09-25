@@ -163,7 +163,7 @@ func TestTheMergeCiWatchIsOnTheAutoPathOnly(t *testing.T) {
 		auto bool
 		want string
 	}{
-		{"manual", false, "task_complete"},
+		{"manual", false, "remember"},
 		{"auto", true, "merge_ci"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {

@@ -41,7 +41,9 @@ spec:
         - check: {name: reviews, passed: true, source: human_event}
         - check: {name: ship, passed: true, source: human_event}
         - check: {name: merge_approved, passed: true, source: human_event}
+        - {} # remember
         - check: {name: tasks_remaining, passed: false, source: exit_code}
+        - {} # improve
       expect:
         status: done
         path:
@@ -60,7 +62,9 @@ spec:
           - external_reviews
           - ship
           - approve_merge
+          - remember
           - task_complete
+          - improve
           - done
 
     - name: research flag routes through research
@@ -159,6 +163,7 @@ spec:
         - check: {name: reviews, passed: true, source: human_event}
         - check: {name: ship, passed: true, source: human_event}
         - check: {name: merge_approved, passed: true, source: human_event}
+        - {} # remember
         - check: {name: tasks_remaining, passed: true, source: exit_code}
       expect:
         status: running
@@ -178,6 +183,7 @@ spec:
           - external_reviews
           - ship
           - approve_merge
+          - remember
           - task_complete
           - build
 
@@ -223,6 +229,7 @@ spec:
         - check: {name: reviews, passed: true, source: human_event}
         - check: {name: ship, passed: true, source: human_event}
         - check: {name: merge_approved, passed: true, source: human_event}
+        - {} # remember
         - check: {name: tasks_remaining, passed: true, source: exit_code}
         - {} # build
         - check: {name: unit, passed: true, source: exit_code}
@@ -252,6 +259,7 @@ spec:
           - external_reviews
           - ship
           - approve_merge
+          - remember
           - task_complete
           - build
           - test

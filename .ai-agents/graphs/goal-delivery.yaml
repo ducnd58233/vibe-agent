@@ -446,6 +446,27 @@ spec:
       check: main_ci
       timeoutSeconds: 3600
 
+    remember:
+      type: agent
+      description: >-
+        After the task's merge, propose what this task taught that a later
+        session or another harness should recall, through `vibe-agent memory
+        propose` (the memory policy filter; proposals only, never confirmed
+        here). Nothing learned is a valid outcome; do not invent a lesson to
+        fill the step. Adapted from ECC's remember step without its
+        model-scored instincts.
+      command: remember
+
+    improve:
+      type: agent
+      description: >-
+        Before the run ends, run `vibe-agent memory promotions` and report any
+        confirmed memory reused often enough to become a reviewed rule, and
+        where it would go. Writes nothing: a rule changes only through a
+        reviewed diff. Adapted from ECC's improve step without self-editing
+        skills.
+      command: improve
+
     task_complete:
       type: verifier
       description: Read TASKS.md and decide whether another in-scope task remains.
@@ -598,6 +619,14 @@ spec:
       when: human_redirect
       resets: *redirect_resets
     - from: task_complete
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: remember
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: improve
       to: intake
       when: human_redirect
       resets: *redirect_resets
@@ -850,7 +879,7 @@ spec:
       to: merge_ci
       when: auto
     - from: approve_merge
-      to: task_complete
+      to: remember
 
     - from: merge_ci
       to: build
@@ -878,6 +907,9 @@ spec:
         - main_ci
         - expectation_ok
     - from: merge_ci
+      to: remember
+
+    - from: remember
       to: task_complete
 
     - from: task_complete
@@ -906,5 +938,8 @@ spec:
         - tasks_remaining
         - expectation_ok
     - from: task_complete
-      to: done
+      to: improve
       when: "!tasks_remaining"
+
+    - from: improve
+      to: done

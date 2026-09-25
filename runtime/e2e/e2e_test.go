@@ -276,8 +276,10 @@ func TestConsumerRepoRunsAGoalToCompletion(t *testing.T) {
 		{true, "ci", "", "", "external_reviews"},
 		{true, "reviews", "", "", "ship"},
 		{true, "ship", "", "", "approve_merge"},
-		{false, "merge_approved", "human_event", "--passed", "task_complete"},
-		{false, "tasks_remaining", "human_event", "--failed", "done"},
+		{false, "merge_approved", "human_event", "--passed", "remember"},
+		{false, "", "", "", "task_complete"},
+		{false, "tasks_remaining", "human_event", "--failed", "improve"},
+		{false, "", "", "", "done"},
 	}
 
 	for i, step := range steps {

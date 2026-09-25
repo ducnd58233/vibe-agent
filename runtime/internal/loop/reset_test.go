@@ -21,6 +21,7 @@ func walkOneTask(t *testing.T, runner *Runner, run *state.Run, tasksRemain bool)
 		{Check: pass("reviews")},                              // external_reviews
 		{Check: pass("ship")},                                 // ship
 		{Check: approve("merge_approved")},                    // approve_merge
+		{},                                                    // remember
 	}
 	for i, outcome := range steps {
 		if _, err := runner.Advance(run, outcome); err != nil {
@@ -38,6 +39,14 @@ func walkOneTask(t *testing.T, runner *Runner, run *state.Run, tasksRemain bool)
 	}
 	if _, err := runner.Advance(run, Outcome{Check: check}); err != nil {
 		t.Fatal(err)
+	}
+	if !tasksRemain {
+		if run.CurrentNode != "improve" {
+			t.Fatalf("the last task led to %s, want improve before done", run.CurrentNode)
+		}
+		if _, err := runner.Advance(run, Outcome{}); err != nil { // improve
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -137,7 +146,7 @@ func TestTheMergeGateStopsAgainOnTheSecondTask(t *testing.T) {
 	if _, err := runner.Advance(run, Outcome{}); err != nil {
 		t.Fatal(err)
 	}
-	if run.CurrentNode == "task_complete" {
+	if run.CurrentNode == "remember" {
 		t.Fatal("the second task merged on the first task's approval")
 	}
 }
