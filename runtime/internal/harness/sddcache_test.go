@@ -2,11 +2,16 @@ package harness
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/database"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
@@ -73,14 +78,14 @@ func TestACacheRefusalIsDeliveredInEachHostsShape(t *testing.T) {
 }
 
 // The scripts cannot import the Go constant, so the runtime hands them the
-// resolved directory. This is asserted against the script source rather than by
-// running them, because both make a network call before touching the cache and
-// a test that needs the network is a test that gets skipped.
+// resolved database path. This is asserted against the script source rather
+// than by running them, because both make a network call before touching the
+// cache and a test that needs the network is a test that gets skipped.
 //
 // The bug this guards: both scripts hardcoded .claude/sdd-cache, so a Cursor or
 // opencode session wrote its cache into another host's directory. Nothing
 // failed, nothing was reported, and the cache looked like it was working.
-func TestTheCacheScriptsTakeTheirDirectoryFromTheRuntime(t *testing.T) {
+func TestTheCacheScriptsTakeTheirDatabasePathFromTheRuntime(t *testing.T) {
 	for _, name := range []string{"sdd-cache-pre.py", "sdd-cache-post.py"} {
 		raw, err := os.ReadFile(filepath.Clean(filepath.Join(toolkitRoot, ".ai-agents", "hooks", name)))
 		if err != nil {
@@ -88,9 +93,9 @@ func TestTheCacheScriptsTakeTheirDirectoryFromTheRuntime(t *testing.T) {
 		}
 		source := string(raw)
 
-		if !strings.Contains(source, workspace.EnvSDDCacheDir) {
-			t.Errorf("%s does not read %s, so the runtime cannot place its cache",
-				name, workspace.EnvSDDCacheDir)
+		if !strings.Contains(source, workspace.EnvMemoryDBPath) {
+			t.Errorf("%s does not read %s, so the runtime cannot place its database",
+				name, workspace.EnvMemoryDBPath)
 		}
 		for _, host := range []string{".claude", ".cursor", ".codex", ".opencode"} {
 			if strings.Contains(source, host+"/sdd-cache") || strings.Contains(source, `"`+host+`"`) {
@@ -100,5 +105,106 @@ func TestTheCacheScriptsTakeTheirDirectoryFromTheRuntime(t *testing.T) {
 		if !strings.Contains(source, workspace.StateDirName) {
 			t.Errorf("%s has no %s fallback for a standalone run", name, workspace.StateDirName)
 		}
+		if !strings.Contains(source, "sqlite3") {
+			t.Errorf("%s does not open the database directly, so it is still file-based", name)
+		}
 	}
+}
+
+// Two runtimes open the same file now: Go for run state and memory, Python
+// for sdd_cache. This is the one place that actually happens, so it is the
+// one place WAL + busy_timeout (T1) has to be proven, not assumed, to cover.
+//
+// Go holds a write transaction open; a Python subprocess inserts a row on the
+// same file concurrently. Without WAL/busy_timeout the Python write fails
+// immediately with "database is locked"; with them it waits for Go to commit.
+// This repository's own CI already requires python3 (check-schemas.py,
+// check-frontmatter.py), so this test does not guard against its absence.
+func TestAConcurrentPythonWriteWaitsOnAGoTransaction(t *testing.T) {
+	root := t.TempDir()
+	dbPath := workspace.MemoryDBPath(root)
+	ctx := context.Background()
+
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	db, err := database.Open(ctx, dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close: %v", err)
+		}
+	})
+	if err := createSDDCacheTableForTest(ctx, db); err != nil {
+		t.Fatal(err)
+	}
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+        INSERT INTO sdd_cache (key, url, content, fetched_at, created_at, updated_at)
+        VALUES ('go-held', 'https://example.com/go', 'x', 0, '', '')`); err != nil {
+		t.Fatal(err)
+	}
+
+	script := `
+import sqlite3, sys
+conn = sqlite3.connect(sys.argv[1], timeout=5)
+conn.execute("PRAGMA busy_timeout = 5000")
+conn.execute("PRAGMA journal_mode = WAL")
+conn.execute(
+    "INSERT INTO sdd_cache (key, url, content, fetched_at, created_at, updated_at) "
+    "VALUES ('py-written', 'https://example.com/py', 'y', 0, '', '')"
+)
+conn.commit()
+conn.close()
+`
+	cmd := exec.CommandContext(ctx, pythonInterpreter(t), "-c", script, dbPath) //nolint:gosec // G204: script is a fixed literal above; dbPath is this test's own t.TempDir() path, not external input. vibe-agent: allow-suppression
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Give the subprocess time to actually attempt the write and start
+	// waiting on the lock before this releases it.
+	time.Sleep(100 * time.Millisecond)
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		t.Errorf("python write was refused instead of waiting: %v\n%s", err, stderr.String())
+	}
+
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM sdd_cache WHERE key = 'py-written'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("the python-written row is missing after the wait")
+	}
+}
+
+func createSDDCacheTableForTest(ctx context.Context, db *sql.DB) error {
+	return database.CreateTableWithProvenance(ctx, db, "sdd_cache", `
+        key           TEXT PRIMARY KEY,
+        url           TEXT NOT NULL,
+        prompt        TEXT NOT NULL DEFAULT '',
+        etag          TEXT NOT NULL DEFAULT '',
+        last_modified TEXT NOT NULL DEFAULT '',
+        content       TEXT NOT NULL,
+        fetched_at    INTEGER NOT NULL`)
+}
+
+func pythonInterpreter(t *testing.T) string {
+	t.Helper()
+	if _, err := exec.LookPath("python3"); err == nil {
+		return "python3"
+	}
+	return "python"
 }

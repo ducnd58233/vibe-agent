@@ -3,12 +3,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import sqlite3
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import cast
 
 
 def _read_input() -> dict[str, object]:
@@ -28,18 +28,46 @@ def _project_root() -> Path:
     return Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
 
 
-def _cache_dir() -> Path:
-    # The runtime passes the resolved directory so both sides cannot drift.
+def _memory_db_path() -> Path:
+    # The runtime passes the resolved path so both sides cannot drift.
     # The fallback is for a standalone run, and names the same layout.
-    configured = os.environ.get("VIBE_SDD_CACHE_DIR", "").strip()
+    configured = os.environ.get("VIBE_MEMORY_DB_PATH", "").strip()
     if configured:
         return Path(configured)
-    return _project_root() / ".agent-state" / "sdd-cache"
+    return _project_root() / ".agent-state" / "memory.db"
 
 
-def _cache_file_for_url(url: str) -> Path:
-    key = hashlib.sha256(url.encode("utf-8")).hexdigest()[:32]
-    return _cache_dir() / f"{key}.json"
+_SCHEMA = """
+CREATE TABLE IF NOT EXISTS sdd_cache (
+    key                TEXT PRIMARY KEY,
+    url                TEXT NOT NULL,
+    prompt             TEXT NOT NULL DEFAULT '',
+    etag               TEXT NOT NULL DEFAULT '',
+    last_modified      TEXT NOT NULL DEFAULT '',
+    content            TEXT NOT NULL,
+    fetched_at         INTEGER NOT NULL,
+    created_by         TEXT NOT NULL DEFAULT '',
+    reviewed_by_agents TEXT NOT NULL DEFAULT '',
+    created_at         TEXT NOT NULL,
+    updated_at         TEXT NOT NULL
+)
+"""
+
+
+def _open_cache_db() -> sqlite3.Connection:
+    path = _memory_db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # busy_timeout is per-connection, not stored in the file, so it is set here
+    # too even though the Go side already sets it on its own connections.
+    conn = sqlite3.connect(str(path), timeout=5)
+    conn.execute("PRAGMA busy_timeout = 5000")
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute(_SCHEMA)
+    return conn
+
+
+def _cache_key_for_url(url: str) -> str:
+    return hashlib.sha256(url.encode("utf-8")).hexdigest()[:32]
 
 
 def _http_head(url: str, etag: str, last_modified: str) -> int:
@@ -67,41 +95,39 @@ def main() -> int:
     if not isinstance(url, str) or not url:
         return 0
 
-    cache_file = _cache_file_for_url(url)
-    if not cache_file.exists():
-        return 0
-
     try:
-        cache_raw = json.loads(cache_file.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+        conn = _open_cache_db()
+    except Exception:
         return 0
-    if not isinstance(cache_raw, dict):
+    try:
+        row = conn.execute(
+            "SELECT prompt, etag, last_modified, content, fetched_at "
+            "FROM sdd_cache WHERE key = ?",
+            (_cache_key_for_url(url),),
+        ).fetchone()
+    except sqlite3.Error:
         return 0
+    finally:
+        conn.close()
 
-    etag_value = cache_raw.get("etag")
-    last_modified_value = cache_raw.get("last_modified")
-    etag = etag_value if isinstance(etag_value, str) else ""
-    last_modified = last_modified_value if isinstance(last_modified_value, str) else ""
+    if row is None:
+        return 0
+    original_prompt, etag, last_modified, content_value, fetched_at_raw = row
     if not etag and not last_modified:
+        return 0
+    if not content_value:
         return 0
 
     status = _http_head(url, etag, last_modified)
     if status != 304:
         return 0
 
-    content_value = cache_raw.get("content")
-    if not isinstance(content_value, str) or not content_value:
-        return 0
-
-    fetched_at_value = cache_raw.get("fetched_at")
-    fetched_at = int(fetched_at_value) if isinstance(fetched_at_value, int) else 0
+    fetched_at = fetched_at_raw if isinstance(fetched_at_raw, int) else 0
     timestamp = (
         time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(fetched_at))
         if fetched_at > 0
         else "unknown"
     )
-    prompt_value = cache_raw.get("prompt")
-    original_prompt = prompt_value if isinstance(prompt_value, str) else ""
 
     print(f"[sdd-cache] Cache hit for {url}", file=sys.stderr)
     print("", file=sys.stderr)

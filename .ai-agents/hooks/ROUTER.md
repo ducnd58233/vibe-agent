@@ -6,8 +6,9 @@ Lookup table for hook scripts in this folder. **After you add, rename, or remove
 
 | Event / concern / use case | Script | Permission notes |
 |----------------------------|--------|------------------|
-| Source-driven `WebFetch` cache revalidation (pre) | [`sdd-cache-pre.py`](sdd-cache-pre.py) | Python 3 stdlib (`urllib`, `hashlib`); reads/writes the host SDD cache directory |
-| Source-driven `WebFetch` cache write (post) | [`sdd-cache-post.py`](sdd-cache-post.py) | Python 3 stdlib (`urllib`, `hashlib`); reads/writes the host SDD cache directory |
+| Source-driven `WebFetch` cache revalidation (pre) | [`sdd-cache-pre.py`](sdd-cache-pre.py) | Python 3 stdlib (`urllib`, `hashlib`, `sqlite3`); reads/writes the `sdd_cache` table in the workspace's shared `memory.db` |
+| Source-driven `WebFetch` cache write (post) | [`sdd-cache-post.py`](sdd-cache-post.py) | Python 3 stdlib (`urllib`, `hashlib`, `sqlite3`); reads/writes the `sdd_cache` table in the workspace's shared `memory.db` |
+| Offline contract check for the sdd-cache table (pre-commit only, not a hook) | [`sdd-cache-test.py`](sdd-cache-test.py) | Python 3 stdlib (`sqlite3`, `tempfile`); loads the two scripts above and round-trips a row against a temp database |
 | Strip AI/agent co-author attribution from commit messages (POSIX) | [`strip-ai-attribution.sh`](strip-ai-attribution.sh) | `sh` + `awk`; git `prepare-commit-msg` hook installed by `scripts/link-ai-agents.*` calls this; edits the commit-message file in place |
 | Strip AI/agent co-author attribution from commit messages (PowerShell) | [`strip-ai-attribution.ps1`](strip-ai-attribution.ps1) | PowerShell 5.1 and 7+ equivalent of the `.sh`; for PowerShell-driven environments and manual runs |
 
