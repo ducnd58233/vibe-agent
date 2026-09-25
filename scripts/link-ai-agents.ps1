@@ -372,18 +372,26 @@ Sync-CodexCommandSkills -AssetsFull $assetsFull -SkillRoot (Join-Path $workspace
 Remove-CodexPromptCopies -WorkspaceFull $workspaceFull
 Sync-CodexAgents -AssetsFull $assetsFull -WorkspaceFull $workspaceFull -AssetsReference $workspaceAssetsReference
 
-function Get-ToolkitRoot {
-    param([Parameter(Mandatory = $true)][string] $AssetsFull)
-    return (Split-Path -Parent $AssetsFull)
-}
-
 function Join-HookCommand {
     param(
         [Parameter(Mandatory = $true)][string] $Event,
         [Parameter(Mandatory = $true)][string] $Client
     )
-    $toolkitForCommand = Get-ToolkitRoot -AssetsFull $assetsFull
-    return "vibe-agent hook $Event --workspace `"$workspaceFull`" --toolkit `"$toolkitForCommand`" --client $Client"
+    # --workspace is never a machine path: `vibe-agent hook` walks up from the
+    # directory the host runs it in, and Claude Code documents a
+    # project-directory variable. --toolkit is written only when discovery
+    # cannot find the toolkit (it checks the workspace and one level down); a
+    # toolkit elsewhere is a machine-local install, and only then is its path
+    # the answer.
+    $toolkit = Split-Path -Parent $assetsFull
+    $toolkitFlag = ''
+    if ($toolkit -ne $workspaceFull -and (Split-Path -Parent $toolkit) -ne $workspaceFull) {
+        $toolkitFlag = " --toolkit `"$toolkit`""
+    }
+    if ($Client -eq 'claude') {
+        return "vibe-agent hook $Event --workspace `"`${CLAUDE_PROJECT_DIR}`"$toolkitFlag --client $Client"
+    }
+    return "vibe-agent hook $Event$toolkitFlag --client $Client"
 }
 
 function Join-PythonHookCommand {

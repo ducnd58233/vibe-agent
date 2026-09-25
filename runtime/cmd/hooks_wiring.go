@@ -297,6 +297,7 @@ func checkHookWiring(report *diagnostics, workspaceRoot string) {
 	// directory when it does.
 	checkHostEventKeys(report, workspaceRoot)
 	checkHookPathsResolve(report, workspaceRoot)
+	checkHookMachinePaths(report, workspaceRoot)
 
 	// The staleness comparison. Its own failure is reported rather than skipped:
 	// "could not ask" is not "the binary is fine". The one exception is an absent
