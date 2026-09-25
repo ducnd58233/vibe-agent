@@ -93,11 +93,12 @@ func TestAmbientJournalBackfillIsSafeWithNothingToMove(t *testing.T) {
 	}
 }
 
-// A corrupted legacy file stops the backfill rather than losing lines: the
-// file is one append-only log, not one file per entry, so there is no
-// "everything before the bad line" to salvage without risking a line counted
-// twice on a retry.
-func TestAmbientJournalBackfillStopsOnACorruptedFileRatherThanLosingLines(t *testing.T) {
+// A corrupted legacy file stops the backfill rather than losing lines (one
+// append-only log, not one file per entry, so there is no "everything before
+// the bad line" to salvage without risking a line counted twice on a retry),
+// and is renamed out of the way so the next `migrate state` run does not fail
+// identically forever on the same file.
+func TestAmbientJournalBackfillRenamesACorruptedFileRatherThanLoopingOnItForever(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(workspace.StateDir(root), 0o750); err != nil {
 		t.Fatal(err)
@@ -114,7 +115,43 @@ func TestAmbientJournalBackfillStopsOnACorruptedFileRatherThanLosingLines(t *tes
 	if migrated != 0 {
 		t.Errorf("migrated = %d, want 0", migrated)
 	}
-	if _, statErr := os.Stat(path); statErr != nil {
-		t.Error("the corrupted file was removed despite failing to migrate")
+	if _, statErr := os.Stat(path); statErr == nil {
+		t.Error("the corrupted file is still at the original path")
+	}
+	if _, statErr := os.Stat(path + corruptSuffix); statErr != nil {
+		t.Error("the corrupted file was not renamed for manual repair")
+	}
+
+	// The original path is clear now, so a retry (as a later `migrate state`
+	// invocation would do) reports "nothing to migrate" instead of failing
+	// identically on the same file forever.
+	migrated, err = AmbientJournalBackfill(context.Background(), root)
+	if err != nil {
+		t.Fatalf("retry after rename: %v", err)
+	}
+	if migrated != 0 {
+		t.Errorf("retry migrated = %d, want 0", migrated)
+	}
+}
+
+func TestAmbientJournalBackfillRemovesAnEmptyLegacyFile(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(workspace.StateDir(root), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	path := legacyAmbientJournalPath(root)
+	if err := os.WriteFile(path, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	migrated, err := AmbientJournalBackfill(context.Background(), root)
+	if err != nil {
+		t.Fatalf("backfill: %v", err)
+	}
+	if migrated != 0 {
+		t.Errorf("migrated = %d, want 0", migrated)
+	}
+	if _, statErr := os.Stat(path); statErr == nil {
+		t.Error("an empty legacy journal file was left behind")
 	}
 }

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/database"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
@@ -21,6 +20,13 @@ func legacyAmbientJournalPath(workspaceRoot string) string {
 	return filepath.Join(workspace.StateDir(workspaceRoot), legacyAmbientJournalName)
 }
 
+// corruptSuffix marks a legacy journal this backfill could not parse. Renaming
+// it out of the way, rather than leaving it in place, is what keeps a single
+// bad line from failing every future `migrate state` run identically forever:
+// the next run sees no file at the original path and reports zero migrated,
+// and the renamed file stays on disk for a person to inspect and repair.
+const corruptSuffix = ".corrupt"
+
 // AmbientJournalBackfill moves every existing line of the legacy ambient
 // journal file into journal_entries (run_id NULL, matching what ambientJournal
 // itself would have written), then removes the file. Safe to run more than
@@ -30,24 +36,25 @@ func AmbientJournalBackfill(ctx context.Context, workspaceRoot string) (int, err
 	path := legacyAmbientJournalPath(workspaceRoot)
 	events, err := state.ReadEvents(path)
 	if err != nil {
+		renamed := path + corruptSuffix
+		if renameErr := os.Rename(path, renamed); renameErr == nil {
+			return 0, fmt.Errorf("read %s: %w (renamed to %s for manual repair)", path, err, renamed)
+		}
 		return 0, fmt.Errorf("read %s: %w", path, err)
 	}
 	if len(events) == 0 {
+		// Nothing to migrate, but a zero-byte or blank-lines-only file is still
+		// a file: remove it so the "gone once migrated" contract holds even for
+		// this corner case. Best-effort, same as the sibling backfills' cleanup.
+		_ = os.Remove(path)
 		return 0, nil
 	}
 
-	dbPath := workspace.MemoryDBPath(workspaceRoot)
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0o750); err != nil {
-		return 0, fmt.Errorf("create state directory: %w", err)
-	}
-	db, err := database.Open(ctx, dbPath)
+	db, err := openJournalDB(ctx, workspaceRoot)
 	if err != nil {
 		return 0, fmt.Errorf("open journal: %w", err)
 	}
 	defer func() { _ = db.Close() }()
-	if err := createJournalTable(ctx, db); err != nil {
-		return 0, err
-	}
 
 	migrated, err := insertLegacyAmbientEvents(ctx, db, events)
 	if err != nil {

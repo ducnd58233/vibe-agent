@@ -49,6 +49,26 @@ func createJournalTable(ctx context.Context, db *sql.DB) error {
         payload TEXT NOT NULL DEFAULT ''`)
 }
 
+// openJournalDB opens memory.db (creating its directory and journal_entries if
+// needed) for the two callers that write to it directly: the live ambient path
+// here and the one-time backfill. Shared so the four-step open sequence has one
+// place to change rather than two copies that can drift.
+func openJournalDB(ctx context.Context, workspaceRoot string) (*sql.DB, error) {
+	path := workspace.MemoryDBPath(workspaceRoot)
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return nil, err
+	}
+	db, err := database.Open(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	if err := createJournalTable(ctx, db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	return db, nil
+}
+
 // ambientJournal records one entry outside any run and returns the reference a
 // memory can cite, or "" when nothing was written.
 //
@@ -71,18 +91,11 @@ func ambientJournal(workspaceRoot string, entry []byte) string {
 
 func insertAmbientJournalRow(workspaceRoot string, entry []byte) (string, error) {
 	ctx := context.Background()
-	path := workspace.MemoryDBPath(workspaceRoot)
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return "", err
-	}
-	db, err := database.Open(ctx, path)
+	db, err := openJournalDB(ctx, workspaceRoot)
 	if err != nil {
 		return "", err
 	}
 	defer func() { _ = db.Close() }()
-	if err := createJournalTable(ctx, db); err != nil {
-		return "", err
-	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	result, err := db.ExecContext(ctx, `
