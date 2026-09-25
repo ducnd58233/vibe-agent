@@ -21,7 +21,7 @@ import (
 // into every session. This is that way.
 func memoryCommand(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("memory needs a subcommand: list, confirm, forget")
+		return fmt.Errorf("memory needs a subcommand: list, confirm, forget, review")
 	}
 	switch args[0] {
 	case "list":
@@ -30,8 +30,10 @@ func memoryCommand(args []string) error {
 		return memorySetStatus(args[1:], "confirm")
 	case "forget":
 		return memorySetStatus(args[1:], "forget")
+	case "review":
+		return memoryReview(args[1:])
 	default:
-		return fmt.Errorf("unknown memory subcommand %q; try list, confirm, or forget", args[0])
+		return fmt.Errorf("unknown memory subcommand %q; try list, confirm, forget, or review", args[0])
 	}
 }
 
@@ -57,7 +59,7 @@ func memoryListCommand(args []string) error {
 	}
 	defer func() { _ = store.Close() }()
 
-	records, err := store.List(context.Background(), workspaceRoot)
+	records, err := store.List(context.Background(), memory.WorkspaceKey(workspaceRoot))
 	if err != nil {
 		return err
 	}
@@ -71,6 +73,9 @@ func memoryListCommand(args []string) error {
 		fmt.Printf("%s  %-9s %-10s used=%d%s%s\n", record.ID, record.Kind, record.Status,
 			record.UsedCount, stamp("  expires=", record.ExpiresAt), stamp("  closed=", record.ValidTo))
 		fmt.Printf("  %s\n", singleLine(record.Content))
+		if record.CreatedBy != "" || len(record.ReviewedBy) > 0 {
+			fmt.Printf("    by: %s  reviewed by: %s\n", orUnknown(record.CreatedBy), orNone(record.ReviewedBy))
+		}
 		for _, item := range record.Evidence {
 			fmt.Printf("    evidence: %s\n", singleLine(item))
 		}
@@ -96,11 +101,40 @@ func memorySetStatus(args []string, action string) error {
 	if *id == "" {
 		return fmt.Errorf("memory %s needs --id; run `vibe-agent memory list` to find one", action)
 	}
+	return withMemory(paths, func(store *memory.Store) error {
+		ctx := context.Background()
+		now := time.Now().UTC()
+
+		if action == "forget" {
+			// Invalidate rather than SetStatus: closing the validity interval is
+			// what records when the fact stopped being true, which is the part an
+			// as-of query needs and a status flag cannot carry.
+			if err := store.Invalidate(ctx, *id, now); err != nil {
+				return err
+			}
+			fmt.Printf("%s is closed as of now and will not be retrieved.\n", *id)
+			return nil
+		}
+
+		// SourceHumanStatement is the honest provenance here: a person at a terminal
+		// vouched for it. Recording it as a command result would forge the evidence
+		// this whole store exists to keep honest.
+		record, err := store.Confirm(ctx, *id, memory.SourceHumanStatement, "human confirmation via vibe-agent memory confirm", now)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s is confirmed and will be retrieved into future sessions.\n", record.ID)
+		return nil
+	})
+}
+
+// withMemory runs one edit against the workspace's existing memory database.
+// It never creates one, and a failed close is reported rather than dropped.
+func withMemory(paths *rootFlags, edit func(*memory.Store) error) (err error) {
 	workspaceRoot, _, err := paths.resolve()
 	if err != nil {
 		return err
 	}
-
 	store, exists, err := openExistingMemory(workspaceRoot)
 	if err != nil {
 		return err
@@ -108,31 +142,45 @@ func memorySetStatus(args []string, action string) error {
 	if !exists {
 		return fmt.Errorf("no memory database at %s", memory.DBPath(workspaceRoot))
 	}
-	defer func() { _ = store.Close() }()
+	defer func() { err = errors.Join(err, store.Close()) }()
+	return edit(store)
+}
 
-	ctx := context.Background()
-	now := time.Now().UTC()
-
-	if action == "forget" {
-		// Invalidate rather than SetStatus: closing the validity interval is
-		// what records when the fact stopped being true, which is the part an
-		// as-of query needs and a status flag cannot carry.
-		if err := store.Invalidate(ctx, *id, now); err != nil {
-			return err
-		}
-		fmt.Printf("%s is closed as of now and will not be retrieved.\n", *id)
-		return nil
+func orUnknown(author string) string {
+	if author == "" {
+		return "unknown"
 	}
+	return author
+}
 
-	// SourceHumanStatement is the honest provenance here: a person at a terminal
-	// vouched for it. Recording it as a command result would forge the evidence
-	// this whole store exists to keep honest.
-	record, err := store.Confirm(ctx, *id, memory.SourceHumanStatement, "human confirmation via vibe-agent memory confirm", now)
-	if err != nil {
+func orNone(agents []string) string {
+	if len(agents) == 0 {
+		return "none"
+	}
+	return strings.Join(agents, ", ")
+}
+
+// memoryReview records that an agent audited a memory. It does not confirm it:
+// a review is collaboration metadata, and confirmation stays with a verifier
+// result or a person (`memory confirm`).
+func memoryReview(args []string) error {
+	flags := newFlagSet("memory review")
+	paths := addRootFlags(flags)
+	id := flags.String("id", "", "memory id")
+	agent := flags.String("agent", "", "reviewing agent: host client, optionally /model (claude, codex/gpt-5)")
+	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	fmt.Printf("%s is confirmed and will be retrieved into future sessions.\n", record.ID)
-	return nil
+	if *id == "" || strings.TrimSpace(*agent) == "" {
+		return fmt.Errorf("memory review needs --id and --agent; run `vibe-agent memory list` to find an id")
+	}
+	return withMemory(paths, func(store *memory.Store) error {
+		if err := store.AddReviewer(context.Background(), *id, *agent, time.Now().UTC()); err != nil {
+			return err
+		}
+		fmt.Printf("%s: review by %s recorded. Its status is unchanged; confirming is separate.\n", *id, strings.TrimSpace(*agent))
+		return nil
+	})
 }
 
 // openExistingMemory opens the store without creating one, so a command run in

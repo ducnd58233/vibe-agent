@@ -102,7 +102,7 @@ func memories(t *testing.T, root string) []memory.Record {
 		t.Fatalf("OpenAt: %v", err)
 	}
 	defer func() { _ = store.Close() }()
-	records, err := store.List(t.Context(), root)
+	records, err := store.List(t.Context(), memory.WorkspaceKey(root))
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -153,6 +153,10 @@ func TestFailingCommandIsJournalledAndRemembered(t *testing.T) {
 	}
 	if !strings.Contains(stored[0].Content, "go build ./...") {
 		t.Errorf("memory does not name the command: %q", stored[0].Content)
+	}
+	// Several harnesses share one workspace; the memory says which one saw it.
+	if stored[0].CreatedBy != "claude" {
+		t.Errorf("CreatedBy = %q, want the client whose hook fired", stored[0].CreatedBy)
 	}
 	// The host's own output is the evidence. Without it the memory says a
 	// command failed and cannot say how.

@@ -134,6 +134,16 @@ func (s *Server) dispatch(req request) response {
 		s.mu.Lock()
 		s.initialized = true
 		s.mu.Unlock()
+		// clientInfo names the host, which is who a proposed memory was
+		// written by. Absent or malformed means unknown, not an error.
+		var init struct {
+			ClientInfo struct {
+				Name string `json:"name"`
+			} `json:"clientInfo"`
+		}
+		if json.Unmarshal(req.Params, &init) == nil {
+			s.Session.SetClient(init.ClientInfo.Name)
+		}
 		reply.Result = map[string]any{
 			"protocolVersion": ProtocolVersion,
 			"capabilities":    map[string]any{"tools": map[string]any{"listChanged": true}},

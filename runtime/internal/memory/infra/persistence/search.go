@@ -157,7 +157,7 @@ func (s *Store) candidates(ctx context.Context, query Query, text string, limit 
         SELECT m.id, m.workspace_id, m.kind, m.content, m.tags, m.confidence,
                m.status, m.source_type, m.source_ref, m.evidence, m.supersedes_id,
                m.used_count, m.expires_at, m.valid_from, m.valid_to,
-               m.created_at, m.updated_at, `)
+               m.created_by, m.reviewed_by_agents, m.created_at, m.updated_at, `)
 	statement.WriteString(selectExpr)
 	statement.WriteString(" FROM memories m ")
 	statement.WriteString(joins)

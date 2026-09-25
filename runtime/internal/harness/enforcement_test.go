@@ -50,7 +50,7 @@ func seedMemory(t *testing.T, root, content string) {
 
 	ctx := t.Context()
 	record, decision, err := store.Propose(ctx, memory.Record{
-		WorkspaceID: root,
+		WorkspaceID: memory.WorkspaceKey(root),
 		Kind:        memory.KindSemantic,
 		Content:     content,
 		Confidence:  0.9,
@@ -438,7 +438,7 @@ func TestPostToolUseRecordsAFailedCommand(t *testing.T) {
 		t.Fatalf("open memory: %v", err)
 	}
 	defer func() { _ = store.Close() }()
-	records, err := store.List(t.Context(), root)
+	records, err := store.List(t.Context(), memory.WorkspaceKey(root))
 	if err != nil {
 		t.Fatalf("list memories: %v", err)
 	}

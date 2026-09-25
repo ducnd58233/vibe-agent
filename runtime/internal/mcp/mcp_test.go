@@ -338,6 +338,26 @@ func TestMemoryToolsRoundTripAndCarryTheDisclaimer(t *testing.T) {
 	}
 }
 
+// The author of a proposed memory is the host that sent initialize, plus the
+// model when the caller names it. Another agent reading the memory sees both.
+func TestAProposedMemoryRecordsTheHostAndModelAsItsAuthor(t *testing.T) {
+	deps := newDeps(t)
+	server := NewServer("test", deps)
+	initialize := `{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-06-18","clientInfo":{"name":"opencode","version":"1.0"}}}`
+
+	replies := exchange(t, server, initialize, call("vibe_memory_propose", map[string]any{
+		"kind":       "episodic",
+		"content":    "Integration tests require Redis on localhost:6379.",
+		"evidence":   []string{"make integration-test failed with connection refused"},
+		"sourceType": "command_result",
+		"model":      "some-model-1",
+	}))
+	proposed := toolText(t, replies[len(replies)-1])
+	if !strings.Contains(proposed, `"createdBy":"opencode/some-model-1"`) {
+		t.Errorf("proposed memory does not carry its author: %s", proposed)
+	}
+}
+
 func TestMemoryProposeRefusesASecret(t *testing.T) {
 	deps := newDeps(t)
 	server := NewServer("test", deps)
