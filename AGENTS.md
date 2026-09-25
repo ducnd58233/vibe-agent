@@ -171,7 +171,20 @@ path. When a rule already has a home, link to it instead of restating it.
   workspace), beside `manifest.json`. A leftover workspace-root `tmp/` tree fails
   `vibe-agent doctor`; run `vibe-agent migrate docs-tmp` once (or delete it).
   Evidence is not read from `tmp/`.
-- **Portable paths (MUST):** in committed docs, plans, and agent deliverables, use paths relative to the workspace root or repo ids. Do not paste machine-absolute paths (`C:\...`, `/Users/...`, `d:\...`) into files that ship in git.
+- **Portable paths (MUST):** in committed docs, plans, and agent deliverables, use paths relative to the workspace root or repo ids. Do not paste machine-absolute paths (`C:\...`, `/Users/...`, `d:\...`) into files that ship in git. For code and scripts, see **Paths in code are anchored, not absolute** below.
+- **Paths in code are anchored, not absolute (MUST):** source code, scripts, and config an agent
+  writes or edits never hardcode a machine-absolute path (`C:\...`, `/Users/...`, `/home/...`) that
+  the code reads, writes, or executes, unless a person asks for one. An example path in help text or
+  a comment, or a test input whose subject is path handling itself, is not that and stays as it is.
+  Find a root at run time and join relative segments onto it: the
+  script's own directory (`"$(dirname "${BASH_SOURCE[0]}")"` in Bash, `$PSScriptRoot` in
+  PowerShell, as `scripts/` already does), a workspace root found by walking up (the runtime's
+  `--workspace` default), or a configured value. A bare relative path is not the fix on its own: it
+  resolves against the current working directory, so the same code breaks when run from another
+  directory, which is the failure `vibe-agent doctor`'s "every hook command resolves its own paths"
+  check exists to catch. Imports and links are relative to the file or the repo root, never to one
+  person's checkout. **Portable paths** above covers prose and deliverables; this covers what
+  executes. Rule added by the `agent-code-quality-hardening` delivery at the user's request.
 - **Consumer charter neutrality (MUST):** when creating or editing a **consumer workspace** charter file (workspace-root `AGENTS.md`, `CLAUDE.md`, `CURSOR.md`, `CLAUDE.local.md`, or `.cursor/rules/*.mdc` that encodes that repo's own rules), write harness-neutral prose only: product, domain, stack, and repo-local conventions. Do not name `vibe-agent`, `.vibe-agent/`, toolkit install paths, `.ai-agents/`, or tell readers to open this toolkit's charter. Those files must stand alone for whatever harness the team uses. Graduating a line from `.agent-state/MISTAKES.md` into a consumer charter uses plain policy text, not toolkit pointers. This rule does **not** apply when editing **this toolkit's** root charter, nested `runtime/AGENTS.md`, or assets under [`.ai-agents/`](.ai-agents). Details: [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) section "Consumer charter files".
 - **Supported harness parity (MUST):** when adding or changing a user-facing capability in this toolkit (skills, commands, agents, hooks, permissions, runtime gates, link/install paths, or delivery workflow), it must remain usable on every GenAI host this repo ships for: **Claude Code, Cursor, Codex, and opencode**. Edit canonical assets under `.ai-agents/`, re-run the link script, and pass the harness checks in [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) section "Supported harness parity". A host-only exception belongs in the spec with the gap named in [`host-hook-contracts.md`](.ai-agents/references/host-hook-contracts.md); do not merge a feature that silently works in one IDE only.
 - **XML section tags (MUST):** wrap sections in the documented tag set for always-loaded charter files
