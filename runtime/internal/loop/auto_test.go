@@ -1,6 +1,8 @@
 package loop
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
@@ -421,5 +423,25 @@ func TestReviewRequiresRealEvidenceOnTheAutoPath(t *testing.T) {
 	transition := advance(t, runner, run, Outcome{})
 	if transition.To == "experiment_run" {
 		t.Fatalf("review advanced straight to experiment_run on no evidence at all")
+	}
+}
+
+// auto.md says, node by node, how /auto differs from /goal. That table is a
+// claim about this graph, and it went stale once already ("same verifiers"
+// while a dozen auto-only nodes existed). Every node an auto edge leads to has
+// to appear in it, so adding one without documenting it fails here.
+func TestEveryAutoOnlyNodeIsNamedInAutoMd(t *testing.T) {
+	runner := newRunner(t)
+	doc, err := os.ReadFile("../../../.ai-agents/commands/auto.md")
+	if err != nil {
+		t.Fatalf("read auto.md: %v", err)
+	}
+	for _, edge := range runner.Graph.Spec.Edges {
+		if edge.When != "auto" {
+			continue
+		}
+		if !strings.Contains(string(doc), "`"+edge.To+"`") {
+			t.Errorf("auto edge %s -> %s leads to a node auto.md does not name", edge.From, edge.To)
+		}
 	}
 }
