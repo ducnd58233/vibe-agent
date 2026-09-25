@@ -39,5 +39,11 @@ func migrateStateCommand(args []string) error {
 	}
 	fmt.Printf("sdd-cache: %d row(s) moved to sdd_cache\n", sddMigrated)
 
+	journalMigrated, err := harness.AmbientJournalBackfill(ctx, workspaceRoot)
+	if err != nil {
+		return fmt.Errorf("migrate ambient journal: %w", err)
+	}
+	fmt.Printf("ambient journal: %d row(s) moved to journal_entries\n", journalMigrated)
+
 	return nil
 }

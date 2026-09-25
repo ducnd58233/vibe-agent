@@ -1,14 +1,19 @@
 package harness
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/database"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
 // The payloads here were captured from Claude Code 2.1.229, not written from the
@@ -69,25 +74,53 @@ func events(t *testing.T, root string) []state.Event {
 	return log
 }
 
-// ambientEvents reads the workspace-level log, the one written when no run is
-// active. Same decoding as events, a different file, and the pair is what lets
-// a test say which log an entry landed in rather than only that it exists.
+// ambientEvents reads the workspace-level journal_entries rows, the ones
+// written when no run is active (run_id IS NULL). Same decoding shape as
+// events, a different source, and the pair is what lets a test say which log
+// an entry landed in rather than only that it exists.
 func ambientEvents(t *testing.T, root string) []state.Event {
 	t.Helper()
-	raw, err := os.ReadFile(ambientJournalPath(root))
+	db, err := database.Open(context.Background(), workspace.MemoryDBPath(root))
 	if err != nil {
 		return nil
 	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close: %v", err)
+		}
+	}()
+
+	rows, err := db.QueryContext(context.Background(),
+		`SELECT id, type, node, at, payload FROM journal_entries WHERE run_id IS NULL ORDER BY id`)
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = rows.Close() }()
+
 	var log []state.Event
-	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
-		if line == "" {
-			continue
+	for rows.Next() {
+		var id, eventType, node, at, payload string
+		if err := rows.Scan(&id, &eventType, &node, &at, &payload); err != nil {
+			t.Fatalf("read journal_entries row: %v", err)
 		}
-		var event state.Event
-		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			t.Fatalf("ambient journal holds a line that is not an event: %s", line)
+		seq, err := strconv.Atoi(id)
+		if err != nil {
+			t.Fatalf("journal_entries.id %q is not numeric: %v", id, err)
 		}
-		log = append(log, event)
+		when, err := time.Parse(time.RFC3339, at)
+		if err != nil {
+			t.Fatalf("journal_entries.at %q is not RFC3339: %v", at, err)
+		}
+		log = append(log, state.Event{
+			Sequence: seq,
+			Type:     state.EventType(eventType),
+			Node:     node,
+			Payload:  json.RawMessage(payload),
+			At:       when,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read journal_entries: %v", err)
 	}
 	return log
 }
@@ -403,7 +436,7 @@ func TestAmbientFailureIsRemembered(t *testing.T) {
 	if len(stored) != 1 {
 		t.Fatalf("want one memory from an ambient failure, got %d", len(stored))
 	}
-	if !strings.Contains(stored[0].SourceRef, ambientJournalName) {
+	if !strings.Contains(stored[0].SourceRef, journalTable) {
 		t.Errorf("memory cites %q, which is not the log it came from", stored[0].SourceRef)
 	}
 }
