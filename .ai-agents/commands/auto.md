@@ -6,9 +6,27 @@ Drive one objective to a merged pull request without stopping for a person, exce
 
 <context>
 
-`/auto` is `/goal` with the approval gates answered by evidence instead of by you. It composes the
-same graph, the same verifiers, and the same refusals. What changes is who confirms the spec, the
-plan, and the merge.
+`/auto` and `/goal` run the same graph (`goal-delivery`), the same verifiers at every node they
+share, and the same refusals. Two things differ. The approval gates are answered by evidence instead
+of by you, and the `auto` flag routes through extra quality stages a person building by hand does
+not need a node for. Everything else, including `remember` and `improve`, is on both paths.
+
+| | `/goal` | `/auto` |
+|---|---|---|
+| `intake`, `approve_spec`, `approve_plan` | a person answers | skipped when the documents have no open markers (recorded `skipped`, never `passed`) |
+| `reviews`, `ship` | `human_event` | `ci_api` / `file_assert` evidence |
+| `approve_merge` | a person answers | the workspace opt-in plus the six merge conditions below |
+| After `spec` | `approve_spec` | `auto_research` first |
+| After `test` | `e2e` | `simplify`, `lint`, `commit`, then `e2e` |
+| After `e2e` | `slop` | `bug_hunt`, then `slop` |
+| After `slop` | `review` | `expectation_review`, then `review` |
+| After `review` | `open_pr` | `review_ok`, then the experiment loop (`experiment_run`, `experiment_monitor`, `results_eval`), then `open_pr` |
+| After `ship` | `approve_merge` | `release_review`, then `approve_merge` |
+| After the merge | `remember` | `merge_ci` (watch the default branch), then `remember` |
+
+The rows are the graph's `when: auto` / `when: "!auto"` edges and `skipWhen` gates; if they
+disagree with [`goal-delivery.yaml`](../graphs/goal-delivery.yaml), the graph is right and this table
+is stale.
 
 Read [`goal.md`](goal.md) first. Everything it says about the runtime, evidence provenance, and the
 delivery gates applies here unchanged, and this file does not restate it.

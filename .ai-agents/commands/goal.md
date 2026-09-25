@@ -66,7 +66,9 @@ vibe-agent checkpoint --slug <slug> --check <name> --source <source> --passed
 ```
 
 Host agents derive slug and graph from the command; do not ask the user for them.
-Use `vibe-agent auto "<objective>"` when the workspace opted into auto mode.
+Use `vibe-agent auto "<objective>"` when the workspace opted into auto mode. It is the same graph with
+the approval gates answered by evidence and extra quality stages on the path; the node-by-node
+difference is the table at the top of [`auto.md`](auto.md).
 Use `vibe-agent research "<topic>"` or `vibe-agent auto research "<topic>"` for the
 researcher graph.
 
