@@ -1,29 +1,24 @@
 from __future__ import annotations
 
-import hashlib
-import json
-import os
-import sys
+import importlib.util
+import sqlite3
 import time
 import urllib.request
 from pathlib import Path
 
 
-def _read_input() -> dict[str, object]:
-    # Decode explicitly: stdin defaults to the locale encoding (cp1252 on Windows),
-    # which corrupts non-ASCII URLs and paths before they are resolved.
-    raw = sys.stdin.buffer.read().decode("utf-8", errors="replace").strip()
-    if not raw:
-        return {}
-    try:
-        loaded = json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
-    return loaded if isinstance(loaded, dict) else {}
+def _load_common():
+    spec = importlib.util.spec_from_file_location(
+        "sdd_cache_common", Path(__file__).resolve().parent / "sdd-cache-common.py"
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load sdd-cache-common.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
-def _project_root() -> Path:
-    return Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
+_common = _load_common()
 
 
 def _extract_content(tool_response: object) -> str:
@@ -46,17 +41,8 @@ def _head_validators(url: str) -> tuple[str, str]:
     return etag, last_modified
 
 
-def _cache_dir() -> Path:
-    # The runtime passes the resolved directory so both sides cannot drift.
-    # The fallback is for a standalone run, and names the same layout.
-    configured = os.environ.get("VIBE_SDD_CACHE_DIR", "").strip()
-    if configured:
-        return Path(configured)
-    return _project_root() / ".agent-state" / "sdd-cache"
-
-
 def main() -> int:
-    payload = _read_input()
+    payload = _common.read_input()
     tool_input = payload.get("tool_input")
     if not isinstance(tool_input, dict):
         return 0
@@ -78,20 +64,43 @@ def main() -> int:
     if not etag and not last_modified:
         return 0
 
-    cache_dir = _cache_dir()
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    key = hashlib.sha256(url.encode("utf-8")).hexdigest()[:32]
-    cache_file = cache_dir / f"{key}.json"
-
-    record = {
-        "url": url,
-        "prompt": prompt_text,
-        "etag": etag,
-        "last_modified": last_modified,
-        "content": content,
-        "fetched_at": int(time.time()),
-    }
-    cache_file.write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    try:
+        conn = _common.open_cache_db()
+    except Exception:
+        return 0
+    try:
+        conn.execute(
+            """
+            INSERT INTO sdd_cache
+                (key, url, prompt, etag, last_modified, content, fetched_at,
+                 created_by, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, '', ?, ?)
+            ON CONFLICT(key) DO UPDATE SET
+                prompt        = excluded.prompt,
+                etag          = excluded.etag,
+                last_modified = excluded.last_modified,
+                content       = excluded.content,
+                fetched_at    = excluded.fetched_at,
+                updated_at    = excluded.updated_at
+            """,
+            (
+                _common.cache_key_for_url(url),
+                url,
+                prompt_text,
+                etag,
+                last_modified,
+                content,
+                int(time.time()),
+                now,
+                now,
+            ),
+        )
+        conn.commit()
+    except sqlite3.Error:
+        return 0
+    finally:
+        conn.close()
     return 0
 
 

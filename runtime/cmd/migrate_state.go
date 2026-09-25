@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	fetchpersistence "github.com/ducnd58233/vibe-agent/runtime/internal/fetch/infra/persistence"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/harness"
 )
 
 // migrateStateCommand moves agent-only, machine-consumed state that used to
@@ -31,6 +32,12 @@ func migrateStateCommand(args []string) error {
 		return fmt.Errorf("migrate fetch cache: %w", err)
 	}
 	fmt.Printf("fetch cache: %d row(s) moved to fetch_cache\n", fetchMigrated)
+
+	sddMigrated, err := harness.SDDCacheBackfill(ctx, workspaceRoot)
+	if err != nil {
+		return fmt.Errorf("migrate sdd-cache: %w", err)
+	}
+	fmt.Printf("sdd-cache: %d row(s) moved to sdd_cache\n", sddMigrated)
 
 	return nil
 }

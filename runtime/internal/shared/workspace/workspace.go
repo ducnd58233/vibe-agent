@@ -29,10 +29,10 @@ const (
 	// Layout: .agent-state/runs/<date>/<slug>/<version>/.
 	RunsDirName = "runs"
 
-	// SDDCacheDirName holds the source-driven WebFetch cache. It used to sit
-	// under .claude/, hardcoded in the two Python hooks, so a Cursor or
-	// opencode session wrote its cache into another host's directory and
-	// nothing reported it. Derived state has one home.
+	// SDDCacheDirName held the source-driven WebFetch cache before it moved
+	// into the sdd_cache table. Kept only so a one-time backfill can find and
+	// remove pre-existing files here; nothing writes a new file to this
+	// directory any more.
 	SDDCacheDirName = "sdd-cache"
 
 	// DocsDirName holds written deliverables: specs, plans, task lists.
@@ -47,10 +47,11 @@ const (
 	// FetchCacheDirName holds extracted WebFetch documents beside other caches.
 	FetchCacheDirName = "fetch"
 
-	// EnvSDDCacheDir hands the resolved cache directory to the hook scripts.
-	// They cannot import this constant, so the runtime passes it instead of
-	// each side keeping its own copy of the layout.
-	EnvSDDCacheDir = "VIBE_SDD_CACHE_DIR"
+	// EnvMemoryDBPath hands the resolved database path to the sdd-cache hook
+	// scripts, which cannot import this constant and open the file directly
+	// with Python's stdlib sqlite3 - the runtime passes it so both sides
+	// cannot drift on where the database lives.
+	EnvMemoryDBPath = "VIBE_MEMORY_DB_PATH"
 
 	// MemoryDBName is the one SQLite file every domain module's state tables
 	// share. It lived only inside internal/memory/infra/persistence at first,

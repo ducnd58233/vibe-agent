@@ -91,12 +91,12 @@ func sddCache(req Request, body payload, script string) *BlockError {
 	// the reply. Discarding it keeps one writer with one format.
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	// The script resolves the cache directory from this, and falls back to its
+	// The script resolves the database path from this, and falls back to its
 	// own working directory without it. Passing the root this binary already
 	// discovered is what stops the fallback from being reached.
 	cmd.Env = append(os.Environ(),
 		"CLAUDE_PROJECT_DIR="+req.WorkspaceRoot,
-		workspace.EnvSDDCacheDir+"="+workspace.SDDCacheDir(req.WorkspaceRoot),
+		workspace.EnvMemoryDBPath+"="+workspace.MemoryDBPath(req.WorkspaceRoot),
 	)
 
 	runErr := cmd.Run()

@@ -23,7 +23,8 @@
 
 <required>
 
-- Needs Python 3 runtime (stdlib only).
-- Writes only under `.claude/sdd-cache/`.
+- Needs Python 3 runtime (stdlib only, including `sqlite3`).
+- Reads/writes the `sdd_cache` table in the workspace's shared `.agent-state/memory.db`, opened
+  directly via `VIBE_MEMORY_DB_PATH` (falls back to `.agent-state/memory.db` for a standalone run).
 - Do not log secrets in hook output.
 </required>

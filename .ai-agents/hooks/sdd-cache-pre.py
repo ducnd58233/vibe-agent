@@ -1,45 +1,26 @@
 from __future__ import annotations
 
-import hashlib
-import json
-import os
+import importlib.util
+import sqlite3
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import cast
 
 
-def _read_input() -> dict[str, object]:
-    # Decode explicitly: stdin defaults to the locale encoding (cp1252 on Windows),
-    # which corrupts non-ASCII URLs and paths before they are resolved.
-    raw = sys.stdin.buffer.read().decode("utf-8", errors="replace").strip()
-    if not raw:
-        return {}
-    try:
-        loaded = json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
-    return loaded if isinstance(loaded, dict) else {}
+def _load_common():
+    spec = importlib.util.spec_from_file_location(
+        "sdd_cache_common", Path(__file__).resolve().parent / "sdd-cache-common.py"
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("cannot load sdd-cache-common.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
-def _project_root() -> Path:
-    return Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
-
-
-def _cache_dir() -> Path:
-    # The runtime passes the resolved directory so both sides cannot drift.
-    # The fallback is for a standalone run, and names the same layout.
-    configured = os.environ.get("VIBE_SDD_CACHE_DIR", "").strip()
-    if configured:
-        return Path(configured)
-    return _project_root() / ".agent-state" / "sdd-cache"
-
-
-def _cache_file_for_url(url: str) -> Path:
-    key = hashlib.sha256(url.encode("utf-8")).hexdigest()[:32]
-    return _cache_dir() / f"{key}.json"
+_common = _load_common()
 
 
 def _http_head(url: str, etag: str, last_modified: str) -> int:
@@ -58,7 +39,7 @@ def _http_head(url: str, etag: str, last_modified: str) -> int:
 
 
 def main() -> int:
-    payload = _read_input()
+    payload = _common.read_input()
     tool_input = payload.get("tool_input")
     if not isinstance(tool_input, dict):
         return 0
@@ -67,41 +48,39 @@ def main() -> int:
     if not isinstance(url, str) or not url:
         return 0
 
-    cache_file = _cache_file_for_url(url)
-    if not cache_file.exists():
-        return 0
-
     try:
-        cache_raw = json.loads(cache_file.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+        conn = _common.open_cache_db()
+    except Exception:
         return 0
-    if not isinstance(cache_raw, dict):
+    try:
+        row = conn.execute(
+            "SELECT prompt, etag, last_modified, content, fetched_at "
+            "FROM sdd_cache WHERE key = ?",
+            (_common.cache_key_for_url(url),),
+        ).fetchone()
+    except sqlite3.Error:
         return 0
+    finally:
+        conn.close()
 
-    etag_value = cache_raw.get("etag")
-    last_modified_value = cache_raw.get("last_modified")
-    etag = etag_value if isinstance(etag_value, str) else ""
-    last_modified = last_modified_value if isinstance(last_modified_value, str) else ""
+    if row is None:
+        return 0
+    original_prompt, etag, last_modified, content_value, fetched_at_raw = row
     if not etag and not last_modified:
+        return 0
+    if not content_value:
         return 0
 
     status = _http_head(url, etag, last_modified)
     if status != 304:
         return 0
 
-    content_value = cache_raw.get("content")
-    if not isinstance(content_value, str) or not content_value:
-        return 0
-
-    fetched_at_value = cache_raw.get("fetched_at")
-    fetched_at = int(fetched_at_value) if isinstance(fetched_at_value, int) else 0
+    fetched_at = fetched_at_raw if isinstance(fetched_at_raw, int) else 0
     timestamp = (
         time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(fetched_at))
         if fetched_at > 0
         else "unknown"
     )
-    prompt_value = cache_raw.get("prompt")
-    original_prompt = prompt_value if isinstance(prompt_value, str) else ""
 
     print(f"[sdd-cache] Cache hit for {url}", file=sys.stderr)
     print("", file=sys.stderr)
