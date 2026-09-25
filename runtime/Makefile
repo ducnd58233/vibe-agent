@@ -55,7 +55,11 @@ MIGRATIONS_DIR := migrations
 # File-backed SQLite URL for the CLI. Override for a different workspace.
 # The agent binary applies the same SQL via embed on database.Open; these
 # targets are for developers inspecting or forcing a local memory.db.
-DATABASE_URL ?= sqlite3://$(CURDIR)/../.agent-state/memory.db
+#
+# Scheme must be sqlite:// (not sqlite3://): `go install -tags sqlite` pulls
+# modernc and registers that name. A path relative to runtime/ works on
+# Windows and Unix; absolute file: URLs are easy to get wrong here.
+DATABASE_URL ?= sqlite://../.agent-state/memory.db
 
 .PHONY: all build test bench vet fmt fmt-check lint golangci tools check release clean install help \
 	new-migrate migrate-up migrate-down
