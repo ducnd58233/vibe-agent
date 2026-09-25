@@ -118,7 +118,10 @@ These rules come from research slug `improve-inner-outer-loops`. They apply when
 
 ### Database (`internal/shared/infra/database`)
 
-- Use **`database.Open`** for SQLite so driver import stays in one place. Schema and migrations remain in each module's `infra/persistence`.
+- Use **`database.Open`** for SQLite so driver import stays in one place. Versioned DDL
+  lives under **`runtime/migrations/`** (golang-migrate up/down pairs). `Open` applies
+  pending migrations via embed; packages must not `CREATE TABLE` on open. Developer CLI:
+  `make -C runtime new-migrate|migrate-up|migrate-down`.
 
 ## Agent memory boundary (MUST)
 

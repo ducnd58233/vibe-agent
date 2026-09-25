@@ -56,9 +56,6 @@ func TestStoreLoadMissesOnAnExpiredEntry(t *testing.T) {
 			t.Errorf("close: %v", err)
 		}
 	})
-	if err := createFetchCacheTable(ctx, db); err != nil {
-		t.Fatal(err)
-	}
 	body, err := json.Marshal(domain.Document{Source: source, Text: "stale"})
 	if err != nil {
 		t.Fatal(err)

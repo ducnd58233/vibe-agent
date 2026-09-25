@@ -1,12 +1,12 @@
 package memory
 
 import (
-	"context"
+	"database/sql"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/database"
+	_ "modernc.org/sqlite"
 )
 
 // Several harnesses can share one workspace. A memory that cannot say which
@@ -30,7 +30,8 @@ func openStoreAt(t *testing.T, path string) *Store {
 }
 
 // legacySchema is the memories table as it stood before provenance, after the
-// validity interval.
+// validity interval. Seeded with a raw sql.Open so database.Open's baseline
+// migration does not create the current shape first.
 const legacySchema = `
     CREATE TABLE memories (
         id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, kind TEXT NOT NULL,
@@ -47,11 +48,12 @@ const legacySchema = `
 func openLegacy(t *testing.T, rows map[string]string) *Store {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "memory.db")
-	old, err := database.Open(context.Background(), path)
+	old, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatalf("open raw: %v", err)
 	}
 	if _, err := old.ExecContext(t.Context(), legacySchema); err != nil {
+		_ = old.Close()
 		t.Fatalf("seed schema: %v", err)
 	}
 	for id, workspace := range rows {
@@ -62,6 +64,7 @@ func openLegacy(t *testing.T, rows map[string]string) *Store {
                 'command_result', 'node --version printed v20.11.0',
                 '2026-07-01T09:00:00Z', '2026-07-01T09:00:00Z', '2026-07-01T09:00:00Z')`,
 			id, workspace); err != nil {
+			_ = old.Close()
 			t.Fatalf("seed row %s: %v", id, err)
 		}
 	}

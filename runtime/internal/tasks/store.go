@@ -13,8 +13,6 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
-const taskListsTable = "task_lists"
-
 // rowID is the primary key for one task list revision: slug, date, and version
 // joined so a single TEXT key stays unique without a composite PK.
 func rowID(slug, date string, version int) string {
@@ -26,24 +24,7 @@ func openTaskListsDB(ctx context.Context, workspaceRoot string) (*sql.DB, error)
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return nil, err
 	}
-	db, err := database.Open(ctx, path)
-	if err != nil {
-		return nil, err
-	}
-	if err := createTaskListsTable(ctx, db); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	return db, nil
-}
-
-func createTaskListsTable(ctx context.Context, db *sql.DB) error {
-	return database.CreateTableWithProvenance(ctx, db, taskListsTable, `
-        id      TEXT PRIMARY KEY,
-        slug    TEXT NOT NULL,
-        date    TEXT NOT NULL,
-        version INTEGER NOT NULL,
-        body    TEXT NOT NULL`)
+	return database.Open(ctx, path)
 }
 
 func loadBodyFromDB(ctx context.Context, db *sql.DB, slug, date string, version int) ([]byte, error) {

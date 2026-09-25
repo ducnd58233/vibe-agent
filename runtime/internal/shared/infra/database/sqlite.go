@@ -20,16 +20,24 @@ const BusyTimeout = 5 * time.Second
 // Open opens a SQLite database at path, with WAL journaling and a busy
 // timeout so concurrent writers wait for a lock instead of failing on it.
 // Both are no-ops SQLite already handles gracefully for ":memory:".
+// Pending embedded migrations under runtime/migrations are applied before
+// the connection is returned so callers never CREATE TABLE themselves.
 func Open(ctx context.Context, path string) (*sql.DB, error) {
 	db, err := sql.Open(Driver, path)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
 	}
 	if _, err := db.ExecContext(ctx, fmt.Sprintf("PRAGMA busy_timeout = %d", BusyTimeout.Milliseconds())); err != nil {
+		_ = db.Close()
 		return nil, fmt.Errorf("set busy_timeout: %w", err)
 	}
 	if _, err := db.ExecContext(ctx, "PRAGMA journal_mode = WAL"); err != nil {
+		_ = db.Close()
 		return nil, fmt.Errorf("set journal_mode: %w", err)
+	}
+	if err := Up(ctx, db); err != nil {
+		_ = db.Close()
+		return nil, err
 	}
 	return db, nil
 }
