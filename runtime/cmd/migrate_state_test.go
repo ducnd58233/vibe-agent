@@ -43,6 +43,19 @@ func TestMigrateStateMovesFetchCacheFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	journalPath := filepath.Join(workspace.StateDir(root), "journal.ndjson")
+	journalLine, err := json.Marshal(map[string]any{
+		"sequence": 1, "type": "tool_use",
+		"payload": map[string]any{"tool": "Bash", "command": "ls"},
+		"at":      time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(journalPath, append(journalLine, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := migrateStateCommand([]string{"--workspace", root, "--toolkit", toolkitRoot}); err != nil {
 		t.Fatalf("migrate state: %v", err)
 	}
@@ -52,6 +65,9 @@ func TestMigrateStateMovesFetchCacheFiles(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(sddDir, "feedface.json")); err == nil {
 		t.Error("the legacy sdd-cache file still exists after migrate state")
+	}
+	if _, err := os.Stat(journalPath); err == nil {
+		t.Error("the legacy ambient journal file still exists after migrate state")
 	}
 
 	db, err := database.Open(t.Context(), workspace.MemoryDBPath(root))
@@ -75,6 +91,14 @@ func TestMigrateStateMovesFetchCacheFiles(t *testing.T) {
 	}
 	if sddCount != 1 {
 		t.Errorf("sdd_cache has %d rows, want 1", sddCount)
+	}
+	var journalCount int
+	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM journal_entries WHERE run_id IS NULL`).
+		Scan(&journalCount); err != nil {
+		t.Fatal(err)
+	}
+	if journalCount != 1 {
+		t.Errorf("journal_entries has %d ambient rows, want 1", journalCount)
 	}
 }
 
