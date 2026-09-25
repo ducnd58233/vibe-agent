@@ -159,7 +159,7 @@ func TestSpecTransitions(t *testing.T) {
 			name:    "merge approval advances toward done",
 			from:    "approve_merge",
 			outcome: Outcome{Check: approve("merge_approved")},
-			want:    "task_complete",
+			want:    "remember",
 		},
 	}
 
@@ -405,8 +405,10 @@ func TestFullDeliveryPathReachesDone(t *testing.T) {
 		{"external_reviews", Outcome{Check: pass("ci")}},
 		{"ship", Outcome{Check: pass("reviews")}},
 		{"approve_merge", Outcome{Check: pass("ship")}},
-		{"task_complete", Outcome{Check: approve("merge_approved")}},
-		{"done", Outcome{Check: &NamedCheck{Name: "tasks_remaining", Check: state.Check{Passed: false, Source: state.SourceFileAssert, At: at()}}}},
+		{"remember", Outcome{Check: approve("merge_approved")}},
+		{"task_complete", Outcome{}},
+		{"improve", Outcome{Check: &NamedCheck{Name: "tasks_remaining", Check: state.Check{Passed: false, Source: state.SourceFileAssert, At: at()}}}},
+		{"done", Outcome{}},
 	}
 
 	for i, step := range steps {

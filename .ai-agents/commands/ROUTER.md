@@ -24,6 +24,8 @@ Slash-style prompts live in this folder as `*.md`. **Claude Code** commonly reso
 | Auto-path SPEC expectation review | [`expectation.md`](expectation.md) | Write `expectation/REVIEW.md`, then verify; fail reopens plan |
 | Auto-path bug hunt after e2e | [`bug-hunt.md`](bug-hunt.md) | Write `bug_hunt/FINDINGS.md`, then verify; fail reopens plan |
 | Auto-path release readiness after ship | [`release.md`](release.md) | Write `release/REVIEW.md`, then verify; fail routes to build |
+| Propose what a merged task taught, to memory.db | [`remember.md`](remember.md) | Run is on `remember`; proposals only, through the memory policy |
+| Report memories reused enough to become a rule | [`improve.md`](improve.md) | Run is on `improve`; writes nothing |
 | Write failure TRACE then refine tasks / rebuild | [`failure-trace.md`](failure-trace.md) | On verifier fail or third-strike; schema in `references/failure-trace.md` |
 | TDD / Prove-It | [`test.md`](test.md) | - |
 | Simplify safely | [`code-simplify.md`](code-simplify.md) | Tests protect behavior |

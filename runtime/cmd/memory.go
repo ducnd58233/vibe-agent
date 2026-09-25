@@ -21,11 +21,15 @@ import (
 // into every session. This is that way.
 func memoryCommand(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("memory needs a subcommand: list, confirm, forget, review")
+		return fmt.Errorf("memory needs a subcommand: list, propose, confirm, forget, review, promotions")
 	}
 	switch args[0] {
 	case "list":
 		return memoryListCommand(args[1:])
+	case "propose":
+		return memoryPropose(args[1:])
+	case "promotions":
+		return memoryPromotions(args[1:])
 	case "confirm":
 		return memorySetStatus(args[1:], "confirm")
 	case "forget":
@@ -33,7 +37,7 @@ func memoryCommand(args []string) error {
 	case "review":
 		return memoryReview(args[1:])
 	default:
-		return fmt.Errorf("unknown memory subcommand %q; try list, confirm, forget, or review", args[0])
+		return fmt.Errorf("unknown memory subcommand %q; try list, propose, confirm, forget, review, or promotions", args[0])
 	}
 }
 
@@ -158,6 +162,97 @@ func orNone(agents []string) string {
 		return "none"
 	}
 	return strings.Join(agents, ", ")
+}
+
+// memoryPropose is the remember step: it stores a lesson as a proposal through
+// the same policy filter the hooks and MCP use. It can never confirm, and a
+// rejection is an error so a script cannot mistake it for a stored memory.
+func memoryPropose(args []string) (err error) {
+	flags := newFlagSet("memory propose")
+	paths := addRootFlags(flags)
+	kind := flags.String("kind", "", "semantic, episodic, correction, or preference")
+	content := flags.String("content", "", "the lesson, one claim")
+	sourceType := flags.String("source-type", "", "command_result, file_content, ci_api, human_statement, or review_comment")
+	sourceRef := flags.String("source-ref", "", "where the evidence came from (run event, log path)")
+	client := flags.String("client", "", "host writing this: claude-code, cursor, codex, opencode, ...")
+	model := flags.String("model", "", "model id, when known")
+	confidence := flags.Float64("confidence", 0.7, "0 to 1")
+	var evidence, tags multiFlag
+	flags.Var(&evidence, "evidence", "a concrete observation; repeat for more")
+	flags.Var(&tags, "tag", "a retrieval tag; repeat for more")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	workspaceRoot, _, err := paths.resolve()
+	if err != nil {
+		return err
+	}
+	store, err := memory.Open(context.Background(), workspaceRoot)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, store.Close()) }()
+
+	stored, decision, err := store.Propose(context.Background(), memory.Record{
+		WorkspaceID: memory.WorkspaceKey(workspaceRoot),
+		Kind:        memory.Kind(*kind),
+		Content:     *content,
+		Tags:        tags,
+		Confidence:  *confidence,
+		SourceType:  memory.SourceType(*sourceType),
+		SourceRef:   *sourceRef,
+		Evidence:    evidence,
+		CreatedBy:   memory.Author(*client, *model),
+	}, time.Now().UTC())
+	if err != nil {
+		return err
+	}
+	if decision.Verdict == memory.VerdictReject {
+		return fmt.Errorf("memory rejected: %s", decision.Reason)
+	}
+	fmt.Printf("%s %s as %s. Confirmation needs a verifier result or a person (`memory confirm`).\n",
+		stored.ID, decision.Verdict, stored.Status)
+	return nil
+}
+
+// memoryPromotions is the improve step: it lists confirmed memories reused
+// often enough to deserve a reviewed rule, and where that rule would go. It
+// writes nothing; a person or a reviewed change moves the rule.
+func memoryPromotions(args []string) (err error) {
+	flags := newFlagSet("memory promotions")
+	paths := addRootFlags(flags)
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	workspaceRoot, _, err := paths.resolve()
+	if err != nil {
+		return err
+	}
+	store, exists, err := openExistingMemory(workspaceRoot)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		fmt.Println("No memory database yet, so nothing has been reused enough to promote.")
+		return nil
+	}
+	defer func() { err = errors.Join(err, store.Close()) }()
+
+	records, err := store.List(context.Background(), memory.WorkspaceKey(workspaceRoot))
+	if err != nil {
+		return err
+	}
+	promotions := memory.ProposePromotions(records)
+	if len(promotions) == 0 {
+		fmt.Printf("No confirmed memory has been reused %d times yet.\n", memory.PromotionThreshold)
+		return nil
+	}
+	for _, promotion := range promotions {
+		fmt.Printf("%s  used=%d  -> %s\n  %s\n  why: %s\n", promotion.Record.ID, promotion.Record.UsedCount,
+			promotion.Target, singleLine(promotion.Record.Content), promotion.Reason)
+	}
+	fmt.Printf("\n%d promotion(s) proposed. Nothing was written; each needs a reviewed change.\n", len(promotions))
+	return nil
 }
 
 // memoryReview records that an agent audited a memory. It does not confirm it:

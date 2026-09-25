@@ -125,7 +125,8 @@ What an agent needs to remember and a person does not need to read goes into `me
 - **Agent-only memory:** command outcomes, workarounds that worked, failure notes, retrieval cues,
   and anything a later session or another harness should recall. Write it through the memory policy:
   the hook journal does this for command failures, and a host proposes with the `vibe_memory_propose`
-  MCP tool (or `vibe-agent memory propose` once it exists). Never as notes under `docs/`, a new
+  MCP tool or `vibe-agent memory propose`; the graph's `remember` node asks for it after every merged
+  task. Never as notes under `docs/`, a new
   markdown file in the repo, a code comment, or a PR description.
 - **Human-facing, and therefore files:** SPEC, PLAN, TASKS, RESEARCH, and ADRs under
   `docs/<date>/<slug>/<version>/`; charters and READMEs; the `.agent-state/MISTAKES.md` diary, which
