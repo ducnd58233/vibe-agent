@@ -25,6 +25,11 @@ const indexSchemaVersion = 1
 // ErrNotFound means no index entry and no versioned directory for the slug.
 var ErrNotFound = errors.New("run path not found")
 
+// ResolveSQL looks up the latest (date, version) for a slug in the runs table.
+// persistence sets this so Resolve still works after backfill removes
+// run-index files; this package must not import persistence itself.
+var ResolveSQL func(workspaceRoot, slug string) (Entry, bool)
+
 // Entry is the current revision pointer for one slug.
 type Entry struct {
 	SchemaVersion int    `json:"schemaVersion"`
@@ -107,8 +112,9 @@ func LoadIndex(workspaceRoot, slug string) (Entry, error) {
 	return entry, nil
 }
 
-// Resolve returns the current entry for a slug: index first, else scan disk for
-// the highest version under .agent-state/runs and docs/.
+// Resolve returns the current entry for a slug: index first, then the runs
+// table when wired, else scan disk for the highest version under
+// .agent-state/runs and docs/.
 func Resolve(workspaceRoot, slug string) (Entry, error) {
 	if !validate.Slug(slug) {
 		return Entry{}, fmt.Errorf("slug %q is not usable", slug)
@@ -117,6 +123,11 @@ func Resolve(workspaceRoot, slug string) (Entry, error) {
 		return entry, nil
 	} else if !errors.Is(err, ErrNotFound) {
 		return Entry{}, err
+	}
+	if ResolveSQL != nil {
+		if entry, ok := ResolveSQL(workspaceRoot, slug); ok {
+			return entry, nil
+		}
 	}
 	entry, ok := scanHighest(workspaceRoot, slug)
 	if !ok {

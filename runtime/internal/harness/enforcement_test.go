@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -301,7 +300,7 @@ func TestPromptSubmitReadsEitherPromptField(t *testing.T) {
 	}
 }
 
-// --- Change 4: the manifest stops being editable by hand ---------------------
+// --- Change 4: run state stops being editable by hand ------------------------
 
 func TestPreToolUseDeniesEditingAManifest(t *testing.T) {
 	root := workspaceWithRun(t)
@@ -316,6 +315,34 @@ func TestPreToolUseDeniesEditingAManifest(t *testing.T) {
 	}
 	if !strings.Contains(blocked.Reason, "checkpoint") {
 		t.Errorf("the refusal does not name the command that does this properly: %s", blocked.Reason)
+	}
+}
+
+func TestPreToolUseDeniesWritingMemoryDB(t *testing.T) {
+	root := workspaceWithRun(t)
+	err := runHook(t, Request{
+		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{"tool_name":"Write","tool_input":{"file_path":"` +
+			jsonPath(root, ".agent-state", "memory.db") + `","content":"x"}}`),
+	})
+	var blocked *BlockError
+	if !asBlock(err, &blocked) {
+		t.Fatalf("writing memory.db was allowed: %v", err)
+	}
+	if !strings.Contains(blocked.Reason, "checkpoint") {
+		t.Errorf("the refusal does not name checkpoint: %s", blocked.Reason)
+	}
+}
+
+func TestPreToolUseDeniesSqliteWriteToRuns(t *testing.T) {
+	root := workspaceWithRun(t)
+	err := runHook(t, Request{
+		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"sqlite3 .agent-state/memory.db \"UPDATE runs SET status='done'\""}}`),
+	})
+	var blocked *BlockError
+	if !asBlock(err, &blocked) {
+		t.Fatalf("sqlite UPDATE of runs was allowed: %v", err)
 	}
 }
 
@@ -484,7 +511,8 @@ func failingCommand(t *testing.T, root string) {
 }
 
 // A command that succeeded is not a fact worth remembering, and one whose
-// outcome the host did not report is not a fact at all.
+// outcome the host did not report is not a fact at all. Dual-write of run
+// state may create memory.db; the check is that no failure memory was proposed.
 func TestPostToolUseProposesNothingWithoutAFailure(t *testing.T) {
 	for _, response := range []string{
 		`{"exit_code":0}`,
@@ -497,8 +525,17 @@ func TestPostToolUseProposesNothingWithoutAFailure(t *testing.T) {
 			Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"go build ./..."},` +
 				`"tool_response":` + response + `}`),
 		})
-		if _, err := os.Stat(memory.DBPath(root)); err == nil {
-			t.Errorf("response %s created a memory database", response)
+		store, err := memory.Open(t.Context(), root)
+		if err != nil {
+			t.Fatalf("open memory: %v", err)
+		}
+		records, err := store.List(t.Context(), memory.WorkspaceKey(root))
+		_ = store.Close()
+		if err != nil {
+			t.Fatalf("list memories: %v", err)
+		}
+		if len(records) != 0 {
+			t.Errorf("response %s proposed %d memor(ies)", response, len(records))
 		}
 	}
 }
