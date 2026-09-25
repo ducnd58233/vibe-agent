@@ -132,6 +132,9 @@ path. When a rule already has a home, link to it instead of restating it.
   workspace's `AGENTS.md` as a hard rule and note the graduation in the log. Format and how this
   differs from `memory.db`:
   [`.ai-agents/references/mistakes-log.md`](.ai-agents/references/mistakes-log.md).
+- **Agent-only memory goes to `memory.db` (MUST):** what only agents need to recall is never written
+  to `docs/` or other human-facing files; boundary and rules in
+  [`runtime/AGENTS.md`](runtime/AGENTS.md) section "Agent memory boundary".
 - **Generated docs location (MUST):** a command or skill producing a markdown deliverable (`SPEC`,
   `PLAN`, `TASKS`, ADRs, research digests, analysis reports) writes it under
   `docs/<YYYY-MM-DD>/<slug>/<version>/` at the **workspace root** - the directory containing

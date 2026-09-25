@@ -117,6 +117,32 @@ These rules come from research slug `improve-inner-outer-loops`. They apply when
 
 - Use **`database.Open`** for SQLite so driver import stays in one place. Schema and migrations remain in each module's `infra/persistence`.
 
+## Agent memory boundary (MUST)
+
+What an agent needs to remember and a person does not need to read goes into `memory.db`
+(`.agent-state/memory.db`, gitignored), never into a file a person will see as a deliverable.
+
+- **Agent-only memory:** command outcomes, workarounds that worked, failure notes, retrieval cues,
+  and anything a later session or another harness should recall. Write it through the memory policy:
+  the hook journal does this for command failures, and a host proposes with the `vibe_memory_propose`
+  MCP tool (or `vibe-agent memory propose` once it exists). Never as notes under `docs/`, a new
+  markdown file in the repo, a code comment, or a PR description.
+- **Human-facing, and therefore files:** SPEC, PLAN, TASKS, RESEARCH, and ADRs under
+  `docs/<date>/<slug>/<version>/`; charters and READMEs; the `.agent-state/MISTAKES.md` diary, which
+  exists to be read and graduated into `AGENTS.md` by people
+  ([`mistakes-log.md`](../.ai-agents/references/mistakes-log.md) compares it with `memory.db`).
+- **Verification evidence is neither:** `bug_hunt/FINDINGS.md`, `review/REVIEW.md` and the rest under
+  `.agent-state/runs/` are read by verifiers. They stay files because `file_assert` reads files.
+- **Proposals only.** Model output can propose a memory; confirmation needs a verifier result or a
+  human event (`memory/domain/policy.go`, `Filter.Decide`). A retrieved memory is supporting
+  context: the repository wins when they disagree.
+- **No credentials, ever.** The policy rejects a candidate whose content or evidence matches
+  `redact.ContainsCredential`. Do not split, encode, or paraphrase a secret to get it past the filter.
+- **New agent-only state in the runtime** gets a table in its module's `infra/persistence` through
+  `database.Open`, not a new file format under `.agent-state/`.
+
+Rule added by the `agent-trust-research-memory-ecc` delivery.
+
 ## Go backend
 
 ### HTTP handlers (HTML UI)
