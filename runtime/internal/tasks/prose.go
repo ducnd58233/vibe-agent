@@ -37,9 +37,6 @@ func ProsePath(workspaceRoot, slug string) string {
 			return legacy
 		}
 	}
-	if file, loadErr := Load(workspaceRoot, slug); loadErr == nil && date == "" {
-		date = file.Date
-	}
 	dir := workspace.DocsDir(workspaceRoot, slug)
 	if date != "" {
 		if name, nameErr := workspace.DocsArtifact("TASKS", date); nameErr == nil {

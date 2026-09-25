@@ -6,6 +6,7 @@ import (
 
 	fetchpersistence "github.com/ducnd58233/vibe-agent/runtime/internal/fetch/infra/persistence"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/harness"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/tasks"
 )
 
 // migrateStateCommand moves agent-only, machine-consumed state that used to
@@ -44,6 +45,12 @@ func migrateStateCommand(args []string) error {
 		return fmt.Errorf("migrate ambient journal: %w", err)
 	}
 	fmt.Printf("ambient journal: %d row(s) moved to journal_entries\n", journalMigrated)
+
+	taskMigrated, err := tasks.Backfill(ctx, workspaceRoot)
+	if err != nil {
+		return fmt.Errorf("migrate task lists: %w", err)
+	}
+	fmt.Printf("task lists: %d row(s) moved to task_lists\n", taskMigrated)
 
 	return nil
 }

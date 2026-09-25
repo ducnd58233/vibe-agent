@@ -1,15 +1,18 @@
 // Package tasks reads the machine-readable task list a plan produces.
 //
-// TASKS.md stays the file a person reads and reviews in a pull request. This is
-// the file a verifier reads. A task marked done settles only when every
-// acceptance-criteria checkbox in that TASKS section is checked; status alone
-// is not enough.
+// TASKS.md stays the file a person reads and reviews in a pull request. The
+// structured mirror lives in the task_lists table of memory.db (with a legacy
+// docs/**/tasks-*.json fallback until migrate state has run). A task marked
+// done settles only when every acceptance-criteria checkbox in that TASKS
+// section is checked; status alone is not enough.
 //
-// The two files are expected to agree on task identity and status. Doctor notes
-// a heading-count mismatch and refuses open acceptance boxes on an active run.
+// The two sources are expected to agree on task identity and status. Doctor
+// notes a heading-count mismatch and refuses open acceptance boxes on an
+// active run.
 package tasks
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -141,13 +144,40 @@ func Parse(raw []byte) (*File, error) {
 	return &file, nil
 }
 
-// Load reads a slug's task list from disk.
+// Load reads a slug's task list from task_lists, falling back to the legacy
+// on-disk mirror so a workspace that has not run migrate state yet still works.
 func Load(workspaceRoot, slug string) (*File, error) {
-	raw, err := os.ReadFile(filepath.Clean(Path(workspaceRoot, slug)))
+	return LoadContext(context.Background(), workspaceRoot, slug)
+}
+
+// LoadContext is Load with an explicit context for callers that already have one
+// (verifiers). Load keeps the original signature.
+func LoadContext(ctx context.Context, workspaceRoot, slug string) (*File, error) {
+	raw, err := loadRaw(ctx, workspaceRoot, slug)
 	if err != nil {
 		return nil, err
 	}
 	return Parse(raw)
+}
+
+func loadRaw(ctx context.Context, workspaceRoot, slug string) ([]byte, error) {
+	db, err := openTaskListsDB(ctx, workspaceRoot)
+	if err == nil {
+		defer func() { _ = db.Close() }()
+		if entry, resolveErr := runpath.Resolve(workspaceRoot, slug); resolveErr == nil {
+			if body, loadErr := loadBodyFromDB(ctx, db, entry.Slug, entry.Date, entry.Version); loadErr == nil {
+				return body, nil
+			} else if !os.IsNotExist(loadErr) {
+				return nil, loadErr
+			}
+		}
+		if body, loadErr := loadLatestBodyFromDB(ctx, db, slug); loadErr == nil {
+			return body, nil
+		} else if !os.IsNotExist(loadErr) {
+			return nil, loadErr
+		}
+	}
+	return os.ReadFile(filepath.Clean(Path(workspaceRoot, slug)))
 }
 
 // Remaining returns the tasks still in scope, in list order.
