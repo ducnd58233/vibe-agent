@@ -93,7 +93,7 @@ task was ticked late or not at all.
 
 Two consequences specific to this mode:
 
-- **A stale list stalls or loops the run.** `task_complete` decides on `tasks.json`. With a person
+- **A stale list stalls or loops the run.** `task_complete` decides on `task_lists`. With a person
   driving, a wrong answer there gets spotted; with auto driving, the run simply walks another build
   cycle for a task that is already finished, and keeps doing it.
 - **`auto gate` reads the plan document.** A task without acceptance criteria gives the spec and

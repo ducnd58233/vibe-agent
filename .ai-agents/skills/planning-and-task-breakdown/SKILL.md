@@ -153,17 +153,19 @@ Add explicit checkpoints:
 [`goal.md`](../../commands/goal.md), and [`auto.md`](../../commands/auto.md) point here rather than
 restating it, so the rule lives in one place instead of five that drift.
 
-### One list, two files, one vocabulary
+### One list, two places, one vocabulary
 
 A task list is written twice, and both copies are part of the same edit:
 
-| File | Read by | Status lives in |
+| Place | Read by | Status lives in |
 |---|---|---|
 | `docs/<date>/<slug>/<version>/TASKS-<date>.md` | a person | the task heading: `### T1: Title  [queued]` |
-| `docs/<date>/<slug>/<version>/tasks-<date>.json` | the runtime | the `status` field |
+| `task_lists` in `.agent-state/memory.db` | the runtime | the `status` field |
+
+Do not write `docs/**/tasks-*.json`; that file mirror is gone after migrate state.
 
 The vocabulary is the one [`schemas/tasks.schema.json`](../../../schemas/tasks.schema.json) already
-defines, lowercase, in both files:
+defines, lowercase, in both places:
 
 `queued` · `in_progress` · `blocked` · `done` · `canceled`
 
@@ -172,7 +174,7 @@ says `done` is two spellings of one fact, which is how a reader ends up trusting
 
 ### Check the list before starting
 
-Read `tasks.json` before picking up work, every time:
+Read the `task_lists` row (or `vibe-agent` / MCP task helpers) before picking up work, every time:
 
 - A task already `done` is **not** restarted. If it needs more work, that is a new task or a fix on
   its existing branch, not a status reversal.
@@ -182,15 +184,15 @@ Read `tasks.json` before picking up work, every time:
 
 ### Update the status when it changes, before the verifier reads it
 
-Set `in_progress` when work starts and `done` when the acceptance criteria pass, in **both** files,
-and tick the acceptance checkboxes as they are met.
+Set `in_progress` when work starts and `done` when the acceptance criteria pass, in **both**
+TASKS.md and `task_lists`, and tick the acceptance checkboxes as they are met.
 
-**Enforced:** a task with `status: done` in `tasks.json` does **not** settle for `task_complete`
+**Enforced:** a task with `status: done` in `task_lists` does **not** settle for `task_complete`
 (or for `vibe-agent doctor`) while any checkbox under that task's **Acceptance criteria** section in
 `TASKS.md` is still `[ ]`, or while that section/prose is missing. Goal and auto share this verifier.
 Tick every AC box before marking `done`.
 
-Timing is load-bearing, not tidiness. The `task_complete` verifier reads `tasks.json` (and TASKS
+Timing is load-bearing, not tidiness. The `task_complete` verifier reads `task_lists` (and TASKS
 prose for acceptance boxes) to decide whether another task remains. Marking a task `done` **after**
 that verifier has run means the graph saw a task that was already finished and sent the run back
 through a full build cycle for nothing. That has happened, and it costs a complete loop each time.
@@ -239,7 +241,7 @@ If a task is L or larger, it should be broken into smaller tasks. An agent perfo
 ## Task List
 
 The plan lists the tasks; TASKS.md carries each one in full. Tick a box here when that task's
-status reaches `done` in both TASKS.md and tasks.json.
+status reaches `done` in both TASKS.md and `task_lists`.
 
 ### Phase 1: Foundation
 - [ ] T1: ...
@@ -299,7 +301,7 @@ When multiple agents or sessions are available:
 
 - Starting implementation without a written task list
 - Tasks that say "implement the feature" without acceptance criteria
-- A task with no status marker, or a status that differs between TASKS.md and tasks.json
+- A task with no status marker, or a status that differs between TASKS.md and `task_lists`
 - Marking a task done after the verifier that reads the list has already run
 - No verification steps in the plan
 - All tasks are XL-sized
@@ -314,7 +316,7 @@ When multiple agents or sessions are available:
 Before starting implementation, confirm:
 
 - [ ] Every task has a status marker, a description, and its own acceptance criteria
-- [ ] Every task's status uses the schema vocabulary, lowercase, in TASKS.md and tasks.json alike
+- [ ] Every task's status uses the schema vocabulary, lowercase, in TASKS.md and `task_lists` alike
 - [ ] Every task has a verification step
 - [ ] Task dependencies are identified and ordered correctly
 - [ ] No task touches more than ~5 files

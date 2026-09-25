@@ -1,8 +1,7 @@
 // Package tasks reads the machine-readable task list a plan produces.
 //
 // TASKS.md stays the file a person reads and reviews in a pull request. The
-// structured mirror lives in the task_lists table of memory.db (with a legacy
-// docs/**/tasks-*.json fallback until migrate state has run). A task marked
+// structured mirror lives in the task_lists table of memory.db. A task marked
 // done settles only when every acceptance-criteria checkbox in that TASKS
 // section is checked; status alone is not enough.
 //
@@ -26,7 +25,8 @@ import (
 // SchemaVersion is the only version this loader accepts.
 const SchemaVersion = 1
 
-// FileName is the undated legacy basename. Prefer DocsArtifact("tasks", date).
+// FileName is the undated legacy basename used only by migrate-state backfill
+// when scanning leftover docs trees. New writes go to task_lists, not files.
 const FileName = "tasks.json"
 
 // Status is how far a task has got.
@@ -73,26 +73,17 @@ type File struct {
 	Tasks         []Task `json:"tasks"`
 }
 
-// Path is where a slug's task list lives. Prefer the dated basename under the
-// versioned docs dir; fall back to undated names and the flat docs tree.
+// Path is a display hint for where a slug's task list used to live on disk.
+// Load no longer reads this path; prefer task_lists. Kept so verifier and
+// doctor error messages stay stable while callers migrate off the file path.
 func Path(workspaceRoot, slug string) string {
 	if entry, err := runpath.Resolve(workspaceRoot, slug); err == nil {
 		dir := workspace.DocsDirAt(workspaceRoot, entry.Date, entry.Slug, entry.Version)
 		dated, err := workspace.DocsArtifact("tasks", entry.Date)
 		if err == nil {
-			candidate := filepath.Join(dir, dated)
-			if _, err := os.Stat(candidate); err == nil {
-				return candidate
-			}
-		}
-		legacy := filepath.Join(dir, FileName)
-		if _, err := os.Stat(legacy); err == nil {
-			return legacy
-		}
-		if dated != "" {
 			return filepath.Join(dir, dated)
 		}
-		return legacy
+		return filepath.Join(dir, FileName)
 	}
 	return filepath.Join(workspace.DocsDir(workspaceRoot, slug), FileName)
 }
@@ -144,8 +135,7 @@ func Parse(raw []byte) (*File, error) {
 	return &file, nil
 }
 
-// Load reads a slug's task list from task_lists, falling back to the legacy
-// on-disk mirror so a workspace that has not run migrate state yet still works.
+// Load reads a slug's task list from task_lists.
 func Load(workspaceRoot, slug string) (*File, error) {
 	return LoadContext(context.Background(), workspaceRoot, slug)
 }
@@ -162,22 +152,22 @@ func LoadContext(ctx context.Context, workspaceRoot, slug string) (*File, error)
 
 func loadRaw(ctx context.Context, workspaceRoot, slug string) ([]byte, error) {
 	db, err := openTaskListsDB(ctx, workspaceRoot)
-	if err == nil {
-		defer func() { _ = db.Close() }()
-		if entry, resolveErr := runpath.Resolve(workspaceRoot, slug); resolveErr == nil {
-			if body, loadErr := loadBodyFromDB(ctx, db, entry.Slug, entry.Date, entry.Version); loadErr == nil {
-				return body, nil
-			} else if !os.IsNotExist(loadErr) {
-				return nil, loadErr
-			}
-		}
-		if body, loadErr := loadLatestBodyFromDB(ctx, db, slug); loadErr == nil {
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = db.Close() }()
+	if entry, resolveErr := runpath.Resolve(workspaceRoot, slug); resolveErr == nil {
+		if body, loadErr := loadBodyFromDB(ctx, db, entry.Slug, entry.Date, entry.Version); loadErr == nil {
 			return body, nil
 		} else if !os.IsNotExist(loadErr) {
 			return nil, loadErr
 		}
 	}
-	return os.ReadFile(filepath.Clean(Path(workspaceRoot, slug)))
+	body, loadErr := loadLatestBodyFromDB(ctx, db, slug)
+	if loadErr != nil {
+		return nil, loadErr
+	}
+	return body, nil
 }
 
 // Remaining returns the tasks still in scope, in list order.

@@ -973,9 +973,16 @@ func TestNewSessionWritesVersionedRunDir(t *testing.T) {
 	}
 
 	today := time.Now().UTC().Format("2006-01-02")
-	manifest := filepath.Join(root, ".agent-state", "runs", today, "versioned-web", "1", "manifest.json")
-	if _, err := os.Stat(manifest); err != nil {
-		t.Fatalf("expected versioned manifest at %s: %v", manifest, err)
+	runDir := filepath.Join(root, ".agent-state", "runs", today, "versioned-web", "1")
+	if _, err := os.Stat(runDir); err != nil {
+		t.Fatalf("expected versioned run dir at %s: %v", runDir, err)
+	}
+	loaded, err := state.Load(state.ManifestPath(root, "versioned-web"))
+	if err != nil {
+		t.Fatalf("load run from SQL: %v", err)
+	}
+	if loaded.Slug != "versioned-web" || loaded.Date != today || loaded.Version != 1 {
+		t.Fatalf("loaded run = %+v", loaded)
 	}
 	if _, err := os.Stat(filepath.Join(root, "tmp", "versioned-web")); !os.IsNotExist(err) {
 		t.Fatal("must not create a flat tmp/versioned-web directory")

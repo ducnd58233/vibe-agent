@@ -106,8 +106,7 @@ func Save(workspaceRoot string, file *File) error {
 	return nil
 }
 
-// HasTaskList reports whether a slug has a task list in the database or still
-// on disk (pre-backfill). Used by doctor when the file path no longer exists.
+// HasTaskList reports whether a slug has a task list in the database.
 func HasTaskList(workspaceRoot, slug string) bool {
 	_, err := Load(workspaceRoot, slug)
 	return err == nil

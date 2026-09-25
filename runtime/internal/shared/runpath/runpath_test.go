@@ -106,7 +106,7 @@ func TestResolveIgnoresFlatLegacyDirs(t *testing.T) {
 	}
 }
 
-func TestBeginRefusesIndexedRuns(t *testing.T) {
+func TestBeginRefusesExistingRuns(t *testing.T) {
 	root := t.TempDir()
 	now := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
 	if _, err := runpath.Allocate(root, "taken", now); err != nil {
@@ -151,7 +151,7 @@ func TestBeginAllowsUnrelatedSlugsDifferingInCaseFromNothing(t *testing.T) {
 	}
 }
 
-func TestExistingSlugsFindsIndexedAndScannedEntries(t *testing.T) {
+func TestExistingSlugsFindsAllocatedAndScannedEntries(t *testing.T) {
 	root := t.TempDir()
 	now := time.Date(2026, 8, 21, 12, 0, 0, 0, time.UTC)
 	if _, err := runpath.Allocate(root, "Indexed", now); err != nil {

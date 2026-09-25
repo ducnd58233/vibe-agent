@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/runpath"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/validate"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
@@ -236,9 +235,6 @@ func Apply(root string, plans []Plan, opts Options) error {
 				return fmt.Errorf("rename %s -> %s: %w", from, to, err)
 			}
 		}
-		if err := ensureIndex(root, plan); err != nil {
-			return err
-		}
 	}
 	if !opts.DryRun {
 		if err := removeEmptyTmpRoot(root); err != nil {
@@ -276,28 +272,6 @@ func removeEmptyTmpRoot(root string) error {
 		return nil
 	}
 	return os.RemoveAll(base)
-}
-
-func ensureIndex(root string, plan Plan) error {
-	entry, err := runpath.LoadIndex(root, plan.Slug)
-	if err == nil && entry.Version >= 1 {
-		if entry.Version > 1 || entry.Date > plan.Date {
-			return nil
-		}
-	}
-	version := 1
-	if plan.Kind == "tmp-versioned" {
-		base := filepath.Base(plan.To)
-		if _, scanErr := fmt.Sscanf(base, "%d", &version); scanErr != nil || version < 1 {
-			version = 1
-		}
-	}
-	return runpath.SaveIndex(root, runpath.Entry{
-		SchemaVersion: 1,
-		Slug:          plan.Slug,
-		Date:          plan.Date,
-		Version:       version,
-	})
 }
 
 func chooseDate(root, slug, dir string, now time.Time) (string, error) {

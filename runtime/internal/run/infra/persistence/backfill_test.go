@@ -108,11 +108,7 @@ func TestBackfillIsSafeWithNothingToMove(t *testing.T) {
 
 func TestBackfillRemovesRunIndexEvenWithoutManifests(t *testing.T) {
 	root := t.TempDir()
-	if err := runpath.SaveIndex(root, runpath.Entry{
-		Slug: "orphan", Date: "2026-07-29", Version: 1,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	writeLegacyIndex(t, root, "orphan", "2026-07-29", 1)
 	migrated, err := Backfill(context.Background(), root)
 	if err != nil {
 		t.Fatal(err)

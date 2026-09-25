@@ -33,7 +33,7 @@ Include every required field from [`failure-trace.md`](../references/failure-tra
 
 Then:
 
-1. If `refine_target` is `plan` (or assumption ids are invalidated), patch `tasks.json` / `TASKS.md`.
+1. If `refine_target` is `plan` (or assumption ids are invalidated), patch `task_lists` / `TASKS.md`.
 2. Continue the graph (`checkpoint` / `verify`) toward rebuild or replan.
 3. Stop at budget / `MaxBlockerAttempts` without inventing evidence.
 

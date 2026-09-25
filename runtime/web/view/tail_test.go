@@ -158,8 +158,20 @@ func TestLastSequenceEmptyLog(t *testing.T) {
 func TestTrajectoryRowsMergesGraphTransitions(t *testing.T) {
 	root := t.TempDir()
 	slug := "graph-tail"
-	testutil.EnsureRunIndex(t, root, slug)
 	stamp := time.Date(2026, 8, 19, 3, 0, 0, 0, time.UTC)
+	entry, err := state.PrepareStart(root, slug, stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run, err := state.NewRun(slug, "graph on trajectory", "goal-delivery", 50, stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.Date = entry.Date
+	run.Version = entry.Version
+	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := state.AppendEvent(state.EventLogPath(root, slug), state.Event{
 		Type: state.EventRunStarted, Node: "intake", At: stamp, Payload: []byte(`{"goal":"graph on trajectory"}`),
 	}); err != nil {

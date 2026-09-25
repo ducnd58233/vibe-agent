@@ -1,7 +1,9 @@
 package main
 
 import (
-	"os"
+	"encoding/json"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -228,10 +230,27 @@ func runningRun(t *testing.T, root, slug string) *state.Run {
 	run.Status = state.StatusRunning
 	run.Iteration = 99
 	testutil.EnsureRunIndex(t, root, slug)
+	stampAllocatedRevision(t, root, slug, run)
 	if err := state.Save(state.ManifestPath(root, slug), run); err != nil {
 		t.Fatal(err)
 	}
 	return run
+}
+
+func stampAllocatedRevision(t *testing.T, root, slug string, run *state.Run) {
+	t.Helper()
+	dir := state.RunDir(root, slug)
+	if dir == "" {
+		t.Fatalf("run dir for %q is empty after Allocate", slug)
+	}
+	// Path is .../runs/<date>/<slug>/<version>; stamp those onto the run so
+	// Save's SQL row matches what AppendRunEvent looks up from the events path.
+	parts := strings.Split(filepath.ToSlash(dir), "/")
+	if len(parts) < 3 {
+		t.Fatalf("run dir %q is too short", dir)
+	}
+	run.Version, _ = strconv.Atoi(parts[len(parts)-1])
+	run.Date = parts[len(parts)-3]
 }
 
 // The finding: the only way to give a healthy run room was to let it break
@@ -301,14 +320,23 @@ func TestExtendRecordsTheDecision(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	raw, err := os.ReadFile(state.EventLogPath(root, "healthy"))
+	events, err := state.ReadEvents(state.EventLogPath(root, "healthy"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	log := string(raw)
+	var log strings.Builder
+	for _, event := range events {
+		raw, err := json.Marshal(event)
+		if err != nil {
+			t.Fatal(err)
+		}
+		log.Write(raw)
+		log.WriteByte('\n')
+	}
+	body := log.String()
 	for _, want := range []string{"run_extended", "eight tasks left", "300"} {
-		if !strings.Contains(log, want) {
-			t.Errorf("the event log does not contain %q:\n%s", want, log)
+		if !strings.Contains(body, want) {
+			t.Errorf("the event log does not contain %q:\n%s", want, body)
 		}
 	}
 }

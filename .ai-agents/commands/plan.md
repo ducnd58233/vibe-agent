@@ -17,7 +17,7 @@ Read the spec (user-provided path) and relevant code. Prefer read-only planning 
 3. Checkpoints between phases.
 
 **Every task gets a status marker, a description, and its own acceptance criteria as checkboxes.**
-The status vocabulary and the rule that TASKS.md and `tasks.json` are written together are in
+The status vocabulary and the rule that TASKS.md and `task_lists` are written together are in
 [`planning-and-task-breakdown`](../skills/planning-and-task-breakdown/SKILL.md), section
 **Task status (MUST)**, which is canonical. A task missing any of the three is not a task yet: a
 status-less task cannot be reported on, a description-less task gets reinterpreted by whoever picks
@@ -25,9 +25,9 @@ it up, and a criteria-less task is finished whenever somebody says so.
 
 Any task touching auth, user data, logging, error handling, or a client surface carries a **redaction acceptance criterion** stated in observable terms ("the audit log records the user ID and not the token"), so `/build` and `/test` have something to verify rather than a reminder to be careful. See [`secure-by-default`](../skills/secure-by-default/SKILL.md).
 
-Write outputs to `docs/<date>/<slug>/<version>/PLAN-<date>.md`, `docs/<date>/<slug>/<version>/TASKS-<date>.md`, and `docs/<date>/<slug>/<version>/tasks-<date>.json` at the workspace root (the directory that contains `.vibe-agent/`; the repo root when this toolkit is used standalone), reusing the same `<slug>` as the spec for this work. See the "Generated docs location" rule in [`AGENTS.md`](../../AGENTS.md). Present for human review before implementation.
+Write outputs to `docs/<date>/<slug>/<version>/PLAN-<date>.md` and `docs/<date>/<slug>/<version>/TASKS-<date>.md` at the workspace root (the directory that contains `.vibe-agent/`; the repo root when this toolkit is used standalone), reusing the same `<slug>` as the spec for this work. Persist the same task list into `task_lists` in `.agent-state/memory.db` (via `vibe-agent` / the tasks Save path), not as a `tasks-*.json` file under `docs/`. See the "Generated docs location" rule in [`AGENTS.md`](../../AGENTS.md). Present for human review before implementation.
 
-`tasks.json` is the same list in the shape a verifier can read, against [`schemas/tasks.schema.json`](../../schemas/tasks.schema.json). It is what answers `tasks_remaining`, so a task missing from it is a task the run will not come back for. `TASKS.md` stays the file a person reviews; `doctor` reports when the two disagree on count and does not refuse.
+The `task_lists` row is the same list in the shape a verifier can read, against [`schemas/tasks.schema.json`](../../schemas/tasks.schema.json). It is what answers `tasks_remaining`, so a task missing from it is a task the run will not come back for. `TASKS.md` stays the file a person reviews; `doctor` reports when the two disagree on count and does not refuse.
 </procedure>
 
 ## Routing & discovery

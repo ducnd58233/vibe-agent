@@ -56,20 +56,9 @@ const (
 // rather than on what the code was asked to record.
 func events(t *testing.T, root string) []state.Event {
 	t.Helper()
-	raw, err := os.ReadFile(state.EventLogPath(root, "demo"))
+	log, err := state.ReadEvents(state.EventLogPath(root, "demo"))
 	if err != nil {
-		return nil
-	}
-	var log []state.Event
-	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
-		if line == "" {
-			continue
-		}
-		var event state.Event
-		if err := json.Unmarshal([]byte(line), &event); err != nil {
-			t.Fatalf("event log holds a line that is not an event: %s", line)
-		}
-		log = append(log, event)
+		t.Fatalf("ReadEvents: %v", err)
 	}
 	return log
 }
