@@ -91,7 +91,7 @@ func TestTheFinalMessageIsNotEvidenceForItself(t *testing.T) {
 // A relative mention of a path opened absolutely is the same file.
 func TestARelativeMentionOfAnAbsolutePathIsGrounded(t *testing.T) {
 	body := writeTranscript(t,
-		`{"tool_input":{"file_path":"/home/me/project/src/app.go"}}`,
+		`{"tool_input":{"file_path":"/srv/project/src/app.go"}}`,
 		`{"content":[{"type":"text","text":"src/app.go holds it"}]}`,
 	)
 	if report := groundingReport(body); report != "" {

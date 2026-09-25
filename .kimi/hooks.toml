@@ -3,16 +3,16 @@
 [[hooks]]
 event = "PreToolUse"
 matcher = "Shell|WriteFile|EditFile|MultiEdit|FetchURL|SearchWeb"
-command = "vibe-agent hook pre-tool-use --workspace \"/d/projects/vibe-agent\" --toolkit \"/d/projects/vibe-agent\" --client kimi"
+command = "vibe-agent hook pre-tool-use --client kimi"
 timeout = 30
 
 [[hooks]]
 event = "PostToolUse"
 matcher = "Shell|WriteFile|EditFile|MultiEdit|FetchURL|SearchWeb"
-command = "vibe-agent hook post-tool-use --workspace \"/d/projects/vibe-agent\" --toolkit \"/d/projects/vibe-agent\" --client kimi"
+command = "vibe-agent hook post-tool-use --client kimi"
 timeout = 30
 
 [[hooks]]
 event = "Stop"
-command = "vibe-agent hook stop --workspace \"/d/projects/vibe-agent\" --toolkit \"/d/projects/vibe-agent\" --client kimi"
+command = "vibe-agent hook stop --client kimi"
 timeout = 30

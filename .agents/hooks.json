@@ -3,7 +3,7 @@
     "PreInvocation": [
       {
         "hooks": [
-          { "type": "command", "command": "vibe-agent hook user-prompt-submit --workspace \"/d/projects/vibe-agent\" --toolkit \"/d/projects/vibe-agent\" --client antigravity" }
+          { "type": "command", "command": "vibe-agent hook user-prompt-submit --client antigravity" }
         ]
       }
     ],
@@ -11,7 +11,7 @@
       {
         "matcher": "run_command|write_to_file|replace_file_content|multi_replace_file_content",
         "hooks": [
-          { "type": "command", "command": "vibe-agent hook pre-tool-use --workspace \"/d/projects/vibe-agent\" --toolkit \"/d/projects/vibe-agent\" --client antigravity" }
+          { "type": "command", "command": "vibe-agent hook pre-tool-use --client antigravity" }
         ]
       }
     ],
@@ -19,14 +19,14 @@
       {
         "matcher": "run_command|write_to_file|replace_file_content|multi_replace_file_content",
         "hooks": [
-          { "type": "command", "command": "vibe-agent hook post-tool-use --workspace \"/d/projects/vibe-agent\" --toolkit \"/d/projects/vibe-agent\" --client antigravity" }
+          { "type": "command", "command": "vibe-agent hook post-tool-use --client antigravity" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "vibe-agent hook stop --workspace \"/d/projects/vibe-agent\" --toolkit \"/d/projects/vibe-agent\" --client antigravity" }
+          { "type": "command", "command": "vibe-agent hook stop --client antigravity" }
         ]
       }
     ]

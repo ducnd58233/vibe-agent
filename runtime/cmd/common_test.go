@@ -287,8 +287,8 @@ func TestNormalizeVolumeUppercasesDriveLetter(t *testing.T) {
 		t.Skip("drive letters are a Windows concept")
 	}
 	for _, tc := range []struct{ in, want string }{
-		{`d:\projects\vibe-agent`, `D:\projects\vibe-agent`},
-		{`D:\projects\vibe-agent`, `D:\projects\vibe-agent`},
+		{`d:\work\repo`, `D:\work\repo`},
+		{`D:\work\repo`, `D:\work\repo`},
 		{`c:\Users`, `C:\Users`},
 	} {
 		if got := normalizeVolume(tc.in); got != tc.want {

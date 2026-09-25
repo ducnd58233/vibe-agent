@@ -46,8 +46,35 @@ for file in \
   "$tmp/.cursor/hooks.json" \
   "$tmp/.codex/hooks.json"; do
   grep -q 'vibe-agent hook' "$file" || fail "no runtime hook command in $file"
-  grep -q -- '--workspace' "$file" || fail "hook command in $file omits --workspace"
-  grep -q -- '--toolkit' "$file" || fail "hook command in $file omits --toolkit"
+  # The toolkit here lives outside the workspace, where discovery cannot reach
+  # it, so its path is the one thing the config has to carry.
+  grep -q -- '--toolkit' "$file" || fail "hook command in $file omits --toolkit for a toolkit outside the workspace"
+  # The workspace never needs a machine path: the hook walks up to it.
+  if grep -q -- "--workspace \\\\\"$tmp" "$file"; then
+    fail "hook command in $file pins --workspace to this machine's path"
+  fi
+done
+grep -q -- '--workspace \\"${CLAUDE_PROJECT_DIR}\\"' "$tmp/.claude/settings.json" \
+  || fail "Claude hook command does not use \${CLAUDE_PROJECT_DIR}"
+
+# Consumer layout: the toolkit mounted at .vibe-agent/ is found by discovery,
+# so a committed config needs no path at all and stays valid on every checkout.
+mounted="$(mktemp -d)"
+trap 'rm -rf "$tmp" "$mounted"' EXIT
+git -C "$mounted" init >/dev/null
+mkdir -p "$mounted/.vibe-agent"
+cp -R "$root/.ai-agents" "$mounted/.vibe-agent/.ai-agents"
+LINK_SKIP_RUNTIME=1 bash "$root/scripts/link-ai-agents.sh" \
+  --workspace "$mounted" \
+  --assets "$mounted/.vibe-agent/.ai-agents" >/dev/null
+for file in "$mounted/.cursor/hooks.json" "$mounted/.codex/hooks.json" "$mounted/.claude/settings.json"; do
+  grep -q 'vibe-agent hook' "$file" || fail "no runtime hook command in $file"
+  if grep -q -- '--toolkit' "$file"; then
+    fail "hook command in $file carries --toolkit for a toolkit discovery already finds"
+  fi
+  if grep 'vibe-agent hook' "$file" | grep -q -- "$mounted"; then
+    fail "hook command in $file carries a machine path"
+  fi
 done
 
 assets_ref="$root/.ai-agents"

@@ -111,7 +111,7 @@ This check confirms `.agents/skills`, `.agents/commands`, and `.codex/agents/*.t
 
 Symlink targets on Unix and junction targets on Windows are resolved to **absolute** paths so links stay valid regardless of current working directory.
 
-**Git Bash on Windows:** do not put Windows paths with backslashes inside **double-quoted** strings passed to `bash -lc "..."` - Bash treats `\\` sequences there and paths like `D:\\projects` can turn into `D:projects`. Prefer: run the script as argv (`bash .vibe-agent/scripts/link-ai-agents.sh --workspace ...`), use **forward slashes** (`D:/projects/...`), use `--workspace=D:/...` form, or set `LINK_WORKSPACE` / `LINK_ASSETS` and run the script with no path flags.
+**Git Bash on Windows:** do not put Windows paths with backslashes inside **double-quoted** strings passed to `bash -lc "..."` - Bash treats `\\` sequences there and paths like `C:\\path\\to\\repo` can turn into `C:pathtorepo`. Prefer: run the script as argv (`bash .vibe-agent/scripts/link-ai-agents.sh --workspace ...`), use **forward slashes** (`C:/path/to/repo`), use `--workspace=D:/...` form, or set `LINK_WORKSPACE` / `LINK_ASSETS` and run the script with no path flags.
 
 ### Windows (PowerShell)
 

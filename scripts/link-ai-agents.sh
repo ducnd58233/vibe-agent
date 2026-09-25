@@ -7,8 +7,8 @@
 #   bash .vibe-agent/scripts/link-ai-agents.sh --workspace "$PWD" --assets "$PWD/.vibe-agent/.ai-agents"
 #
 # Or avoid argv quoting issues under Git Bash / PowerShell -lc:
-#   export LINK_WORKSPACE="D:/projects/my-repo"
-#   export LINK_ASSETS="D:/projects/my-repo/.vibe-agent/.ai-agents"
+#   export LINK_WORKSPACE="$PWD"
+#   export LINK_ASSETS="$PWD/.vibe-agent/.ai-agents"
 #   bash .vibe-agent/scripts/link-ai-agents.sh
 #
 # Short flags: -w / -a
@@ -104,8 +104,8 @@ ASSETS="$(to_unix_path_if_needed "$ASSETS")"
 if [[ ! -d "$WORKSPACE" ]]; then
   echo "Workspace directory not found: $WORKSPACE" >&2
   if [[ "$WORKSPACE" =~ ^[A-Za-z]:[^/\\\\] ]]; then
-    echo "Hint: under Git Bash, backslashes in double-quoted paths are eaten (D:\\\\projects becomes D:projects)." >&2
-    echo "      Use forward slashes (D:/projects/...) or set LINK_WORKSPACE / LINK_ASSETS and run this script without --workspace/--assets." >&2
+    echo "Hint: under Git Bash, backslashes in double-quoted paths are eaten (C:\\\\path\\\\to\\\\repo becomes C:pathtorepo)." >&2
+    echo "      Use forward slashes (C:/path/to/repo) or set LINK_WORKSPACE / LINK_ASSETS and run this script without --workspace/--assets." >&2
   fi
   exit 1
 fi
@@ -362,15 +362,27 @@ json_escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
-toolkit_root_for_hooks() {
-  dirname "$ASSETS"
+# --workspace is never a machine path: `vibe-agent hook` walks up from the
+# directory the host runs it in, and Claude Code documents a project-directory
+# variable. --toolkit is written only when discovery cannot find the toolkit,
+# which checks the workspace itself and one level down (.vibe-agent); a toolkit
+# elsewhere is a machine-local install, and only then is its path the answer.
+toolkit_flag() {
+  toolkit="$(dirname "$ASSETS")"
+  if [ "$toolkit" = "$WORKSPACE" ] || [ "$(dirname "$toolkit")" = "$WORKSPACE" ]; then
+    return
+  fi
+  printf ' --toolkit \\"%s\\"' "$(json_escape "$toolkit")"
 }
 
 hook_command() {
   event="$1"
   client="$2"
-  printf 'vibe-agent hook %s --workspace \\"%s\\" --toolkit \\"%s\\" --client %s' \
-    "$event" "$(json_escape "$WORKSPACE")" "$(json_escape "$(toolkit_root_for_hooks)")" "$client"
+  if [ "$client" = claude ]; then
+    printf 'vibe-agent hook %s --workspace \\"${CLAUDE_PROJECT_DIR}\\"%s --client %s' "$event" "$(toolkit_flag)" "$client"
+    return
+  fi
+  printf 'vibe-agent hook %s%s --client %s' "$event" "$(toolkit_flag)" "$client"
 }
 
 python_hook_command() {
