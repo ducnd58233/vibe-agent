@@ -44,6 +44,10 @@ attempt: 1
 
 Rules match [`expectation.md`](expectation.md): every result cell pass/fail; soft attempt cap **2**.
 
+The verifier reads the run's recorded `ship` check before this file, and fails when it is missing or
+not passed, whatever row R1 says. On the auto path a `/ship` NO-GO still reaches this node; the file
+records readiness, it cannot overrule a gate the run already failed.
+
 ```sh
 vibe-agent verify --slug <slug>
 ```

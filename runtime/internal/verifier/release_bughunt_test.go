@@ -40,6 +40,7 @@ attempt: 1
 | R1 | file_assert | ship/DECISION.md | pass |
 `
 	allocateNamedReview(t, root, "rel-pass", "release", ReleaseReviewFile, passBody)
+	recordShip(t, root, "rel-pass", true)
 	result, err := Release{}.Verify(t.Context(), Request{Slug: "rel-pass", WorkspaceRoot: root})
 	if err != nil {
 		t.Fatalf("Verify: %v", err)
@@ -51,6 +52,7 @@ attempt: 1
 	failBody := strings.Replace(passBody, "status: pass", "status: fail", 1)
 	failBody = strings.Replace(failBody, "| pass |", "| fail |", 1)
 	allocateNamedReview(t, root, "rel-fail", "release", ReleaseReviewFile, failBody)
+	recordShip(t, root, "rel-fail", true)
 	result, err = Release{}.Verify(t.Context(), Request{Slug: "rel-fail", WorkspaceRoot: root})
 	if err != nil {
 		t.Fatalf("Verify: %v", err)
