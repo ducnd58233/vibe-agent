@@ -66,8 +66,9 @@ Usage:
   vibe-agent eval routing [--trials N] [--jobs N] [--runner codex|claude|cursor|opencode|all] [--only <text>]
   vibe-agent version
 
-Run state is written to .agent-state/runs/<date>/<slug>/<version>/manifest.json
-with an append-only log at events.ndjson under that directory (gitignored).
+Graph state is stored in .agent-state/memory.db (runs and run_events tables).
+Verification evidence for a slug lands under
+.agent-state/runs/<date>/<slug>/<version>/ (gitignored).
 Use vibe-agent migrate docs-tmp once to move flat docs/ and a leftover
 workspace-root tmp/ tree into the versioned layout doctor expects.
 

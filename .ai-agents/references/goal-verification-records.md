@@ -14,8 +14,6 @@ Write under the **workspace root** (directory that contains `.vibe-agent/` when 
 ```text
 .agent-state/runs/<YYYY-MM-DD>/<slug>/<version>/
   RECORD.md
-  manifest.json
-  events.ndjson
   unit/
   e2e/
   browser/
@@ -23,9 +21,15 @@ Write under the **workspace root** (directory that contains `.vibe-agent/` when 
   pr-checks/
   pr-reviews/
   ship/
+  bug_hunt/
+  expectation/
+  release/
+  review/
 ```
 
-`<slug>` matches `docs/<date>/<slug>/<version>/` for the same goal.
+Graph state (`currentNode`, checks, events) is in `.agent-state/memory.db`
+(`runs` / `run_events`), not in files beside this tree. `<slug>` matches
+`docs/<date>/<slug>/<version>/` for the same goal.
 </context>
 
 ## RECORD.md template

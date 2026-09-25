@@ -167,7 +167,9 @@ vibe-agent run status --slug add-webhook-idempotency
 
 `goal`, `research`, and `auto` take plain text; slug and graph follow the command (`auto research` → researcher graph). See [README](../README.md#research).
 
-State lands under `.agent-state/runs/<date>/<slug>/<version>/manifest.json` with an append-only `events.ndjson` beside it. Both are gitignored in consumer workspaces.
+Graph state lands in `.agent-state/memory.db` (`runs` / `run_events`). Verification
+evidence for a slug lands under `.agent-state/runs/<date>/<slug>/<version>/`
+(gitignored in consumer workspaces).
 
 ## Audit code slop
 
