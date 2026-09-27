@@ -56,6 +56,7 @@ Usage:
   vibe-agent session show --slug <slug|ambient>
   vibe-agent web [--port 1411] [--open]
   vibe-agent migrate docs-tmp [--dry-run] [--workspace <dir>]
+  vibe-agent migrate state [--workspace <dir>]
   vibe-agent sandbox init [--workspace <dir>]
   vibe-agent sandbox up --slug <slug> --use-case <name> [--runner <name>]
   vibe-agent sandbox exec --slug <slug> --use-case <name> [--runner <name>] -- <command>...
@@ -71,6 +72,12 @@ Verification evidence for a slug lands under
 .agent-state/runs/<date>/<slug>/<version>/ (gitignored).
 Use vibe-agent migrate docs-tmp once to move flat docs/ and a leftover
 workspace-root tmp/ tree into the versioned layout doctor expects.
+Use vibe-agent migrate state after writing a tasks-<date>.json by hand (or
+from an older toolkit build): it moves fetch cache, sdd-cache, ambient
+journal, task lists, and run rows out of files and into
+.agent-state/memory.db, which is what the tasks verifier and doctor actually
+read. A file a caller skips because it failed to parse is left on disk and
+reported on stderr rather than blocking every other slug's migration.
 
 
 "fetch" reads a URL or a file and prints the text without the markup, scripts,

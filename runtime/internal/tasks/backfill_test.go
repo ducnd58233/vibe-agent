@@ -153,3 +153,39 @@ func TestDoctorCountMismatchNoteStillFiresAgainstSQLSource(t *testing.T) {
 		t.Fatal("HasTaskList should see the SQL row")
 	}
 }
+
+func TestBackfillSkipsAnUnparsableFileAndStillMigratesTheRest(t *testing.T) {
+	// A pre-schemaVersion (or otherwise malformed) legacy file anywhere under
+	// docs/ must not block every other slug's task list from migrating - it
+	// used to abort the whole walk on the first parse failure, which meant
+	// one stale file from an old run permanently hid every later slug's
+	// tasks.json from the tasks verifier and doctor.
+	root := t.TempDir()
+	writeSampleJSON(t, root)
+
+	badDir := workspace.DocsDirAt(root, "2026-09-24", "legacy-slug", 1)
+	if err := os.MkdirAll(badDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	badPath := filepath.Join(badDir, "tasks-2026-09-24.json")
+	const legacyBody = `{"slug": "legacy-slug", "date": "2026-09-24", "version": 1, "tasks": [{"id": "T1", "title": "old", "status": "done"}]}`
+	if err := os.WriteFile(badPath, []byte(legacyBody), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	migrated, err := tasks.Backfill(context.Background(), root)
+	if err != nil {
+		t.Fatalf("backfill: %v", err)
+	}
+	if migrated != 1 {
+		t.Fatalf("migrated = %d, want 1 (only the valid file)", migrated)
+	}
+
+	if _, err := os.Stat(badPath); err != nil {
+		t.Fatalf("unparsable file should stay on disk for a human to fix, got: %v", err)
+	}
+
+	if _, err := tasks.Load(root, "demo-task-sql"); err != nil {
+		t.Fatalf("valid slug should still have migrated: %v", err)
+	}
+}
