@@ -14,6 +14,12 @@ import (
 // task_lists, then removes each file it moved. Safe to re-run: a workspace with
 // nothing left under docs migrates zero rows rather than erroring. TASKS-*.md
 // prose files are never touched.
+//
+// A file that fails to read or parse (a pre-schemaVersion export from an
+// older toolkit build, for example) is skipped and left on disk rather than
+// aborting the whole walk: one stale file from an unrelated slug must not
+// hide every other slug's task list from the tasks verifier and doctor. Skip
+// reasons print to stderr so a human notices without the run failing.
 func Backfill(ctx context.Context, workspaceRoot string) (int, error) {
 	docsRoot := filepath.Join(workspaceRoot, "docs")
 	files, err := listLegacyTaskJSON(docsRoot)
@@ -35,11 +41,13 @@ func Backfill(ctx context.Context, workspaceRoot string) (int, error) {
 	for _, path := range files {
 		raw, err := os.ReadFile(filepath.Clean(path))
 		if err != nil {
-			return migrated, fmt.Errorf("read %s: %w", path, err)
+			fmt.Fprintf(os.Stderr, "tasks: skipping %s, could not read: %v\n", path, err)
+			continue
 		}
 		file, err := Parse(raw)
 		if err != nil {
-			return migrated, fmt.Errorf("parse %s: %w", path, err)
+			fmt.Fprintf(os.Stderr, "tasks: skipping %s, could not parse: %v\n", path, err)
+			continue
 		}
 		id := rowID(file.Slug, file.Date, file.Version)
 		_, err = db.ExecContext(ctx, `
