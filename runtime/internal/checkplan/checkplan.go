@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -66,6 +67,17 @@ type Entry struct {
 	// the command through vibe-agent's sandbox port. Missing sandbox.yaml fails
 	// closed. Empty means the host process, unchanged from before.
 	Runner string `yaml:"runner"`
+
+	// Dir is where the command and reviewbots verifiers run this check's
+	// command, relative to the workspace root. Empty means the workspace root
+	// itself, unchanged from before. It exists for a workspace built around a
+	// submodule: a PR the workspace's own repo cannot see because it lives one
+	// git repository down (`gh pr view` inspects whatever repo its cwd sits in,
+	// not the workspace's declared root) needs its check to run from that
+	// submodule's directory instead. Never applied under Runner: a sandboxed
+	// command's working directory is the container's, not the host's, and
+	// mixing the two would make Dir's meaning depend on which path ran.
+	Dir string `yaml:"dir"`
 
 	// Paths is for the files verifier.
 	Paths []string `yaml:"paths"`
@@ -272,6 +284,25 @@ func (e Entry) validate(name string) error {
 	}
 	if e.Runner != "" && e.Command == "" {
 		return fmt.Errorf("check %q sets runner %q but has no command to wrap", name, e.Runner)
+	}
+	if e.Dir != "" {
+		if e.Runner != "" {
+			return fmt.Errorf("check %q sets both dir and runner; dir has no meaning inside a sandboxed command", name)
+		}
+		// filepath.IsAbs alone is not enough: this plan is a checked-in config
+		// value that a Windows checkout can write and a Linux one can validate
+		// (or the reverse), and Go's IsAbs only recognizes the host's own
+		// absolute form - a Windows build does not call "/etc" absolute the way
+		// a POSIX one does. Both leading-slash forms are checked regardless of
+		// which OS is running this validation.
+		posixAbs := strings.HasPrefix(e.Dir, "/")
+		windowsAbs := strings.HasPrefix(e.Dir, "\\") || (len(e.Dir) >= 2 && e.Dir[1] == ':')
+		if filepath.IsAbs(e.Dir) || posixAbs || windowsAbs {
+			return fmt.Errorf("check %q has an absolute dir %q; it must be relative to the workspace root", name, e.Dir)
+		}
+		if cleaned := filepath.ToSlash(filepath.Clean(e.Dir)); cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+			return fmt.Errorf("check %q has dir %q, which escapes the workspace root", name, e.Dir)
+		}
 	}
 	if e.Screen != nil && e.Screen.Platform == "" {
 		return fmt.Errorf("check %q has a screen block with no platform; use %s or %s",

@@ -3,6 +3,7 @@ package checkpoint
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
@@ -156,6 +157,11 @@ func Resolve(req VerifyRequest) (*Plan, error) {
 		timeout = time.Duration(node.TimeoutSeconds) * time.Second
 	}
 
+	dir := req.WorkspaceRoot
+	if entry.Dir != "" {
+		dir = filepath.Join(req.WorkspaceRoot, entry.Dir)
+	}
+
 	return &Plan{
 		Node:     run.CurrentNode,
 		Check:    node.Check,
@@ -166,6 +172,7 @@ func Resolve(req VerifyRequest) (*Plan, error) {
 		Request: verifier.Request{
 			Check:         node.Check,
 			WorkspaceRoot: req.WorkspaceRoot,
+			Dir:           dir,
 			Slug:          req.Slug,
 			Timeout:       timeout,
 			Command:       entry.Command,

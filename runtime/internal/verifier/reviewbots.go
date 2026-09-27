@@ -64,7 +64,7 @@ func (r ReviewBots) Verify(ctx context.Context, req Request) (Result, error) {
 	var captured bytes.Buffer
 	cmd, startErr := safexec.CommandContext(ctx, req.Command, req.Args...)
 	if startErr == nil {
-		cmd.Dir = req.WorkspaceRoot
+		cmd.Dir = req.Dir
 		cmd.Stdout = &captured
 		cmd.Stderr = &captured
 	}

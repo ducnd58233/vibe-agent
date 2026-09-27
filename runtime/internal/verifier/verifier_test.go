@@ -97,6 +97,36 @@ func TestCommandCapturesOutputToTheEvidenceTree(t *testing.T) {
 	}
 }
 
+// The whole point of Dir: a workspace built around a submodule needs the
+// command to run one directory down, not at the workspace root. A marker
+// file only visible from that subdirectory is the proof — WorkspaceRoot
+// alone would miss it.
+func TestCommandRunsInTheDeclaredDir(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "core")
+	if err := os.Mkdir(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "marker.txt"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	script := "test -f marker.txt"
+	if runtime.GOOS == "windows" {
+		script = "if exist marker.txt (exit 0) else (exit 1)"
+	}
+	name, args := shell(script)
+	result, err := Command{}.Verify(t.Context(), Request{
+		Check: "pr_open", WorkspaceRoot: root, Dir: dir, Command: name, Args: args,
+	})
+	if err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	if !result.Check.Passed {
+		t.Errorf("command did not find its marker file in dir %q: %+v", dir, result)
+	}
+}
+
 // A killed process never produced a verdict. Reporting its exit code as an
 // ordinary failure would misdescribe what happened.
 func TestCommandTimeoutIsNotAnOrdinaryFailure(t *testing.T) {

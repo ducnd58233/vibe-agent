@@ -108,7 +108,7 @@ func (c Command) verifyHost(ctx context.Context, req Request) (Result, error) {
 	defer cancel()
 
 	started := time.Now()
-	captured := safexec.RunCaptured(ctx, req.WorkspaceRoot, req.Command, req.Args...)
+	captured := safexec.RunCaptured(ctx, req.Dir, req.Command, req.Args...)
 	elapsed := time.Since(started)
 
 	logPath, writeErr := writeLog(req, captured.Output)
