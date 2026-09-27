@@ -107,6 +107,9 @@
       "type": "object",
       "additionalProperties": false,
       "description": "One check. Must say how it is produced: a command, a set of paths, a screen spec, a self-configuring verifier, or an explicit human decision.",
+      "not": {
+        "required": ["dir", "runner"]
+      },
       "anyOf": [
         {
           "required": ["command"]
@@ -216,6 +219,12 @@
           "pattern": "^[a-z][a-z0-9_-]*$",
           "description": "Optional sandbox.yaml runner name. When set, the command verifier wraps the command through vibe-agent sandbox. Missing sandbox.yaml fails closed."
         },
+        "dir": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?![/\\\\]|[A-Za-z]:|\\.\\.([/\\\\]|$)).+$",
+          "description": "Where the command and reviewbots verifiers run this check's command, relative to the workspace root. Absent means the workspace root itself. Exists for a workspace built around a submodule, whose pull request a `gh` command run at the workspace root cannot see. Never combined with runner: a sandboxed command's working directory is the container's to decide, not this field's. This pattern is a light editor-time check for the obvious cases (a leading slash, drive letter, or `..` segment); internal/checkplan.go's own validation is the authoritative gate, since it can normalize the whole path rather than just its start."
+        },
         "paths": {
           "type": "array",
           "minItems": 1,
@@ -244,6 +253,9 @@
       "type": "object",
       "additionalProperties": false,
       "description": "An Auto entry, one level only. Must not itself be verifier: human — a human-only fallback for a human-only check answers nothing an auto run could not already do — and must not declare its own auto entry, so the shape below deliberately omits both.",
+      "not": {
+        "required": ["dir", "runner"]
+      },
       "anyOf": [
         { "required": ["command"] },
         { "required": ["paths"] },
@@ -297,6 +309,11 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^[a-z][a-z0-9_-]*$"
+        },
+        "dir": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?![/\\\\]|[A-Za-z]:|\\.\\.([/\\\\]|$)).+$"
         },
         "paths": {
           "type": "array",

@@ -295,3 +295,78 @@ spec:
 		t.Fatal("an auto entry with nothing runnable was accepted")
 	}
 }
+
+// A workspace built around a submodule needs a check's command to run one
+// directory down, where `gh pr view` (or any other command whose answer
+// depends on which repo its cwd sits in) can actually see the right thing.
+func TestPlanResolvesADeclaredDir(t *testing.T) {
+	body := `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    pr_open:
+      command: gh
+      args: [pr, view, --json, url]
+      dir: core
+`
+	plan, err := Load(DefaultPath(write(t, body)))
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	entry, err := plan.Entry("pr_open")
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	if entry.Dir != "core" {
+		t.Errorf("dir = %q, want %q", entry.Dir, "core")
+	}
+}
+
+// dir is a workspace-relative path that ends up as a subprocess's working
+// directory, so the same escapes a command injection review would flag on any
+// other host-side path are refused here too.
+func TestPlanRejectsADirThatEscapesTheWorkspace(t *testing.T) {
+	for name, body := range map[string]string{
+		"absolute": `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    pr_open:
+      command: gh
+      args: [pr, view]
+      dir: /etc
+`,
+		"parent traversal": `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    pr_open:
+      command: gh
+      args: [pr, view]
+      dir: ../outside
+`,
+	} {
+		if _, err := Load(DefaultPath(write(t, body))); err == nil {
+			t.Errorf("%s: an escaping dir was accepted", name)
+		}
+	}
+}
+
+// dir has no meaning inside a sandboxed command: the container's working
+// directory is the runner's to decide, not this package's, so declaring both
+// is refused rather than silently letting one of them lose.
+func TestPlanRejectsDirWithRunner(t *testing.T) {
+	body := `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      command: go
+      args: [test, ./...]
+      runner: sandboxed
+      dir: core
+`
+	if _, err := Load(DefaultPath(write(t, body))); err == nil {
+		t.Fatal("dir combined with runner was accepted")
+	}
+}

@@ -33,8 +33,13 @@ func relativeTo(workspaceRoot, path string) string {
 type Request struct {
 	// Check is the run-state key this result will be written under.
 	Check string
-	// WorkspaceRoot anchors relative paths and command execution.
+	// WorkspaceRoot anchors relative paths.
 	WorkspaceRoot string
+	// Dir is where the command and reviewbots verifiers execute their command.
+	// The caller resolves it (checkplan.Entry.Dir joined onto WorkspaceRoot)
+	// and always sets it, even when that resolves to WorkspaceRoot itself, so
+	// no verifier needs its own fallback.
+	Dir string
 	// Slug selects the .agent-state/runs/.../ evidence directory.
 	Slug string
 	// Timeout bounds the work. Zero means the verifier's own default.

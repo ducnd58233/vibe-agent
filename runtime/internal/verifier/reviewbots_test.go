@@ -112,6 +112,33 @@ func TestReviewBotsPassesOnRealJSONOutput(t *testing.T) {
 	}
 }
 
+// reviews on the auto path shells out to gh the same as pr_open/ci, so it
+// needs the same escape from a hardcoded workspace root: a submodule-hosted
+// PR's review-bot status is only visible from inside the submodule.
+func TestReviewBotsRunsInTheDeclaredDir(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "core")
+	if err := os.Mkdir(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "checks.json"), []byte(`[{"name":"CodeRabbit","bucket":"pass"}]`), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	readCmd := "cat checks.json"
+	if goruntime.GOOS == "windows" {
+		readCmd = "type checks.json"
+	}
+	command, args := shell(readCmd)
+	result, err := (ReviewBots{}).Verify(t.Context(), Request{WorkspaceRoot: root, Dir: dir, Command: command, Args: args})
+	if err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+	if !result.Check.Passed {
+		t.Errorf("did not find checks.json from dir %q: %s", dir, result.Summary)
+	}
+}
+
 func TestTheRegistryOffersReviewBots(t *testing.T) {
 	v, err := Default().Get("reviewbots")
 	if err != nil {

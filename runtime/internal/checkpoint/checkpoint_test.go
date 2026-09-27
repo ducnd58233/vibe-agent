@@ -222,6 +222,58 @@ spec:
 	}
 }
 
+// Without a dir, the command and reviewbots verifiers must still get the
+// workspace root — the field always carries a usable value, so neither
+// verifier needs its own fallback.
+func TestResolveDefaultsDirToTheWorkspaceRoot(t *testing.T) {
+	root := workspace(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      command: go
+      args: [test, ./...]
+`)
+	atTestNode(t, root)
+
+	plan, err := Resolve(VerifyRequest{WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo", Now: at()})
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if plan.Request.Dir != root {
+		t.Errorf("Dir = %q, want the workspace root %q", plan.Request.Dir, root)
+	}
+}
+
+// A workspace built around a submodule declares dir on the check whose
+// command needs to run there instead. Resolve must join it onto the
+// workspace root rather than pass the bare relative path through: a command
+// verifier changes its process's cwd to whatever Dir says, and a relative
+// path would resolve against the runtime's own cwd, not the workspace's.
+func TestResolveJoinsADeclaredDirOntoTheWorkspaceRoot(t *testing.T) {
+	root := workspace(t)
+	declarePlan(t, root, `apiVersion: vibe-agent/v1
+kind: CheckPlan
+spec:
+  checks:
+    unit:
+      command: gh
+      args: [pr, view, --json, url]
+      dir: core
+`)
+	atTestNode(t, root)
+
+	plan, err := Resolve(VerifyRequest{WorkspaceRoot: root, GraphDir: graphDir, Slug: "demo", Now: at()})
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	want := filepath.Join(root, "core")
+	if plan.Request.Dir != want {
+		t.Errorf("Dir = %q, want %q", plan.Request.Dir, want)
+	}
+}
+
 // workspaceAuto is workspace with the run's auto flag set, for tests
 // exercising an Auto entry's fallback path (docs/auto-ship-reviews).
 func workspaceAuto(t *testing.T) string {
