@@ -657,7 +657,16 @@ var researchLoopNodes = map[string]map[string]bool{
 }
 
 func inResearchLoop(run *state.Run) bool {
-	return researchLoopNodes[run.GraphID][run.CurrentNode]
+	return InResearchLoop(run.GraphID, run.CurrentNode)
+}
+
+// InResearchLoop reports whether a node is one of a graph's own research or
+// experiment retry cycle nodes - the same set the Stop hook narrows its
+// one-time stop exemption for. Exported so other packages (doctor's idle-run
+// advice, for one) read the one list this file already maintains instead of
+// keeping a second copy that can drift from it.
+func InResearchLoop(graphID, node string) bool {
+	return researchLoopNodes[graphID][node]
 }
 
 // stuckSinceLastNotice reports whether run is a research-loop run this hook

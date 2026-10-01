@@ -162,6 +162,34 @@ func TestStopIgnoresStaleBlockerOnEarlierNode(t *testing.T) {
 	}
 }
 
+// InResearchLoop is exported so doctor's idle-run advice reads the same node
+// list the Stop hook's own exemption narrowing uses, rather than a second,
+// hand-maintained copy. Pin its answers directly, independent of any caller.
+func TestInResearchLoopNamesTheSameNodesBothGraphsDeclare(t *testing.T) {
+	cases := []struct {
+		graphID string
+		node    string
+		want    bool
+	}{
+		{"goal-delivery", "experiment_monitor", true},
+		{"goal-delivery", "experiment_run", true},
+		{"goal-delivery", "results_eval", true},
+		{"goal-delivery", "auto_research", true},
+		{"goal-delivery", "build", false},
+		{"researcher-delivery", "experiment_monitor", true},
+		{"researcher-delivery", "hypothesis", true},
+		{"researcher-delivery", "experiment_design", true},
+		{"researcher-delivery", "literature", false},
+		{"unknown-graph", "experiment_monitor", false},
+	}
+	for _, testCase := range cases {
+		if got := InResearchLoop(testCase.graphID, testCase.node); got != testCase.want {
+			t.Errorf("InResearchLoop(%q, %q) = %t, want %t",
+				testCase.graphID, testCase.node, got, testCase.want)
+		}
+	}
+}
+
 // A control plane that can wedge a session is worse than one that stays quiet.
 func TestHooksStayQuietWithNoRunAndNoWorkspace(t *testing.T) {
 	for _, event := range []Event{EventStop, EventSubagentStop, EventUserPromptSubmit} {

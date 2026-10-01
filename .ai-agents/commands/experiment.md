@@ -60,8 +60,27 @@ The `results_eval` verifier compares metrics to thresholds. Values below the bar
 1. Read PLAN Mermaid and TASKS acceptance criteria.
 2. Run the next host/CI step the plan names.
 3. Refresh STATUS.md before returning.
-4. Call `vibe_verify` at `experiment_monitor` (or let the host loop) until terminal.
+4. Call `vibe_verify` at `experiment_monitor`.
 </procedure>
+
+## Watch it to completion (MUST)
+
+<required>
+
+One honest `vibe_verify` that comes back `running` is a true reading of the experiment at that
+instant. It is not evidence that anything will check again, and on its own it is not grounds to end
+the turn - the same discipline as watching a model-training run, not glancing at it once and walking
+away. Before ending a turn with `experiment_monitor` reporting anything other than terminal
+(`done`/`failed`), arrange real continued monitoring: keep checking in the same turn at a cadence
+that fits the experiment, or, when the session must end, schedule a concrete resumption (Claude Code:
+`ScheduleWakeup`, or the `/loop` skill; another host: whatever its own equivalent is) rather than
+ending the turn on the strength of a single check and hoping a person reopens the session. A host
+that cannot name how it will be checked again has not finished this step.
+
+This is the same obligation [`auto.md`](auto.md)'s "Auto research host obligation" states for the
+rest of the research/experiment loop; this is the one node in that loop where real wall-clock time,
+not just another artifact, stands between here and terminal.
+</required>
 
 ## Routing & discovery
 

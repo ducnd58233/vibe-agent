@@ -265,8 +265,18 @@ func idleRun(current *state.Run, now time.Time) string {
 	if current.UpdatedAt.IsZero() || now.Sub(current.UpdatedAt) < idleThreshold {
 		return ""
 	}
-	return fmt.Sprintf("run %s is %s idle at %s (%s)",
+	note := fmt.Sprintf("run %s is %s idle at %s (%s)",
 		current.Slug, idleFor(now, current.UpdatedAt), current.CurrentNode, current.Status)
+	if harness.InResearchLoop(current.GraphID, current.CurrentNode) {
+		// This node is supposed to be watched continuously, not picked up
+		// after a weekend: the experiment behind it may already have reached
+		// a terminal STATUS.md with nobody left to read it. `run abort` would
+		// throw away a result that might already be sitting there.
+		note += fmt.Sprintf("; this node is meant to be watched continuously - "+
+			"check `vibe-agent verify --slug %s` before `run abort`, the experiment may already be done",
+			current.Slug)
+	}
+	return note
 }
 
 // checkSlugLanguage warns, without failing, on a run slug that looks like it
