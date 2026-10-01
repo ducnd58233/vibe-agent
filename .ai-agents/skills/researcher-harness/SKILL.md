@@ -48,17 +48,40 @@ something meant to be compared later) and not under one run's
 
 ```text
 experiments/<project-slug>/<run-id>/
-  config.json    # hyperparameters, model/version, dataset version, seed
-  metrics.json    # {"metrics": {...}, "thresholds": {...}}
+  config.json      # hyperparameters, model/version, dataset version, seed
+  metrics.json     # {"metrics": {...}, "thresholds": {...}}
   SUMMARY.md       # one paragraph: what changed since the last run-id, and why
+  JUDGEMENT.md     # hypothesis restated, observed result, verdict - see below
   code.sha         # git commit this run executed against
+```
+
+**Write `config.json` as soon as the run's parameters are decided, not deferred until the run
+finishes.** An interrupted or abandoned run with nothing in its `run-id` directory leaves no trace
+that it was ever attempted; one with `config.json` already written at least records what was tried,
+even if `metrics.json`, `SUMMARY.md`, and `JUDGEMENT.md` never follow.
+
+**`JUDGEMENT.md` is required whenever this ledger entry exists, not optional prose.** It is the
+durable record of the same judgement the `experiment` verifier already forces into
+`experiment/STATUS.md`'s `judgement:` line (`confirmed` / `refuted` / `inconclusive` /
+`not_applicable`; see [`experiment.md`](../../commands/experiment.md) "STATUS.md contract"), written
+out in full rather than as one word:
+
+```markdown
+# Judgement: run <run-id>
+
+Hypothesis/assumption: <restated from the PLAN or RESEARCH that motivated this run>
+Observed: <the metrics.json values that bear on it>
+Verdict: confirmed | refuted | inconclusive | not_applicable
+Why: <one paragraph connecting observed to verdict>
+Next: <what this implies for the next run-id, if anything>
 ```
 
 `config.json` and `metrics.json` each validate against
 [`schemas/experiment-run.schema.json`](../../../schemas/experiment-run.schema.json)
 (`$defs/config`, `$defs/metrics`) - the same `{metrics, thresholds}` shape
 `experiment/METRICS.json` already uses, so one parser reads both, and every
-run in a series shares the same fields to diff against. A worked example:
+run in a series shares the same fields to diff against. `JUDGEMENT.md` is prose, like `SUMMARY.md`,
+and is not schema-validated. A worked example:
 [`experiments/_example/001/`](../../../experiments/_example/001/).
 
 Whether `experiments/` is gitignored is this project's own `AGENTS.md`
