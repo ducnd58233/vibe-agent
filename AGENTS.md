@@ -170,6 +170,26 @@ path. When a rule already has a home, link to it instead of restating it.
   refused - confirmed against this binary while writing this rule. The CLI's own usage strings
   showing `"<objective>" [--slug <slug>]` are stale on this point; fixing that argument-parsing
   behavior is a separate, unscoped finding, not part of this rule.
+- **Naming convention follows identifier kind, not a single house style (MUST):** this codebase
+  uses three case conventions side by side, each one internally consistent within its own domain -
+  do not "fix" an identifier into the wrong one in the name of consistency.
+  - **kebab-case:** anything a person types or that works like a URL/filesystem path - the CLI
+    binary and every subcommand (`vibe-agent`, `vibe-agent run status`), slugs (enforced, not just
+    conventional: `runtime/internal/shared/validate/slug.go`'s `slugPattern` rejects an underscore),
+    and branch names this toolkit creates (`fix/experiment-monitor-stop-signal`).
+  - **snake_case:** identifiers that function as a programmatic tool or graph key - every MCP tool
+    this server registers (`runtime/internal/mcp/tools.go`: `vibe_bootstrap`, `vibe_checkpoint`,
+    `vibe_verify`, and 10 more, zero exceptions - the one dash in that file, `"vibe-agent"`, is the
+    server's own identity name, not a tool name), and graph node/check/guard names
+    (`.ai-agents/graphs/*.yaml`, `vibe-checks.yaml`: `experiment_monitor`, `bug_hunt`,
+    `tasks_remaining`, `review_ok`). The MCP spec permits a dash too (SEP-986); snake_case for tool
+    names is an ecosystem convention this toolkit follows for tokenization/function-calling
+    reliability, not a protocol requirement - which is exactly why it is easy to "correct" by
+    mistake. **Do not rename `vibe_verify`/`vibe_checkpoint` or a `*_ok`/`*_remaining` check name to
+    kebab-case.**
+  - **camelCase:** JSON field names in a Go-marshaled struct or schema - ordinary Go `json:` tag
+    convention (`runtime/internal/run/domain/run.go`: `schemaVersion`, `currentNode`; mirrored in
+    `schemas/tasks.schema.json`'s own field names).
 - **Verification evidence (MUST):** verification logs and review artifacts live under
   `.agent-state/runs/<YYYY-MM-DD>/<slug>/<version>/` (when gitignored in the
   workspace). Graph state is in `memory.db`, not in that tree. A leftover
