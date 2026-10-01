@@ -61,6 +61,51 @@ func TestIdleRunNotesOnlyWhatIsWaiting(t *testing.T) {
 	}
 }
 
+// A run idle at a monitor-loop node is not "waiting for a weekend to end" the
+// way a human-approval gate is: the experiment may already be done and simply
+// never re-checked, so `run abort` is the wrong suggestion. See
+// RESEARCH-2026-10-01.md / SPEC-2026-10-01.md under
+// docs/2026-10-01/diagnose-why-this-toolkit/1/.
+func TestIdleRunAtAMonitorLoopNodeAdvisesVerifyNotAbort(t *testing.T) {
+	now := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
+
+	run, err := state.NewRun("watching", "goal", "goal-delivery", 50, now.Add(-4*24*time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.Status = state.StatusRunning
+	run.CurrentNode = "experiment_monitor"
+	run.UpdatedAt = now.Add(-4 * 24 * time.Hour)
+
+	note := idleRun(run, now)
+	verifyAt := strings.Index(note, "vibe-agent verify")
+	if verifyAt < 0 {
+		t.Fatalf("an idle monitor-loop node should point at vibe-agent verify: %s", note)
+	}
+	if abortAt := strings.Index(note, "run abort"); abortAt >= 0 && abortAt < verifyAt {
+		t.Errorf("an idle monitor-loop node should lead with vibe-agent verify, not run abort: %s", note)
+	}
+}
+
+// An ordinary idle node (a human-approval gate, say) keeps today's behavior:
+// no verify suggestion, since nothing in this toolkit watches it on its own.
+func TestIdleRunAtAnOrdinaryNodeIsUnaffected(t *testing.T) {
+	now := time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)
+
+	run, err := state.NewRun("waiting", "goal", "goal-delivery", 50, now.Add(-4*24*time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.Status = state.StatusAwaitingHuman
+	run.CurrentNode = "approve_spec"
+	run.UpdatedAt = now.Add(-4 * 24 * time.Hour)
+
+	note := idleRun(run, now)
+	if strings.Contains(note, "vibe-agent verify") {
+		t.Errorf("an ordinary idle node should not get monitor-loop advice: %s", note)
+	}
+}
+
 // A run whose manifest carries no timestamp is a shape to survive, not to
 // report on: there is nothing to measure idleness against.
 func TestARunWithNoTimestampIsNotCalledIdle(t *testing.T) {

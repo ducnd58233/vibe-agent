@@ -214,6 +214,13 @@ A missed metrics threshold at `results_eval` is neither of those - it is a verif
 already retries automatically. Never record it as `checkpoint --blocker`; see
 [`AGENTS.md`](../../AGENTS.md) "Blocker vs. retry".
 
+**One honest check is not the same as a terminal status.** The Stop hook will let a turn end at
+`experiment_monitor` once a single `vibe-agent verify` has come back, even when it came back
+`running` - that stands down a narrower, separate guard against being abandoned with nothing
+recorded at all, and it is not this section's bar. "Stop only when run status is terminal" above
+still applies while the experiment runs: see [`experiment.md`](experiment.md) "Watch it to completion
+(MUST)" for what that means in practice.
+
 When RESEARCH and PLAN are settled, `vibe-agent checkpoint` and `vibe-agent auto gate` both skip
 the approval gates and advance the run. Report results when the loop finishes; do not poll the
 human mid-pipeline.
