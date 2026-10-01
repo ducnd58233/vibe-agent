@@ -23,7 +23,30 @@ const (
 	ExperimentFailed  = "failed"
 )
 
+// Judgement values the host states once an experiment reaches a terminal
+// status, comparing what it observed against the hypothesis or assumption the
+// experiment was testing. NotApplicable is a first-class value, not a
+// loophole: a quick reproduce-and-fix cycle has nothing to score against a
+// hypothesis, and forcing one would manufacture a false comparison.
+const (
+	JudgementConfirmed     = "confirmed"
+	JudgementRefuted       = "refuted"
+	JudgementInconclusive  = "inconclusive"
+	JudgementNotApplicable = "not_applicable"
+)
+
 var experimentStatusLine = regexp.MustCompile(`(?im)^\s*status:\s*(running|done|failed)\s*$`)
+
+var judgementLine = regexp.MustCompile(`(?im)^\s*judgement:\s*(\S+)\s*$`)
+
+func validJudgement(value string) bool {
+	switch value {
+	case JudgementConfirmed, JudgementRefuted, JudgementInconclusive, JudgementNotApplicable:
+		return true
+	default:
+		return false
+	}
+}
 
 // Experiment reads .agent-state/runs/.../experiment/STATUS.md.
 //
@@ -85,17 +108,47 @@ func (Experiment) Verify(_ context.Context, req Request) (Result, error) {
 		}, nil
 	}
 
-	passed := status == ExperimentDone || status == ExperimentFailed
+	terminal := status == ExperimentDone || status == ExperimentFailed
+	if !terminal {
+		return Result{
+			Check: state.Check{
+				Passed: false,
+				Source: state.SourceFileAssert,
+				Ref:    relative + " status=" + status,
+				At:     time.Now().UTC(),
+			},
+			Summary: fmt.Sprintf("experiment status %s", status),
+			Detail:  strings.TrimSpace(string(raw)),
+		}, nil
+	}
+
+	judgement, ok := parseJudgement(string(raw))
+	passed := ok && validJudgement(judgement)
+	summary := fmt.Sprintf("experiment status %s, judgement %s", status, judgement)
+	switch {
+	case !ok:
+		summary = fmt.Sprintf("experiment status %s has no judgement: line; state confirmed, refuted, inconclusive, or not_applicable", status)
+	case !passed:
+		summary = fmt.Sprintf("experiment status %s has an unrecognized judgement %q; use confirmed, refuted, inconclusive, or not_applicable", status, judgement)
+	}
 	return Result{
 		Check: state.Check{
 			Passed: passed,
 			Source: state.SourceFileAssert,
-			Ref:    relative + " status=" + status,
+			Ref:    relative + " status=" + status + " judgement=" + judgement,
 			At:     time.Now().UTC(),
 		},
-		Summary: fmt.Sprintf("experiment status %s", status),
+		Summary: summary,
 		Detail:  strings.TrimSpace(string(raw)),
 	}, nil
+}
+
+func parseJudgement(body string) (string, bool) {
+	match := judgementLine.FindStringSubmatch(body)
+	if match == nil {
+		return "", false
+	}
+	return strings.ToLower(match[1]), true
 }
 
 func parseExperimentStatus(body string) (string, bool) {

@@ -157,7 +157,7 @@ func writeExperimentResults(t *testing.T, root, slug string) {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	write(t, filepath.Join(dir, "STATUS.md"), "# Experiment\n\nstatus: done\n")
+	write(t, filepath.Join(dir, "STATUS.md"), "# Experiment\n\nstatus: done\njudgement: not_applicable\n")
 	write(t, filepath.Join(dir, "METRICS.json"),
 		`{"metrics":{"quality":1},"thresholds":{"quality":{"op":">=","value":0.5}}}`)
 }
