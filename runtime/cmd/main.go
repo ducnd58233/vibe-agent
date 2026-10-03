@@ -26,6 +26,7 @@ Usage:
   vibe-agent goal "<objective>"
   vibe-agent research "<topic>"
   vibe-agent task "<non-code task>"
+  vibe-agent calc [--round <n> [--mode <mode>]] [--digits <n>] [--json] "<expression>"
   vibe-agent auto "<objective>"
   vibe-agent auto research "<topic>"
   vibe-agent run start "<objective>" [--slug <slug>]
@@ -241,6 +242,8 @@ func run(args []string) error {
 		return researchCommand(args[1:])
 	case "task":
 		return taskCommand(args[1:])
+	case "calc":
+		return calcCommand(args[1:])
 	case "guards":
 		return guardsCommand(args[1:])
 	case "hook":
