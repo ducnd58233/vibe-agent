@@ -45,6 +45,8 @@ Usage:
   vibe-agent graph validate [--graph <id>]
   vibe-agent fetch <url|path> [--budget <tokens>] [--json] [--refresh]
   vibe-agent slop audit [path] [--format text|json] [--workers N] [--fail-on score]
+  vibe-agent review scan [path...] [--changed [--base <ref>]] [--json] [--min-severity <s>] [--findings-only] [--fail-on <s>]
+  vibe-agent review block <path>:<line|name> [--json]
   vibe-agent skills add <owner/repo|url> [-a <agent>]... [-g] [-y] [--skill <name>]
   vibe-agent skills convert-report <skill-dir>
   vibe-agent mcp serve
@@ -99,6 +101,15 @@ budget and says how many lines were left, rather than implying the page fit.
 "slop audit" scans local code for AI-generated code slop signals. The built-in
 scanner uses go-enry language detection rather than a local extension table.
 It does not spawn external linters from user-controlled paths.
+
+"review scan" is the mechanical half of a code review. It reads every source
+file (installed packages, build output, virtual environments, vendored and
+generated files excluded), cuts each into blocks that cover every line, and
+reports unused imports, definitions nothing references, and bug shapes from the
+syntax tree: self-comparisons, identical branches, repeated conditions,
+unreachable statements, duplicate keys, swallowed errors. "review block" prints
+one block with line numbers, its findings, and the files that use it. Findings
+are leads, not verdicts: a scan sees no reflection or framework callers.
 
 "docs router" regenerates docs/ROUTER.md, a standing index of every slug this
 workspace knows about (from the runs table and docs/ tree), sorted by slug so a
@@ -249,6 +260,7 @@ var commands = map[string]func(args []string) error{
 	"graph":      graphCommand,
 	"fetch":      fetchCommand,
 	"slop":       slopCommand,
+	"review":     reviewCommand,
 	"skills":     skillsCommand,
 	"mcp":        mcpCommand,
 	"auto":       autoCommand,
