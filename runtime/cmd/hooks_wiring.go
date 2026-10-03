@@ -310,7 +310,7 @@ func checkHookWiring(report *diagnostics, workspaceRoot string) {
 	// sufficient: a stale install can still be missing commands and fixes that
 	// added no event. Version is the only thing that can say, so it is only
 	// reported when it can say something.
-	if built := buildVersion(); built != "" && built != "dev" {
+	if built := currentVersion(); built != "dev" {
 		if installed := binaryVersion(binary); installed != "" && installed != built {
 			report.check("the vibe-agent on PATH is this build", false,
 				fmt.Sprintf("%s reports %s, this build is %s; run `cd runtime && make install`",
@@ -389,8 +389,6 @@ func checkClients(report *diagnostics, registered wiring) {
 			"the host would discard every reply", strings.Join(unknown, "; "),
 			strings.Join(harness.ClientNames(), ", ")))
 }
-
-func buildVersion() string { return version }
 
 func binaryVersion(path string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

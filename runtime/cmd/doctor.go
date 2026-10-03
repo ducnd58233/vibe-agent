@@ -37,7 +37,7 @@ func doctorCommand(args []string) error {
 
 	report := &diagnostics{}
 
-	fmt.Printf("vibe-agent %s\n", version)
+	fmt.Printf("vibe-agent %s\n", currentVersion())
 	fmt.Printf("  workspace %s\n", workspaceRoot)
 	fmt.Printf("  toolkit   %s\n\n", toolkitRoot)
 

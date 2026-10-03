@@ -20,9 +20,6 @@ import (
 	webapp "github.com/ducnd58233/vibe-agent/runtime/internal/web/app"
 )
 
-// version is overridden at build time with -ldflags "-X main.version=...".
-var version = "dev"
-
 const usageTemplate = `vibe-agent - outer-loop control plane
 
 Usage:
@@ -280,7 +277,7 @@ var commands = map[string]func(args []string) error{
 	"doctor":     doctorCommand,
 	"docs":       docsCommand,
 	"eval":       evalCommand,
-	"version":    func([]string) error { fmt.Println(version); return nil },
+	"version":    func([]string) error { fmt.Println(currentVersion()); return nil },
 	"help":       printUsage,
 	"-h":         printUsage,
 	"--help":     printUsage,

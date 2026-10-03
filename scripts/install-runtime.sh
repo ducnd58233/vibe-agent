@@ -87,7 +87,7 @@ EOF
   echo "${reason}"
   echo "building from source with $(go version)"
   mkdir -p "$INSTALL_DIR"
-  ( cd "$RUNTIME_DIR" && CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=source" \
+  ( cd "$RUNTIME_DIR" && CGO_ENABLED=0 go build -ldflags="-s -w" \
       -o "${INSTALL_DIR}/${BINARY}${ext}" ./cmd ) \
     || die "build failed. Run 'cd runtime && make check' to see why."
   report_success

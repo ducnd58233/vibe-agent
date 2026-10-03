@@ -12,14 +12,14 @@ BINARY  := vibe-agent
 # two did not.
 EXE     := $(shell go env GOEXE)
 
-# A local build stamps the commit it came from, so `doctor` can tell an install
+# A local build reports the commit it came from, so `doctor` can tell an install
 # apart from the source beside it. It used to be "dev" on both sides, which made
 # a version comparison prove nothing: a ten-day-old binary and a fresh one
-# reported the same string. A dirty tree is marked, because the commit alone
-# would describe a build that no longer matches its own source.
-GIT_SHA   := $(shell git rev-parse --short HEAD 2>/dev/null)
-GIT_DIRTY := $(shell git diff --quiet 2>/dev/null || echo "-dirty")
-VERSION   ?= $(if $(GIT_SHA),dev-$(GIT_SHA)$(GIT_DIRTY),dev)
+# reported the same string. The binary reads the commit and dirty flag Go
+# records at build time (cmd/version.go), so this Makefile, `go build`, and the
+# installers' source fallback all report the same dev-<sha>[-dirty] for the same
+# tree. Only a release stamps VERSION.
+VERSION ?=
 
 # One install location, shared with scripts/install-runtime.{sh,ps1}. These used
 # to write to three different directories: GOPATH/bin here, ~/.local/bin from the
@@ -29,7 +29,7 @@ VERSION   ?= $(if $(GIT_SHA),dev-$(GIT_SHA)$(GIT_DIRTY),dev)
 # could appear to do nothing because a copy installed elsewhere still won.
 INSTALL_DIR ?= $(if $(VIBE_INSTALL_DIR),$(VIBE_INSTALL_DIR),$(HOME)/.local/bin)
 DIST    := dist
-LDFLAGS := -s -w -X main.version=$(VERSION)
+LDFLAGS := -s -w $(if $(VERSION),-X main.version=$(VERSION))
 
 # One entry per published artifact. Adding a row here is the only change needed
 # to ship another target.
@@ -80,7 +80,7 @@ build:
 install:
 	@mkdir -p "$(INSTALL_DIR)"
 	go build -ldflags="$(LDFLAGS)" -o "$(INSTALL_DIR)/$(BINARY)$(EXE)" ./cmd
-	@echo "installed $(INSTALL_DIR)/$(BINARY)$(EXE) ($(VERSION))"
+	@echo "installed $(INSTALL_DIR)/$(BINARY)$(EXE) ($$("$(INSTALL_DIR)/$(BINARY)$(EXE)" version))"
 	@# Hooks resolve the binary by name, so what matters is which copy PATH finds,
 	@# not which one was just written. Reporting the difference is the whole point:
 	@# a shadowed install is invisible, and the symptom is a hook answering with
@@ -160,6 +160,7 @@ check: lint test
 
 ## release: cross-compile every published target and write checksums
 release: clean
+	@test -n "$(VERSION)" || { echo "release needs VERSION=<version>: it names and stamps every artifact" >&2; exit 1; }
 	@mkdir -p $(DIST)
 	@for platform in $(PLATFORMS); do \
 		goos=$${platform%/*}; goarch=$${platform#*/}; \

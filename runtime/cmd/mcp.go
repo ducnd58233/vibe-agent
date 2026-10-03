@@ -43,7 +43,7 @@ func mcpCommand(args []string) error {
 	defer closeLogger(closer)
 	log.Info("mcp server starting")
 
-	server := mcp.NewServer(version, mcp.Deps{
+	server := mcp.NewServer(currentVersion(), mcp.Deps{
 		WorkspaceRoot: workspaceRoot,
 		ToolkitRoot:   toolkitRoot,
 		// The workspace path is the workspace identity: memories never cross
