@@ -1,8 +1,6 @@
 package sessionread_test
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -16,11 +14,9 @@ func TestFSReplayAndPeekHost(t *testing.T) {
 	slug := "demo"
 	testutil.EnsureRunIndex(t, root, slug)
 	logPath := session.LogPath(root, slug)
-	if err := os.MkdirAll(filepath.Dir(logPath), 0o750); err != nil {
-		t.Fatal(err)
-	}
-	line := `{"type":"session_start","payload":{"client":"cursor"},"event":"SessionStart"}`
-	if err := os.WriteFile(logPath, []byte(line+"\n"), 0o600); err != nil {
+	if _, err := session.Append(logPath, session.Record{
+		Type: session.TypeSessionStart, Source: session.SourceHook, Client: "cursor", Event: "SessionStart",
+	}); err != nil {
 		t.Fatal(err)
 	}
 	reader := sessionread.NewFS()
@@ -38,22 +34,20 @@ func TestFSReplayAndPeekHost(t *testing.T) {
 
 func TestFSAmbientStat(t *testing.T) {
 	root := t.TempDir()
-	path := session.AmbientLogPath(root)
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		t.Fatal(err)
+	if stat := sessionread.NewFS().AmbientStat(root); stat.Present {
+		t.Fatalf("empty workspace reported an ambient journal: %+v", stat)
 	}
 	when := time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC)
-	if err := os.WriteFile(path, []byte("x\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chtimes(path, when, when); err != nil {
+	if _, err := session.Append(session.AmbientLogPath(root), session.Record{
+		Type: session.TypePromptSubmit, Source: session.SourceHook, Body: "hello", At: when,
+	}); err != nil {
 		t.Fatal(err)
 	}
 	stat := sessionread.NewFS().AmbientStat(root)
-	if !stat.Present || stat.Size != 2 {
+	if !stat.Present || stat.Size != 1 {
 		t.Fatalf("stat = %+v", stat)
 	}
-	if stat.ModTime.IsZero() {
-		t.Fatal("expected mod time")
+	if !stat.ModTime.Equal(when) {
+		t.Fatalf("ModTime = %v, want %v", stat.ModTime, when)
 	}
 }

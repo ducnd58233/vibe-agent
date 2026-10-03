@@ -1,26 +1,16 @@
 package sessionread
 
 import (
-	"bufio"
-	"encoding/json"
-	"os"
-	"path/filepath"
-
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 )
 
-// FS reads session logs from disk via session path helpers.
+// FS reads session logs through the session package, which resolves a path to
+// its rows in memory.db (or a legacy file not yet migrated).
 type FS struct{}
 
 // NewFS returns a filesystem-backed session reader.
 func NewFS() FS {
 	return FS{}
-}
-
-type hostLine struct {
-	Payload struct {
-		Client string `json:"client"`
-	} `json:"payload"`
 }
 
 func logPath(workspaceRoot, slug string) string {
@@ -39,38 +29,30 @@ func (FS) Replay(workspaceRoot, slug string) ([]session.Event, error) {
 	return events, err
 }
 
-// AmbientStat reports whether the ambient journal exists and is non-empty.
+// AmbientStat reports whether the ambient journal has any events. Rows live in
+// memory.db, so the timestamp is the last event's rather than a file's mtime.
 func (FS) AmbientStat(workspaceRoot string) AmbientStat {
-	path := session.AmbientLogPath(workspaceRoot)
-	info, err := os.Stat(path)
-	if err != nil || info.IsDir() || info.Size() == 0 {
+	events, err := session.Replay(session.AmbientLogPath(workspaceRoot))
+	if err != nil || len(events) == 0 {
 		return AmbientStat{}
 	}
 	return AmbientStat{
 		Present: true,
-		Size:    info.Size(),
-		ModTime: info.ModTime(),
+		Size:    int64(len(events)),
+		ModTime: events[len(events)-1].At,
 	}
 }
 
-// PeekHost returns payload.client from the first matching lines of the log.
+// PeekHost returns payload.client from the first events that carry one.
 func (FS) PeekHost(logPath string) string {
-	file, err := os.Open(filepath.Clean(logPath))
+	events, err := session.Replay(logPath)
 	if err != nil {
 		return ""
 	}
-	defer func() { _ = file.Close() }()
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	for i := 0; i < 8 && scanner.Scan(); i++ {
-		var line hostLine
-		if err := json.Unmarshal(scanner.Bytes(), &line); err != nil {
-			continue
-		}
-		if line.Payload.Client != "" {
-			return line.Payload.Client
+	for i := 0; i < len(events) && i < 8; i++ {
+		if events[i].Client != "" {
+			return events[i].Client
 		}
 	}
-	_ = scanner.Err()
 	return ""
 }

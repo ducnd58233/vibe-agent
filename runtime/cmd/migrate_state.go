@@ -59,5 +59,11 @@ func migrateStateCommand(args []string) error {
 	}
 	fmt.Printf("runs: %d row(s) moved to runs\n", runMigrated)
 
+	sessionMigrated, err := runpersistence.BackfillSessions(ctx, workspaceRoot)
+	if err != nil {
+		return fmt.Errorf("migrate session logs: %w", err)
+	}
+	fmt.Printf("session logs: %d row(s) moved to session_events\n", sessionMigrated)
+
 	return nil
 }

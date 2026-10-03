@@ -103,8 +103,8 @@ func Tools(deps Deps) []Tool {
 		},
 		{
 			Name:        "vibe_memory_search",
-			Description: "Call to check what earlier work already established before repeating research. Do not call for this run's own state; use vibe_run_status instead.",
-			InputSchema: schema(`{"type":"object","required":["query"],"properties":{"query":{"type":"string"},"kinds":{"type":"array","items":{"type":"string","enum":["semantic","episodic","correction","preference"]}},"limit":{"type":"integer","minimum":1,"maximum":25}}}`),
+			Description: "Call to check what earlier work already established before repeating research. Pass scope \"sessions\" to search what earlier conversations and tool calls said when nothing has been distilled yet. Do not call for this run's own state; use vibe_run_status instead.",
+			InputSchema: schema(`{"type":"object","required":["query"],"properties":{"query":{"type":"string"},"scope":{"type":"string","enum":["memories","sessions"],"description":"memories (default) searches confirmed memories; sessions searches past session turns"},"kinds":{"type":"array","items":{"type":"string","enum":["semantic","episodic","correction","preference"]}},"limit":{"type":"integer","minimum":1,"maximum":25}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return searchMemory(deps, raw) },
 		},
 		{
@@ -208,18 +208,25 @@ func bootstrap(deps Deps, raw json.RawMessage) (any, error) {
 
 func searchMemory(deps Deps, raw json.RawMessage) (any, error) {
 	store := deps.read()
-	if store == nil {
-		// Nothing stored here yet is an answer, not a fault. Erroring would make
-		// a fresh workspace look broken on the first tool call a host makes.
-		return map[string]any{"memories": []any{}, "policy": MemoryDisclaimer}, nil
-	}
 	var args struct {
 		Query string   `json:"query"`
+		Scope string   `json:"scope"`
 		Kinds []string `json:"kinds"`
 		Limit int      `json:"limit"`
 	}
 	if err := json.Unmarshal(raw, &args); err != nil {
 		return nil, err
+	}
+	// Nothing stored here yet is an answer, not a fault. Erroring would make
+	// a fresh workspace look broken on the first tool call a host makes.
+	if store == nil {
+		if args.Scope == "sessions" {
+			return map[string]any{"sessions": []any{}, "policy": MemoryDisclaimer}, nil
+		}
+		return map[string]any{"memories": []any{}, "policy": MemoryDisclaimer}, nil
+	}
+	if args.Scope == "sessions" {
+		return searchSessions(store, args.Query, args.Limit)
 	}
 
 	query := memory.Query{WorkspaceID: deps.WorkspaceID, Text: args.Query, Limit: args.Limit}
@@ -231,6 +238,21 @@ func searchMemory(deps Deps, raw json.RawMessage) (any, error) {
 		return nil, err
 	}
 	return map[string]any{"memories": renderHits(hits), "policy": MemoryDisclaimer}, nil
+}
+
+func searchSessions(store *memory.Store, query string, limit int) (any, error) {
+	hits, err := store.SearchSessions(context.Background(), query, limit)
+	if err != nil {
+		return nil, err
+	}
+	rendered := make([]map[string]any, 0, len(hits))
+	for _, hit := range hits {
+		rendered = append(rendered, map[string]any{
+			"scope": hit.Scope, "sequence": hit.Sequence, "type": hit.Type,
+			"at": hit.At.Format(time.RFC3339), "snippet": hit.Snippet,
+		})
+	}
+	return map[string]any{"sessions": rendered, "policy": MemoryDisclaimer}, nil
 }
 
 func proposeMemory(deps Deps, raw json.RawMessage) (any, error) {
@@ -742,11 +764,15 @@ func checksSummary(checks map[string]state.Check) map[string]any {
 func renderHits(hits []memory.Hit) []map[string]any {
 	rendered := make([]map[string]any, 0, len(hits))
 	for _, hit := range hits {
-		rendered = append(rendered, map[string]any{
+		entry := map[string]any{
 			"id": hit.ID, "kind": string(hit.Kind),
 			"content": hit.Content, "confidence": hit.Confidence,
 			"evidence": hit.Evidence, "source": hit.SourceRef,
-		})
+		}
+		if hit.Via != "" {
+			entry["via"] = hit.Via
+		}
+		rendered = append(rendered, entry)
 	}
 	return rendered
 }

@@ -21,7 +21,7 @@ import (
 // into every session. This is that way.
 func memoryCommand(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("memory needs a subcommand: list, propose, confirm, forget, review, promotions")
+		return fmt.Errorf("memory needs a subcommand: list, propose, confirm, forget, review, promotions, history, link, sessions")
 	}
 	switch args[0] {
 	case "list":
@@ -36,8 +36,14 @@ func memoryCommand(args []string) error {
 		return memorySetStatus(args[1:], "forget")
 	case "review":
 		return memoryReview(args[1:])
+	case "history":
+		return memoryHistory(args[1:])
+	case "link":
+		return memoryLink(args[1:])
+	case "sessions":
+		return memorySessions(args[1:])
 	default:
-		return fmt.Errorf("unknown memory subcommand %q; try list, propose, confirm, forget, review, or promotions", args[0])
+		return fmt.Errorf("unknown memory subcommand %q; try list, propose, confirm, forget, review, promotions, history, link, or sessions", args[0])
 	}
 }
 
@@ -274,6 +280,105 @@ func memoryReview(args []string) error {
 			return err
 		}
 		fmt.Printf("%s: review by %s recorded. Its status is unchanged; confirming is separate.\n", *id, strings.TrimSpace(*agent))
+		return nil
+	})
+}
+
+// memoryHistory prints a memory's ledger: every proposal, merge, confirmation,
+// review, link, and closure, who did it, and when. The row itself only shows
+// where the memory ended up.
+func memoryHistory(args []string) error {
+	flags := newFlagSet("memory history")
+	paths := addRootFlags(flags)
+	id := flags.String("id", "", "memory id")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *id == "" {
+		return fmt.Errorf("memory history needs --id; run `vibe-agent memory list` to find one")
+	}
+	return withMemory(paths, func(store *memory.Store) error {
+		ctx := context.Background()
+		entries, err := store.History(ctx, *id)
+		if err != nil {
+			return err
+		}
+		if len(entries) == 0 {
+			fmt.Println("No ledger entries. The memory predates the ledger.")
+		}
+		for _, entry := range entries {
+			transition := ""
+			if entry.ToStatus != "" {
+				transition = fmt.Sprintf("  %s -> %s", orDash(entry.FromStatus), entry.ToStatus)
+			}
+			fmt.Printf("%s  %-10s%s  by=%s  %s\n", entry.At.Format(time.RFC3339), entry.Action,
+				transition, orUnknown(entry.Actor), singleLine(entry.Detail))
+		}
+		links, err := store.Links(ctx, *id)
+		if err != nil {
+			return err
+		}
+		for _, link := range links {
+			fmt.Printf("link: %s -[%s]-> %s\n", link.SrcID, link.Relation, link.DstID)
+		}
+		return nil
+	})
+}
+
+// memoryLink adds a typed edge between two memories. Linking is collaboration
+// metadata like review: it never changes a status, so it cannot confirm.
+func memoryLink(args []string) error {
+	flags := newFlagSet("memory link")
+	paths := addRootFlags(flags)
+	from := flags.String("from", "", "source memory id")
+	to := flags.String("to", "", "destination memory id")
+	relation := flags.String("relation", "relates_to", "supersedes, relates_to, derived_from, or contradicts")
+	agent := flags.String("agent", "", "who is linking: host client, optionally /model")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *from == "" || *to == "" {
+		return fmt.Errorf("memory link needs --from and --to; run `vibe-agent memory list` to find ids")
+	}
+	return withMemory(paths, func(store *memory.Store) error {
+		link := memory.Link{SrcID: *from, DstID: *to, Relation: memory.Relation(*relation),
+			CreatedBy: strings.TrimSpace(*agent)}
+		if err := store.Link(context.Background(), link, time.Now().UTC()); err != nil {
+			return err
+		}
+		fmt.Printf("%s -[%s]-> %s recorded. Statuses are unchanged.\n", *from, *relation, *to)
+		return nil
+	})
+}
+
+// memorySessions searches past conversations and tool calls by words. It is the
+// episodic layer: what was said and run in earlier sessions, not what was
+// distilled from them.
+func memorySessions(args []string) error {
+	flags := newFlagSet("memory sessions")
+	paths := addRootFlags(flags)
+	query := flags.String("query", "", "words to find in past sessions")
+	limit := flags.Int("limit", memory.DefaultLimit, "most results to show")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if strings.TrimSpace(*query) == "" {
+		return fmt.Errorf("memory sessions needs --query")
+	}
+	return withMemory(paths, func(store *memory.Store) error {
+		hits, err := store.SearchSessions(context.Background(), *query, *limit)
+		if err != nil {
+			return err
+		}
+		if len(hits) == 0 {
+			fmt.Println("No past session matches.")
+			return nil
+		}
+		for _, hit := range hits {
+			fmt.Printf("%s  %s#%d  %-13s %s\n", hit.At.Format(time.RFC3339), hit.Scope, hit.Sequence,
+				hit.Type, singleLine(hit.Snippet))
+		}
+		fmt.Printf("\n%s\n", memory.Disclaimer)
 		return nil
 	})
 }

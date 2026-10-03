@@ -145,7 +145,6 @@ func firstNonEmpty(values ...string) string {
 }
 
 func hasAmbientSession(workspaceRoot string) bool {
-	path := session.AmbientLogPath(workspaceRoot)
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir() && info.Size() > 0
+	events, err := session.Replay(session.AmbientLogPath(workspaceRoot))
+	return err == nil && len(events) > 0
 }

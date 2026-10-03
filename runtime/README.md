@@ -28,7 +28,7 @@ runtime/
     graph.go              graph validate
     mcp.go                mcp serve
     hook.go               lifecycle hooks for Claude and Cursor
-    memory.go             list, confirm, forget. The human side of the store
+    memory.go             list, confirm, forget, history, link, sessions. The human side of the store
     fetch.go              a URL or file as text, cached by source
     doctor.go             workspace health checks
     web.go                loopback web UI (127.0.0.1 only)
@@ -349,11 +349,51 @@ An as-of query includes stale memories by default. A fact that was true then is 
 
 ## How retrieval ranks
 
-With a query, two orderings are fused with [reciprocal rank fusion](https://dl.acm.org/doi/10.1145/1571941.1572114) at `k=60`: bm25 keyword relevance, and recency. Neither alone is right, and fusing avoids inventing a scale on which a bm25 score and a timestamp are comparable.
+With a query, three orderings are fused with [reciprocal rank fusion](https://dl.acm.org/doi/10.1145/1571941.1572114) at `k=60`: bm25 keyword relevance, recency, and importance (`confidence * (1 + ln(1 + used_count))`, so a memory that reuse has repeatedly confirmed outranks an equally fresh one nobody has relied on, while the log keeps a heavily reused memory from drowning everything else). Recency, relevance, and importance are the three signals agent-memory work (Generative Agents, MemoryOS, Mem0) converged on, and fusing avoids inventing a scale on which a bm25 score, a timestamp, and a count are comparable.
 
-Ties are frequent and expected. Two results that swap places between the two rankings score identically, so the tiebreak is recency, then confidence: when two memories say almost the same thing, the usual reason is that one replaced the other.
+Ties are frequent and expected. Two results that swap places between the rankings score identically, so the tiebreak is recency, then confidence: when two memories say almost the same thing, the usual reason is that one replaced the other. Equal importance breaks the same way, so it never silently favours whichever row bm25 listed first.
+
+The keyword index uses the porter stemmer, so "failing" finds a memory that says "failed".
 
 Keyword search with metadata filters remains the deliberate first choice. Embeddings come only after this is measured as insufficient.
+
+## Links between memories
+
+`memory_links` holds typed edges: `supersedes` (written automatically when a candidate names the memory it replaces), `relates_to`, `derived_from`, and `contradicts`. After the keyword stage, spare result slots are filled with the linked neighbours of the best hits (Zettelkasten-style expansion, as in A-MEM). The rules keep it safe:
+
+- Neighbours only fill slots the matches left empty, and are marked `via` so a reader can tell a neighbour from a match.
+- A neighbour passes the same filters as a match: status, kind, expiry, validity interval. An edge never resurrects a closed memory.
+- `contradicts` is never followed; it exists so a reviewer can find the pair.
+
+```sh
+vibe-agent memory link --from <id> --to <id> --relation relates_to --agent claude
+```
+
+Linking is metadata like review. It never changes a status, so it cannot confirm.
+
+## The memory ledger
+
+A memory row is edited in place, so the row only says where a memory ended up. `memory_events` is the append-only ledger of how it got there: every proposal, merge, review, link, confirmation, and closure, with the status before and after, who did it, and when. Each ledger line is written in the same transaction as the change it describes, so the history cannot disagree with the row.
+
+```sh
+vibe-agent memory history --id <id>
+```
+
+## Searching past sessions
+
+Every host gesture (prompt, tool call, assistant message) is stored in `session_events` rather than in a `session.ndjson` file, with a full-text index kept in sync by SQLite triggers. Host reasoning (`thinking`) is stored but never indexed. Text was redacted when written, so a snippet cannot carry a secret the writer already removed.
+
+```sh
+vibe-agent memory sessions --query "webhook retry"
+```
+
+MCP hosts call `vibe_memory_search` with `scope: "sessions"`. This is the episodic layer: what was said and run before, found by words, as opposed to what was distilled into a memory.
+
+## Where state lives
+
+Everything an agent recalls is a table in `.agent-state/memory.db`: `memories` (+ `memories_fts`), `memory_links`, `memory_events`, `session_events` (+ `session_events_fts`), `runs`, `run_events`, `run_checks`, `journal_entries`, `task_lists`, `fetch_cache`, `sdd_cache`, and `agent_state` (small keyed hook state, such as the last node announced to Cursor). `vibe-agent migrate state` moves any file-based predecessor into its table; a leftover `session.ndjson` is also adopted on the next append, so nothing is lost if the command is never run.
+
+Two things stay outside by design: fetched binaries under `.agent-state/fetch/assets/` (files a reader must be able to open), and `web.json` / `web-workspaces.json` (server discovery and the cross-workspace registry, which must be readable before any one workspace's database is chosen).
 
 ## Reading a page without reading the page
 

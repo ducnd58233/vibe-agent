@@ -181,7 +181,7 @@ func (s *Store) Confirm(ctx context.Context, id string, source domain.SourceType
 	}
 	record.UpdatedAt = now.UTC()
 
-	if err := s.update(ctx, record); err != nil {
+	if err := s.update(ctx, record, "confirm", string(source), ref); err != nil {
 		return domain.Record{}, err
 	}
 	// Confirming a superseding memory closes the one it replaces, so retrieval
@@ -204,19 +204,32 @@ func (s *Store) Confirm(ctx context.Context, id string, source domain.SourceType
 // was never recorded, and only the first can explain a decision made while it
 // still held.
 func (s *Store) Invalidate(ctx context.Context, id string, at time.Time) error {
-	result, err := s.db.ExecContext(ctx,
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var from string
+	if err := tx.QueryRowContext(ctx,
+		`SELECT status FROM memories WHERE id = ? AND valid_to IS NULL`, id).Scan(&from); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return sql.ErrNoRows
+		}
+		return fmt.Errorf("invalidate memory: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx,
 		`UPDATE memories SET valid_to = ?, status = ?, updated_at = ?
          WHERE id = ? AND valid_to IS NULL`,
 		at.UTC().Format(ExpiryLayout), string(domain.StatusStale),
-		at.UTC().Format(time.RFC3339Nano), id)
-	if err != nil {
+		at.UTC().Format(time.RFC3339Nano), id); err != nil {
 		return fmt.Errorf("invalidate memory: %w", err)
 	}
-	affected, _ := result.RowsAffected()
-	if affected == 0 {
-		return sql.ErrNoRows
+	if err := logEvent(ctx, tx, id, "invalidate", from, string(domain.StatusStale), "",
+		"closed at "+at.UTC().Format(ExpiryLayout), at); err != nil {
+		return err
 	}
-	return nil
+	return tx.Commit()
 }
 
 // AddReviewer records that an agent audited a memory. Each agent is listed
@@ -237,7 +250,7 @@ func (s *Store) AddReviewer(ctx context.Context, id, agent string, now time.Time
 	}
 	record.ReviewedBy = append(record.ReviewedBy, agent)
 	record.UpdatedAt = now.UTC()
-	return s.update(ctx, record)
+	return s.update(ctx, record, "review", agent, "")
 }
 
 // RecordUse counts a successful reuse, which feeds promotion proposals.
@@ -308,15 +321,35 @@ func (s *Store) insert(ctx context.Context, record domain.Record) error {
 	); err != nil {
 		return fmt.Errorf("index memory: %w", err)
 	}
+	if err := logEvent(ctx, tx, record.ID, "propose", "", string(record.Status), record.CreatedBy,
+		string(record.SourceType)+" "+record.SourceRef, record.CreatedAt); err != nil {
+		return err
+	}
+	if record.SupersedesID != "" {
+		if _, err := tx.ExecContext(ctx, `
+            INSERT OR IGNORE INTO memory_links (src_id, dst_id, relation, created_by, created_at)
+            VALUES (?,?,?,?,?)`,
+			record.ID, record.SupersedesID, string(domain.RelationSupersedes),
+			record.CreatedBy, record.CreatedAt.Format(time.RFC3339Nano)); err != nil {
+			return fmt.Errorf("link superseded memory: %w", err)
+		}
+	}
 	return tx.Commit()
 }
 
-func (s *Store) update(ctx context.Context, record domain.Record) error {
+// update rewrites a record and appends one ledger line in the same transaction,
+// so the history can never disagree with the row it describes.
+func (s *Store) update(ctx context.Context, record domain.Record, action, actor, detail string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+
+	var from string
+	if err := tx.QueryRowContext(ctx, `SELECT status FROM memories WHERE id = ?`, record.ID).Scan(&from); err != nil {
+		return fmt.Errorf("read memory status: %w", err)
+	}
 
 	if _, err := tx.ExecContext(ctx, `
         UPDATE memories SET kind=?, content=?, tags=?, confidence=?, status=?,
@@ -339,6 +372,9 @@ func (s *Store) update(ctx context.Context, record domain.Record) error {
 	); err != nil {
 		return fmt.Errorf("reindex memory: %w", err)
 	}
+	if err := logEvent(ctx, tx, record.ID, action, from, string(record.Status), actor, detail, record.UpdatedAt); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 
@@ -353,17 +389,20 @@ func (s *Store) mergeEvidence(ctx context.Context, id string, candidate domain.R
 	for _, item := range existing.Evidence {
 		seen[item] = true
 	}
+	added := 0
 	for _, item := range candidate.Evidence {
 		if !seen[item] {
 			existing.Evidence = append(existing.Evidence, item)
 			seen[item] = true
+			added++
 		}
 	}
 	if candidate.Confidence > existing.Confidence {
 		existing.Confidence = candidate.Confidence
 	}
 	existing.UpdatedAt = now.UTC()
-	if err := s.update(ctx, existing); err != nil {
+	if err := s.update(ctx, existing, "merge", candidate.CreatedBy,
+		fmt.Sprintf("%d new evidence item(s)", added)); err != nil {
 		return domain.Record{}, err
 	}
 	return existing, nil

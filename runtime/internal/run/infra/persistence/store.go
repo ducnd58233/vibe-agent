@@ -169,6 +169,14 @@ func AppendEvent(path string, event domain.Event) (domain.Event, error) {
 		return domain.Event{}, fmt.Errorf("create run directory: %w", err)
 	}
 
+	// Session logs under .agent-state/ live in session_events only; there is no
+	// file to dual-write.
+	if wrote, err := appendSessionSQL(path, &event); err != nil {
+		return domain.Event{}, err
+	} else if wrote {
+		return event, nil
+	}
+
 	// SQL append assigns Sequence when the run is known; otherwise count the file.
 	wroteSQL, err := appendEventSQL(path, &event)
 	if err != nil {
@@ -238,6 +246,11 @@ func AppendRunEvent(path string, event domain.Event) (domain.Event, error) {
 func ReadEvents(path string) ([]domain.Event, error) {
 	if path == "" {
 		return nil, nil
+	}
+	if events, handled, err := readSessionSQL(path); err != nil {
+		return nil, err
+	} else if handled {
+		return events, nil
 	}
 	if events, ok, err := readEventsSQL(path); err != nil {
 		return nil, err

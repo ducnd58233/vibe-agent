@@ -3,7 +3,6 @@ package harness
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -245,16 +244,12 @@ func TestPostToolUseRecordsSessionWithoutSecret(t *testing.T) {
 		Event: EventPostToolUse, Client: ClientClaude, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"` + cmd + `"}}`),
 	})
-	path := session.LogPath(root, "demo")
-	raw, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(raw)
-	if strings.Contains(text, hookTestSecret) {
-		t.Fatalf("secret leaked into session log: %s", text)
-	}
 	events := sessionLog(t, root)
+	for _, ev := range events {
+		if strings.Contains(string(ev.Payload), hookTestSecret) {
+			t.Fatalf("secret leaked into session log: %s", ev.Payload)
+		}
+	}
 	if len(events) != 1 || events[0].Type != session.TypeToolUse {
 		t.Fatalf("events = %+v", events)
 	}
@@ -277,13 +272,10 @@ func TestStopRecordsAssistantMessageWhenPresent(t *testing.T) {
 	if events[1].Type != session.TypeMessage {
 		t.Fatalf("second event = %+v", events[1])
 	}
-	path := session.LogPath(root, "demo")
-	raw, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(raw), hookTestSecret) {
-		t.Fatalf("assistant secret leaked: %s", raw)
+	for _, ev := range events {
+		if strings.Contains(string(ev.Payload), hookTestSecret) {
+			t.Fatalf("assistant secret leaked: %s", ev.Payload)
+		}
 	}
 }
 

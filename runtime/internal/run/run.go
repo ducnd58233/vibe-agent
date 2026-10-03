@@ -50,8 +50,9 @@ const (
 	FailureAmbiguity  = domain.FailureAmbiguity
 	FailureModel      = domain.FailureModel
 
-	EventLogName = domain.EventLogName
-	RunsDirName  = persistence.RunsDirName
+	EventLogName   = domain.EventLogName
+	SessionLogName = domain.SessionLogName
+	RunsDirName    = persistence.RunsDirName
 
 	EventRunStarted  = domain.EventRunStarted
 	EventTransition  = domain.EventTransition

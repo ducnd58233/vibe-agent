@@ -24,6 +24,10 @@ type (
 	Store      = persistence.Store
 	Query      = persistence.Query
 	Hit        = persistence.Hit
+	Link       = domain.Link
+	Relation   = domain.Relation
+	Ledger     = domain.LedgerEntry
+	SessionHit = domain.SessionHit
 )
 
 const (
@@ -43,6 +47,11 @@ const (
 	SourceCIAPI          = domain.SourceCIAPI
 	SourceHumanStatement = domain.SourceHumanStatement
 	SourceReviewComment  = domain.SourceReviewComment
+
+	RelationSupersedes  = domain.RelationSupersedes
+	RelationRelatesTo   = domain.RelationRelatesTo
+	RelationDerivedFrom = domain.RelationDerivedFrom
+	RelationContradicts = domain.RelationContradicts
 
 	VerdictStore  = domain.VerdictStore
 	VerdictMerge  = domain.VerdictMerge

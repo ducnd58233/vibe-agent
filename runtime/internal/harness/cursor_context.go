@@ -1,12 +1,14 @@
 package harness
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/agentstate"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
@@ -27,14 +29,11 @@ import (
 // edits has nothing new to report, and repeating it twenty times trains a
 // reader to skip exactly the line that matters when it does change.
 
-// cursorNodeFile remembers what was last said, so the next call can tell
+// cursorNodeState remembers what was last said, so the next call can tell
 // whether anything is new.
 //
-// In .agent-state/ because it is derived, disposable, and rebuildable: losing
-// it costs one redundant reminder, which is why it does not belong in tmp/
-// beside evidence a person reads.
-const cursorNodeFile = "cursor-node.json"
-
+// In memory.db's agent_state table because it is derived, disposable, and
+// rebuildable: losing it costs one redundant reminder.
 type cursorNodeState struct {
 	Slug string `json:"slug"`
 	Node string `json:"node"`
@@ -87,17 +86,22 @@ func joinNonEmpty(parts ...string) string {
 	return strings.Join(kept, "\n")
 }
 
-func cursorNodePath(workspaceRoot string) string {
-	return filepath.Join(workspace.StateDir(workspaceRoot), cursorNodeFile)
-}
+// legacyCursorNodeFile is the file this state lived in before agent_state.
+// Disposable, so it is removed on first write rather than migrated.
+const legacyCursorNodeFile = "cursor-node.json"
+
+const (
+	cursorStateNamespace = "cursor"
+	cursorStateKey       = "last_node"
+)
 
 func readCursorNode(workspaceRoot string) cursorNodeState {
 	var state cursorNodeState
-	raw, err := os.ReadFile(filepath.Clean(cursorNodePath(workspaceRoot)))
-	if err != nil {
+	raw, ok, err := agentstate.Get(context.Background(), workspaceRoot, cursorStateNamespace, cursorStateKey)
+	if err != nil || !ok {
 		return state
 	}
-	_ = json.Unmarshal(raw, &state)
+	_ = json.Unmarshal([]byte(raw), &state)
 	return state
 }
 
@@ -109,8 +113,10 @@ func writeCursorNode(workspaceRoot string, state cursorNodeState) bool {
 	if err != nil {
 		return false
 	}
-	if err := os.MkdirAll(workspace.StateDir(workspaceRoot), 0o750); err != nil {
+	if err := agentstate.Set(context.Background(), workspaceRoot,
+		cursorStateNamespace, cursorStateKey, string(encoded)); err != nil {
 		return false
 	}
-	return os.WriteFile(cursorNodePath(workspaceRoot), encoded, 0o600) == nil
+	_ = os.Remove(filepath.Join(workspace.StateDir(workspaceRoot), legacyCursorNodeFile))
+	return true
 }

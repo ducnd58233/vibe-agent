@@ -56,12 +56,14 @@ func TestTranscriptRedactsSecrets(t *testing.T) {
 		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"transcript_path":` + jsonString(path) + `}`),
 	})
-	raw, err := os.ReadFile(filepath.Clean(session.LogPath(root, "demo")))
+	stored, err := session.Replay(session.LogPath(root, "demo"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(raw), transcriptTestSecret) {
-		t.Fatalf("secret leaked: %s", raw)
+	for _, ev := range stored {
+		if strings.Contains(string(ev.Payload), transcriptTestSecret) {
+			t.Fatalf("secret leaked: %s", ev.Payload)
+		}
 	}
 }
 

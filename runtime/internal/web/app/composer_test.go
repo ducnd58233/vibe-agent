@@ -842,12 +842,14 @@ func TestAppendHostPrintWritesTimeoutAndRedactedStderr(t *testing.T) {
 	slug2 := "print-stderr"
 	testutil.EnsureRunIndex(t, root2, slug2)
 	appendHostPrint(context.Background(), root2, slug2, hosts.Host{Binary: "claude"}, "hi", hosts.PrintOptions{})
-	raw, err := os.ReadFile(session.LogPath(root2, slug2))
+	stored, err := session.Replay(session.LogPath(root2, slug2))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(raw), secret) {
-		t.Fatalf("secret leaked: %s", raw)
+	for _, ev := range stored {
+		if strings.Contains(string(ev.Payload), secret) {
+			t.Fatalf("secret leaked: %s", ev.Payload)
+		}
 	}
 	testutil.EnsureRunIndex(t, root2, slug2)
 	events, err = session.Replay(session.LogPath(root2, slug2))

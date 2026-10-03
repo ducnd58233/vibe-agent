@@ -3,10 +3,12 @@ package persistence
 import (
 	"context"
 	"fmt"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/memory/domain"
+	"math"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/memory/domain"
 )
 
 // DefaultLimit caps retrieval. Eight evidence-backed facts fit in a prompt; a
@@ -44,6 +46,10 @@ type Query struct {
 type Hit struct {
 	domain.Record
 	Score float64
+	// Via names the edge a hit was pulled in through ("relates_to mem_..."),
+	// empty for a direct match. Neighbours are context, not matches, and a
+	// reader should be able to tell the two apart.
+	Via string
 }
 
 // rrfK damps the contribution of low-ranked results in reciprocal rank fusion.
@@ -59,11 +65,15 @@ const candidateFactor = 4
 
 // Search finds relevant memories.
 //
-// With text, two rankings are fused: keyword relevance from bm25, and recency.
-// Neither alone is right. Keyword rank alone puts a year-old note above the
-// note that replaced it whenever the older wording matched better; recency
-// alone ignores the question. Reciprocal rank fusion combines the orderings
-// without needing a scale that makes bm25 and timestamps comparable.
+// With text, three rankings are fused: keyword relevance from bm25, recency,
+// and importance. Keyword rank alone puts a year-old note above the note that
+// replaced it whenever the older wording matched better; recency alone ignores
+// the question; and neither knows which memory has been reused and trusted.
+// Importance is the third signal agent-memory work converged on (recency,
+// relevance, importance). Reciprocal rank fusion combines the orderings without
+// needing a scale that makes bm25, timestamps, and counts comparable.
+//
+// Spare result slots are then filled with linked neighbours of the best hits.
 //
 // Keyword search with metadata filters remains the deliberate first choice.
 // Embeddings come only after this is measured as insufficient, not before.
@@ -95,7 +105,78 @@ func (s *Store) Search(ctx context.Context, query Query) ([]Hit, error) {
 	if text == "" {
 		return hits, nil
 	}
-	return fuse(hits, query.Limit), nil
+	return s.expandLinked(ctx, fuse(hits, query.Limit), query), nil
+}
+
+// expandLinked fills result slots the keyword stage left empty with the linked
+// neighbours of the hits it did find, best hit first. It never displaces a
+// direct match, and never returns a neighbour the query's own filters would
+// have excluded.
+func (s *Store) expandLinked(ctx context.Context, hits []Hit, query Query) []Hit {
+	if len(hits) == 0 || len(hits) >= query.Limit {
+		return hits
+	}
+	seen := map[string]bool{}
+	for _, hit := range hits {
+		seen[hit.ID] = true
+	}
+	instant := query.AsOf
+	if instant.IsZero() {
+		instant = time.Now()
+	}
+	direct := len(hits)
+	for i := 0; i < direct && len(hits) < query.Limit; i++ {
+		ids, err := s.neighbours(ctx, hits[i].ID)
+		if err != nil {
+			continue
+		}
+		for _, id := range ids {
+			if seen[id] || len(hits) >= query.Limit {
+				continue
+			}
+			record, err := s.Get(ctx, id)
+			if err != nil || !neighbourAllowed(record, query, instant) {
+				continue
+			}
+			seen[id] = true
+			hits = append(hits, Hit{Record: record, Via: "linked to " + hits[i].ID})
+		}
+	}
+	return hits
+}
+
+// neighbourAllowed applies the same filters candidates applies in SQL.
+func neighbourAllowed(record domain.Record, query Query, instant time.Time) bool {
+	if record.WorkspaceID != query.WorkspaceID {
+		return false
+	}
+	allowedStatus := false
+	for _, status := range query.Statuses {
+		if record.Status == status {
+			allowedStatus = true
+		}
+	}
+	if !allowedStatus {
+		return false
+	}
+	if len(query.Kinds) > 0 {
+		allowedKind := false
+		for _, kind := range query.Kinds {
+			if record.Kind == kind {
+				allowedKind = true
+			}
+		}
+		if !allowedKind {
+			return false
+		}
+	}
+	if record.ExpiresAt != nil && !record.ExpiresAt.After(instant) {
+		return false
+	}
+	if query.AsOf.IsZero() {
+		return record.ValidTo == nil
+	}
+	return !record.ValidFrom.After(instant) && (record.ValidTo == nil || record.ValidTo.After(instant))
 }
 
 // candidates runs the SQL side: filters, then bm25 order when there is a query
@@ -205,8 +286,26 @@ func fuse(hits []Hit, limit int) []Hit {
 		return hits[byRecency[a]].UpdatedAt.After(hits[byRecency[b]].UpdatedAt)
 	})
 
+	byImportance := make([]int, len(hits))
+	for i := range byImportance {
+		byImportance[i] = i
+	}
+	// Equal importance carries no information, so it must not quietly hand the
+	// win to whichever record bm25 happened to list first. The newer fact is the
+	// better default for the reason fuse's tie-break below gives.
+	sort.SliceStable(byImportance, func(a, b int) bool {
+		left, right := hits[byImportance[a]], hits[byImportance[b]]
+		if li, ri := importance(left.Record), importance(right.Record); li != ri {
+			return li > ri
+		}
+		return left.UpdatedAt.After(right.UpdatedAt)
+	})
+
 	score := make([]float64, len(hits))
 	for rank, index := range byRecency {
+		score[index] += 1 / (rrfK + float64(rank))
+	}
+	for rank, index := range byImportance {
 		score[index] += 1 / (rrfK + float64(rank))
 	}
 	for rank := range hits {
@@ -235,6 +334,14 @@ func fuse(hits []Hit, limit int) []Hit {
 		fused = fused[:limit]
 	}
 	return fused
+}
+
+// importance is how much a memory has earned: how sure its author was, scaled by
+// how often reuse has confirmed it. The log damps the count so one memory reused
+// fifty times cannot out-rank everything: the tenth reuse matters far less than
+// the first.
+func importance(record domain.Record) float64 {
+	return record.Confidence * (1 + math.Log1p(float64(record.UsedCount)))
 }
 
 // ftsQuery turns free text into an FTS5 expression, quoting each term so

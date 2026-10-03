@@ -9,10 +9,13 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
-// LogName is the append-only session file beside a run manifest.
-const LogName = "session.ndjson"
+// LogName is the name a session log is addressed by. Inside .agent-state/ the
+// rows live in memory.db's session_events table; the name is only the key.
+const LogName = state.SessionLogName
 
 // Type is a closed set of session event kinds.
 type Type string

@@ -55,6 +55,9 @@ Usage:
   vibe-agent memory list [--status <status>]
   vibe-agent memory confirm --id <id>
   vibe-agent memory forget --id <id>
+  vibe-agent memory history --id <id>
+  vibe-agent memory link --from <id> --to <id> [--relation relates_to|derived_from|supersedes|contradicts]
+  vibe-agent memory sessions --query <words> [--limit N]
   vibe-agent session list
   vibe-agent session show --slug <slug|ambient>
   vibe-agent web [--port 1411] [--open]
@@ -77,7 +80,7 @@ Use vibe-agent migrate docs-tmp once to move flat docs/ and a leftover
 workspace-root tmp/ tree into the versioned layout doctor expects.
 Use vibe-agent migrate state after writing a tasks-<date>.json by hand (or
 from an older toolkit build): it moves fetch cache, sdd-cache, ambient
-journal, task lists, and run rows out of files and into
+journal, task lists, run rows, and session logs out of files and into
 .agent-state/memory.db, which is what the tasks verifier and doctor actually
 read. A file a caller skips because it failed to parse is left on disk and
 reported on stderr rather than blocking every other slug's migration.
