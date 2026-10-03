@@ -48,12 +48,22 @@ vibe-agent doctor          # preflight; stop here if it reports problems
 vibe-agent auto init       # writes the opt-in, once per workspace
 vibe-agent auto "<objective from the user>"
 vibe-agent auto research "<research topic from the user>"
+vibe-agent auto experiment "<experiment objective from the user>"
+vibe-agent auto task "<non-code task from the user>"
 vibe-agent auto gate --slug <slug from start output>
 ```
 
-Host agents pass the user's text as plain arguments. Slug and graph are derived;
-do not ask the user for `--goal`, `--graph`, or `--slug` unless resuming an
-existing run.
+Host agents pass the user's text as plain arguments, including a first word that names the kind of
+work (`delivery`, `research`, `experiment`, `task`). Slug and graph are derived; do not ask the user
+for `--goal`, `--graph`, or `--slug` unless resuming an existing run. With no first word the runtime
+reads the objective and prints the words that decided the graph; follow "Choosing the graph" in
+[`goal.md`](goal.md). On `/auto` the runtime acts on a guess only when the signal is strong, and
+otherwise asks for the word, because nobody is at intake to correct it.
+
+`/auto` has two limits the other graphs do not. `vibe-agent auto tutor` is refused, because a tutor
+needs a learner present, so use `/goal tutor`. And `auto task` stops at `approve_delivery` every time:
+it reaches the work on its own, and a person opens the one gate that lets anything leave the
+workspace.
 
 If the binary is not on `PATH`, **stop. Run no phase.** Report:
 

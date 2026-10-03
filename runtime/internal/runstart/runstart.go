@@ -7,6 +7,7 @@ package runstart
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/auto"
@@ -73,12 +74,27 @@ func Start(opts Options) (Result, error) {
 			return Result{}, err
 		}
 	}
+	// Flags the objective implied, such as task_required. Sorted so two starts
+	// of the same objective write the same events.
+	names := make([]string, 0, len(opts.Resolved.Flags))
+	for name, on := range opts.Resolved.Flags {
+		if on {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if err := current.SetFlagAt(name, true, now); err != nil {
+			return Result{}, err
+		}
+	}
 	if err := loop.New(loaded).Enter(current); err != nil {
 		return Result{}, err
 	}
 
 	payload, err := json.Marshal(map[string]any{
 		"goal": current.Goal, "graph": current.GraphID, "auto": opts.Auto, "taskSource": opts.TaskSource,
+		"chosen": opts.Resolved.Reason, "flags": names,
 	})
 	if err != nil {
 		return Result{}, fmt.Errorf("encode start event: %w", err)

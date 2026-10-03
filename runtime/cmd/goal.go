@@ -5,20 +5,23 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/runstart"
 )
 
-// goalCommand starts a delivery run with human gates.
+// goalCommand starts a run with human gates.
 //
 // Users and slash commands pass the objective as plain text; the host agent
-// must not ask for slug or graph.
+// must not ask for slug or graph. The first word may name the kind of work
+// (delivery, research, experiment, task, tutor), and when it does not the
+// objective is read and the words that decided the graph are printed back.
 func goalCommand(args []string) error {
 	flags := newFlagSet("goal")
 	paths := addRootFlags(flags)
 	goal := flags.String("goal", "", "one-line objective (optional when passed as plain text)")
 	slug := flags.String("slug", "", "run slug; derived from the objective when omitted")
-	graphID := flags.String("graph", "", "workflow graph id (advanced; default from command)")
+	graphID := flags.String("graph", "", "workflow graph id (advanced; default from the objective)")
+	withTask := flags.Bool("with-task", false, "the objective also has a non-code deliverable, delivered after the last code task")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	text, err := goalFromFlags(flags, goal)
+	text, workflow, err := objectiveFromFlags(flags, goal)
 	if err != nil {
 		return err
 	}
@@ -27,7 +30,7 @@ func goalCommand(args []string) error {
 	if err != nil {
 		return err
 	}
-	resolved, err := resolveStart(graphroute.CmdGoal, "", text, *slug, *graphID)
+	resolved, err := resolveStartWith(graphroute.CmdGoal, workflow, text, *slug, *graphID, *withTask)
 	if err != nil {
 		return err
 	}
@@ -41,6 +44,6 @@ func goalCommand(args []string) error {
 		return err
 	}
 
-	printStartedRun(result, resolved.Slug, "")
+	printStartedRun(result, resolved.Slug, resolved.Reason, "")
 	return nil
 }

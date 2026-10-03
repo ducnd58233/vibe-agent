@@ -144,7 +144,9 @@ func runStart(args []string) error {
 	if err != nil {
 		return err
 	}
-	resolved, err := resolveStart(graphroute.CmdGoal, "", text, *slug, *graphID)
+	// run start is the low-level surface and has always been the delivery graph.
+	// It does not read the objective for routing; goal and auto do that.
+	resolved, err := resolveStart(graphroute.CmdGoal, graphroute.WorkflowDelivery, text, *slug, *graphID)
 	if err != nil {
 		return err
 	}
@@ -164,7 +166,7 @@ func runStart(args []string) error {
 	if err != nil {
 		return err
 	}
-	printStartedRun(result, resolved.Slug, result.Events)
+	printStartedRun(result, resolved.Slug, "", result.Events)
 	return nil
 }
 

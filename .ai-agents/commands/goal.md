@@ -65,12 +65,40 @@ vibe-agent verify     --slug <slug>
 vibe-agent checkpoint --slug <slug> --check <name> --source <source> --passed
 ```
 
-Host agents derive slug and graph from the command; do not ask the user for them.
+Host agents derive slug and graph from the command and the objective; do not ask the user for them.
 Use `vibe-agent auto "<objective>"` when the workspace opted into auto mode. It is the same graph with
 the approval gates answered by evidence and extra quality stages on the path; the node-by-node
 difference is the table at the top of [`auto.md`](auto.md).
 Use `vibe-agent research "<topic>"` or `vibe-agent auto research "<topic>"` for the
-researcher graph.
+researcher graph. The next section covers how `goal` and `auto` choose among all of them.
+
+### Choosing the graph (MUST)
+
+`vibe-agent goal` and `vibe-agent auto` start one of five graphs. Pass the user's words through
+unchanged: the runtime reads the first word and the objective, and you must not strip, reword, or
+reorder them.
+
+| First word | Graph | Use for |
+|---|---|---|
+| `delivery` | `goal-delivery` | Code: spec, plan, build, test, review, ship |
+| `research` or `experiment` | `researcher-delivery` | Literature, experiments, findings |
+| `task` | `task-delivery` | A report, document, data job, ops step, or message ([`task.md`](task.md)) |
+| `tutor` | `study-delivery` | A person learning a subject ([`tutor.md`](tutor.md)). `/goal` only, never `/auto` |
+| none | read from the objective | The runtime prints a `chosen` line with the words that decided it |
+
+1. **Read the `chosen` line the start command printed.** When the runtime read the objective, say
+   in one sentence which graph it picked and why, and ask the user whether that is right, at the
+   intake gate before anything else.
+2. **If it is wrong, do not work around it.** End that run with
+   `vibe-agent run abort --slug <slug> --reason "wrong graph"`, then start again with the first word the
+   user meant, for example `vibe-agent goal delivery "<objective>"`.
+3. **If the runtime asks which kind of work it is, ask the user the same question.** Do not pick for
+   them.
+4. **A code change with a non-code deliverable** (a feature plus an announcement, a migration plus a
+   report) starts `goal-delivery` with the `task_required` flag set, either because the objective
+   said both or because you passed `--with-task`. The non-code part runs after the last code task.
+   Its nodes are in [`task.md`](task.md), and the SPEC must list its deliverable, acceptance rows, and
+   outward actions ([`spec.md`](spec.md)).
 
 ### Rules in this mode (MUST)
 

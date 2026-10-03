@@ -205,7 +205,18 @@ No opt-in file, or `merge: false`, means auto stops at a green PR and you merge 
 
 ## Research
 
-The runtime chooses the graph from the **command name**, not from words like "research" inside your prompt.
+`/goal` and `/auto` pick the graph in one of two ways, and print which. Name the kind of work first (`delivery`, `research`, `experiment`, `task`, or `tutor`) and that graph starts. Name nothing and the runtime reads the objective with fixed rules, then prints the words that decided it on a `chosen` line, so a wrong guess is visible and one command fixes it.
+
+| You write | Graph | Notes |
+|---|---|---|
+| `/goal Add retry to the webhook dispatcher` | `goal-delivery` | Code words, or no routing words: the default |
+| `/goal task Summarize the vendor contract` | `task-delivery` | A report, document, data job, ops step, or message |
+| `/goal research Compare chunking strategies` | `researcher-delivery` | Literature, then experiment and findings |
+| `/goal experiment Benchmark two embedding models` | `researcher-delivery` | The same graph, entered for an experiment |
+| `/goal tutor Linear algebra for my exam` | `study-delivery` | A learner studying over many sessions. No `/auto` form |
+| `/goal Implement the export endpoint and write a report on how it works` | `goal-delivery` | A code change and a non-code deliverable: the report is delivered after the last code task. `--with-task` forces this |
+
+An objective that could be two kinds (research plus a document to write) is a question: the runtime asks which, and does not guess. `/auto` acts on a guess only when the signal is strong, and otherwise asks for the word. To force the default, write `delivery` first.
 
 ```mermaid
 flowchart LR
@@ -221,7 +232,7 @@ flowchart LR
   write --> done[done]
 ```
 
-`/research` and `/auto research` use this graph. `/goal` and plain `/auto` use goal-delivery (diagram above) instead; research there is at most one phase before spec.
+`/research`, `/experiment`, `/goal research`, `/goal experiment`, and the same words after `/auto` use this graph. An objective with code words uses goal-delivery (diagram above) instead; research there is at most one phase before spec.
 
 | Intent | Slash (global) | Host runs | Graph |
 |---|---|---|---|

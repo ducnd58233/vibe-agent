@@ -116,15 +116,15 @@ func Tools(deps Deps) []Tool {
 		{
 			Name: "vibe_run_start",
 			Description: "Call to create a run when none exists yet for this objective. Pass the user's objective as goal; derive slug when omitted. " +
-				"Use workflow research for literature/experiment loops, task for a non-code deliverable (report, analysis, document, data job, message), delivery (default) for spec/build/ship. Do not call when a run for this slug is already active; use vibe_run_status instead.",
-			InputSchema: schema(`{"type":"object","required":["goal"],"properties":{"goal":{"type":"string"},"slug":{"type":"string"},"workflow":{"type":"string","enum":["delivery","research","task"],"default":"delivery"},"graph":{"type":"string","description":"Advanced override only"}}}`),
+				"Omit workflow to let the objective choose the graph (the reply names the words that decided it). Name workflow research or experiment for literature and experiment loops, task for a non-code deliverable (report, analysis, document, data job, message), tutor for a learner, delivery for spec/build/ship. Do not call when a run for this slug is already active; use vibe_run_status instead.",
+			InputSchema: schema(`{"type":"object","required":["goal"],"properties":{"goal":{"type":"string"},"slug":{"type":"string"},"workflow":{"type":"string","enum":["delivery","research","experiment","task","tutor"],"description":"Omit to read the objective: the graph is chosen from its words and the reason is returned as chosen. Name one to override."},"withTask":{"type":"boolean","description":"A delivery objective that also has a non-code deliverable, delivered after the last code task"},"graph":{"type":"string","description":"Advanced override only"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return runStart(deps, raw) },
 		},
 		{
 			Name: "vibe_auto_start",
 			Description: "Call to start an unattended auto run from the user's objective. Requires workspace auto opt-in. " +
-				"Use workflow research for researcher-delivery, delivery (default) for goal-delivery. Do not call when auto.yaml is unanswered or when a run for this slug already exists.",
-			InputSchema: schema(`{"type":"object","required":["goal"],"properties":{"goal":{"type":"string"},"slug":{"type":"string"},"workflow":{"type":"string","enum":["delivery","research"],"default":"delivery"},"taskSource":{"type":"string"}}}`),
+				"Omit workflow to let the objective choose the graph, or name research, experiment, task, or delivery. Do not call when auto.yaml is unanswered or when a run for this slug already exists.",
+			InputSchema: schema(`{"type":"object","required":["goal"],"properties":{"goal":{"type":"string"},"slug":{"type":"string"},"workflow":{"type":"string","enum":["delivery","research","experiment","task"],"description":"Omit to read the objective. There is no tutor: a learner has to be present."},"withTask":{"type":"boolean"},"taskSource":{"type":"string"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return autoStart(deps, raw) },
 		},
 		{
@@ -296,6 +296,7 @@ func runStart(deps Deps, raw json.RawMessage) (any, error) {
 		Goal     string `json:"goal"`
 		Workflow string `json:"workflow"`
 		Graph    string `json:"graph"`
+		WithTask bool   `json:"withTask"`
 	}
 	if err := json.Unmarshal(raw, &args); err != nil {
 		return nil, err
@@ -306,6 +307,7 @@ func runStart(deps Deps, raw json.RawMessage) (any, error) {
 		Goal:          args.Goal,
 		Slug:          args.Slug,
 		GraphOverride: args.Graph,
+		WithTask:      args.WithTask,
 	}.Resolve()
 	if err != nil {
 		return nil, err
@@ -324,6 +326,7 @@ func runStart(deps Deps, raw json.RawMessage) (any, error) {
 	out := describeGraphRun(deps, result.Run)
 	out["goal"] = result.Run.Goal
 	out["slug"] = resolved.Slug
+	out["chosen"] = resolved.Reason
 	return out, nil
 }
 
@@ -332,6 +335,7 @@ func autoStart(deps Deps, raw json.RawMessage) (any, error) {
 		Slug       string `json:"slug"`
 		Goal       string `json:"goal"`
 		Workflow   string `json:"workflow"`
+		WithTask   bool   `json:"withTask"`
 		TaskSource string `json:"taskSource"`
 	}
 	if err := json.Unmarshal(raw, &args); err != nil {
@@ -353,6 +357,7 @@ func autoStart(deps Deps, raw json.RawMessage) (any, error) {
 		Workflow: graphroute.Workflow(args.Workflow),
 		Goal:     args.Goal,
 		Slug:     args.Slug,
+		WithTask: args.WithTask,
 	}.Resolve()
 	if err != nil {
 		return nil, err
@@ -374,6 +379,7 @@ func autoStart(deps Deps, raw json.RawMessage) (any, error) {
 	out := describeGraphRun(deps, result.Run)
 	out["goal"] = result.Run.Goal
 	out["slug"] = resolved.Slug
+	out["chosen"] = resolved.Reason
 	out["auto"] = true
 	return out, nil
 }

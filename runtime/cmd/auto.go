@@ -43,25 +43,34 @@ func autoCommand(args []string) error {
 		return autoGateCommand(rest)
 	case "merge":
 		return autoMergeCommand(rest)
-	case "research":
-		return autoStartCommand(rest, graphroute.WorkflowResearch)
 	}
-	return autoStartCommand(args, graphroute.WorkflowDelivery)
+	// Any other subcommand is a workflow word, which autoSubcommand returned
+	// only after checking it against graphroute.
+	if workflow, ok := graphroute.ParseWorkflow(sub); ok {
+		return autoStartCommand(rest, workflow)
+	}
+	// No word: the objective is read, and delivery is the default.
+	return autoStartCommand(args, "")
 }
 
-// autoSubcommand finds init/gate/merge/research after global flags.
+// autoSubcommand finds init, gate, merge, or a workflow word after global flags.
+// A workflow word counts only when something follows it, the same rule goal
+// uses, so an objective that is just "task" is still an objective.
 func autoSubcommand(args []string) (string, []string) {
 	i := skipCommandFlags(args)
 	if i >= len(args) {
 		return "", args
 	}
 	switch args[i] {
-	case "init", "gate", "merge", "research":
+	case "init", "gate", "merge":
 		rest := append(append([]string{}, args[:i]...), args[i+1:]...)
 		return args[i], rest
-	default:
-		return "", args
 	}
+	if _, ok := graphroute.ParseWorkflow(args[i]); ok && i+1 < len(args) {
+		rest := append(append([]string{}, args[:i]...), args[i+1:]...)
+		return strings.ToLower(args[i]), rest
+	}
+	return "", args
 }
 
 // skipCommandFlags advances past --flag and --flag=value pairs and their values.
@@ -118,6 +127,7 @@ func autoStartCommand(args []string, workflow graphroute.Workflow) error {
 	slug := flags.String("slug", "", "run slug; derived from the objective when omitted")
 	graphID := flags.String("graph", "", "workflow graph id (advanced; default from command)")
 	source := flags.String("task-source", "", "where the goal text came from, when it came from a task tracker")
+	withTask := flags.Bool("with-task", false, "the objective also has a non-code deliverable, delivered after the last code task")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -147,7 +157,7 @@ func autoStartCommand(args []string, workflow graphroute.Workflow) error {
 			"  answer it and run this again; nothing starts until someone has", path)
 	}
 
-	resolved, err := resolveStart(graphroute.CmdAuto, workflow, text, *slug, *graphID)
+	resolved, err := resolveStartWith(graphroute.CmdAuto, workflow, text, *slug, *graphID, *withTask)
 	if err != nil {
 		return err
 	}
@@ -172,10 +182,15 @@ func autoStartCommand(args []string, workflow graphroute.Workflow) error {
 	fmt.Printf("  node     %s\n", current.CurrentNode)
 	fmt.Printf("  merge    %s\n", mergeLine(config))
 	fmt.Printf("  state    %s\n", result.Manifest)
-	switch workflow {
-	case graphroute.WorkflowResearch:
+	if resolved.Reason != "" {
+		fmt.Printf("  chosen   %s\n", resolved.Reason)
+	}
+	switch current.GraphID {
+	case graphroute.GraphResearcher:
 		fmt.Println("  auto research walks literature through writeup; call vibe_checkpoint after each artifact")
 		fmt.Println("  do not ask the human for next steps until status is done or a gate document leaves something open")
+	case graphroute.GraphTask:
+		fmt.Println("  auto task walks to the delivery gate on its own, then stops: only a person approves what leaves the workspace")
 	default:
 		fmt.Println("  gates skip when SPEC, PLAN, and TASKS have no open markers; vibe_checkpoint chains past them on the auto path")
 	}
