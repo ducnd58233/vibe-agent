@@ -578,7 +578,7 @@ func writeTaskList(t *testing.T, root, slug, date string, version int, tasksJSON
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := tasks.Save(root, parsed); err != nil {
+	if err := tasks.Save(t.Context(), root, parsed); err != nil {
 		t.Fatal(err)
 	}
 	if tasksMD != "" {

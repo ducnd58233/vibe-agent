@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -55,26 +56,8 @@ func (s *Store) CreditExposures(ctx context.Context, runID, evidence string, at 
 	defer func() { _ = tx.Rollback() }()
 
 	stamp := at.UTC().Format(time.RFC3339Nano)
-	rows, err := tx.QueryContext(ctx, `
-        SELECT DISTINCT e.memory_id
-        FROM memory_exposures e JOIN memories m ON m.id = e.memory_id
-        WHERE e.run_id = ? AND e.credited_at IS NULL AND e.exposed_at <= ?
-          AND m.status = ? AND m.valid_to IS NULL
-        ORDER BY e.memory_id`, runID, stamp, string(domain.StatusConfirmed))
+	credited, err := creditable(ctx, tx, runID, stamp)
 	if err != nil {
-		return nil, fmt.Errorf("read exposures: %w", err)
-	}
-	var credited []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			_ = rows.Close()
-			return nil, err
-		}
-		credited = append(credited, id)
-	}
-	_ = rows.Close()
-	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -92,4 +75,28 @@ func (s *Store) CreditExposures(ctx context.Context, runID, evidence string, at 
 		return nil, fmt.Errorf("close exposures: %w", err)
 	}
 	return credited, tx.Commit()
+}
+
+// creditable lists the memories a run's open exposures would credit at stamp:
+// shown before it, and still held.
+func creditable(ctx context.Context, tx *sql.Tx, runID, stamp string) ([]string, error) {
+	rows, err := tx.QueryContext(ctx, `
+        SELECT DISTINCT e.memory_id
+        FROM memory_exposures e JOIN memories m ON m.id = e.memory_id
+        WHERE e.run_id = ? AND e.credited_at IS NULL AND e.exposed_at <= ?
+          AND m.status = ? AND m.valid_to IS NULL
+        ORDER BY e.memory_id`, runID, stamp, string(domain.StatusConfirmed))
+	if err != nil {
+		return nil, fmt.Errorf("read exposures: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }

@@ -150,7 +150,7 @@ func TestNoSupportedAgentIsNamedOutsideTheAdapterLayer(t *testing.T) {
 		if allowed(rel) {
 			continue
 		}
-		raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		raw, err := os.ReadFile(filepath.Clean(filepath.Join(root, filepath.FromSlash(rel))))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -188,7 +188,7 @@ func TestNoCodeNamesAHostOutsideTheContractTable(t *testing.T) {
 		if allowedFiles[rel] {
 			continue
 		}
-		raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		raw, err := os.ReadFile(filepath.Clean(filepath.Join(root, filepath.FromSlash(rel))))
 		if err != nil {
 			t.Fatal(err)
 		}

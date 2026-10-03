@@ -150,7 +150,7 @@ func findAll(root string) ([]string, error) {
 // read or parse (a pre-schemaVersion export, say) is skipped and left in place:
 // one stale file from an unrelated slug must not hide every other slug's task
 // list from the tasks verifier and doctor.
-func migrateTaskLists(_ context.Context, root string) (int, error) {
+func migrateTaskLists(ctx context.Context, root string) (int, error) {
 	files, err := taskListFiles(root)
 	if err != nil {
 		return 0, err
@@ -167,7 +167,7 @@ func migrateTaskLists(_ context.Context, root string) (int, error) {
 			fmt.Fprintf(os.Stderr, "tasks: skipping %s, could not parse: %v\n", path, err)
 			continue
 		}
-		if err := tasks.Save(root, file); err != nil {
+		if err := tasks.Save(ctx, root, file); err != nil {
 			return moved, fmt.Errorf("store %s: %w", path, err)
 		}
 		if err := removeMoved(path); err != nil {

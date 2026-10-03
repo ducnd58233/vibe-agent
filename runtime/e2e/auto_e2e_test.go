@@ -194,7 +194,7 @@ func settledDocs(t *testing.T, root, slug string, done bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := tasks.Save(root, parsed); err != nil {
+	if err := tasks.Save(t.Context(), root, parsed); err != nil {
 		t.Fatal(err)
 	}
 }
