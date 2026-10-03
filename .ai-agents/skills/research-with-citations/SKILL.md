@@ -35,6 +35,7 @@ disable-model-invocation: true
 No-fabrication rules:
 - If a claim cannot be traced to a reachable URL or local file, label it `UNVERIFIED`.
 - Do not synthesize numeric facts (prices, percentages, dates, statistics) from memory.
+- A figure you compute is computed with `vibe-agent calc` and logged in a `calc` block; a figure you read is cited with its unit, currency, and as-of date. Rules: [`quantitative-accuracy`](../quantitative-accuracy/SKILL.md).
 - When reputable sources conflict, present both and identify disagreement.
 
 Evidence priority:
@@ -51,6 +52,7 @@ Evidence priority:
 <routing>
 
 - Pair with [`evidence-based-analysis`](../evidence-based-analysis/SKILL.md) to convert findings into decisions.
+- Use [`quantitative-accuracy`](../quantitative-accuracy/SKILL.md) whenever the digest computes, converts, or compares a figure.
 - Use [`context-engineering`](../context-engineering/SKILL.md) to keep only relevant evidence in context.
 - Use [`source-driven-development`](../source-driven-development/SKILL.md) for framework API decisions.
 

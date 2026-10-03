@@ -139,4 +139,5 @@ After structural work:
 - [`api-and-interface-design`](../api-and-interface-design/SKILL.md) - public contracts and evolution.
 - [`security-and-hardening`](../security-and-hardening/SKILL.md), [`references/security-checklist.md`](../../references/security-checklist.md).
 - [`test-driven-development`](../test-driven-development/SKILL.md) - fixtures for services with fake repos.
+- [`references/resilience-patterns.md`](../../references/resilience-patterns.md) - timeouts, retries, backoff, idempotency, and error budgets for every outbound call.
 </references>

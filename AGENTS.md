@@ -66,6 +66,11 @@ path. When a rule already has a home, link to it instead of restating it.
 - **Grounded claims (no fabrication):** never describe a file, path, command result, or source you
   have not actually opened, listed, or run. Report `ACCESS-FAILED: <path>` for inaccessible inputs
   instead of inferring. Harness-agnostic, and applies to subagents as much as to primary agents.
+- **Numbers (MUST):** compute every figure you did not copy from a source with `vibe-agent calc`,
+  never in your head. Give each figure its unit, currency, as-of date, and source. Log each
+  calculation in a fenced `calc` block and check it with `vibe-agent docs check-calcs`. A
+  read-only agent with no shell lists the calculations for the main session instead. Rules and
+  worked examples: [`quantitative-accuracy`](.ai-agents/skills/quantitative-accuracy/SKILL.md).
 - **Research integrity (MUST):** in any experiment, benchmark, model evaluation, or research that
   reports a number, never tune on, reuse, or peek at the held-out split; never edit an evaluator,
   grader, threshold, label, or test to make a result pass; never report a number you did not trace
@@ -300,6 +305,9 @@ Follow links from those files only as the task requires.
   5. `/ship` returned **GO**.
   6. The diff touches nothing on the danger list: migrations, data destruction, production writes,
      credential changes, history rewrites, infrastructure destruction, or outward publication.
+     On Claude Code the list also refuses, on an auto run, an MCP tool call that sends, posts,
+     pays, shares, or schedules (`outward-action` in `danger-default.yaml`), except at the `deliver`
+     node after a person recorded `delivery_approved`. Other hosts do not yet refuse it; the gap is in [`host-hook-contracts.md`](.ai-agents/references/host-hook-contracts.md).
 
   This loosens a boundary this file used to state without exception. It is written here rather than
   left to a mode flag because a reader of this rule has to be able to see what changed and when it

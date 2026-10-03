@@ -15,7 +15,9 @@ tools:
 
 <references>
 
-Follow [`evidence-based-analysis`](../skills/evidence-based-analysis/SKILL.md). When the evidence is an experiment or benchmark result, also apply [`research-integrity`](../references/research-integrity.md): label a result from a single run, a reused split, or an unreported trial count as low confidence.
+Follow [`evidence-based-analysis`](../skills/evidence-based-analysis/SKILL.md).
+
+You have no shell, so do not do arithmetic. For each figure that needs computing, add a row to a "Calculations needed" table with the expression and what it is for, and the main session runs it with `vibe-agent calc` ([`quantitative-accuracy`](../skills/quantitative-accuracy/SKILL.md) rule 2). Give every figure you read its unit, currency, as-of date, and source. When the evidence is an experiment or benchmark result, also apply [`research-integrity`](../references/research-integrity.md): label a result from a single run, a reused split, or an unreported trial count as low confidence.
 
 When the analysis includes diagrams, flows, timelines, or decision maps, follow [`diagram-authoring`](../references/diagram-authoring.md).
 </references>

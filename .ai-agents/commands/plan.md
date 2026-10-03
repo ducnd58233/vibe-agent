@@ -23,6 +23,8 @@ The status vocabulary and the rule that TASKS.md and `task_lists` are written to
 status-less task cannot be reported on, a description-less task gets reinterpreted by whoever picks
 it up, and a criteria-less task is finished whenever somebody says so.
 
+Every figure in the plan and the task list is computed with `vibe-agent calc` and logged in a fenced `calc` block, and `checkpoint` refuses to leave the node while a logged line does not recompute. Give each figure its unit, currency, as-of date, and source. Rules: [`quantitative-accuracy`](../skills/quantitative-accuracy/SKILL.md).
+
 Any task touching auth, user data, logging, error handling, or a client surface carries a **redaction acceptance criterion** stated in observable terms ("the audit log records the user ID and not the token"), so `/build` and `/test` have something to verify rather than a reminder to be careful. See [`secure-by-default`](../skills/secure-by-default/SKILL.md).
 
 Write outputs to `docs/<date>/<slug>/<version>/PLAN-<date>.md` and `docs/<date>/<slug>/<version>/TASKS-<date>.md` at the workspace root (the directory that contains `.vibe-agent/`; the repo root when this toolkit is used standalone), reusing the same `<slug>` as the spec for this work. Persist the same task list into `task_lists` in `.agent-state/memory.db` (via `vibe-agent` / the tasks Save path), not as a `tasks-*.json` file under `docs/`. See the "Generated docs location" rule in [`AGENTS.md`](../../AGENTS.md). Present for human review before implementation.

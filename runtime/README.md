@@ -185,6 +185,31 @@ The built-in scanner runs without external tools and reports files, lines, langu
 
 The score is weighted finding density per KLOC, capped at 100. It is a review signal, not proof that code is correct. The command does not spawn external linters from user-controlled paths; teams that want Semgrep, ast-grep, or benchmark gates should add them as repo-owned verifier commands.
 
+## Calculate exactly
+
+`vibe-agent calc "<expression>"` evaluates arithmetic with exact rational numbers, so a figure in an answer or a doc comes from a program a person can rerun, not from a model's mental arithmetic. `0.1 + 0.2` is `0.3`, with no binary-float drift. Only a root or a fractional power is inexact, and the output says so.
+
+```sh
+vibe-agent calc "(1250 - 1000) / 1000 * 100"          # 25
+vibe-agent calc "1000 * (1 + 5%)^10"                  # compound growth
+vibe-agent calc --round 2 --mode half_up "1000 / 7"   # 142.86, rounded as asked
+vibe-agent calc --json "sqrt(2)"                      # exact: false
+vibe-agent calc -- "-2^2"                             # a leading minus needs --
+```
+
+The grammar has one reading per input. Operators are `+ - * / ^` and a postfix `%` (`5%` is `0.05`; there is no modulo operator, use `mod(a, b)`). Functions are `abs min max sum avg round floor ceil trunc mod sqrt date todate`. `1,000` is refused as ambiguous, there are no units or named constants, and rounding is explicit: `half_even` by default, with `half_up`, `up`, `down`, `floor`, and `ceil`. Dates are days since 1970-01-01, so `todate(date("2026-10-03") + 7)` is `2026-10-10`. Every size is bounded (expression length, digits, nesting, exponent, bits of any intermediate value), and an over-limit request fails with the limit named.
+
+A doc logs its calculations in a fenced block and the runtime recomputes them:
+
+````markdown
+```calc
+(250 - 200) / 250 * 100 => 20
+1000 / 7 => ~142.86
+```
+````
+
+`=> X` means exactly `X`; `=> ~X` means rounded to the decimals `X` shows (half-even, or add `[half_up]`). Check a file with `vibe-agent docs check-calcs <file>...`. `checkpoint` runs the same check at every node that writes a document (the research digest, the spec, the plan and task list, the hypothesis, the findings, the write-up, and a learner's study record) and refuses to leave while a logged figure is wrong, and `doctor` recomputes every calc block in the toolkit's own markdown.
+
 ## Third-party Agent Skills
 
 `vibe-agent skills add` forwards to `npx skills add` with Claude Code, Codex, Cursor, and opencode as the default agents. `vibe-agent skills convert-report` prints host-only `SKILL.md` frontmatter without rewriting files. Neither command writes MCP configs or host hooks. Recipe and path notes: [AUTHORING.md](../.ai-agents/AUTHORING.md#third-party-agent-skills-not-this-toolkit).

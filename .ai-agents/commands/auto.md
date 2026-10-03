@@ -22,6 +22,7 @@ not need a node for. Everything else, including `remember` and `improve`, is on 
 | After `slop` | `review` | `expectation_review`, then `review` |
 | After `review` | `open_pr` | `review_ok`, then the experiment loop (`experiment_run`, `experiment_monitor`, `results_eval`), then `open_pr` |
 | After `ship` | `approve_merge` | `release_review`, then `approve_merge` |
+| After `improve`, when `task_required` is set | `done` | `execute`, `task_check`, `ac_review`, then `approve_delivery`, which is a person on both paths ([`task.md`](task.md)) |
 | After the merge | `remember` | `merge_ci` (watch the default branch), then `remember` |
 
 The rows are the graph's `when: auto` / `when: "!auto"` edges and `skipWhen` gates; if they
@@ -48,12 +49,22 @@ vibe-agent doctor          # preflight; stop here if it reports problems
 vibe-agent auto init       # writes the opt-in, once per workspace
 vibe-agent auto "<objective from the user>"
 vibe-agent auto research "<research topic from the user>"
+vibe-agent auto experiment "<experiment objective from the user>"
+vibe-agent auto task "<non-code task from the user>"
 vibe-agent auto gate --slug <slug from start output>
 ```
 
-Host agents pass the user's text as plain arguments. Slug and graph are derived;
-do not ask the user for `--goal`, `--graph`, or `--slug` unless resuming an
-existing run.
+Host agents pass the user's text as plain arguments, including a first word that names the kind of
+work (`delivery`, `research`, `experiment`, `task`). Slug and graph are derived; do not ask the user
+for `--goal`, `--graph`, or `--slug` unless resuming an existing run. With no first word the runtime
+reads the objective and prints the words that decided the graph; follow "Choosing the graph" in
+[`goal.md`](goal.md). On `/auto` the runtime acts on a guess only when the signal is strong, and
+otherwise asks for the word, because nobody is at intake to correct it.
+
+`/auto` has two limits the other graphs do not. `vibe-agent auto tutor` is refused, because a tutor
+needs a learner present, so use `/goal tutor`. And `auto task` stops at `approve_delivery` every time:
+it reaches the work on its own, and a person opens the one gate that lets anything leave the
+workspace.
 
 If the binary is not on `PATH`, **stop. Run no phase.** Report:
 
@@ -139,7 +150,8 @@ below already holds. Any one of them missing means it stops and a person decides
 **The danger list stops auto mode every time**, whatever the other five say: schema and data
 migrations, data destruction, production writes, credential changes, history rewrites,
 infrastructure destruction, and outward publication. Those need a person, and the gate refuses with
-exit 2 rather than asking.
+exit 2 rather than asking. On Claude Code that includes an MCP tool call that sends, posts, pays,
+shares, or schedules (the `outward-action` category, which applies to an auto run only).
 
 **Ambiguity is the other stop.** A goal that cannot be specified without inventing an acceptance
 criterion is ambiguous, and auto mode stops at `approve_spec` and asks. That is a test on the spec,

@@ -18,6 +18,8 @@ tools:
 
 Follow [`research-with-citations`](../skills/research-with-citations/SKILL.md).
 
+You have no shell, so do not do arithmetic. For each figure that needs computing, add a row to a "Calculations needed" table with the expression and what it is for, and the main session runs it with `vibe-agent calc` ([`quantitative-accuracy`](../skills/quantitative-accuracy/SKILL.md) rule 2). Give every figure you read its unit, currency, as-of date, and source.
+
 When the digest includes diagrams, flows, timelines, or evidence maps, follow [`diagram-authoring`](../references/diagram-authoring.md).
 </references>
 

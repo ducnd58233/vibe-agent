@@ -160,6 +160,11 @@ func Apply(ctx context.Context, req Request) (*Result, error) {
 		if err := checkProgress(req.WorkspaceRoot, run); err != nil {
 			return nil, err
 		}
+		// Calculations first: it is local and deterministic, so a wrong figure
+		// is reported before the network is asked about any URL.
+		if err := checkCalcs(req.WorkspaceRoot, run); err != nil {
+			return nil, err
+		}
 		if err := checkCitations(ctx, req.WorkspaceRoot, run, req.Citations); err != nil {
 			return nil, err
 		}

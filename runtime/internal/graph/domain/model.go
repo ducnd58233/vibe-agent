@@ -63,12 +63,20 @@ const (
 	VerifierReview VerifierKind = "review"
 	// VerifierExperiment reads experiment/STATUS.md for researcher-delivery.
 	VerifierExperiment VerifierKind = "experiment"
+	// VerifierDelivery reads delivery/LEDGER.md for task-delivery and checks it
+	// against the outward actions the approved SPEC listed.
+	VerifierDelivery VerifierKind = "delivery"
+	// VerifierTaskReview reads task/REVIEW.md for a non-code deliverable.
+	VerifierTaskReview VerifierKind = "taskreview"
+	// VerifierStudy reads a learner's study record and reports whether any topic
+	// is still not learned.
+	VerifierStudy VerifierKind = "study"
 )
 
 func (k VerifierKind) valid() bool {
 	switch k {
 	case VerifierCommand, VerifierFiles, VerifierGit, VerifierScreen, VerifierTasks,
-		VerifierResults, VerifierExpectation, VerifierRelease, VerifierBugHunt, VerifierReview, VerifierExperiment:
+		VerifierResults, VerifierExpectation, VerifierRelease, VerifierBugHunt, VerifierReview, VerifierExperiment, VerifierDelivery, VerifierTaskReview, VerifierStudy:
 		return true
 	}
 	return false

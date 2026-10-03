@@ -174,6 +174,34 @@ spec:
         still misses SPEC intent reopens plan. Missing or fail rows use
         file_assert only; no judge LLM as evidence.
 
+    task_review_ok:
+      verifier: taskreview
+      description: >-
+        Reads .agent-state/runs/<date>/<slug>/<version>/task/REVIEW.md for a
+        non-code deliverable (/task, or the non-code segment of /goal and
+        /auto). Passes only when status is pass and every acceptance row is
+        pass. file_assert only. A separate file from expectation_ok on purpose,
+        so a code review and a task review on one run cannot overwrite each other.
+
+    topics_remaining:
+      verifier: study
+      description: >-
+        Reads the learner's STUDY-<date>.md for a /tutor run. Passes while any
+        topic is not yet learned, the same polarity as tasks_remaining, so a
+        missing record or an unreadable table keeps the study going and never
+        ends it early. Fails, and so ends the study, only when there is at
+        least one topic and every topic says learned.
+
+    delivery_ok:
+      verifier: delivery
+      description: >-
+        Reads .agent-state/runs/<date>/<slug>/<version>/delivery/LEDGER.md after
+        a /task run performed its outward actions. Passes only when status is
+        pass, every row is pass, and the ledger has a row for every outward
+        action (OA id) the approved SPEC listed. A failure routes back to
+        approve_delivery so a person decides, never straight back to deliver.
+        file_assert only.
+
     bug_hunt_ok:
       verifier: bughunt
       description: >-

@@ -528,8 +528,10 @@ func TestRelevantToolsHintsResearcherExperimentNodes(t *testing.T) {
 func TestToolsListKeepsFetchAtResearchNode(t *testing.T) {
 	deps := newDeps(t)
 	server := NewServer("test", deps)
+	// The objective names research, which would now route to the researcher
+	// graph. This test is about the delivery graph's research node.
 	exchange(t, server, call("vibe_run_start", map[string]any{
-		"slug": "hint-fetch", "goal": "research tools stay listed",
+		"slug": "hint-fetch", "goal": "research tools stay listed", "workflow": "delivery",
 	}))
 	// Move to research: set research_required and advance past intake.
 	root := deps.WorkspaceRoot

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"gopkg.in/yaml.v3"
 )
 
@@ -53,9 +54,21 @@ type dangerCategory struct {
 	// Commands match a shell segment. Paths match a file a tool is writing.
 	Commands []string `yaml:"commands"`
 	Paths    []string `yaml:"paths"`
+	// Tools match the tool's own name, for a call that carries structured
+	// arguments instead of a shell command: an MCP tool that sends a message or
+	// moves money has no command line for Commands to read.
+	Tools []string `yaml:"tools"`
+	// AutoOnly limits the Tools patterns to a workspace with a running auto
+	// run that has no person's approval for the call. An interactive session
+	// has a person who can answer the host's own prompt for that call; an
+	// unattended one has nobody, so the gate refuses, unless a person recorded
+	// delivery_approved and the run is at its deliver node. It has no effect on
+	// Commands or Paths, which refuse everywhere.
+	AutoOnly bool `yaml:"autoOnly"`
 
 	commands []*regexp.Regexp
 	paths    []*regexp.Regexp
+	tools    []*regexp.Regexp
 }
 
 // builtInDanger parses the embedded plan once.
@@ -109,7 +122,7 @@ func parseDangerPlan(raw []byte) ([]dangerCategory, error) {
 			return nil, fmt.Errorf("danger plan: category %q is declared twice", category.ID)
 		case category.Reason == "":
 			return nil, fmt.Errorf("danger plan: category %q has no reason; a refusal has to say why", category.ID)
-		case len(category.Commands) == 0 && len(category.Paths) == 0:
+		case len(category.Commands) == 0 && len(category.Paths) == 0 && len(category.Tools) == 0:
 			return nil, fmt.Errorf("danger plan: category %q matches nothing", category.ID)
 		}
 		seen[category.ID] = true
@@ -127,6 +140,13 @@ func parseDangerPlan(raw []byte) ([]dangerCategory, error) {
 				return nil, fmt.Errorf("danger plan: category %q path pattern %q: %w", category.ID, pattern, err)
 			}
 			category.paths = append(category.paths, compiled)
+		}
+		for _, pattern := range category.Tools {
+			compiled, err := regexp.Compile(pattern)
+			if err != nil {
+				return nil, fmt.Errorf("danger plan: category %q tool pattern %q: %w", category.ID, pattern, err)
+			}
+			category.tools = append(category.tools, compiled)
 		}
 		out = append(out, category)
 	}
@@ -172,7 +192,8 @@ func dangerVerdict(req Request, body payload) *BlockError {
 	// paying for the whole compilation and then matching it against nothing.
 	segments := shellSegments(body.shellCommand())
 	target := body.writeTarget()
-	if len(segments) == 0 && target == "" {
+	tool := strings.TrimSpace(body.ToolName)
+	if len(segments) == 0 && target == "" && tool == "" {
 		return nil
 	}
 
@@ -181,7 +202,25 @@ func dangerVerdict(req Request, body payload) *BlockError {
 		return nil
 	}
 
+	// Looked up at most once, and only when a tool pattern actually matches:
+	// reading run manifests is I/O the shell and path rules never needed.
+	autoKnown, autoRunning := false, false
+
 	for _, category := range plan {
+		for _, pattern := range category.tools {
+			if tool == "" || !pattern.MatchString(tool) {
+				continue
+			}
+			if category.AutoOnly {
+				if !autoKnown {
+					autoRunning, autoKnown = autoRunBlocksOutward(req.WorkspaceRoot), true
+				}
+				if !autoRunning {
+					continue
+				}
+			}
+			return &BlockError{Reason: dangerReason(category, "tool", tool)}
+		}
 		for _, pattern := range category.commands {
 			for _, segment := range segments {
 				if strings.TrimSpace(segment) != "" && pattern.MatchString(segment) {
@@ -199,6 +238,36 @@ func dangerVerdict(req Request, body payload) *BlockError {
 		}
 	}
 	return nil
+}
+
+// autoRunBlocksOutward reports whether an unfinished auto run is in a state that
+// forbids an outward action. `vibe-agent auto` sets the auto flag, and
+// `vibe-agent run flag` changes a flag only while the run sits at a human gate,
+// so an agent in the middle of a node cannot clear it to make a refused call
+// pass.
+//
+// An auto run stops blocking only in one state: it sits at the deliver node and
+// a person has recorded delivery_approved there as a human_event. That is the
+// whole point of the approve_delivery gate. Without this exception the gate
+// would refuse the very action a person had just approved, and a delivery could
+// never run on an auto run at all. The check is on the node and on the source of
+// the evidence, so a model cannot unlock it by recording an approval itself:
+// there is no way to record human_event on a person's behalf.
+//
+// With several active auto runs the call cannot be tied to one of them, so the
+// answer is no unless every one of them is in that state.
+func autoRunBlocksOutward(workspaceRoot string) bool {
+	for _, run := range activeRuns(workspaceRoot) {
+		if !run.Flags["auto"] {
+			continue
+		}
+		approved, ok := run.Checks["delivery_approved"]
+		if run.CurrentNode == "deliver" && ok && approved.Passed && approved.Source == state.SourceHumanEvent {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 func dangerReason(category dangerCategory, kind, subject string) string {

@@ -23,10 +23,13 @@ var version = "dev"
 const usage = `vibe-agent - outer-loop control plane
 
 Usage:
-  vibe-agent goal "<objective>"
+  vibe-agent goal [delivery|research|experiment|task|tutor] [--with-task] "<objective>"
   vibe-agent research "<topic>"
-  vibe-agent auto "<objective>"
-  vibe-agent auto research "<topic>"
+  vibe-agent experiment "<experiment objective>"
+  vibe-agent task "<non-code task>"
+  vibe-agent tutor "<what to learn>"
+  vibe-agent calc [--round <n> [--mode <mode>]] [--digits <n>] [--json] "<expression>"
+  vibe-agent auto [delivery|research|experiment|task] [--with-task] "<objective>"
   vibe-agent run start "<objective>" [--slug <slug>]
   vibe-agent run status --slug <slug> [--json]
   vibe-agent run list [--status <status>]
@@ -122,9 +125,14 @@ A run stops on whichever of three budgets it passes first: transitions,
 host-reported tokens, or wallclock. Zero is no limit, and "run status" names
 the one that ended it.
 
-"auto" starts a run on the auto path from one objective passed as plain text.
-The slug and graph are derived from the command; host agents supply the text,
-not the user. Use "auto research" for the researcher-delivery graph.
+"goal" and "auto" take one objective as plain text. The slug is derived, and the
+graph is chosen from the first word when it names the kind of work (delivery,
+research, experiment, task, tutor), or else from the objective itself. The
+words that decided it are printed on the "chosen" line, and an objective that
+could be two kinds is a question, not a guess. "experiment" starts the same
+researcher graph as "research". "--with-task" marks a code objective as also
+carrying a non-code deliverable. "auto tutor" is refused: a tutor needs a
+learner present. Host agents supply the text, not the user.
 
 "auto gate" answers the spec, plan, applicability, or design gate from what
 the document says. On the auto path, checkpoint also tries this after artifact
@@ -238,6 +246,14 @@ func run(args []string) error {
 		return goalCommand(args[1:])
 	case "research":
 		return researchCommand(args[1:])
+	case "experiment":
+		return experimentCommand(args[1:])
+	case "task":
+		return taskCommand(args[1:])
+	case "tutor":
+		return tutorCommand(args[1:])
+	case "calc":
+		return calcCommand(args[1:])
 	case "guards":
 		return guardsCommand(args[1:])
 	case "hook":

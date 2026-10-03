@@ -431,7 +431,7 @@ function Install-WorkspaceHookConfigs {
             hooks = [ordered]@{
                 PreToolUse = @(
                     [ordered]@{ matcher = 'WebFetch'; hooks = @((CommandHook (Join-PythonHookCommand 'sdd-cache-pre.py'))) },
-                    [ordered]@{ matcher = 'Bash|Edit|Write|NotebookEdit'; hooks = @((CommandHook (Join-HookCommand 'pre-tool-use' 'claude'))) }
+                    [ordered]@{ matcher = 'Bash|Edit|Write|NotebookEdit|mcp__.*'; hooks = @((CommandHook (Join-HookCommand 'pre-tool-use' 'claude'))) }
                 )
                 PostToolUseFailure = @(
                     [ordered]@{ matcher = 'Bash|Edit|Write|NotebookEdit'; hooks = @((CommandHook (Join-HookCommand 'post-tool-use-failure' 'claude'))) }

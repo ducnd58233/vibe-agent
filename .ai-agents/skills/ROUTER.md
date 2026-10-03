@@ -23,7 +23,10 @@ Lookup table for skills under this folder. **After you create, rename, or delete
 | UI patterns, a11y, client/server boundaries | [`frontend-ui-engineering`](frontend-ui-engineering) | Components, layouts, UX |
 | Registry-first UI generation, anti-slop gates, render evidence | [`ui-design-fidelity`](ui-design-fidelity) | `/design`; UI looks generic or templated; design-system drift audit; UI change needs verifiable evidence |
 | Product design systems and design-to-code | [`product-design-systems`](product-design-systems) | Figma/Canva/MCP handoff, tokens, visual QA, reusable UI components |
+| Exact calculations, units, rounding, like-with-like comparison, logged and rerunnable | [`quantitative-accuracy`](quantitative-accuracy) | Any computed, converted, compared, or ranked figure; finance, science, planning, docs |
+| Tutoring one learner: questions before answers, retrieval, spacing, hint ladder, checked answer keys | [`self-tutoring`](self-tutoring) | `/tutor`; a person learning a subject themselves |
 | Citation-first topic investigation and digest | [`research-with-citations`](research-with-citations) | Facts must be source-backed; web research needed; Applicability+Mermaid when feeding experiments |
+| Non-code task delivery: acceptance rows, verification recipes per task class, reliability measurement | [`general-task-delivery`](general-task-delivery) | `/task`; the deliverable is a report, analysis, document, data job, ops step, or message to other people |
 | Domain-agnostic research loop (lit → experiment STATUS → findings) | [`researcher-harness`](researcher-harness) | `researcher-delivery` graph; host/CI compute; not product `/goal` ship |
 | AI/ML model engineering across CV/NLP/speech/multimodal | [`ai-model-engineering`](ai-model-engineering) | Model training, fine-tuning, inference, evals, model/data cards, monitoring, AI product/model quality |
 | AI/ML research methodology and paper-to-experiment handoff | [`ai-research-methodology`](ai-research-methodology) | Literature review, model/method comparison, benchmark analysis, reproduction plans, ablations |

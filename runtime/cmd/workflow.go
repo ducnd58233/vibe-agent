@@ -22,6 +22,10 @@ func goalFromFlags(flags *flag.FlagSet, goalFlag *string) (string, error) {
 }
 
 func resolveStart(cmd graphroute.Command, workflow graphroute.Workflow, goal, slug, graphOverride string) (graphroute.Resolved, error) {
+	return resolveStartWith(cmd, workflow, goal, slug, graphOverride, false)
+}
+
+func resolveStartWith(cmd graphroute.Command, workflow graphroute.Workflow, goal, slug, graphOverride string, withTask bool) (graphroute.Resolved, error) {
 	return graphroute.Params{
 		Command:       cmd,
 		Workflow:      workflow,
@@ -29,14 +33,45 @@ func resolveStart(cmd graphroute.Command, workflow graphroute.Workflow, goal, sl
 		Slug:          slug,
 		GraphOverride: graphOverride,
 		SlugWords:     slugWords,
+		WithTask:      withTask,
 	}.Resolve()
+}
+
+// leadingWorkflow reads an explicit workflow word at the front of the plain-text
+// arguments: "research Compare chunking" names the researcher graph and leaves
+// "Compare chunking" as the objective. The word counts only when something
+// follows it, so an objective that is just "task" is still an objective.
+func leadingWorkflow(rest []string) (graphroute.Workflow, []string) {
+	if len(rest) < 2 {
+		return "", rest
+	}
+	if wf, ok := graphroute.ParseWorkflow(rest[0]); ok {
+		return wf, rest[1:]
+	}
+	return "", rest
+}
+
+// objectiveFromFlags is goalFromFlags plus the leading workflow word. An
+// objective passed with --goal is taken whole, so it never loses a first word.
+func objectiveFromFlags(flags *flag.FlagSet, goalFlag *string) (string, graphroute.Workflow, error) {
+	if trimmed := strings.TrimSpace(*goalFlag); trimmed != "" {
+		return trimmed, "", nil
+	}
+	wf, rest := leadingWorkflow(flags.Args())
+	if len(rest) == 0 {
+		return "", "", fmt.Errorf("need a one-line objective as the command text")
+	}
+	return strings.TrimSpace(strings.Join(rest, " ")), wf, nil
 }
 
 // printStartedRun writes the standard lines after runstart.Start succeeds.
 // eventsPath is printed when non-empty (run start only).
-func printStartedRun(result runstart.Result, slug, eventsPath string) {
+func printStartedRun(result runstart.Result, slug, reason, eventsPath string) {
 	fmt.Printf("started %s\n", result.Run.RunID)
 	fmt.Printf("  graph    %s\n", result.Run.GraphID)
+	if reason != "" {
+		fmt.Printf("  chosen   %s\n", reason)
+	}
 	fmt.Printf("  slug     %s\n", slug)
 	fmt.Printf("  node     %s\n", result.Run.CurrentNode)
 	fmt.Printf("  state    %s\n", result.Manifest)

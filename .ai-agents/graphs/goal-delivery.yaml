@@ -223,6 +223,57 @@ spec:
         visit to the same node.
       source: flag
 
+    # The non-code segment. An objective can be a code change and a deliverable
+    # for people at once: a feature and the announcement of it, a migration and
+    # the report on it. The code is delivered first, one task per branch and PR,
+    # and the non-code part runs once after the last code task, with the same
+    # rules as the task-delivery graph: checkable acceptance rows, and a person
+    # approving the exact delivery before anything leaves the workspace.
+    - name: task_required
+      description: >-
+        The objective also has a non-code deliverable. Set at start when the
+        objective said both (or `--with-task` was passed), and at intake with
+        `vibe-agent run flag --set task_required` otherwise. Read once, after
+        the last code task, to run the segment from execute to delivery_check.
+      source: flag
+
+    - name: task_check_ok
+      description: >-
+        The command the workspace declares as task_check exited 0, or the
+        workspace declares none. A skip is recorded as skipped, never as passed.
+        acceptsSkipped for the reason lint_ok has it: every workspace shares this
+        graph and each keeps its own vibe-checks.yaml.
+      source: check
+      reads: task_check
+      acceptsSkipped: true
+
+    - name: task_review_ok
+      description: >-
+        task/REVIEW.md has status pass and every acceptance row is pass, or the
+        workspace declares no task_review_ok check. Same skip rule as
+        task_check_ok. A separate file from expectation/REVIEW.md, which the
+        auto path writes for the code under review.
+      source: check
+      reads: task_review_ok
+      acceptsSkipped: true
+
+    - name: delivery_approved
+      description: >-
+        Human accepted the deliverable and the exact outward actions in the
+        SPEC. Nothing is sent, posted, paid, or shared before this is true, and
+        no auto mode answers it: there is no skipWhen on approve_delivery.
+      source: check
+      reads: delivery_approved
+
+    - name: delivery_ok
+      description: >-
+        delivery/LEDGER.md has status pass, every row pass, and a row for every
+        outward action the SPEC listed, or the workspace declares no delivery
+        check. Same skip rule as task_check_ok.
+      source: check
+      reads: delivery_ok
+      acceptsSkipped: true
+
   nodes:
     intake:
       type: human_gate
@@ -473,6 +524,59 @@ spec:
       check: tasks_remaining
       required: true
 
+    # The non-code segment. Node names match task-delivery.yaml on purpose, so
+    # one set of instructions in commands/task.md covers both graphs.
+    execute:
+      type: agent
+      description: >-
+        Do the non-code work the SPEC describes and write the deliverable where
+        it says. Keep every outward action as a draft. Nothing leaves the
+        workspace at this node.
+      command: task
+
+    task_check:
+      type: verifier
+      description: >-
+        Run the command the workspace declares as task_check. Skipped when the
+        workspace declares none.
+      verifier: command
+      check: task_check
+
+    ac_review:
+      type: verifier
+      description: >-
+        Assert task/REVIEW.md: one row per SPEC acceptance row, each with an
+        evidence path and a pass or fail. file_assert only.
+      verifier: taskreview
+      check: task_review_ok
+
+    approve_delivery:
+      type: human_gate
+      description: >-
+        Delivery checkpoint, and the last point at which a person can stop an
+        outward action. Never skipped, on /goal or on /auto.
+      check: delivery_approved
+      prompt: >-
+        Read the deliverable and the outward actions listed in the SPEC. Approve
+        only if each action is correct as written: recipient, content, and
+        amount. Nothing has been sent yet.
+
+    deliver:
+      type: agent
+      description: >-
+        Perform exactly the outward actions the SPEC lists and the person
+        approved, one at a time, then write the delivery ledger.
+      command: task
+
+    delivery_check:
+      type: verifier
+      description: >-
+        Assert delivery/LEDGER.md. A failed or missing row goes back to
+        approve_delivery, never straight back to deliver, because repeating a
+        send can send it twice.
+      verifier: delivery
+      check: delivery_ok
+
     done:
       type: terminal
       description: Every in-scope task delivered, verified, and merged with approval.
@@ -517,6 +621,10 @@ spec:
         - bug_hunt_ok
         - release_ok
         - review_ok
+        - task_check
+        - task_review_ok
+        - delivery_approved
+        - delivery_ok
     - from: spec
       to: intake
       when: human_redirect
@@ -626,6 +734,18 @@ spec:
       when: human_redirect
       resets: *redirect_resets
     - from: improve
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: execute
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: deliver
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: delivery_check
       to: intake
       when: human_redirect
       resets: *redirect_resets
@@ -940,5 +1060,46 @@ spec:
       to: improve
       when: "!tasks_remaining"
 
+    # After the last code task. The non-code segment runs once, and only when the
+    # objective asked for it. Anything else ends here, exactly as before.
     - from: improve
+      to: execute
+      when: task_required
+    - from: improve
+      to: done
+
+    - from: execute
+      to: task_check
+
+    # The failure route is tried first, so approve_delivery is only reached with
+    # both checks passed or skipped.
+    - from: task_check
+      to: execute
+      when: "!task_check_ok"
+    - from: task_check
+      to: ac_review
+
+    - from: ac_review
+      to: execute
+      when: "!task_review_ok"
+    - from: ac_review
+      to: approve_delivery
+
+    - from: approve_delivery
+      to: execute
+      when: "!delivery_approved"
+    - from: approve_delivery
+      to: deliver
+      when: delivery_approved
+
+    - from: deliver
+      to: delivery_check
+
+    # A failed delivery goes to a person, not back to deliver. The reset reopens
+    # the gate so the person has to answer it again.
+    - from: delivery_check
+      to: approve_delivery
+      when: "!delivery_ok"
+      resets: [delivery_approved]
+    - from: delivery_check
       to: done
