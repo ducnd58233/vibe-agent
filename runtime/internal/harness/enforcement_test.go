@@ -89,7 +89,7 @@ func hookSpecific(t *testing.T, output string) map[string]any {
 
 func TestStopBlocksWhenARunIsStillRunning(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: workspaceWithRun(t),
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: workspaceWithRun(t),
 	})
 	body := decode(t, output)
 	if body["decision"] != "block" {
@@ -103,7 +103,7 @@ func TestStopBlocksWhenARunIsStillRunning(t *testing.T) {
 // The one rule that keeps a blocking Stop hook from becoming an infinite loop.
 func TestStopDoesNotBlockWhenItIsAlreadyBlocking(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: workspaceWithRun(t),
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: workspaceWithRun(t),
 		Stdin: strings.NewReader(`{"stop_hook_active":true}`),
 	})
 	if decode(t, output)["decision"] == "block" {
@@ -114,7 +114,7 @@ func TestStopDoesNotBlockWhenItIsAlreadyBlocking(t *testing.T) {
 // A human gate cannot be satisfied by the model, so blocking there would spin.
 func TestStopDoesNotBlockARunAwaitingAHuman(t *testing.T) {
 	root := workspaceWithRun(t, func(run *state.Run) { run.Status = state.StatusAwaitingHuman })
-	output := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	output := invoke(t, Request{Event: EventStop, Client: DefaultClient, WorkspaceRoot: root})
 	if decode(t, output)["decision"] == "block" {
 		t.Errorf("stop blocked a run that is waiting on a person: %s", output)
 	}
@@ -128,19 +128,19 @@ func TestStopDoesNotBlockAnExhaustedRun(t *testing.T) {
 			Attempts: loop.MaxBlockerAttempts, At: at(),
 		}}
 	})
-	output := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	output := invoke(t, Request{Event: EventStop, Client: DefaultClient, WorkspaceRoot: root})
 	if decode(t, output)["decision"] == "block" {
 		t.Errorf("stop blocked a run that already hit the blocker cap: %s", output)
 	}
 }
 
-func TestCursorStopContinuesWithAFollowupMessage(t *testing.T) {
+func TestAFollowupStopHostContinuesWithAFollowupMessage(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventStop, Client: ClientCursor, WorkspaceRoot: workspaceWithRun(t),
+		Event: EventStop, Client: hostWhere(t, stopsWith(StopFollowup)), WorkspaceRoot: workspaceWithRun(t),
 	})
 	body := decode(t, output)
 	if followup, _ := body["followup_message"].(string); !strings.Contains(followup, "demo") {
-		t.Errorf("Cursor stop did not send a followup message: %s", output)
+		t.Errorf("stop did not send a followup message: %s", output)
 	}
 }
 
@@ -152,13 +152,13 @@ func TestCursorStopContinuesWithAFollowupMessage(t *testing.T) {
 func TestStopRefusesASecondAttemptAtAResearchLoopNodeWithNoNewEvidence(t *testing.T) {
 	root := workspaceWithRun(t, func(run *state.Run) { run.CurrentNode = "experiment_run" })
 
-	first := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	first := invoke(t, Request{Event: EventStop, Client: DefaultClient, WorkspaceRoot: root})
 	if decode(t, first)["decision"] != "block" {
 		t.Fatalf("first stop attempt at a loop node should block normally: %s", first)
 	}
 
 	second := invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"stop_hook_active":true}`),
 	})
 	if decode(t, second)["decision"] != "block" {
@@ -171,13 +171,13 @@ func TestStopRefusesASecondAttemptAtAResearchLoopNodeWithNoNewEvidence(t *testin
 func TestStopStillAllowsASecondAttemptAtAnUnrelatedNode(t *testing.T) {
 	root := workspaceWithRun(t) // CurrentNode "test", not a loop node
 
-	first := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	first := invoke(t, Request{Event: EventStop, Client: DefaultClient, WorkspaceRoot: root})
 	if decode(t, first)["decision"] != "block" {
 		t.Fatalf("first stop attempt should block normally: %s", first)
 	}
 
 	second := invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"stop_hook_active":true}`),
 	})
 	if decode(t, second)["decision"] == "block" {
@@ -190,7 +190,7 @@ func TestStopStillAllowsASecondAttemptAtAnUnrelatedNode(t *testing.T) {
 func TestStopAllowsASecondAttemptAtALoopNodeAfterNewEvidence(t *testing.T) {
 	root := workspaceWithRun(t, func(run *state.Run) { run.CurrentNode = "experiment_run" })
 
-	first := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	first := invoke(t, Request{Event: EventStop, Client: DefaultClient, WorkspaceRoot: root})
 	if decode(t, first)["decision"] != "block" {
 		t.Fatalf("first stop attempt at a loop node should block normally: %s", first)
 	}
@@ -205,7 +205,7 @@ func TestStopAllowsASecondAttemptAtALoopNodeAfterNewEvidence(t *testing.T) {
 	}
 
 	second := invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"stop_hook_active":true}`),
 	})
 	if decode(t, second)["decision"] == "block" {
@@ -218,7 +218,7 @@ func TestStopAllowsASecondAttemptAtALoopNodeAfterNewEvidence(t *testing.T) {
 func TestStopAllowsReentryToALoopNodeAfterAStaleNotice(t *testing.T) {
 	root := workspaceWithRun(t, func(run *state.Run) { run.CurrentNode = "experiment_run" })
 
-	first := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	first := invoke(t, Request{Event: EventStop, Client: DefaultClient, WorkspaceRoot: root})
 	if decode(t, first)["decision"] != "block" {
 		t.Fatalf("first stop attempt should block: %s", first)
 	}
@@ -233,7 +233,7 @@ func TestStopAllowsReentryToALoopNodeAfterAStaleNotice(t *testing.T) {
 	}
 
 	second := invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"stop_hook_active":true}`),
 	})
 	if decode(t, second)["decision"] == "block" {
@@ -248,7 +248,7 @@ func TestSessionStartInjectsConfirmedMemory(t *testing.T) {
 	seedMemory(t, root, "the runtime module builds with CGO disabled")
 
 	output := invoke(t, Request{
-		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventSessionStart, Client: DefaultClient, WorkspaceRoot: root,
 	})
 	if !strings.Contains(output, "CGO disabled") {
 		t.Errorf("session start did not inject stored memory: %s", output)
@@ -263,7 +263,7 @@ func TestPromptSubmitInjectsMemoryMatchingThePrompt(t *testing.T) {
 	seedMemory(t, root, "the runtime module builds with CGO disabled")
 
 	output := invoke(t, Request{
-		Event: EventUserPromptSubmit, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventUserPromptSubmit, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"user_prompt":"why is CGO turned off here"}`),
 	})
 	if !strings.Contains(output, "CGO disabled") {
@@ -275,7 +275,7 @@ func TestPromptSubmitInjectsMemoryMatchingThePrompt(t *testing.T) {
 // context at all, which is the failure this whole change exists to fix.
 func TestPromptSubmitSurfacesTheRunOnAnyPrompt(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventUserPromptSubmit, Client: ClientClaude,
+		Event: EventUserPromptSubmit, Client: DefaultClient,
 		WorkspaceRoot: workspaceWithRun(t),
 		Stdin:         strings.NewReader(`{"user_prompt":"explain this regex"}`),
 	})
@@ -291,8 +291,10 @@ func TestPromptSubmitReadsEitherPromptField(t *testing.T) {
 
 	for _, field := range []string{"prompt", "user_prompt"} {
 		output := invoke(t, Request{
-			Event: EventUserPromptSubmit, Client: ClientClaude, WorkspaceRoot: root,
-			Stdin: strings.NewReader(`{"` + field + `":"why is CGO turned off here"}`),
+			Event: EventUserPromptSubmit, Client: DefaultClient, WorkspaceRoot: root,
+			// Distinct sessions: within one, the second identical prompt is
+			// deliberately not answered with the same memory again.
+			Stdin: strings.NewReader(`{"session_id":"` + field + `","` + field + `":"why is CGO turned off here"}`),
 		})
 		if !strings.Contains(output, "CGO disabled") {
 			t.Errorf("field %q was not read: %s", field, output)
@@ -305,7 +307,7 @@ func TestPromptSubmitReadsEitherPromptField(t *testing.T) {
 func TestPreToolUseDeniesEditingAManifest(t *testing.T) {
 	root := workspaceWithRun(t)
 	err := runHook(t, Request{
-		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Edit","tool_input":{"file_path":"` +
 			jsonPath(root, ".agent-state", "runs", "2026-08-21", "demo", "1", "manifest.json") + `"}}`),
 	})
@@ -321,7 +323,7 @@ func TestPreToolUseDeniesEditingAManifest(t *testing.T) {
 func TestPreToolUseDeniesWritingMemoryDB(t *testing.T) {
 	root := workspaceWithRun(t)
 	err := runHook(t, Request{
-		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Write","tool_input":{"file_path":"` +
 			jsonPath(root, ".agent-state", "memory.db") + `","content":"x"}}`),
 	})
@@ -337,7 +339,7 @@ func TestPreToolUseDeniesWritingMemoryDB(t *testing.T) {
 func TestPreToolUseDeniesSqliteWriteToRuns(t *testing.T) {
 	root := workspaceWithRun(t)
 	err := runHook(t, Request{
-		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"sqlite3 .agent-state/memory.db \"UPDATE runs SET status='done'\""}}`),
 	})
 	var blocked *BlockError
@@ -349,7 +351,7 @@ func TestPreToolUseDeniesSqliteWriteToRuns(t *testing.T) {
 func TestPreToolUseDeniesAppendingToAnEventLog(t *testing.T) {
 	root := workspaceWithRun(t)
 	err := runHook(t, Request{
-		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"echo hi >> .agent-state/runs/2026-08-21/demo/1/events.ndjson"}}`),
 	})
 	var blocked *BlockError
@@ -361,7 +363,7 @@ func TestPreToolUseDeniesAppendingToAnEventLog(t *testing.T) {
 func TestPreToolUseAllowsOrdinaryEdits(t *testing.T) {
 	root := workspaceWithRun(t)
 	err := runHook(t, Request{
-		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Edit","tool_input":{"file_path":"` +
 			jsonPath(root, "runtime", "cmd", "main.go") + `"}}`),
 	})
@@ -375,7 +377,7 @@ func TestPreToolUseAllowsOrdinaryEdits(t *testing.T) {
 func TestPreToolUseAllowsManifestEditsWithNoRun(t *testing.T) {
 	root := t.TempDir()
 	err := runHook(t, Request{
-		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Write","tool_input":{"file_path":"` +
 			jsonPath(root, ".agent-state", "runs", "2026-08-21", "demo", "1", "manifest.json") + `"}}`),
 	})
@@ -388,7 +390,7 @@ func TestPreToolUseAllowsManifestEditsWithNoRun(t *testing.T) {
 
 func TestSessionStartSteersASingleActiveRun(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: workspaceWithRun(t),
+		Event: EventSessionStart, Client: DefaultClient, WorkspaceRoot: workspaceWithRun(t),
 	})
 	message, _ := hookSpecific(t, output)["initialUserMessage"].(string)
 	if !strings.Contains(message, "demo") {
@@ -400,7 +402,7 @@ func TestSessionStartSteersASingleActiveRun(t *testing.T) {
 // conversation the person is already having.
 func TestSessionStartDoesNotSteerAfterCompaction(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: workspaceWithRun(t),
+		Event: EventSessionStart, Client: DefaultClient, WorkspaceRoot: workspaceWithRun(t),
 		Stdin: strings.NewReader(`{"source":"compact"}`),
 	})
 	if hookSpecific(t, output)["initialUserMessage"] != nil {
@@ -410,21 +412,21 @@ func TestSessionStartDoesNotSteerAfterCompaction(t *testing.T) {
 
 func TestSessionStartDoesNotSteerWithNoRun(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: t.TempDir(),
+		Event: EventSessionStart, Client: DefaultClient, WorkspaceRoot: t.TempDir(),
 	})
 	if hookSpecific(t, output)["initialUserMessage"] != nil {
 		t.Errorf("session start invented work with no active run: %s", output)
 	}
 }
 
-// --- Change 6: Cursor gets the fields Cursor documents ----------------------
+// --- Change 6: a flat-context host gets the fields it documents ----------------------
 
-func TestCursorSessionStartUsesAdditionalContext(t *testing.T) {
+func TestAFlatContextHostsSessionStartUsesAdditionalContext(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventSessionStart, Client: ClientCursor, WorkspaceRoot: t.TempDir(),
+		Event: EventSessionStart, Client: hostWhere(t, contextIs(ContextFlat)), WorkspaceRoot: t.TempDir(),
 	})
 	if decode(t, output)["additional_context"] == nil {
-		t.Errorf("Cursor session start does not use additional_context: %s", output)
+		t.Errorf("session start does not use additional_context: %s", output)
 	}
 }
 
@@ -433,7 +435,7 @@ func TestCursorSessionStartUsesAdditionalContext(t *testing.T) {
 func TestPostToolUseJournalsAgainstTheActiveRun(t *testing.T) {
 	root := workspaceWithRun(t)
 	invoke(t, Request{
-		Event: EventPostToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventPostToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"go test ./..."},` +
 			`"tool_response":{"stdout":"ok","exit_code":0}}`),
 	})
@@ -494,7 +496,7 @@ func TestAFailureRecordedNowIsRetrievedNextSession(t *testing.T) {
 	failingCommand(t, root)
 
 	output := invoke(t, Request{
-		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventSessionStart, Client: DefaultClient, WorkspaceRoot: root,
 	})
 	if !strings.Contains(output, "go build") {
 		t.Errorf("the recorded failure did not reach the next session: %s", output)
@@ -504,7 +506,7 @@ func TestAFailureRecordedNowIsRetrievedNextSession(t *testing.T) {
 func failingCommand(t *testing.T, root string) {
 	t.Helper()
 	invoke(t, Request{
-		Event: EventPostToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventPostToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"go build ./..."},` +
 			`"tool_response":{"exit_code":2,"stderr":"undefined: EventPostToolUse"}}`),
 	})
@@ -521,7 +523,7 @@ func TestPostToolUseProposesNothingWithoutAFailure(t *testing.T) {
 	} {
 		root := workspaceWithRun(t)
 		invoke(t, Request{
-			Event: EventPostToolUse, Client: ClientClaude, WorkspaceRoot: root,
+			Event: EventPostToolUse, Client: DefaultClient, WorkspaceRoot: root,
 			Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"go build ./..."},` +
 				`"tool_response":` + response + `}`),
 		})
@@ -542,7 +544,7 @@ func TestPostToolUseProposesNothingWithoutAFailure(t *testing.T) {
 
 func TestPostToolUseStaysQuietWithNoRun(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventPostToolUse, Client: ClientClaude, WorkspaceRoot: t.TempDir(),
+		Event: EventPostToolUse, Client: DefaultClient, WorkspaceRoot: t.TempDir(),
 		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"ls"}}`),
 	})
 	if output != "" {
@@ -555,7 +557,7 @@ func TestPostToolUseStaysQuietWithNoRun(t *testing.T) {
 func TestPostToolUseSurvivesAnUnreadableResponse(t *testing.T) {
 	root := workspaceWithRun(t)
 	if err := runHook(t, Request{
-		Event: EventPostToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventPostToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_response":"not an object"}`),
 	}); err != nil {
 		t.Errorf("post-tool-use failed on an unexpected response shape: %v", err)

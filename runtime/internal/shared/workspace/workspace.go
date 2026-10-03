@@ -19,6 +19,11 @@ import (
 )
 
 const (
+	// ToolkitDirName is the directory holding the toolkit's assets (skills,
+	// commands, routers, graphs, references, hooks), at a workspace root or under
+	// a mounted toolkit.
+	ToolkitDirName = ".ai-agents"
+
 	// StateDirName holds state derived from a checkout: caches, databases, and
 	// run evidence. Gitignored.
 	StateDirName = ".agent-state"
@@ -47,6 +52,11 @@ const (
 	// FetchCacheDirName holds extracted WebFetch documents beside other caches.
 	FetchCacheDirName = "fetch"
 
+	// EnvWorkspaceRoot hands the discovered workspace root to the same scripts,
+	// so they do not depend on a host's own project-directory variable (most
+	// hosts publish none).
+	EnvWorkspaceRoot = "VIBE_WORKSPACE_ROOT"
+
 	// EnvMemoryDBPath hands the resolved database path to the sdd-cache hook
 	// scripts, which cannot import this constant and open the file directly
 	// with Python's stdlib sqlite3 - the runtime passes it so both sides
@@ -63,6 +73,11 @@ const (
 )
 
 // StateDir is where derived state lives for a workspace.
+// ToolkitPath joins path elements under the toolkit directory of toolkitRoot.
+func ToolkitPath(toolkitRoot string, elems ...string) string {
+	return filepath.Join(append([]string{toolkitRoot, ToolkitDirName}, elems...)...)
+}
+
 func StateDir(workspaceRoot string) string {
 	return filepath.Join(workspaceRoot, StateDirName)
 }

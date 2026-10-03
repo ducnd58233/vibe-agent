@@ -13,19 +13,47 @@ Review the current change across five axes: correctness, readability, architectu
 
 Follow the [`code-review-and-quality`](../skills/code-review-and-quality/SKILL.md) skill.
 
-**Run the slop audit first (MUST).** It is the deterministic half of this review,
-and it is cheap:
+**Run the deterministic pass first (MUST).** These commands are the mechanical
+half of this review. Do not redo their work by eye, and do not choose for
+yourself which files or functions to read:
 
 ```sh
-vibe-agent slop audit <path>            # text, for reading
-vibe-agent slop audit <path> --json     # for a record under tmp/<slug>/
+vibe-agent review scan --changed        # a branch or PR: the change's findings, changed blocks marked *
+vibe-agent review scan <path>...        # paths the user named; no path scans the whole workspace
+vibe-agent slop audit <path>            # AI-slop signals: unfinished markers, ignored results, filler
 ```
 
-Read its findings before writing yours. A machine can say a line is duplicated
-or a result discarded; it cannot say a boundary is wrong. Spending review
-attention on what the audit already reports wastes the half only a person can
-do. Where you disagree with a finding, say so in the review rather than
-silently skipping it.
+Add `--json` to either for a record under `tmp/<slug>/`. `review scan` reads
+every source file (installed packages, build output, virtual environments,
+vendored and generated files are excluded), cuts each file into blocks that
+together cover every line, and reports:
+
+- **References:** unused imports; definitions nothing references; definitions
+  this change left without a caller (`orphaned-by-change`); helpers only tests call.
+- **Bug shapes:** self-comparison, NaN comparison, identical branches, repeated
+  conditions, unreachable statements, duplicate keys, assignment in a
+  condition, swallowed errors, return in finally, defer in a loop, mutable
+  defaults, `is` with a literal, leftover debugger calls, redefinitions.
+
+**Then walk its BLOCKS list in order, one block at a time (MUST):**
+
+1. `vibe-agent review block <path>:<line>` prints the block with line numbers,
+   its findings, and the files that reference it. Nested blocks are folded to
+   one line; print each one separately.
+2. Settle every finding in the block: fix it, or state in the review why it is
+   wrong (a framework or reflection call, a deliberate idiom). Never drop one
+   silently. Before deleting an unreferenced definition, check the listed
+   callers and search for its name; ask before deleting public API.
+3. Review the block on the five axes below. Review a changed block (`*`) in
+   full; read an unchanged block only for context a changed one needs.
+
+The scan resolves no types, so it cannot see a call through reflection, a
+framework, or another repository. Treat its findings as leads you verify, not
+verdicts. A deliberate exception is recorded in the code: a `review:ignore
+<reason>` comment, or the linter's own directive (`noqa`, `nolint`,
+`eslint-disable`), on or above the line silences it. A machine can say a
+condition repeats; it cannot say a boundary is wrong. Spend your attention on
+the half only a reviewer can do.
 
 Review current changes (staged diff, branch, or paths the user specifies) across:
 

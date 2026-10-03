@@ -18,7 +18,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
-func TestComposerSendRecordsCursorPromptOnTrajectory(t *testing.T) {
+func TestComposerSendRecordsThePromptOnTheTrajectory(t *testing.T) {
 	cursorReady := false
 	for _, entry := range hosts.Inventory() {
 		if entry.Binary == "cursor-agent" && entry.OnPath {
@@ -88,16 +88,12 @@ func TestComposerSendRecordsCursorPromptOnTrajectory(t *testing.T) {
 	}
 }
 
-func TestParsePrintLinesExtractsCodexAgentMessage(t *testing.T) {
+func TestParsePrintOutputExtractsAnItemCompletedAgentMessage(t *testing.T) {
 	raw := `{"type":"thread.started","thread_id":"1"}` + "\n" +
 		`{"type":"turn.started"}` + "\n" +
 		`{"type":"item.completed","item":{"id":"item_0","type":"error","message":"shortened"}}` + "\n" +
 		`{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"pong"}}` + "\n" +
 		`{"type":"turn.completed","usage":{"input_tokens":12,"output_tokens":3}}`
-	got := parsePrintLines(raw)
-	if len(got) != 1 || got[0] != "pong" {
-		t.Fatalf("got %q", got)
-	}
 	fragments, usage := parsePrintOutput(raw)
 	if len(fragments) != 1 || fragments[0].Body != "pong" {
 		t.Fatalf("fragments = %+v", fragments)
@@ -119,7 +115,7 @@ func TestParsePrintOutputQuestionAndTotalTokens(t *testing.T) {
 	}
 }
 
-func TestParsePrintOutputCursorStreamJSONUsage(t *testing.T) {
+func TestParsePrintOutputStreamJSONUsage(t *testing.T) {
 	raw := `{"type":"system","subtype":"init","cwd":"/tmp"}` + "\n" +
 		`{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"pong"}]}}` + "\n" +
 		`{"type":"result","subtype":"success","result":"pong","usage":{"inputTokens":57151,"outputTokens":33,"cacheReadTokens":384}}`
@@ -132,7 +128,7 @@ func TestParsePrintOutputCursorStreamJSONUsage(t *testing.T) {
 	}
 }
 
-func TestParsePrintOutputCursorToolCallStarted(t *testing.T) {
+func TestParsePrintOutputATypedToolCallStarted(t *testing.T) {
 	raw := `{"type":"system","subtype":"init"}` + "\n" +
 		`{"type":"tool_call","subtype":"started","call_id":"1","tool_call":{"readToolCall":{"args":{"path":"README.md"}}}}` + "\n" +
 		`{"type":"tool_call","subtype":"completed","call_id":"1","tool_call":{"readToolCall":{"args":{"path":"README.md"},"result":{"success":{"content":"secret-should-not-land"}}}}}` + "\n" +
@@ -842,12 +838,14 @@ func TestAppendHostPrintWritesTimeoutAndRedactedStderr(t *testing.T) {
 	slug2 := "print-stderr"
 	testutil.EnsureRunIndex(t, root2, slug2)
 	appendHostPrint(context.Background(), root2, slug2, hosts.Host{Binary: "claude"}, "hi", hosts.PrintOptions{})
-	raw, err := os.ReadFile(session.LogPath(root2, slug2))
+	stored, err := session.Replay(session.LogPath(root2, slug2))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(raw), secret) {
-		t.Fatalf("secret leaked: %s", raw)
+	for _, ev := range stored {
+		if strings.Contains(string(ev.Payload), secret) {
+			t.Fatalf("secret leaked: %s", ev.Payload)
+		}
 	}
 	testutil.EnsureRunIndex(t, root2, slug2)
 	events, err = session.Replay(session.LogPath(root2, slug2))

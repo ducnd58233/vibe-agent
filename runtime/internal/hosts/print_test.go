@@ -5,126 +5,85 @@ import (
 	"testing"
 )
 
-func TestPrintArgvClaudeModelLeavesCatalogUnchanged(t *testing.T) {
-	host, ok := EvalHost("claude")
-	if !ok {
-		t.Fatal("claude")
-	}
-	orig := host.EvalCommand
-	argv := PrintArgv(host, PrintOptions{Model: "opus"})
-	if host.EvalCommand != orig {
-		t.Fatalf("EvalCommand mutated: %q", host.EvalCommand)
-	}
-	again, _ := EvalHost("claude")
-	if again.EvalCommand != orig {
-		t.Fatalf("catalog mutated: %q", again.EvalCommand)
-	}
-	if !slices.Equal(argv[len(argv)-2:], []string{"--model", "opus"}) {
-		t.Fatalf("argv = %v", argv)
-	}
-}
+// Every test here walks the catalog and selects hosts by what their row says,
+// so a host gains coverage by gaining the property, not by being named.
 
-func TestPrintArgvClaudeIncludesHookEvents(t *testing.T) {
-	host, ok := EvalHost("claude")
-	if !ok {
-		t.Fatal("claude")
-	}
-	orig := host.EvalCommand
-	argv := PrintArgv(host, PrintOptions{})
-	if host.EvalCommand != orig {
-		t.Fatalf("EvalCommand mutated: %q", orig)
-	}
-	if !hasFlagValue(argv, "--output-format", "stream-json") {
-		t.Fatalf("argv = %v, want stream-json", argv)
-	}
-	if !slices.Contains(argv, "--include-hook-events") {
-		t.Fatalf("argv = %v, want --include-hook-events", argv)
-	}
-	if !slices.Contains(argv, "--verbose") {
-		t.Fatalf("argv = %v, want --verbose", argv)
-	}
-}
-
-func TestPrintArgvIgnoresModelOnCodex(t *testing.T) {
-	host, ok := EvalHost("codex")
-	if !ok {
-		t.Fatal("codex")
-	}
-	argv := PrintArgv(host, PrintOptions{Model: "opus"})
-	if slices.Contains(argv, "--model") {
-		t.Fatalf("codex argv leaked --model: %v", argv)
-	}
-}
-
-func TestPrintArgvCursorAskDefaultKeepsModeAsk(t *testing.T) {
-	host, ok := EvalHost("cursor-agent")
-	if !ok {
-		t.Fatal("cursor-agent")
-	}
-	argv := PrintArgv(host, PrintOptions{})
-	if !hasFlagValue(argv, "--mode", "ask") {
-		t.Fatalf("ask default missing: %v", argv)
-	}
-}
-
-func TestPrintArgvCursorAgentDropsModeAsk(t *testing.T) {
-	host, ok := EvalHost("cursor-agent")
-	if !ok {
-		t.Fatal("cursor-agent")
-	}
-	argv := PrintArgv(host, PrintOptions{Mode: "agent", Model: "gpt-5"})
-	if hasFlagValue(argv, "--mode", "ask") {
-		t.Fatalf("agent still has --mode ask: %v", argv)
-	}
-	if slices.Contains(argv, "--mode") {
-		t.Fatalf("agent should omit --mode (CLI default is agent): %v", argv)
-	}
-	if !slices.Equal(argv[len(argv)-2:], []string{"--model", "gpt-5"}) {
-		t.Fatalf("argv = %v", argv)
-	}
-}
-
-func TestPrintArgvCursorAutoModel(t *testing.T) {
-	host, ok := EvalHost("cursor-agent")
-	if !ok {
-		t.Fatal("cursor-agent")
-	}
-	argv := PrintArgv(host, PrintOptions{Model: "auto"})
-	if !slices.Equal(argv[len(argv)-2:], []string{"--model", "auto"}) {
-		t.Fatalf("auto should pass through as --model auto, got %v", argv)
-	}
-}
-
-func TestModelSuggestionsClaudeFromHelp(t *testing.T) {
-	host, ok := EvalHost("claude")
-	if !ok {
-		t.Fatal("claude")
-	}
-	got := ModelSuggestions(host)
-	for _, want := range []string{"sonnet", "opus", "fable"} {
-		if !slices.Contains(got, want) {
-			t.Fatalf("claude suggestions %v missing %q", got, want)
+func hostsWhere(want func(Host) bool) []Host {
+	var out []Host
+	for _, host := range catalog {
+		if want(host) {
+			out = append(out, host)
 		}
 	}
-	codex, ok := EvalHost("codex")
-	if !ok {
-		t.Fatal("codex")
-	}
-	if hints := ModelSuggestions(codex); len(hints) != 0 {
-		t.Fatalf("codex suggestions = %v", hints)
-	}
-	cursor, ok := EvalHost("cursor-agent")
-	if !ok {
-		t.Fatal("cursor-agent")
-	}
-	gotCursor := ModelSuggestions(cursor)
-	for _, want := range []string{"auto", "gpt-5", "sonnet-4-thinking"} {
-		if !slices.Contains(gotCursor, want) {
-			t.Fatalf("cursor-agent suggestions %v missing %q", gotCursor, want)
+	return out
+}
+
+func TestPrintArgvNeverMutatesTheCatalog(t *testing.T) {
+	for _, host := range catalog {
+		orig := host.EvalCommand
+		_ = PrintArgv(host, PrintOptions{Model: "some-model", Mode: agentMode})
+		again, _ := EvalHost(host.ID)
+		if host.EvalCommand != orig || again.EvalCommand != orig {
+			t.Errorf("%s: EvalCommand mutated", host.ID)
 		}
 	}
-	if gotCursor[0] != "auto" {
-		t.Fatalf("auto should lead the cursor-agent picker, got %v", gotCursor)
+}
+
+func TestPrintFlagsArePresentOnceAfterThePrintFlag(t *testing.T) {
+	for _, host := range hostsWhere(func(h Host) bool { return len(h.PrintFlags) > 0 }) {
+		argv := PrintArgv(host, PrintOptions{})
+		for _, flag := range host.PrintFlags {
+			count := 0
+			for _, arg := range argv {
+				if arg == flag.Name {
+					count++
+				}
+			}
+			if count != 1 {
+				t.Errorf("%s: %s appears %d times in %v", host.ID, flag.Name, count, argv)
+			}
+			if flag.Value != "" && !hasFlagValue(argv, flag.Name, flag.Value) {
+				t.Errorf("%s: %s is not %s in %v", host.ID, flag.Name, flag.Value, argv)
+			}
+		}
+	}
+}
+
+func TestAskModeIsTheDefaultAndAgentModeDropsIt(t *testing.T) {
+	for _, host := range hostsWhere(func(h Host) bool { return h.AskMode != nil }) {
+		ask := *host.AskMode
+		if argv := PrintArgv(host, PrintOptions{}); !hasFlagValue(argv, ask.Name, ask.Value) {
+			t.Errorf("%s: the read-only default is missing: %v", host.ID, argv)
+		}
+		if argv := PrintArgv(host, PrintOptions{Mode: agentMode}); slices.Contains(argv, ask.Name) {
+			t.Errorf("%s: agent mode kept %s: %v", host.ID, ask.Name, argv)
+		}
+	}
+}
+
+func TestAModelIsPassedOnlyToHostsThatTakeOne(t *testing.T) {
+	for _, host := range catalog {
+		argv := PrintArgv(host, PrintOptions{Model: "chosen-model"})
+		passed := len(argv) >= 2 && slices.Equal(argv[len(argv)-2:], []string{"--model", "chosen-model"})
+		if AcceptsModel(host) != passed {
+			t.Errorf("%s: accepts a model = %t, but argv %v", host.ID, AcceptsModel(host), argv)
+		}
+	}
+}
+
+func TestAFlagLikeModelIsNeverPassed(t *testing.T) {
+	for _, host := range hostsWhere(AcceptsModel) {
+		if argv := PrintArgv(host, PrintOptions{Model: "--dangerous"}); slices.Contains(argv, "--dangerous") {
+			t.Errorf("%s: a model value starting with - reached argv: %v", host.ID, argv)
+		}
+	}
+}
+
+func TestModelSuggestionsAreTheHostsOwnList(t *testing.T) {
+	for _, host := range catalog {
+		if !slices.Equal(ModelSuggestions(host), host.Models) {
+			t.Errorf("%s: suggestions %v, catalog %v", host.ID, ModelSuggestions(host), host.Models)
+		}
 	}
 }
 

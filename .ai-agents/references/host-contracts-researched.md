@@ -19,6 +19,6 @@ Nothing here was run when this file was first written. Rows in the generated doc
 
 - Hook wiring, event keys, and doctor checks: [`host-hook-contracts.md`](host-hook-contracts.md)
 - Workspace hook configs: `scripts/link-ai-agents.sh` (`.agents/hooks.json`, `.muse/hooks.json`,
-  `.kimi/hooks.toml` snippet)
-- Kimi merges the snippet into `~/.kimi/config.toml`; Muse requires `muse hooks trust`
+  `.kimi-code/hooks.toml` snippet)
+- Kimi Code merges the snippet into `~/.kimi-code/config.toml`; Muse requires the project folder trusted
 </routing>

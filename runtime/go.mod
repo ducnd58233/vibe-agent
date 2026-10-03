@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/lmittmann/tint v1.2.0
 	github.com/mattn/go-colorable v0.1.15
-	github.com/odvcencio/gotreesitter v0.47.0
+	github.com/odvcencio/gotreesitter v0.55.1
 	github.com/yuin/goldmark v1.8.5
 	github.com/zricethezav/gitleaks/v8 v8.24.2
 	golang.org/x/net v0.58.0

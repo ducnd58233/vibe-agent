@@ -56,7 +56,7 @@ func loadLatestBodyFromDB(ctx context.Context, db *sql.DB, slug string) ([]byte,
 
 // Save writes a task list into task_lists. Callers that used to Edit a
 // tasks-*.json file use this instead once the file mirror is gone.
-func Save(workspaceRoot string, file *File) error {
+func Save(ctx context.Context, workspaceRoot string, file *File) error {
 	if file == nil {
 		return fmt.Errorf("save task list: file is nil")
 	}
@@ -65,7 +65,6 @@ func Save(workspaceRoot string, file *File) error {
 		return fmt.Errorf("encode task list: %w", err)
 	}
 	raw = append(raw, '\n')
-	ctx := context.Background()
 	db, err := openTaskListsDB(ctx, workspaceRoot)
 	if err != nil {
 		return err

@@ -62,7 +62,7 @@ func TestANewSessionIsPointedAtTheRouterFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	text := sessionContext(Request{WorkspaceRoot: root, ToolkitRoot: root})
+	text := sessionContextWith(Request{WorkspaceRoot: root, ToolkitRoot: root}, nil)
 	if !strings.Contains(text, MetaSkill) {
 		t.Errorf("session context does not name the meta-skill: %q", text)
 	}

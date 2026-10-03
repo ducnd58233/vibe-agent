@@ -3,10 +3,14 @@ package persistence
 import (
 	"context"
 	"fmt"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/memory/domain"
+	"math"
+	"slices"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/memory/domain"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/tokenest"
 )
 
 // DefaultLimit caps retrieval. Eight evidence-backed facts fit in a prompt; a
@@ -34,6 +38,14 @@ type Query struct {
 	// that was true then is usually stale now, and excluding it would make
 	// every as-of query answer with the present.
 	Statuses []domain.Status
+	// Exclude skips memories by id. A caller that already put a memory in front
+	// of the model passes it here so the slot goes to something new, rather than
+	// being spent repeating text that is already in context.
+	Exclude []string
+	// TokenBudget caps the estimated tokens of everything returned. Counting
+	// items instead is a poor proxy: five short facts and five paragraphs are the
+	// same limit and very different costs. Zero means no cap beyond Limit.
+	TokenBudget int
 	// AsOf asks what the workspace believed at an instant rather than what it
 	// believes now. Zero means now.
 	AsOf  time.Time
@@ -44,6 +56,10 @@ type Query struct {
 type Hit struct {
 	domain.Record
 	Score float64
+	// Via names the edge a hit was pulled in through ("relates_to mem_..."),
+	// empty for a direct match. Neighbours are context, not matches, and a
+	// reader should be able to tell the two apart.
+	Via string
 }
 
 // rrfK damps the contribution of low-ranked results in reciprocal rank fusion.
@@ -59,11 +75,15 @@ const candidateFactor = 4
 
 // Search finds relevant memories.
 //
-// With text, two rankings are fused: keyword relevance from bm25, and recency.
-// Neither alone is right. Keyword rank alone puts a year-old note above the
-// note that replaced it whenever the older wording matched better; recency
-// alone ignores the question. Reciprocal rank fusion combines the orderings
-// without needing a scale that makes bm25 and timestamps comparable.
+// With text, three rankings are fused: keyword relevance from bm25, recency,
+// and importance. Keyword rank alone puts a year-old note above the note that
+// replaced it whenever the older wording matched better; recency alone ignores
+// the question; and neither knows which memory has been reused and trusted.
+// Importance is the third signal agent-memory work converged on (recency,
+// relevance, importance). Reciprocal rank fusion combines the orderings without
+// needing a scale that makes bm25, timestamps, and counts comparable.
+//
+// Spare result slots are then filled with linked neighbours of the best hits.
 //
 // Keyword search with metadata filters remains the deliberate first choice.
 // Embeddings come only after this is measured as insufficient, not before.
@@ -93,9 +113,106 @@ func (s *Store) Search(ctx context.Context, query Query) ([]Hit, error) {
 		return nil, err
 	}
 	if text == "" {
-		return hits, nil
+		return FitBudget(hits, query.TokenBudget), nil
 	}
-	return fuse(hits, query.Limit), nil
+	return FitBudget(s.expandLinked(ctx, fuse(hits, query.Limit), query), query.TokenBudget), nil
+}
+
+// hitOverhead is the estimated tokens a rendered hit costs beyond its content:
+// the bullet, and whatever id or label the caller prints with it.
+const hitOverhead = 6
+
+// FitBudget keeps hits, in rank order, while their estimated cost fits budget.
+//
+// It stops at the first hit that does not fit rather than skipping to a smaller
+// one further down: a lower-ranked fact leapfrogging the better one because it
+// happens to be shorter would make the budget reorder the answer. The top hit is
+// always kept, since returning nothing for a query that matched is worse than
+// returning one over-long memory (content is capped at 2000 characters anyway).
+func FitBudget(hits []Hit, budget int) []Hit {
+	if budget <= 0 || len(hits) == 0 {
+		return hits
+	}
+	spent := 0
+	for i, hit := range hits {
+		cost := tokenest.Estimate(hit.Content) + hitOverhead
+		if i > 0 && spent+cost > budget {
+			return hits[:i]
+		}
+		spent += cost
+	}
+	return hits
+}
+
+// expandLinked fills result slots the keyword stage left empty with the linked
+// neighbours of the hits it did find, best hit first. It never displaces a
+// direct match, and never returns a neighbour the query's own filters would
+// have excluded.
+func (s *Store) expandLinked(ctx context.Context, hits []Hit, query Query) []Hit {
+	if len(hits) == 0 || len(hits) >= query.Limit {
+		return hits
+	}
+	seen := map[string]bool{}
+	for _, hit := range hits {
+		seen[hit.ID] = true
+	}
+	instant := query.AsOf
+	if instant.IsZero() {
+		instant = time.Now()
+	}
+	direct := len(hits)
+	for i := 0; i < direct && len(hits) < query.Limit; i++ {
+		ids, err := s.neighbours(ctx, hits[i].ID)
+		if err != nil {
+			continue
+		}
+		for _, id := range ids {
+			if seen[id] || len(hits) >= query.Limit {
+				continue
+			}
+			record, err := s.Get(ctx, id)
+			if err != nil || !neighbourAllowed(record, query, instant) {
+				continue
+			}
+			seen[id] = true
+			hits = append(hits, Hit{Record: record, Via: "linked to " + hits[i].ID})
+		}
+	}
+	return hits
+}
+
+// neighbourAllowed applies the same filters candidates applies in SQL.
+func neighbourAllowed(record domain.Record, query Query, instant time.Time) bool {
+	if record.WorkspaceID != query.WorkspaceID || slices.Contains(query.Exclude, record.ID) {
+		return false
+	}
+	allowedStatus := false
+	for _, status := range query.Statuses {
+		if record.Status == status {
+			allowedStatus = true
+		}
+	}
+	if !allowedStatus {
+		return false
+	}
+	if len(query.Kinds) > 0 {
+		allowedKind := false
+		for _, kind := range query.Kinds {
+			if record.Kind == kind {
+				allowedKind = true
+			}
+		}
+		if !allowedKind {
+			return false
+		}
+	}
+	if record.ExpiresAt != nil && !record.ExpiresAt.After(instant) {
+		return false
+	}
+	if query.AsOf.IsZero() {
+		return record.ValidTo == nil
+	}
+	return !record.ValidFrom.After(instant) && (record.ValidTo == nil || record.ValidTo.After(instant))
 }
 
 // candidates runs the SQL side: filters, then bm25 order when there is a query
@@ -115,6 +232,13 @@ func (s *Store) candidates(ctx context.Context, query Query, text string, limit 
 		args = append(args, ftsQuery(text))
 		selectExpr = "bm25(memories_fts) AS score"
 		order = "score ASC"
+	}
+
+	if len(query.Exclude) > 0 {
+		conditions = append(conditions, "m.id NOT IN ("+strings.TrimSuffix(strings.Repeat("?,", len(query.Exclude)), ",")+")")
+		for _, id := range query.Exclude {
+			args = append(args, id)
+		}
 	}
 
 	conditions = append(conditions, inClause("m.status", len(query.Statuses)))
@@ -205,8 +329,26 @@ func fuse(hits []Hit, limit int) []Hit {
 		return hits[byRecency[a]].UpdatedAt.After(hits[byRecency[b]].UpdatedAt)
 	})
 
+	byImportance := make([]int, len(hits))
+	for i := range byImportance {
+		byImportance[i] = i
+	}
+	// Equal importance carries no information, so it must not quietly hand the
+	// win to whichever record bm25 happened to list first. The newer fact is the
+	// better default for the reason fuse's tie-break below gives.
+	sort.SliceStable(byImportance, func(a, b int) bool {
+		left, right := hits[byImportance[a]], hits[byImportance[b]]
+		if li, ri := importance(left.Record), importance(right.Record); li != ri {
+			return li > ri
+		}
+		return left.UpdatedAt.After(right.UpdatedAt)
+	})
+
 	score := make([]float64, len(hits))
 	for rank, index := range byRecency {
+		score[index] += 1 / (rrfK + float64(rank))
+	}
+	for rank, index := range byImportance {
 		score[index] += 1 / (rrfK + float64(rank))
 	}
 	for rank := range hits {
@@ -235,6 +377,14 @@ func fuse(hits []Hit, limit int) []Hit {
 		fused = fused[:limit]
 	}
 	return fused
+}
+
+// importance is how much a memory has earned: how sure its author was, scaled by
+// how often reuse has confirmed it. The log damps the count so one memory reused
+// fifty times cannot out-rank everything: the tenth reuse matters far less than
+// the first.
+func importance(record domain.Record) float64 {
+	return record.Confidence * (1 + math.Log1p(float64(record.UsedCount)))
 }
 
 // ftsQuery turns free text into an FTS5 expression, quoting each term so

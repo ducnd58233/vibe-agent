@@ -420,8 +420,8 @@ function CommandHook {
 
 function Install-WorkspaceHookConfigs {
     <#
-      A consumer workspace usually has no .claude/settings.json, .cursor/hooks.json,
-      or .codex/hooks.json. Directory links alone make commands visible, but hooks
+      A consumer workspace usually has no hook config for any host (.claude, .cursor,
+      .codex, .agents, .muse, .kimi-code). Directory links alone make commands visible, but hooks
       still have no entrypoint. Create minimal hook configs only when the file is
       absent, so an existing repository policy is never overwritten by this script.
     #>
@@ -490,6 +490,67 @@ function Install-WorkspaceHookConfigs {
         }
         Write-JsonFile -Path $codexPath -Value ([ordered]@{ hooks = $codexHooks })
         Write-Host "Installed minimal Codex hook config at $codexPath"
+    }
+
+    $antigravityPath = Join-Path $workspaceFull '.agents\hooks.json'
+    if (-not (Test-Path -LiteralPath $antigravityPath)) {
+        $tools = 'run_command|write_to_file|replace_file_content|multi_replace_file_content'
+        $antigravity = [ordered]@{
+            'vibe-agent' = [ordered]@{
+                PreInvocation = @([ordered]@{ hooks = @((CommandHook (Join-HookCommand 'user-prompt-submit' 'antigravity'))) })
+                PreToolUse = @([ordered]@{ matcher = $tools; hooks = @((CommandHook (Join-HookCommand 'pre-tool-use' 'antigravity'))) })
+                PostToolUse = @([ordered]@{ matcher = $tools; hooks = @((CommandHook (Join-HookCommand 'post-tool-use' 'antigravity'))) })
+                Stop = @([ordered]@{ hooks = @((CommandHook (Join-HookCommand 'stop' 'antigravity'))) })
+            }
+        }
+        Write-JsonFile -Path $antigravityPath -Value $antigravity
+        Write-Host "Installed minimal Antigravity hook config at $antigravityPath"
+    }
+
+    $musePath = Join-Path $workspaceFull '.muse\hooks.json'
+    if (-not (Test-Path -LiteralPath $musePath)) {
+        $museHooks = [ordered]@{}
+        foreach ($pair in @(
+            @('SessionStart', 'session-start'),
+            @('UserPromptSubmit', 'user-prompt-submit'),
+            @('PreToolUse', 'pre-tool-use'),
+            @('PostToolUse', 'post-tool-use'),
+            @('PostToolUseFailure', 'post-tool-use-failure'),
+            @('Stop', 'stop')
+        )) {
+            $museHooks[$pair[0]] = @([ordered]@{ hooks = @((CommandHook (Join-HookCommand $pair[1] 'muse'))) })
+        }
+        Write-JsonFile -Path $musePath -Value ([ordered]@{ hooks = $museHooks })
+        Write-Host "Installed minimal Muse hook config at $musePath (run muse hooks trust after install)"
+    }
+
+    $kimiPath = Join-Path $workspaceFull '.kimi-code\hooks.toml'
+    if (-not (Test-Path -LiteralPath $kimiPath)) {
+        $lines = @(
+            '# Copy these [[hooks]] blocks into ~/.kimi-code/config.toml ($KIMI_CODE_HOME/config.toml).',
+            '# Kimi Code reads hooks from user config only; [[hooks]] accepts exactly',
+            '# event, matcher, command, and timeout. No matcher: vibe-agent filters tools itself.'
+        )
+        foreach ($pair in @(
+            @('SessionStart', 'session-start'),
+            @('UserPromptSubmit', 'user-prompt-submit'),
+            @('PreToolUse', 'pre-tool-use'),
+            @('PostToolUse', 'post-tool-use'),
+            @('PostToolUseFailure', 'post-tool-use-failure'),
+            @('Stop', 'stop')
+        )) {
+            $lines += ''
+            $lines += '[[hooks]]'
+            $lines += ('event = "{0}"' -f $pair[0])
+            $lines += ('command = "{0}"' -f (Join-HookCommand $pair[1] 'kimi'))
+            $lines += 'timeout = 30'
+        }
+        $parent = Split-Path -Parent $kimiPath
+        if (-not (Test-Path -LiteralPath $parent)) {
+            New-Item -ItemType Directory -Path $parent -Force | Out-Null
+        }
+        [System.IO.File]::WriteAllText($kimiPath, (($lines -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding $false))
+        Write-Host "Installed Kimi Code hook snippet at $kimiPath (merge into ~/.kimi-code/config.toml)"
     }
 }
 
@@ -708,7 +769,7 @@ Install-WorkspaceHookConfigs
 Emit-PluginManifests -WorkspaceFull $workspaceFull
 Install-Runtime
 
-Write-Host "Links created under $workspaceFull (.claude, .cursor, .opencode, .agents) -> $assetsFull"
+Write-Host "Links created under $workspaceFull (.claude, .cursor, .opencode, .agents) -> $assetsFull; hook configs for every host that has none"
 Write-Host "Codex custom agents synced to $workspaceFull\.codex\agents"
 Write-Host "Codex command skills synced to $workspaceFull\.agents\skills as <name>"
 Write-Host "Codex command form in a linked workspace: `$<name> (custom /prompts and top-level /vibe-* are not available in Codex CLI 0.147.0)"

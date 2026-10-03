@@ -697,7 +697,7 @@
       try {
         const parsed = JSON.parse(localStorage.getItem(prefsStorageKey) || "{}");
         if (parsed && typeof parsed === "object") return parsed;
-      } catch (_) {}
+      } catch (_) { /* storage may be blocked or full; keep the default */ }
       return {};
     }
 
@@ -710,7 +710,7 @@
       };
       try {
         localStorage.setItem(prefsStorageKey, JSON.stringify(prefs));
-      } catch (_) {}
+      } catch (_) { /* storage may be blocked or full; keep the default */ }
     }
 
     function restorePrefs(id) {
@@ -736,7 +736,7 @@
       }
       try {
         localStorage.setItem(hostStorageKey, JSON.stringify({ id: id, label: label || id }));
-      } catch (_) {}
+      } catch (_) { /* storage may be blocked or full; keep the default */ }
       restorePrefs(id);
     }
     try {
@@ -744,7 +744,7 @@
       if (saved && saved.id && hostMenu.querySelector('[data-host-id="' + saved.id + '"]')) {
         applyHost(saved.id, saved.label || saved.id);
       }
-    } catch (_) {}
+    } catch (_) { /* storage may be blocked or full; keep the default */ }
     hostOpen.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();

@@ -1,8 +1,7 @@
 // Package mcp exposes the control plane to coding agents that have no hook
-// system, chiefly Codex and opencode.
+// system.
 //
-// Claude Code and Cursor get the same capabilities through hooks, which always
-// fire. An MCP tool call is model-decided, so it is best effort by nature. That
+// Hosts with hooks get the same capabilities through them, which always fire. An MCP tool call is model-decided, so it is best effort by nature. That
 // is why this is the fallback surface and not the primary one.
 //
 // A short tool list, not thirty. A long one makes routing worse, and every

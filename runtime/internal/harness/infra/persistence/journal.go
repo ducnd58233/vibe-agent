@@ -43,13 +43,3 @@ func InsertAmbient(ctx context.Context, db *sql.DB, payload []byte) (string, err
 	}
 	return fmt.Sprintf("%s#%d", Table, id), nil
 }
-
-// InsertLegacyEvent writes one pre-database journal line during backfill.
-func InsertLegacyEvent(ctx context.Context, db *sql.DB, event state.Event, now string) error {
-	at := event.At.UTC().Format(time.RFC3339)
-	_, err := db.ExecContext(ctx, `
-        INSERT INTO journal_entries (run_id, type, node, at, payload, created_by, created_at, updated_at)
-        VALUES (NULL, ?, ?, ?, ?, '', ?, ?)`,
-		string(event.Type), event.Node, at, string(event.Payload), now, now)
-	return err
-}

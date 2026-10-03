@@ -37,9 +37,11 @@ Peer parity maps: [`cursor-feature-map.md`](cursor-feature-map.md),
 
 <rules>
 
-All Antigravity hook rows in [`host-hook-contracts.md`](host-hook-contracts.md)
-are **UNVERIFIED**. Do not list Antigravity in the supported harness parity
-checklist until an observation campaign updates contract status.
+All Antigravity hook rows are **UNVERIFIED** here. Stdin is camelCase (`conversationId`,
+`workspacePaths`, `transcriptPath`, `toolCall.name`/`toolCall.args`), mapped by the runtime's
+payload adapter; user-level hooks also load from `~/.gemini/config/hooks.json`. Sources:
+[hooks](https://antigravity.google/docs/hooks) and the public adapter
+[phinze/sophon `hook`](https://pkg.go.dev/github.com/phinze/sophon/hook).
 </rules>
 
 ## Host portability matrix (Antigravity adaptations)

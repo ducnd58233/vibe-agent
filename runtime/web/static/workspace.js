@@ -11,7 +11,7 @@
   }
   try {
     applyTheme(localStorage.getItem(themeKey));
-  } catch (e) {}
+  } catch (e) { /* storage may be blocked; keep the default theme */ }
   document.addEventListener("change", (e) => {
     if (!e.target || e.target.name !== "theme") {
       return;
@@ -19,7 +19,7 @@
     applyTheme(e.target.value);
     try {
       localStorage.setItem(themeKey, e.target.value);
-    } catch (err) {}
+    } catch (err) { /* storage may be blocked or full; the choice lasts this page */ }
   });
 })();
 

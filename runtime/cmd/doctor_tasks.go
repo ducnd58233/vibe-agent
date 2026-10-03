@@ -159,9 +159,9 @@ func checkAutoOptIn(report *diagnostics, workspaceRoot string) {
 }
 
 // sandboxIsolationNote explains that vibe "sandbox" is a runner port, not a
-// Claude-class OS Bash sandbox. Doctor prints it when a workspace opted in so
+// host-provided OS sandbox. Doctor prints it when a workspace opted in so
 // operators do not confuse local/docker drivers with Seatbelt/bubblewrap.
-const sandboxIsolationNote = "sandbox.yaml is a runner port: local = no isolation; docker = bind-mount container (not Claude OS Seatbelt/bubblewrap)"
+const sandboxIsolationNote = "sandbox.yaml is a runner port: local = no isolation; docker = bind-mount container (not an OS-level Seatbelt/bubblewrap sandbox)"
 
 // checkSandboxConfig notes whether the workspace opted into runner drivers.
 // Absence is fine: checks without runner: keep running on the host.

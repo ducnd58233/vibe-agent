@@ -11,9 +11,9 @@ import (
 
 // mcpCommand serves the control plane over stdio.
 //
-// This is the fallback surface, for Codex and opencode. An MCP tool call is
-// model-decided, so it is best effort by nature; Claude and Cursor get the same
-// capabilities through hooks, which always fire.
+// This is the fallback surface, for hosts with no hook system. An MCP tool call
+// is model-decided, so it is best effort by nature; hosts with hooks get the
+// same capabilities through them, and hooks always fire.
 func mcpCommand(args []string) error {
 	if len(args) == 0 || args[0] != "serve" {
 		return fmt.Errorf("mcp needs the serve subcommand")

@@ -84,6 +84,9 @@ func (p *payload) enrichFromRaw() {
 	if p.TranscriptPath == "" {
 		p.TranscriptPath = firstRawString(top, "transcriptPath", "transcript_path")
 	}
+	if p.ConversationID == "" {
+		p.ConversationID = firstRawString(top, "conversationId")
+	}
 }
 
 func applyToolCall(body *payload, raw json.RawMessage) {

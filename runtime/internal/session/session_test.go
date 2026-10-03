@@ -1,6 +1,7 @@
 package session
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -207,4 +208,32 @@ func TestKindMapping(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestComposePrefixCapsEachTurnSoOneLogCannotEvictTheRest(t *testing.T) {
+	huge := "ERROR " + strings.Repeat("stack frame line\n", 2000) + "final failure: connection refused"
+	events := []Event{
+		replayEvent(t, 1, TypePromptSubmit, Payload{Body: "first question about the build"}),
+		replayEvent(t, 2, TypeMessage, Payload{Role: "assistant", Body: huge}),
+		replayEvent(t, 3, TypePromptSubmit, Payload{Body: "second question about deploys"}),
+	}
+	prefix := ComposePrefix(events, DefaultReplayTurns, DefaultReplayBytes)
+	if !strings.Contains(prefix, "first question") || !strings.Contains(prefix, "second question") {
+		t.Fatalf("a turn was evicted by one oversized message: %d bytes", len(prefix))
+	}
+	if !strings.Contains(prefix, "connection refused") || !strings.Contains(prefix, "chars omitted") {
+		t.Errorf("the cap lost the tail or hid that it cut: %q", prefix[len(prefix)-120:])
+	}
+	if len(prefix) > ReplayLineBytes*3 {
+		t.Errorf("prefix is %d bytes", len(prefix))
+	}
+}
+
+func replayEvent(t *testing.T, seq int, typ Type, body Payload) Event {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return Event{Sequence: seq, Type: typ, Payload: raw}
 }

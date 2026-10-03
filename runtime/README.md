@@ -28,7 +28,7 @@ runtime/
     graph.go              graph validate
     mcp.go                mcp serve
     hook.go               lifecycle hooks for Claude and Cursor
-    memory.go             list, confirm, forget. The human side of the store
+    memory.go             list, confirm, forget, history, link, sessions, gc. The human side of the store
     fetch.go              a URL or file as text, cached by source
     doctor.go             workspace health checks
     web.go                loopback web UI (127.0.0.1 only)
@@ -181,9 +181,26 @@ vibe-agent slop audit . --json
 vibe-agent slop audit . --fail-on 49
 ```
 
-The built-in scanner runs without external tools and reports files, lines, languages, tree-sitter parse counts, parser basis, and scoring basis. Language detection comes from [`go-enry`](https://pkg.go.dev/github.com/go-enry/go-enry/v2), the Go port of GitHub Linguist, instead of a local extension table. Syntax parsing uses [`gotreesitter`](https://pkg.go.dev/github.com/odvcencio/gotreesitter), a pure-Go tree-sitter runtime with bundled grammar metadata, so the runtime stays `CGO_ENABLED=0` and still handles mixed repos such as Go, Python, TSX, Vue, YAML, Dockerfiles, PHP, Rust, and Zig. Unknown non-binary text files are still scanned as `Text`. Vendor, generated, binary, image, and sensitive local config files are skipped before scoring.
+The built-in scanner runs without external tools and reports files, lines, languages, tree-sitter parse counts, parser basis, and scoring basis. Language detection comes from [`go-enry`](https://pkg.go.dev/github.com/go-enry/go-enry/v2), the Go port of GitHub Linguist, instead of a local extension table. Syntax parsing uses [`gotreesitter`](https://pkg.go.dev/github.com/odvcencio/gotreesitter), a pure-Go tree-sitter runtime with bundled grammar metadata, so the runtime stays `CGO_ENABLED=0` and still handles mixed repos such as Go, Python, TSX, Vue, YAML, Dockerfiles, PHP, Rust, and Zig. Unknown non-binary text files are still scanned as `Text`. Files come from the shared inventory in `internal/sourcefiles` (git's own file list inside a work tree, so nested `.gitignore` rules apply), which drops installed dependencies, build output, tool caches, virtual environments under any name, and vendored, generated, binary, image, and sensitive local config files before scoring.
 
 The score is weighted finding density per KLOC, capped at 100. It is a review signal, not proof that code is correct. The command does not spawn external linters from user-controlled paths; teams that want Semgrep, ast-grep, or benchmark gates should add them as repo-owned verifier commands.
+
+## Review scan
+
+`vibe-agent review scan` is the mechanical half of a code review, so an agent does not do it by eye. It reads every source file from the same inventory as `slop audit`, parses each with tree-sitter, and cuts it into blocks (each definition, plus each stretch of top-level code between definitions) that together cover every non-blank line. Then it reports:
+
+- **References**, indexed across the whole workspace: unused imports (Python, JavaScript, TypeScript, Java, Kotlin, PHP; Go and Rust compilers already reject or warn on these), definitions nothing references, helpers only tests call, and with `--changed`, definitions whose last caller the change removed (`orphaned-by-change`).
+- **Bug shapes** that read the same in every grammar: self-comparison, NaN comparison, identical branches, repeated conditions in an if/else-if chain, unreachable statements, duplicate literal keys, assignment in a condition, swallowed errors, `typeof` typos, return in finally, `defer` in a loop, mutable default arguments, `is` with a literal, leftover debugger calls, and redefinitions in languages where the later one silently wins.
+
+```bash
+vibe-agent review scan                       # whole workspace: findings, then every block in reading order
+vibe-agent review scan --changed             # findings in the change; changed blocks marked *
+vibe-agent review scan src/ --json           # one subtree, machine-readable
+vibe-agent review block src/app.py:42        # one block with line numbers, its findings, and who references it
+vibe-agent review block src/app.py:handler   # the same, by name
+```
+
+Findings are leads, not verdicts: nothing here resolves types, so a call through reflection, a framework, or another repository is invisible. A definition with a decorator or annotation, a protocol method (`String`, `__str__`, `toString`, lifecycle hooks), a test-runner entry point, or a name spelled in a string (a lookup, a config) is never reported as dead. One whose name a string starts (`getattr(self, "_handle_" + kind)`) is reported only as `info`. A `review:ignore <reason>` comment, or a linter's own `noqa`/`nolint`/`eslint-disable`, on or above a line silences it. Exit status is 0 unless `--fail-on <severity>` is given.
 
 ## Calculate exactly
 
@@ -349,11 +366,72 @@ An as-of query includes stale memories by default. A fact that was true then is 
 
 ## How retrieval ranks
 
-With a query, two orderings are fused with [reciprocal rank fusion](https://dl.acm.org/doi/10.1145/1571941.1572114) at `k=60`: bm25 keyword relevance, and recency. Neither alone is right, and fusing avoids inventing a scale on which a bm25 score and a timestamp are comparable.
+With a query, three orderings are fused with [reciprocal rank fusion](https://dl.acm.org/doi/10.1145/1571941.1572114) at `k=60`: bm25 keyword relevance, recency, and importance (`confidence * (1 + ln(1 + used_count))`, so a memory that reuse has repeatedly confirmed outranks an equally fresh one nobody has relied on, while the log keeps a heavily reused memory from drowning everything else). Recency, relevance, and importance are the three signals agent-memory work (Generative Agents, MemoryOS, Mem0) converged on, and fusing avoids inventing a scale on which a bm25 score, a timestamp, and a count are comparable.
 
-Ties are frequent and expected. Two results that swap places between the two rankings score identically, so the tiebreak is recency, then confidence: when two memories say almost the same thing, the usual reason is that one replaced the other.
+Ties are frequent and expected. Two results that swap places between the rankings score identically, so the tiebreak is recency, then confidence: when two memories say almost the same thing, the usual reason is that one replaced the other. Equal importance breaks the same way, so it never silently favours whichever row bm25 listed first.
+
+The keyword index uses the porter stemmer, so "failing" finds a memory that says "failed".
 
 Keyword search with metadata filters remains the deliberate first choice. Embeddings come only after this is measured as insufficient.
+
+## Links between memories
+
+`memory_links` holds typed edges: `supersedes` (written automatically when a candidate names the memory it replaces), `relates_to`, `derived_from`, and `contradicts`. After the keyword stage, spare result slots are filled with the linked neighbours of the best hits (Zettelkasten-style expansion, as in A-MEM). The rules keep it safe:
+
+- Neighbours only fill slots the matches left empty, and are marked `via` so a reader can tell a neighbour from a match.
+- A neighbour passes the same filters as a match: status, kind, expiry, validity interval. An edge never resurrects a closed memory.
+- `contradicts` is never followed; it exists so a reviewer can find the pair.
+
+```sh
+vibe-agent memory link --from <id> --to <id> --relation relates_to --agent claude
+```
+
+Linking is metadata like review. It never changes a status, so it cannot confirm.
+
+## When a memory counts as used
+
+`used_count` feeds importance ranking and `memory promotions`, so it has to mean something stronger than "was retrieved". A memory earns a use only when both halves hold:
+
+1. **Exposure.** It was put in front of the model while a run was in flight: recalled by a hook, or returned by `vibe_memory_search`. Each is recorded in `memory_exposures` against every active run, once per memory per run however often it is repeated.
+2. **Verified success.** That run then records a check **the runtime itself verified as passing** (`checkpoint.Verify`, origin runtime). A pass a caller asserted, a human-recorded event, a failure, or a skip credits nothing.
+
+Crediting consumes the exposure, so one exposure earns at most one use, and a memory closed or contradicted after it was shown earns nothing for a success it may have been wrong about. Each credit leaves a `use` line in the ledger naming the check that earned it, for example `run demo check unit passed (exit_code: ...)`. The model never grades its own memories; a verifier does, which is the same rule that governs confirmation.
+
+## The memory ledger
+
+A memory row is edited in place, so the row only says where a memory ended up. `memory_events` is the append-only ledger of how it got there: every proposal, merge, review, link, confirmation, and closure, with the status before and after, who did it, and when. Each ledger line is written in the same transaction as the change it describes, so the history cannot disagree with the row.
+
+```sh
+vibe-agent memory history --id <id>
+```
+
+## Searching past sessions
+
+Every host gesture (prompt, tool call, assistant message) is stored in `session_events` rather than in a `session.ndjson` file, with a full-text index kept in sync by SQLite triggers. Host reasoning (`thinking`) is stored but never indexed. Text was redacted when written, so a snippet cannot carry a secret the writer already removed.
+
+```sh
+vibe-agent memory sessions --query "webhook retry"
+```
+
+MCP hosts call `vibe_memory_search` with `scope: "sessions"`. This is the episodic layer: what was said and run before, found by words, as opposed to what was distilled into a memory.
+
+## Where state lives
+
+Everything an agent recalls is a table in `.agent-state/memory.db`: `memories` (+ `memories_fts`), `memory_links`, `memory_events`, `session_events` (+ `session_events_fts`), `runs`, `run_events`, `run_checks`, `journal_entries`, `task_lists`, `fetch_cache`, `sdd_cache`, and `agent_state` (small keyed hook state, such as the last node announced to Cursor). `vibe-agent migrate state` moves any file-based predecessor into its table. Every older layout is known only to `internal/legacy`, and `vibe-agent doctor` fails while one remains, because the runtime reads only the current tables.
+
+Two things stay outside by design: fetched binaries under `.agent-state/fetch/assets/` (files a reader must be able to open), and `web.json` / `web-workspaces.json` (server discovery and the cross-workspace registry, which must be readable before any one workspace's database is chosen).
+
+## Token efficiency
+
+Hook output lands in the transcript, so every injected token is paid for again on every later turn. The runtime's injection points are budgeted by what recent agent-context research found works, and by the one rule the research agrees on: do not rewrite what is already in context.
+
+- **Observation masking and capping beat summarizing.** [Simple observation masking matches LLM summarization on SWE-bench at about half the cost](https://arxiv.org/pdf/2508.21433), and [capping every tool output at a stable size cut cost per turn by 38%](https://arxiv.org/html/2606.17016v1) because it never rewrites the prefix the provider's cache depends on. Replayed session turns are therefore capped per turn (`session.ReplayLineBytes`, head and tail kept, the cut announced) instead of being summarized, so one pasted log can no longer evict every earlier turn from the prefix.
+- **Dedupe injected memories by id; keep context append-only.** [Memory systems that inject by id and filter ids already in the transcript](https://mem0.ai/blog/6-techniques-to-cut-ai-agent-memory-cost-beyond-basic-retrieval) keep the stable prefix cacheable. The hooks keep an injection ledger (`agent_state`, one per conversation): a context line or memory already delivered is not sent again until `injectRefresh` (12) prompts have passed, and an excluded memory frees its slot for the next match. `SessionStart` resets the ledger, because a new, resumed, cleared, or compacted session has lost what the last one was told, and the refresh window covers a host that truncates silently. Measured on a workspace with one run and five memories, ten identical prompts cost 989 bytes of hook output with the ledger and 9,890 without (90% less; the best case, since real prompts differ and the run line changes when the node moves).
+- **Budget in tokens, not items.** Five short facts and five paragraphs are the same limit and very different costs. `memory.Query.TokenBudget` (and `budget` on `vibe_memory_search`) keeps hits in rank order while they fit, never letting a shorter, lower-ranked memory leapfrog a better one, and always keeps the top hit. Hooks recall under `RecallTokenBudget` (350), each memory line capped at 280 characters. MCP results carry at most three evidence items per hit, with `evidenceCount` saying how many exist.
+- **Curate near-duplicates.** A proposal that restates a held memory (Jaccard overlap of its word set at or above 0.9) merges its evidence into the existing row instead of taking a second retrieval slot. Two guards keep it from merging claims a single token reverses: every number must match, and so must the set of negations. `Propose` also loads only open, same-kind records for this check, not the whole history.
+- **Reclaim what can no longer be retrieved.** `vibe-agent memory gc` removes memories whose own expiry passed over a week ago (they were already excluded from every query), with their links and index rows, then compacts the indexes and truncates the WAL. Session history is kept unless `--sessions-older-than` is given. A memory with no expiry is never deleted; it is closed with `forget`. `--dry-run` counts first, and the ledger keeps a `prune` line for each removed memory.
+
+All of these budgets share one estimate, `internal/shared/tokenest` (4 characters per token), so "350 tokens" means the same in fetch, the repo map, recall, and replay.
 
 ## Reading a page without reading the page
 

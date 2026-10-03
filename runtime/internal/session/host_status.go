@@ -19,7 +19,7 @@ func EphemeralHostStatus(body string) bool {
 	}
 }
 
-// IsCommandInjectionUserText reports Claude slash-command expansion the Chat tab
+// IsCommandInjectionUserText reports host slash-command expansion the Chat tab
 // should treat as thinking context, not a second user turn.
 func IsCommandInjectionUserText(text string) bool {
 	trimmed := strings.TrimSpace(text)

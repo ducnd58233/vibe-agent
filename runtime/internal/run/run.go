@@ -50,8 +50,9 @@ const (
 	FailureAmbiguity  = domain.FailureAmbiguity
 	FailureModel      = domain.FailureModel
 
-	EventLogName = domain.EventLogName
-	RunsDirName  = persistence.RunsDirName
+	EventLogName   = domain.EventLogName
+	SessionLogName = domain.SessionLogName
+	RunsDirName    = persistence.RunsDirName
 
 	EventRunStarted  = domain.EventRunStarted
 	EventTransition  = domain.EventTransition
@@ -67,15 +68,18 @@ var (
 	NewRun         = domain.NewRun
 	FailureClasses = domain.FailureClasses
 
-	Load           = persistence.Load
-	Save           = persistence.Save
-	RunDir         = persistence.RunDir
-	RunsDir        = persistence.RunsDir
-	ManifestPath   = persistence.ManifestPath
-	EventLogPath   = persistence.EventLogPath
-	AppendEvent    = persistence.AppendEvent
-	AppendRunEvent = persistence.AppendRunEvent
-	ReadEvents     = persistence.ReadEvents
-	List           = persistence.List
-	PrepareStart   = persistence.PrepareStart
+	Load                = persistence.Load
+	Save                = persistence.Save
+	RunDir              = persistence.RunDir
+	RunsDir             = persistence.RunsDir
+	ManifestPath        = persistence.ManifestPath
+	EventLogPath        = persistence.EventLogPath
+	AppendEvent         = persistence.AppendEvent
+	AppendRunEvent      = persistence.AppendRunEvent
+	ReadEvents          = persistence.ReadEvents
+	List                = persistence.List
+	Active              = persistence.Active
+	ImportRun           = persistence.ImportRun
+	ImportSessionEvents = persistence.ImportSessionEvents
+	PrepareStart        = persistence.PrepareStart
 )

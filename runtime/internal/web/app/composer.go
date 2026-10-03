@@ -279,17 +279,6 @@ func runHostPrint(ctx context.Context, host hosts.Host, prompt string, opts host
 	return response.Text, nil
 }
 
-func parsePrintLines(raw string) []string {
-	fragments, _ := parsePrintOutput(raw)
-	texts := make([]string, 0, len(fragments))
-	for _, frag := range fragments {
-		if frag.Body != "" {
-			texts = append(texts, frag.Body)
-		}
-	}
-	return texts
-}
-
 func parsePrintOutput(raw string) ([]printFragment, *session.Usage) {
 	lines := strings.Split(strings.TrimSpace(raw), "\n")
 	if len(lines) == 1 && !strings.HasPrefix(strings.TrimSpace(raw), "{") {
@@ -444,7 +433,7 @@ func fragmentsFromPrint(typ string, raw map[string]any) []printFragment {
 		}
 		return []printFragment{{Role: "question", Body: body}}
 	case "tool_call":
-		if frag, ok := cursorToolCall(raw); ok {
+		if frag, ok := typedToolCall(raw); ok {
 			return []printFragment{frag}
 		}
 		return nil
@@ -531,7 +520,9 @@ func messageContentBlocks(raw map[string]any) []map[string]any {
 	return out
 }
 
-func cursorToolCall(raw map[string]any) (printFragment, bool) {
+// typedToolCall reads a "tool_call" print event whose payload is keyed by tool
+// type ("readToolCall", "shellToolCall", ...) rather than carrying a name field.
+func typedToolCall(raw map[string]any) (printFragment, bool) {
 	subtype, _ := raw["subtype"].(string)
 	if subtype == "completed" {
 		return printFragment{}, false

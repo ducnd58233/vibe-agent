@@ -145,7 +145,7 @@ func TestFailingCommandIsJournalledAndRemembered(t *testing.T) {
 
 	invoke(t, Request{
 		Event:         EventPostToolUseFailure,
-		Client:        ClientClaude,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin:         strings.NewReader(claudeFailurePayload),
 	})
@@ -201,7 +201,7 @@ func TestInterruptedCallIsNotRemembered(t *testing.T) {
 
 	invoke(t, Request{
 		Event:         EventPostToolUseFailure,
-		Client:        ClientClaude,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{
 			"tool_name": "Bash",
@@ -222,12 +222,12 @@ func TestInterruptedCallIsNotRemembered(t *testing.T) {
 // what broke - the same emptiness, one field deeper.
 //
 // Ref: https://cursor.com/docs/agent/hooks
-func TestCursorFailureTextIsKept(t *testing.T) {
+func TestAFailureMessageFieldIsKeptAsEvidence(t *testing.T) {
 	root := workspaceWithRun(t)
 
 	invoke(t, Request{
 		Event:         EventPostToolUseFailure,
-		Client:        ClientCursor,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{
 			"hook_event_name": "postToolUseFailure",
@@ -242,11 +242,11 @@ func TestCursorFailureTextIsKept(t *testing.T) {
 
 	stored := memories(t, root)
 	if len(stored) != 1 {
-		t.Fatalf("want one memory from a failed Cursor command, got %d", len(stored))
+		t.Fatalf("want one memory from a failed command, got %d", len(stored))
 	}
 	joined := strings.Join(stored[0].Evidence, " ")
 	if !strings.Contains(joined, "expected 200, got 500") {
-		t.Errorf("evidence drops Cursor's error_message: %v", stored[0].Evidence)
+		t.Errorf("evidence drops the host's error_message: %v", stored[0].Evidence)
 	}
 }
 
@@ -258,7 +258,7 @@ func TestADeniedCallIsNotRemembered(t *testing.T) {
 
 	invoke(t, Request{
 		Event:         EventPostToolUseFailure,
-		Client:        ClientCursor,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{
 			"tool_name": "Bash",
@@ -283,7 +283,7 @@ func TestAnAdHocProbeIsJournalledButNotRemembered(t *testing.T) {
 
 	invoke(t, Request{
 		Event:         EventPostToolUseFailure,
-		Client:        ClientClaude,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{
 			"tool_name": "Bash",
@@ -314,7 +314,7 @@ func TestAOneOffPipelineIsNotRemembered(t *testing.T) {
 
 	invoke(t, Request{
 		Event:         EventPostToolUseFailure,
-		Client:        ClientClaude,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin: strings.NewReader(fmt.Sprintf(
 			`{"tool_name": "Bash", "tool_input": {"command": %q}, "error": "2 failed"}`, command)),
@@ -338,7 +338,7 @@ func TestARealProjectCommandIsStillRemembered(t *testing.T) {
 
 	invoke(t, Request{
 		Event:         EventPostToolUseFailure,
-		Client:        ClientClaude,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin: strings.NewReader(fmt.Sprintf(
 			`{"tool_name": "Bash", "tool_input": {"command": %q}, "error": "FAIL"}`, command)),
@@ -360,7 +360,7 @@ func TestSucceedingCommandIsJournalledButNotRemembered(t *testing.T) {
 
 	invoke(t, Request{
 		Event:         EventPostToolUse,
-		Client:        ClientClaude,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin:         strings.NewReader(claudeSuccessPayload),
 	})
@@ -390,7 +390,7 @@ func TestFailureWithoutARunIsJournalledAmbiently(t *testing.T) {
 
 	invoke(t, Request{
 		Event:         EventPostToolUseFailure,
-		Client:        ClientClaude,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin:         strings.NewReader(claudeFailurePayload),
 	})
@@ -416,7 +416,7 @@ func TestAmbientFailureIsRemembered(t *testing.T) {
 
 	invoke(t, Request{
 		Event:         EventPostToolUseFailure,
-		Client:        ClientClaude,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin:         strings.NewReader(claudeFailurePayload),
 	})
@@ -438,7 +438,7 @@ func TestSuccessWithoutARunIsJournalledAmbiently(t *testing.T) {
 
 	invoke(t, Request{
 		Event:         EventPostToolUse,
-		Client:        ClientClaude,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin:         strings.NewReader(claudeSuccessPayload),
 	})
@@ -456,7 +456,7 @@ func TestSuccessWithoutARunIsJournalledAmbiently(t *testing.T) {
 // an argument nothing checks is one that decays.
 func TestStopDoesNotBlockWithNoRunAtAll(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: t.TempDir(),
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: t.TempDir(),
 	})
 	if strings.Contains(output, `"block"`) {
 		t.Errorf("stop blocked a session with no run: %s", output)
@@ -468,7 +468,7 @@ func TestStopDoesNotBlockWithNoRunAtAll(t *testing.T) {
 // a broken control plane rather than an idle one.
 func TestSessionStartNamesTheNoRunState(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: t.TempDir(),
+		Event: EventSessionStart, Client: DefaultClient, WorkspaceRoot: t.TempDir(),
 	})
 	if !strings.Contains(output, "No active run") {
 		t.Errorf("session start does not name the no-run state: %s", output)
@@ -485,7 +485,7 @@ func TestAnActiveRunKeepsTheAmbientLogEmpty(t *testing.T) {
 
 	invoke(t, Request{
 		Event:         EventPostToolUse,
-		Client:        ClientClaude,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin:         strings.NewReader(claudeSuccessPayload),
 	})
@@ -505,7 +505,7 @@ func TestExitCodeIsKeptWhenTheHostReportsOne(t *testing.T) {
 
 	invoke(t, Request{
 		Event:         EventPostToolUseFailure,
-		Client:        ClientCursor,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{
 			"tool_name": "Bash",

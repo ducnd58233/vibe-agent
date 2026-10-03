@@ -55,6 +55,25 @@ runtime/
 - `web/app` is the web composition root: wires shared middleware, domain, and infra adapters.
 - Do not import concrete types across domain modules (e.g. `web` must not reach into `memory` persistence). Shared path names live in `shared/workspace` only.
 
+**Host-neutral outside the adapter layer (MUST):**
+
+The runtime serves every supported agent, so no package outside the adapter layer names one or branches on one.
+
+- **Per-host differences are data.** A host is a row of `harness.HostContract`, not a Go identifier: there are no per-host constants, and `DefaultClient` is the only host literal outside the table. How the hooks answer a host lives in that row's `Dialect` (`harness/dialect.go`: context, refusal, stop, and post-tool envelopes, plus capability flags such as `PromptInjection` and `RefusalExits`), and what it calls its tools in `Tools`. Code asks `dialectFor(client)`; it never compares a `Client`. Adding a host is one contract row.
+- **Tests select hosts by capability.** `hostWhere(t, refusesWith(...))`, `contextIs`, `stopsWith`, or a loop over every contract; never a host by name. A rule then covers every host with that shape, including one added later.
+- **Host files and commands are data too.** Rules files, skill and command directories, the skills-installer id, the eval command, documented models, and print flags per host live in `internal/hosts`. `hosts.RulesFiles()`, `hosts.SkillDirs()`, and friends are the only way other packages learn them.
+- **Inbound spellings stay in `harness/payload.go`.** Hosts name fields differently (`prompt`/`user_prompt`, `error`/`error_message`); everything else reads the methods, not a host's key.
+- **Help text lists hosts by reading the tables** (`usage` in `cmd/main.go`), so it cannot drift from what the build supports.
+- **Names the toolkit owns are constants.** `workspace.ToolkitDirName` and `workspace.ToolkitPath` for the toolkit directory, `workspace.StateDir` for state, `app.DefaultPort` for the port. No literal `".ai-agents"`, `".agent-state"`, or port in feature code.
+
+`internal/architecture` enforces this and the dependency direction above: `go test ./internal/architecture`. A file that legitimately describes one agent (a wire format, a config path) goes in its `adapterFiles` list with a reason.
+
+**Legacy layouts live in one module (MUST):**
+
+- Every older on-disk layout (JSON caches, NDJSON logs, run manifests and run-index pointers, per-host marker files, flat `docs/` and `tmp/`) is known only to [`internal/legacy`](internal/legacy). It finds the old files, reads them, stores them through a module's **Import** function on current storage (`run.ImportRun`, `run.ImportSessionEvents`, `tasks.Save`) or the table directly, and deletes what it moved.
+- Modules read and write only their current tables. A module never imports `internal/legacy`; only `cmd` does (`vibe-agent migrate state`, `vibe-agent migrate docs-tmp`). `vibe-agent doctor` fails while `legacy.Pending` names a layout still on disk.
+- Retiring an old layout means adding a `legacy.Source`, not a fallback path in the module that replaced it.
+
 **Loopback web server (MUST):**
 
 - Bind **`127.0.0.1` only** (`app.ListenHost`). Refuse `0.0.0.0` and non-loopback hosts.
@@ -89,7 +108,7 @@ These rules come from research slug `improve-inner-outer-loops`. They apply when
 - **Evidence provenance is closed.** Checks use only **`exit_code`**, **`file_assert`**, **`ci_api`**, **`human_event`**. Do not treat a judge-LLM score or model assertion as `Passed` evidence. Do not invent a fifth `--source`.
 - **Fail-closed skip.** Optional quality cells (structure, security/deps, coverage, and future matrix rows) that the workspace never declared must **skip**, not invent a tool or pass vacuously with a hardcoded command.
 - **Two matrices, do not conflate.** Agent-eval scoreboards (SWE-bench, OpenHands Index, and similar) measure the coding agent. Codebase quality cells measure the consumer repo. Do not wire agent benches into delivery graphs or checkplans.
-- **No in-process analyzers or GPU/container sandbox.** Do not embed language-specific static analysis, SWE harness runners, or an in-process container/GPU runtime in Go. Isolation for checks that need it uses the workspace-opted **sandbox runner port** (`.agent-state/sandbox.yaml`, `vibe-agent sandbox`, optional checkplan `runner:`). Embedded container/GPU inside the Go process stays declined (root [`AGENTS.md`](../AGENTS.md)).
+- **No in-process analyzers or GPU/container sandbox.** Do not embed language-specific static analysis, SWE harness runners, or an in-process container/GPU runtime in Go. The advisory scanners (`slop audit`, `review scan`) read syntax trees to give a reviewer leads; they never produce checkplan evidence or gate a graph. Isolation for checks that need it uses the workspace-opted **sandbox runner port** (`.agent-state/sandbox.yaml`, `vibe-agent sandbox`, optional checkplan `runner:`). Embedded container/GPU inside the Go process stays declined (root [`AGENTS.md`](../AGENTS.md)).
 </required>
 
 <rules>
@@ -122,6 +141,12 @@ These rules come from research slug `improve-inner-outer-loops`. They apply when
   lives under **`runtime/migrations/`** (golang-migrate up/down pairs). `Open` applies
   pending migrations via embed; packages must not `CREATE TABLE` on open. Developer CLI:
   `make -C runtime new-migrate|migrate-up|migrate-down`.
+- **Connection settings go in the DSN, and write transactions start immediate.** A `PRAGMA` run with
+  `db.Exec` reaches one connection of the pool, not the others. A deferred transaction that reads
+  and then writes asks SQLite to upgrade its lock, and SQLite answers a contended upgrade with
+  `SQLITE_BUSY` at once, ignoring `busy_timeout`, because waiting could deadlock. `database.Open`
+  sets `busy_timeout` and `_txlock=immediate` in the DSN and retries the one-time WAL switch and
+  migrations on BUSY; do not open SQLite any other way, and test concurrency with `-count=N`.
 - Makefile `DATABASE_URL` defaults to `sqlite://$(CURDIR)/../.agent-state/memory.db`.
   Scheme is **`sqlite://`**, not `sqlite3://` (modernc `-tags sqlite`). Path is anchored
   with `$(CURDIR)` so it does not depend on the caller's cwd; override when the workspace
@@ -219,7 +244,8 @@ Rule added by the `agent-trust-research-memory-ecc` delivery.
 ## Testing
 
 - Go: **`go test ./...`** or **`make check`** from **`runtime/`**.
-- After changing runtime code: **`make check`** from **`runtime/`** (gofmt, vet, golangci-lint, tests, e2e).
+- After changing runtime code: **`make check`** from **`runtime/`** (gofmt, vet, golangci-lint, tests, e2e). It is what CI runs; a passing `go test` alone has still failed CI here on lint.
+- After changing **`go.mod`**: also run the cross-compile loop from `.github/workflows/ai-agents-router.yml` (Windows, Linux, and macOS on amd64 and arm64, `CGO_ENABLED=0`).
 - Reinstall for hook testing: **`make install`** then **`vibe-agent doctor`**. Passing `go test` does not update the binary on PATH.
 - Benchmarks (optional, not in **`check`**): **`make bench`** from **`runtime/`** runs **`go test -bench=. -benchmem`**. See **Benchmark tests** below.
 
@@ -305,4 +331,14 @@ CSS/HTML-only tweaks: verify at desktop (`>68.75em`) and mobile (`<48em`) per **
 14. **Passing an optional quality check by inventing a default tool** when the workspace omitted it. Skip fail-closed instead.
 15. **Recording a judge-LLM or model opinion as check evidence.** Only `exit_code` / `file_assert` / `ci_api` / `human_event`.
 16. **Embedding a container or GPU sandbox inside the Go process.** Use the external runner port or host/CI only.
+17. **Dropping the caller's context.** A function that receives a `ctx` (or whose caller has one) must pass it on, never mint `context.Background()` or write `_ = ctx`. The `contextcheck` linter fails CI on it, and cancellation silently stops at that call.
+18. **Leaving `rows` open on an early return.** `defer rows.Close()` in the function that runs the query; when a transaction function grows long, move the scan into a helper that defers the close (`sqlclosecheck`).
+19. **Lint-only fixes that skip the reason.** Read paths built at run time go through `filepath.Clean` (gosec G304). Subprocesses, tests included, go through `safexec.CommandContext` (G204). `fmt.Fprintf` to an `io.Writer` keeps its error: render through a small printer that holds the first one, as `reviewscan` does (errcheck).
+20. **Writing another file walker.** `internal/sourcefiles` is the inventory every scanner uses. It asks git inside a work tree, so nested and negated `.gitignore` rules apply, and it drops dependency, build, cache, and virtual-environment directories. go-enry's vendor list alone misses `venv`, `.venv`, `build`, `target`, `__pycache__`, and more.
+21. **Plain `flags.Parse` for a command whose usage puts flags after a positional.** Go's `flag` package stops at the first positional and silently ignores what follows. Use **`parseInterspersed`** in `cmd/common.go`; `slop audit . --json` failed until it did.
+22. **Matching tree-sitter node types by substring.** `HasPrefix(t, "if")` also matches `identifier`, `Contains(t, "annotation")` matches TypeScript's `type_annotation` (a return type), and `Contains(head, "namespace")` matches PHP's `namespace_use_declaration` (an import). Match whole type names or anchored suffixes. Do not trust a node's range when its subtree `HasError()`. Check shapes with a throwaway probe test against the pinned grammar, and test rules on code you did not write.
+23. **Production code that only tests call.** A convenience wrapper kept "for the test" is dead code that looks alive. Test the function production uses; `vibe-agent review scan` reports these as `test-only-reference`.
+24. **Staying on a dependency version that crashes.** A Go stack overflow is fatal and `recover` cannot catch it: gotreesitter v0.47.0 overflowed on one Go file, which would kill any scan that met it. Reproduce against the newest release in a scratch module, upgrade, and re-run every caller's tests and the cross-compile loop.
+25. **Writing to stderr on a hook refusal.** Hosts that refuse on exit 2 hand stderr to the model as the reason. A refusal's stderr carries only the reason; it logs at debug level, never as an `ERR` line on the console sink.
+26. **Recording a host's wire format from memory.** A contract row cites the vendor doc or measurement it came from and stays unverified until a hook is observed firing. Tests read the rows rather than repeating their values; that test is what found two stale rows here.
 </antipatterns>

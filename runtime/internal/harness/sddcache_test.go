@@ -26,7 +26,7 @@ import (
 // the most frequent tool there is.
 func TestSDDCacheIgnoresEveryOtherTool(t *testing.T) {
 	blocked := sddCache(Request{
-		WorkspaceRoot: t.TempDir(), ToolkitRoot: toolkitRoot, Client: ClientClaude,
+		WorkspaceRoot: t.TempDir(), ToolkitRoot: toolkitRoot, Client: DefaultClient,
 	}, payload{ToolName: "Bash"}, "sdd-cache-pre.py")
 
 	if blocked != nil {
@@ -39,7 +39,7 @@ func TestSDDCacheIgnoresEveryOtherTool(t *testing.T) {
 // that quietly does not accelerate.
 func TestSDDCacheIsSilentWhenTheScriptIsAbsent(t *testing.T) {
 	blocked := sddCache(Request{
-		WorkspaceRoot: t.TempDir(), ToolkitRoot: t.TempDir(), Client: ClientClaude,
+		WorkspaceRoot: t.TempDir(), ToolkitRoot: t.TempDir(), Client: DefaultClient,
 	}, payload{ToolName: "WebFetch"}, "sdd-cache-pre.py")
 
 	if blocked != nil {
@@ -49,8 +49,8 @@ func TestSDDCacheIsSilentWhenTheScriptIsAbsent(t *testing.T) {
 
 // A refusal from the cache is a refusal on the same event as the safety gate,
 // so it has to leave through the same door. It did not at first: the block was
-// returned past the per-host translation, and Cursor and Codex received exit 0
-// and an empty reply while Claude got the cached page.
+// returned past the per-host translation, and hosts that read JSON received exit
+// 0 and an empty reply while the one reading the exit status got the cached page.
 func TestACacheRefusalIsDeliveredInEachHostsShape(t *testing.T) {
 	reason := &BlockError{Reason: "[sdd-cache] Cache hit"}
 
@@ -58,8 +58,8 @@ func TestACacheRefusalIsDeliveredInEachHostsShape(t *testing.T) {
 		client Client
 		expect string
 	}{
-		{ClientCursor, "permission"},
-		{ClientCodex, "permissionDecision"},
+		{hostWhere(t, refusesWith(RefusePermission)), "permission"},
+		{hostWhere(t, refusesWith(RefuseHookSpecific)), "permissionDecision"},
 	} {
 		var out bytes.Buffer
 		if err := deliverBlock(Request{Client: host.client}, reason, &out); err != nil {
@@ -70,11 +70,11 @@ func TestACacheRefusalIsDeliveredInEachHostsShape(t *testing.T) {
 		}
 	}
 
-	// Claude decides by exit status, so its refusal is the returned error and
+	// The default host decides by exit status, so its refusal is the returned error and
 	// main turns it into exit 2 with the reason on stderr.
 	var out bytes.Buffer
-	if err := deliverBlock(Request{Client: ClientClaude}, reason, &out); err == nil {
-		t.Error("Claude got no error to exit 2 with")
+	if err := deliverBlock(Request{Client: DefaultClient}, reason, &out); err == nil {
+		t.Error("the default host got no error to exit 2 with")
 	}
 }
 

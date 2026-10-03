@@ -18,6 +18,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch/infra/extract"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch/infra/httpx"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch/infra/persistence"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/tokenest"
 )
 
 // The names a caller uses. One definition each, in the layer that owns it.
@@ -66,12 +67,10 @@ func Get(ctx context.Context, workspaceRoot, source string, options Options) (Do
 // CharsPerToken is the ratio budgets are estimated with. An approximation, and
 // named as one: the consequence of it being off is a clip slightly early or
 // late, not a wrong document.
-const CharsPerToken = 4
+const CharsPerToken = tokenest.CharsPerToken
 
 // EstimateTokens approximates what a string costs to read.
-func EstimateTokens(text string) int {
-	return (len(text) + CharsPerToken - 1) / CharsPerToken
-}
+func EstimateTokens(text string) int { return tokenest.Estimate(text) }
 
 // Clip cuts text to a token budget at a line boundary from the start, and
 // reports what it left.

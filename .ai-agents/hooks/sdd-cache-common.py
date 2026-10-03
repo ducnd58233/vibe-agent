@@ -32,7 +32,13 @@ def read_input() -> dict[str, object]:
 
 
 def project_root() -> Path:
-    return Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
+    # The runtime passes the root it discovered. CLAUDE_PROJECT_DIR is the older
+    # spelling a host config may still provide to a standalone run.
+    for name in ("VIBE_WORKSPACE_ROOT", "CLAUDE_PROJECT_DIR"):
+        configured = os.environ.get(name, "").strip()
+        if configured:
+            return Path(configured)
+    return Path(os.getcwd())
 
 
 def memory_db_path() -> Path:

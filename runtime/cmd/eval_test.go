@@ -38,7 +38,7 @@ func TestAnExplanationEndingInTheAnswerIsStillGraded(t *testing.T) {
 	}
 }
 
-func TestCodexJSONOutputIsGradedByFinalAgentMessage(t *testing.T) {
+func TestJSONLineOutputIsGradedByTheFinalAgentMessage(t *testing.T) {
 	reply := `{"type":"thread.started","thread_id":"1"}` + "\n" +
 		`{"type":"item.completed","item":{"type":"agent_message","text":"performance-optimization"}}` + "\n" +
 		`{"type":"turn.completed","usage":{"input_tokens":1}}`

@@ -17,7 +17,7 @@ func writeSubject(t *testing.T, name, body string) (Request, subject) {
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatalf("write %s: %v", name, err)
 	}
-	return Request{WorkspaceRoot: root, Client: ClientClaude},
+	return Request{WorkspaceRoot: root, Client: DefaultClient},
 		subject{Path: name, Text: body, Language: "Go", Type: typeProgramming}
 }
 
@@ -100,7 +100,7 @@ func TestSlopAdviceCostsLittlePerEdit(t *testing.T) {
 // A missing file must not panic or hang. The subject was read before this runs,
 // but a file can be removed between the write and the hook.
 func TestSlopAdviceSurvivesAMissingFile(t *testing.T) {
-	req := Request{WorkspaceRoot: t.TempDir(), Client: ClientClaude}
+	req := Request{WorkspaceRoot: t.TempDir(), Client: DefaultClient}
 	file := subject{Path: "gone.go", Text: "package demo\n", Language: "Go", Type: typeProgramming}
 
 	// The auditor reports an unreadable file as a high-severity scan_error
@@ -130,7 +130,7 @@ func TestSlopAdviceIgnoresFilesThatAreNotCode(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o600); err != nil {
 				t.Fatalf("write %s: %v", name, err)
 			}
-			req := Request{WorkspaceRoot: root, Client: ClientClaude}
+			req := Request{WorkspaceRoot: root, Client: DefaultClient}
 			file := subject{Path: name, Text: body, Type: kind}
 
 			if advice := slopAdvice(req, file); advice != "" {

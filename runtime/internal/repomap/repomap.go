@@ -37,14 +37,13 @@ const focusBias = 1_000
 // Build walks root, tags definitions and references, ranks by in-degree, and
 // renders the top definitions within budget.
 func Build(ctx context.Context, root string, options Options) (Result, error) {
-	_ = ctx
 	budget := options.Budget
 	if budget <= 0 {
 		budget = DefaultBudget
 	}
 	focus := filepath.ToSlash(strings.TrimSpace(options.Focus))
 
-	files, err := listSourceFiles(root)
+	files, err := listSourceFiles(ctx, root)
 	if err != nil {
 		return Result{}, err
 	}

@@ -7,11 +7,17 @@ import (
 	"strings"
 
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/tokenest"
 )
 
 const (
 	DefaultReplayTurns = 8
 	DefaultReplayBytes = 16384
+	// ReplayLineBytes caps one replayed turn. Without it a single pasted log
+	// fills the byte budget and pushes every earlier turn out whole. Capping each
+	// observation at a stable size, keeping its head and tail, preserves more
+	// turns for the same bytes and never rewrites the turns that fit.
+	ReplayLineBytes = 2000
 )
 
 func decodePayload(raw json.RawMessage, out *Payload) error {
@@ -85,7 +91,7 @@ func ComposePrefixFromLog(logPath string) string {
 func ComposePrefix(events []Event, maxTurns, maxBytes int) string {
 	var lines []string
 	for _, ev := range events {
-		body := strings.TrimSpace(eventPayload(ev).Body)
+		body := tokenest.HeadTail(strings.TrimSpace(eventPayload(ev).Body), ReplayLineBytes)
 		if body == "" {
 			continue
 		}

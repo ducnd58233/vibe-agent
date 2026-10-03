@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"html/template"
 	"io"
 	"net/http"
@@ -276,7 +277,7 @@ func resolveWorkspaceFileView(workspaceRoot, rel string) (abs string, resolvedRe
 	}
 
 	candidates := []string{
-		filepath.ToSlash(filepath.Join(".ai-agents", "references", rel)),
+		filepath.ToSlash(filepath.Join(workspace.ToolkitDirName, "references", rel)),
 		filepath.ToSlash(filepath.Join("docs", rel)),
 		filepath.ToSlash(filepath.Join("runtime", rel)),
 	}

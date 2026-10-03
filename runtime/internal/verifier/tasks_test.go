@@ -25,7 +25,7 @@ func workspaceWithTasks(t *testing.T, body string) string {
 	if err := os.MkdirAll(workspace.DocsDirAt(root, parsed.Date, parsed.Slug, parsed.Version), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	if err := tasks.Save(root, parsed); err != nil {
+	if err := tasks.Save(t.Context(), root, parsed); err != nil {
 		t.Fatal(err)
 	}
 	return root

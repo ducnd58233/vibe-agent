@@ -86,18 +86,16 @@ func TestEveryAnsweredClientHasAContract(t *testing.T) {
 	}
 }
 
-// Cursor is the host whose wiring was written from a vendor page and never
-// watched running. Recording that is the point; a row quietly flipped to
-// verified without a measurement would put this table back where the prose was.
-func TestCursorIsRecordedAsUnverifiedUntilMeasured(t *testing.T) {
-	contract, ok := HostContractFor(ClientCursor)
-	if !ok {
-		t.Fatal("no Cursor contract")
-	}
-	for _, event := range contract.Events {
-		if event.Verified {
-			t.Errorf("Cursor %s claims verification; no Cursor hook has been observed firing. "+
-				"If one now has been, this test is the thing to update, deliberately.", event.HostKey)
+// An unverified row says why it is unverified. A row quietly flipped to verified
+// without a measurement, or left unverified with no reason, would put this table
+// back where the prose was: describing what someone read rather than what was
+// seen.
+func TestEveryUnverifiedRowSaysWhy(t *testing.T) {
+	for _, contract := range HostContracts() {
+		for _, event := range contract.Events {
+			if !event.Verified && strings.TrimSpace(event.Why) == "" {
+				t.Errorf("%s %s is unverified with no reason given", contract.Client, event.HostKey)
+			}
 		}
 	}
 }

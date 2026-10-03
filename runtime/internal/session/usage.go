@@ -4,7 +4,7 @@ import "encoding/json"
 
 // ParseUsage reads host-reported token counts from a JSON object.
 //
-// Hosts disagree on field names. Cursor and Claude use input_tokens /
+// Hosts disagree on field names. Some hosts use input_tokens /
 // output_tokens; some print streams only report total_tokens. Either shape is
 // enough to show a number in the UI. Split in/out is preferred when both exist.
 func ParseUsage(raw map[string]any) *Usage {

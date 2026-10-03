@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/migrate"
+	migrate "github.com/ducnd58233/vibe-agent/runtime/internal/legacy/docstmp"
 )
 
 func migrateCommand(args []string) error {

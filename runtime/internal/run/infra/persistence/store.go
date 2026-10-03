@@ -169,6 +169,14 @@ func AppendEvent(path string, event domain.Event) (domain.Event, error) {
 		return domain.Event{}, fmt.Errorf("create run directory: %w", err)
 	}
 
+	// Session logs under .agent-state/ live in session_events only; there is no
+	// file to dual-write.
+	if wrote, err := appendSessionSQL(path, &event); err != nil {
+		return domain.Event{}, err
+	} else if wrote {
+		return event, nil
+	}
+
 	// SQL append assigns Sequence when the run is known; otherwise count the file.
 	wroteSQL, err := appendEventSQL(path, &event)
 	if err != nil {
@@ -238,6 +246,11 @@ func AppendRunEvent(path string, event domain.Event) (domain.Event, error) {
 func ReadEvents(path string) ([]domain.Event, error) {
 	if path == "" {
 		return nil, nil
+	}
+	if events, handled, err := readSessionSQL(path); err != nil {
+		return nil, err
+	} else if handled {
+		return events, nil
 	}
 	if events, ok, err := readEventsSQL(path); err != nil {
 		return nil, err
@@ -387,4 +400,28 @@ func walkVersionedRuns(workspaceRoot string, seen map[string]bool) error {
 		}
 	}
 	return nil
+}
+
+// Active returns every run still in flight (running, or waiting on a person),
+// sorted by slug. An unreadable or invalid manifest is skipped rather than
+// reported: callers are hooks and tools that must not fail a session over a
+// stale file.
+func Active(workspaceRoot string) []*domain.Run {
+	slugs, err := List(workspaceRoot)
+	if err != nil {
+		return nil
+	}
+	var runs []*domain.Run
+	for _, slug := range slugs {
+		run, err := Load(ManifestPath(workspaceRoot, slug))
+		if err != nil {
+			continue
+		}
+		switch run.Status {
+		case domain.StatusRunning, domain.StatusAwaitingHuman:
+			runs = append(runs, run)
+		}
+	}
+	sort.Slice(runs, func(i, j int) bool { return runs[i].Slug < runs[j].Slug })
+	return runs
 }

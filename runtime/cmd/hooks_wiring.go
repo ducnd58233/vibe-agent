@@ -39,16 +39,16 @@ import (
 // the toolkit standalone: nothing in it fires for the repository around it.
 // Checking the toolkit's copy reported a workspace as wired while every hook in
 // it was dead.
-var hookConfigs = []hostConfig{
-	{Path: filepath.Join(".claude", "settings.json"), SplitsToolOutcome: true},
-	{Path: filepath.Join(".cursor", "hooks.json"), SplitsToolOutcome: true},
-	{Path: filepath.Join(".codex", "hooks.json"), SplitsToolOutcome: false},
-	{Path: filepath.Join(".codex", "config.toml"), SplitsToolOutcome: false},
-	{Path: "opencode.json", SplitsToolOutcome: false},
-	{Path: filepath.Join(".agents", "hooks.json"), SplitsToolOutcome: false},
-	{Path: filepath.Join(".muse", "hooks.json"), SplitsToolOutcome: false},
-	{Path: filepath.Join(".kimi", "hooks.toml"), SplitsToolOutcome: false},
-}
+var hookConfigs = func() []hostConfig {
+	var configs []hostConfig
+	for _, contract := range harness.HostContracts() {
+		configs = append(configs, hostConfig{Path: filepath.FromSlash(contract.ConfigPath), SplitsToolOutcome: contract.SplitsToolOutcome})
+		for _, alt := range contract.AltConfigPaths {
+			configs = append(configs, hostConfig{Path: filepath.FromSlash(alt), SplitsToolOutcome: contract.SplitsToolOutcome})
+		}
+	}
+	return configs
+}()
 
 // hostConfig is one host's hook config, plus the single fact about that host's
 // hook API that cannot be read out of the file itself.
@@ -56,27 +56,8 @@ type hostConfig struct {
 	// Path is relative to the workspace root.
 	Path string
 
-	// SplitsToolOutcome is true where the host reports a failed tool call as its
-	// own event, so a config wiring only the success half records the wrong half
-	// rather than less.
-	//
-	// Claude Code and Cursor both split: each fires exactly one of PostToolUse
-	// and PostToolUseFailure per call, so wiring one alone is a defect.
-	//
-	// Codex is false for a different and worse reason. Its documentation says
-	// PostToolUse fires "including when commands exit with a non-zero status",
-	// and codex-cli 0.147.0 does not: a failing command produces PreToolUse and
-	// then nothing, measured twice, while a passing one in the same session
-	// produced both. Codex publishes no failure event either, so there is no
-	// second hook to ask for - the gap is the host's and cannot be wired shut.
-	// Reporting it here would only tell someone to add a hook that does not
-	// exist.
-	//
-	// opencode exposes tool lifecycle through JS/TS plugins rather than shell
-	// commands, so it registers no events here at all.
-	//
-	// Refs: https://code.claude.com/docs/en/hooks,
-	// https://cursor.com/docs/agent/hooks, https://opencode.ai/docs/plugins/
+	// SplitsToolOutcome is read from the host's contract: see
+	// harness.HostContract.SplitsToolOutcome.
 	SplitsToolOutcome bool
 }
 

@@ -18,7 +18,7 @@ func TestAddArgvDefaultsFourAgents(t *testing.T) {
 	if !slices.Equal(argv[:4], wantPrefix) {
 		t.Fatalf("prefix = %v, want %v", argv[:4], wantPrefix)
 	}
-	for _, agent := range DefaultAgents {
+	for _, agent := range DefaultAgents() {
 		if !containsPair(argv, "-a", agent) {
 			t.Fatalf("missing -a %s in %v", agent, argv)
 		}

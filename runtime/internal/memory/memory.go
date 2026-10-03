@@ -24,6 +24,13 @@ type (
 	Store      = persistence.Store
 	Query      = persistence.Query
 	Hit        = persistence.Hit
+	Link       = domain.Link
+	Relation   = domain.Relation
+	Ledger     = domain.LedgerEntry
+	SessionHit = domain.SessionHit
+
+	PruneOptions = persistence.PruneOptions
+	PruneResult  = persistence.PruneResult
 )
 
 const (
@@ -44,6 +51,11 @@ const (
 	SourceHumanStatement = domain.SourceHumanStatement
 	SourceReviewComment  = domain.SourceReviewComment
 
+	RelationSupersedes  = domain.RelationSupersedes
+	RelationRelatesTo   = domain.RelationRelatesTo
+	RelationDerivedFrom = domain.RelationDerivedFrom
+	RelationContradicts = domain.RelationContradicts
+
 	VerdictStore  = domain.VerdictStore
 	VerdictMerge  = domain.VerdictMerge
 	VerdictReject = domain.VerdictReject
@@ -53,6 +65,9 @@ const (
 	Disclaimer         = persistence.Disclaimer
 	DefaultLimit       = persistence.DefaultLimit
 )
+
+// FitBudget keeps hits, in rank order, while their estimated token cost fits.
+var FitBudget = persistence.FitBudget
 
 // ProposePromotions finds memories reused often enough to belong in a reviewed
 // asset rather than in a store nobody reads.

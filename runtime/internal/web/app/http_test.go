@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -1177,15 +1178,8 @@ func writeFixtureSession(t *testing.T) (root, slug string) {
 			t.Fatal(err)
 		}
 	}
-	gapLine := `{"sequence":6,"type":"tool_use","source":"hook","payload":{"source":"hook","client":"codex","tool":"bash","command":"gh pr view","hostGap":true},"at":"2026-08-18T10:00:00Z"}` + "\n"
-	f, err := os.OpenFile(filepath.Clean(path), os.O_APPEND|os.O_WRONLY, 0o600)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := f.WriteString(gapLine); err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Close(); err != nil {
+	gapPayload := json.RawMessage(`{"source":"hook","client":"codex","tool":"bash","command":"gh pr view","hostGap":true}`)
+	if _, err := state.AppendEvent(path, state.Event{Type: "tool_use", Payload: gapPayload, At: stamp}); err != nil {
 		t.Fatal(err)
 	}
 	run, err := state.NewRun(slug, "fixture", "goal-delivery", 50, time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC))

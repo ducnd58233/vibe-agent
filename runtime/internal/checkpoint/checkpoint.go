@@ -193,6 +193,7 @@ func Apply(ctx context.Context, req Request) (*Result, error) {
 	if err := state.Save(manifest, run); err != nil {
 		return nil, err
 	}
+	creditMemories(ctx, req, run, now)
 	result := &Result{Run: run, Graph: loaded, Transition: transition}
 	return followAutoGates(req, result)
 }

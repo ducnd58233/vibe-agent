@@ -46,12 +46,11 @@ func TestEveryCatalogedHostHasAReason(t *testing.T) {
 		"claude":       "the reference host; every hook event is wired and verified here",
 		"cursor-agent": "hooks through .cursor/hooks.json; refuses through JSON rather than exit codes",
 		"opencode":     "plugin at .opencode/plugin; permission.ask is its only refusal path",
-		"kimi":         "skills at ~/.config/agents/skills; hooks snippet at .kimi/hooks.toml, merge into user config.toml",
-		"muse":         "skills via .codex/.claude paths; hooks at .muse/hooks.json, UNVERIFIED until trusted and observed",
-		"antigravity":  "hooks at .agents/hooks.json; PreToolUse uses decision/reason, UNVERIFIED until observed",
+		"kimi":         "Kimi Code: skills at .kimi-code/skills and .agents/skills; hooks snippet at .kimi-code/hooks.toml, merged into ~/.kimi-code/config.toml",
+		"muse":         "reads AGENTS.md and CLAUDE.md, skills at .agents/skills; hooks at .muse/hooks.json once the folder is trusted",
+		"antigravity":  "hooks at .agents/hooks.json (camelCase stdin); PreToolUse uses decision/reason, UNVERIFIED until observed",
 	}
 
-	catalog := Catalog()
 	if len(catalog) != len(reasons) {
 		t.Errorf("catalog has %d hosts, the reason list has %d", len(catalog), len(reasons))
 	}
@@ -62,20 +61,6 @@ func TestEveryCatalogedHostHasAReason(t *testing.T) {
 		if host.Binary == "" || host.EvalCommand == "" {
 			t.Errorf("host %q is missing a binary or an eval command: %+v", host.ID, host)
 		}
-	}
-}
-
-func TestEvalHostAcceptsCursorAlias(t *testing.T) {
-	byCursor, ok := EvalHost("cursor")
-	if !ok {
-		t.Fatal("cursor")
-	}
-	byBinary, ok := EvalHost("cursor-agent")
-	if !ok {
-		t.Fatal("cursor-agent should resolve; the composer posts the catalog id")
-	}
-	if byCursor.Binary != "cursor-agent" || byBinary.Binary != "cursor-agent" {
-		t.Fatalf("cursor=%q cursor-agent=%q", byCursor.Binary, byBinary.Binary)
 	}
 }
 
@@ -138,15 +123,17 @@ func TestEvalHostIsIndependentOfCatalogOrder(t *testing.T) {
 	}
 }
 
-// The alias exists because the runner is called cursor and the binary is
-// cursor-agent. Both have to work.
-func TestBothCursorNamesResolveToTheSameHost(t *testing.T) {
-	short, okShort := EvalHost("cursor")
-	full, okFull := EvalHost("cursor-agent")
-	if !okShort || !okFull {
-		t.Fatalf("cursor=%t cursor-agent=%t", okShort, okFull)
-	}
-	if short.ID != full.ID {
-		t.Errorf("cursor -> %q, cursor-agent -> %q", short.ID, full.ID)
+// An alias exists where the name a person types differs from the catalog id.
+// Both have to resolve, and to the same host.
+func TestEveryAliasAndItsIDResolveToTheSameHost(t *testing.T) {
+	for alias, id := range evalAlias {
+		byAlias, okAlias := EvalHost(alias)
+		byID, okID := EvalHost(id)
+		if !okAlias || !okID {
+			t.Fatalf("%s=%t %s=%t", alias, okAlias, id, okID)
+		}
+		if byAlias.ID != byID.ID {
+			t.Errorf("%s -> %q, %s -> %q", alias, byAlias.ID, id, byID.ID)
+		}
 	}
 }

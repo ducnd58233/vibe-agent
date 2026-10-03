@@ -9,6 +9,10 @@ import (
 // EventLogName is the append-only log beside the manifest.
 const EventLogName = "events.ndjson"
 
+// SessionLogName is the host-gesture log. Under .agent-state/ it is stored in
+// the session_events table; the name survives as the path a caller addresses.
+const SessionLogName = "session.ndjson"
+
 // EventType is the closed set of run-log kinds. Writers must use these
 // constants; AppendEvent rejects anything outside the set.
 type EventType string

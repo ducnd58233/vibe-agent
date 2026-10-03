@@ -1,0 +1,33 @@
+# Copy these [[hooks]] blocks into ~/.kimi-code/config.toml ($KIMI_CODE_HOME/config.toml).
+# Kimi Code reads hooks from user config only; [[hooks]] accepts exactly
+# event, matcher, command, and timeout. No matcher: vibe-agent filters tools itself.
+
+[[hooks]]
+event = "SessionStart"
+command = "vibe-agent hook session-start --client kimi"
+timeout = 30
+
+[[hooks]]
+event = "UserPromptSubmit"
+command = "vibe-agent hook user-prompt-submit --client kimi"
+timeout = 30
+
+[[hooks]]
+event = "PreToolUse"
+command = "vibe-agent hook pre-tool-use --client kimi"
+timeout = 30
+
+[[hooks]]
+event = "PostToolUse"
+command = "vibe-agent hook post-tool-use --client kimi"
+timeout = 30
+
+[[hooks]]
+event = "PostToolUseFailure"
+command = "vibe-agent hook post-tool-use-failure --client kimi"
+timeout = 30
+
+[[hooks]]
+event = "Stop"
+command = "vibe-agent hook stop --client kimi"
+timeout = 30

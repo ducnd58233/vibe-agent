@@ -166,13 +166,14 @@ func isResolved(path string) bool {
 
 // readHookKeys returns the event keys a JSON config files its hooks under.
 //
-// Not TOML: .codex/config.toml registers an MCP server rather than hooks, and
-// the regex pass in hooks_wiring.go already reads what it does register. A
-// missing or unparseable file is not an error here, because a workspace need
-// not wire every host and reporting a parse failure is the JSON schema's job.
+// A TOML config is read for its [[hooks]] event lines, the one TOML hook format
+// a host uses; one with none (a config.toml that only registers an MCP server)
+// reports nothing. A missing or unparseable file is not an error here, because
+// a workspace need not wire every host and reporting a parse failure is the
+// JSON schema's job.
 func readHookKeys(path string) ([]string, bool) {
-	if strings.HasSuffix(filepath.ToSlash(path), ".kimi/hooks.toml") {
-		return readKimiHookEvents(path)
+	if filepath.Ext(path) == ".toml" {
+		return readTOMLHookEvents(path)
 	}
 	hooks, ok := readHooksObject(path)
 	if !ok {
@@ -204,15 +205,15 @@ func readHookCommands(path string) ([]string, bool) {
 	return commands, true
 }
 
-// kimiHookEvent matches `event = "PreToolUse"` lines in a TOML hooks snippet.
-var kimiHookEvent = regexp.MustCompile(`(?m)^\s*event\s*=\s*"([^"]+)"`)
+// tomlHookEvent matches `event = "PreToolUse"` lines in a TOML [[hooks]] list.
+var tomlHookEvent = regexp.MustCompile(`(?m)^\s*event\s*=\s*"([^"]+)"`)
 
-func readKimiHookEvents(path string) ([]string, bool) {
+func readTOMLHookEvents(path string) ([]string, bool) {
 	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, false
 	}
-	matches := kimiHookEvent.FindAllStringSubmatch(string(raw), -1)
+	matches := tomlHookEvent.FindAllStringSubmatch(string(raw), -1)
 	if len(matches) == 0 {
 		return nil, false
 	}

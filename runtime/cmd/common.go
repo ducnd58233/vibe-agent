@@ -3,11 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
@@ -46,11 +48,11 @@ func addRootFlags(flags *flag.FlagSet) *rootFlags {
 // discoverWorkspace walks up from the current directory looking for the marker
 // that says a directory is the root of a checkout.
 //
-// This exists because only one of the four hosts publishes a project-directory
-// variable a hook command can pass. Claude Code has ${CLAUDE_PROJECT_DIR};
-// Cursor and Codex publish none and do not document the working directory their
-// hook processes run in. Defaulting to the current directory therefore made the
-// workspace a guess on three hosts out of four, and a wrong guess is silent:
+// This exists because most hosts publish no project-directory variable a hook
+// command can pass, and do not document the working directory their hook
+// processes run in (see HostContract.WorkspaceRoot). Defaulting to the current
+// directory therefore made the workspace a guess on those hosts, and a wrong
+// guess is silent:
 // every hook still runs, still exits 0, and reads run state and memory from a
 // directory that has none. The control plane then reports no runs and no
 // memories while appearing perfectly wired, which is exactly how it looks when
@@ -70,9 +72,9 @@ func addRootFlags(flags *flag.FlagSet) *rootFlags {
 // searched first and the nearest match wins.
 //
 // Rules files are the fallback, and they are the reason the passes are
-// separate: AGENTS.md, CLAUDE.md and CURSOR.md are all allowed to nest, one per
-// subdirectory. Searching them in the same pass would let a hook running in
-// packages/web stop at packages/web/CLAUDE.md and call that the workspace, with
+// separate: every rules file is allowed to nest, one per subdirectory.
+// Searching them in the same pass would let a hook running in packages/web stop
+// at that package's own rules file and call it the workspace, with
 // the real root two levels up. Consulting them only when no structural marker
 // exists anywhere in the chain keeps that from happening to a git repository,
 // which is nearly all of them, while still finding a workspace that is not one.
@@ -85,8 +87,8 @@ func addRootFlags(flags *flag.FlagSet) *rootFlags {
 // itself. discoverToolkit already consults that path, in the pass where it
 // means something.
 var (
-	structuralMarkers = []string{".git", ".ai-agents"}
-	rulesMarkers      = []string{"AGENTS.md", "CLAUDE.md", "CURSOR.md"}
+	structuralMarkers = []string{".git", workspace.ToolkitDirName}
+	rulesMarkers      = hosts.RulesFiles()
 )
 
 // It reports whether a marker was actually found. Both outcomes used to be a
@@ -219,7 +221,7 @@ func discoverToolkit(workspaceRoot string) string {
 }
 
 func holdsAssets(dir string) bool {
-	info, err := os.Stat(filepath.Join(dir, ".ai-agents"))
+	info, err := os.Stat(filepath.Join(dir, workspace.ToolkitDirName))
 	return err == nil && info.IsDir()
 }
 
@@ -264,4 +266,22 @@ func orDashPtr(value *string) string {
 		return "-"
 	}
 	return orDash(*value)
+}
+
+// parseInterspersed parses flags wherever they sit among positional arguments,
+// so `cmd path --json` works as well as `cmd --json path`. The standard parser
+// stops at the first positional and leaves later flags unread.
+func parseInterspersed(flags *flag.FlagSet, args []string) ([]string, error) {
+	var positional []string
+	for {
+		if err := flags.Parse(args); err != nil {
+			return nil, err
+		}
+		args = flags.Args()
+		if len(args) == 0 {
+			return positional, nil
+		}
+		positional = append(positional, args[0])
+		args = args[1:]
+	}
 }

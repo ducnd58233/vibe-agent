@@ -9,7 +9,7 @@ import (
 
 func TestSourceFilesFromFixtureTree(t *testing.T) {
 	root := filepath.Join(testutil.RuntimeRoot(t), "internal", "slopaudit", "fixture", "testdata", "clean")
-	files, err := sourceFiles(root)
+	files, err := sourceFiles(t.Context(), root)
 	if err != nil {
 		t.Fatal(err)
 	}

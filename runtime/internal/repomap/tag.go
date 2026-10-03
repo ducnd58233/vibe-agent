@@ -8,6 +8,8 @@ import (
 
 	gotreesitter "github.com/odvcencio/gotreesitter"
 	"github.com/odvcencio/gotreesitter/grammars"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/sourcefiles"
 )
 
 func tagFiles(root string, relPaths []string) ([]fileTags, error) {
@@ -36,6 +38,9 @@ func tagFiles(root string, relPaths []string) ([]fileTags, error) {
 		src, err := os.ReadFile(filepath.Clean(abs))
 		if err != nil {
 			return nil, fmt.Errorf("read %s: %w", rel, err)
+		}
+		if !sourcefiles.Readable(rel, src) {
+			continue
 		}
 		var defs, refs []symbol
 		for _, t := range tagger.Tag(src) {

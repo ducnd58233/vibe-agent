@@ -12,6 +12,9 @@
     "PostToolUse": [
       { "hooks": [ { "type": "command", "command": "vibe-agent hook post-tool-use --client muse" } ] }
     ],
+    "PostToolUseFailure": [
+      { "hooks": [ { "type": "command", "command": "vibe-agent hook post-tool-use-failure --client muse" } ] }
+    ],
     "Stop": [
       { "hooks": [ { "type": "command", "command": "vibe-agent hook stop --client muse" } ] }
     ]

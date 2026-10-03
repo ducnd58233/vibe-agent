@@ -144,7 +144,7 @@ func TestAnUnreadableOrUnfamiliarTranscriptSaysNothing(t *testing.T) {
 
 // Cursor names the same field differently, and reading only Claude's spelling
 // would make this a no-op on that host.
-func TestCursorsTranscriptFieldIsRead(t *testing.T) {
+func TestTheAgentTranscriptPathFieldIsRead(t *testing.T) {
 	base := writeTranscript(t,
 		`{"content":[{"type":"text","text":"src/invented.go"}]}`,
 	)

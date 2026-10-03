@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/migrations"
 	"github.com/golang-migrate/migrate/v4"
@@ -16,7 +17,6 @@ import (
 // Open: ErrNoChange is success. Baseline SQL uses IF NOT EXISTS so a
 // pre-migrate workspace that already has tables still advances the ledger.
 func Up(ctx context.Context, db *sql.DB) error {
-	_ = ctx
 	src, err := iofs.New(migrations.SQL, ".")
 	if err != nil {
 		return fmt.Errorf("open embedded migrations: %w", err)
@@ -30,8 +30,29 @@ func Up(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("migrate instance: %w", err)
 	}
 	// Do not Close(m): migrate's sqlite driver Close also closes *sql.DB.
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("migrate up: %w", err)
+	//
+	// Two hook processes opening a fresh workspace at once race here: the first
+	// marks the version dirty while it runs, and the second sees that mark and
+	// would otherwise fail. The mark clears when the first finishes, so wait for
+	// it rather than reporting a database that is fine as broken.
+	var upErr error
+	for attempt := 0; attempt < dirtyRetries; attempt++ {
+		upErr = retryBusy(ctx, m.Up)
+		if upErr == nil || errors.Is(upErr, migrate.ErrNoChange) {
+			return nil
+		}
+		var dirty migrate.ErrDirty
+		if !errors.As(upErr, &dirty) {
+			break
+		}
+		time.Sleep(dirtyBackoff)
 	}
-	return nil
+	return fmt.Errorf("migrate up: %w", upErr)
 }
+
+// dirtyRetries and dirtyBackoff bound the wait for a concurrent migration:
+// about two seconds, far longer than the baseline takes.
+const (
+	dirtyRetries = 40
+	dirtyBackoff = 50 * time.Millisecond
+)

@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/run/infra/persistence"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
@@ -119,7 +119,7 @@ func Parse(r io.Reader) (*Decision, error) {
 
 // Path is where /ship writes its decision for a run.
 func Path(workspaceRoot, slug string) string {
-	dir := persistence.RunDir(workspaceRoot, slug)
+	dir := state.RunDir(workspaceRoot, slug)
 	if dir == "" {
 		// No indexed run yet: point at a path under RunsDir that cannot exist
 		// until Begin allocates, so Load returns os.ErrNotExist.

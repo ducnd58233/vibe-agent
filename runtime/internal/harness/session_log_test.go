@@ -3,7 +3,6 @@ package harness
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -41,7 +40,7 @@ func ambientSessionLog(t *testing.T, root string) []session.Event {
 func TestSessionStartWritesSessionLog(t *testing.T) {
 	root := workspaceWithRun(t)
 	invoke(t, Request{
-		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventSessionStart, Client: DefaultClient, WorkspaceRoot: root,
 	})
 	events := sessionLog(t, root)
 	if len(events) != 1 || events[0].Type != session.TypeSessionStart {
@@ -49,10 +48,10 @@ func TestSessionStartWritesSessionLog(t *testing.T) {
 	}
 }
 
-func TestCursorPromptSubmitRecordsSessionWithoutOutput(t *testing.T) {
+func TestAHostThatCannotInjectAtThePromptStillRecordsTheSession(t *testing.T) {
 	root := workspaceWithRun(t)
 	output := invoke(t, Request{
-		Event: EventUserPromptSubmit, Client: ClientCursor,
+		Event: EventUserPromptSubmit, Client: hostWhere(t, cannotInjectAtPrompt),
 		WorkspaceRoot: root,
 		Stdin:         strings.NewReader(`{"prompt":"status check"}`),
 	})
@@ -77,7 +76,7 @@ func TestUserPromptSubmitSkippedWhenComposerAlreadyLogged(t *testing.T) {
 		t.Fatal(err)
 	}
 	invoke(t, Request{
-		Event: EventUserPromptSubmit, Client: ClientClaude,
+		Event: EventUserPromptSubmit, Client: DefaultClient,
 		WorkspaceRoot: root,
 		Stdin:         strings.NewReader(`{"prompt":"hello from composer"}`),
 	})
@@ -113,7 +112,7 @@ func TestUserPromptSubmitSkippedWhenComposerLoggedEarlierNotLast(t *testing.T) {
 		t.Fatal(err)
 	}
 	invoke(t, Request{
-		Event: EventUserPromptSubmit, Client: ClientClaude,
+		Event: EventUserPromptSubmit, Client: DefaultClient,
 		WorkspaceRoot: root,
 		Stdin:         strings.NewReader(`{"prompt":"hello from composer"}`),
 	})
@@ -131,7 +130,7 @@ func TestPrefixShapedPromptSubmitDoesNotRecordSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	invoke(t, Request{
-		Event: EventUserPromptSubmit, Client: ClientClaude,
+		Event: EventUserPromptSubmit, Client: DefaultClient,
 		WorkspaceRoot: root,
 		Stdin:         strings.NewReader(string(raw)),
 	})
@@ -144,7 +143,7 @@ func TestPrefixShapedPromptSubmitDoesNotRecordSession(t *testing.T) {
 func TestPreToolUseRecordsSession(t *testing.T) {
 	root := workspaceWithRun(t)
 	invoke(t, Request{
-		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"echo hi"}}`),
 	})
 	events := sessionLog(t, root)
@@ -157,10 +156,10 @@ func TestPreToolUseRecordsSession(t *testing.T) {
 	}
 }
 
-func TestCursorBeforeShellRecordsCommand(t *testing.T) {
+func TestATopLevelCommandRecordsAsAShellCall(t *testing.T) {
 	root := workspaceWithRun(t)
 	invoke(t, Request{
-		Event: EventPreToolUse, Client: ClientCursor, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"command":"git status","cwd":"/project"}`),
 	})
 	events := sessionLog(t, root)
@@ -176,7 +175,7 @@ func TestCursorBeforeShellRecordsCommand(t *testing.T) {
 func TestEmptyPreToolUseDoesNotRecordSession(t *testing.T) {
 	root := workspaceWithRun(t)
 	invoke(t, Request{
-		Event: EventPreToolUse, Client: ClientCursor, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{}`),
 	})
 	events := sessionLog(t, root)
@@ -188,7 +187,7 @@ func TestEmptyPreToolUseDoesNotRecordSession(t *testing.T) {
 func TestEmptyToolUseDoesNotRecordSession(t *testing.T) {
 	root := workspaceWithRun(t)
 	invoke(t, Request{
-		Event: EventPostToolUse, Client: ClientCursor, WorkspaceRoot: root,
+		Event: EventPostToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{}`),
 	})
 	events := sessionLog(t, root)
@@ -197,10 +196,10 @@ func TestEmptyToolUseDoesNotRecordSession(t *testing.T) {
 	}
 }
 
-func TestCursorToolAliasRecordsName(t *testing.T) {
+func TestAToolAliasRecordsTheToolName(t *testing.T) {
 	root := workspaceWithRun(t)
 	invoke(t, Request{
-		Event: EventPreToolUse, Client: ClientCursor, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool":"Read","file_path":"README.md"}`),
 	})
 	events := sessionLog(t, root)
@@ -213,10 +212,10 @@ func TestCursorToolAliasRecordsName(t *testing.T) {
 	}
 }
 
-func TestCursorStringToolInputRecordsCommand(t *testing.T) {
+func TestAStringEncodedToolInputRecordsTheCommand(t *testing.T) {
 	root := workspaceWithRun(t)
 	invoke(t, Request{
-		Event: EventPostToolUse, Client: ClientCursor, WorkspaceRoot: root,
+		Event: EventPostToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Shell","tool_input":"{\"command\":\"npm test\"}"}`),
 	})
 	events := sessionLog(t, root)
@@ -242,19 +241,15 @@ func TestPostToolUseRecordsSessionWithoutSecret(t *testing.T) {
 	root := workspaceWithRun(t)
 	cmd := "curl -H 'Authorization: Bearer " + hookTestSecret + "'"
 	invoke(t, Request{
-		Event: EventPostToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventPostToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"` + cmd + `"}}`),
 	})
-	path := session.LogPath(root, "demo")
-	raw, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(raw)
-	if strings.Contains(text, hookTestSecret) {
-		t.Fatalf("secret leaked into session log: %s", text)
-	}
 	events := sessionLog(t, root)
+	for _, ev := range events {
+		if strings.Contains(string(ev.Payload), hookTestSecret) {
+			t.Fatalf("secret leaked into session log: %s", ev.Payload)
+		}
+	}
 	if len(events) != 1 || events[0].Type != session.TypeToolUse {
 		t.Fatalf("events = %+v", events)
 	}
@@ -264,7 +259,7 @@ func TestStopRecordsAssistantMessageWhenPresent(t *testing.T) {
 	root := workspaceWithRun(t)
 	msg := "Done. Key was " + hookTestSecret
 	invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"last_assistant_message":` + jsonString(msg) + `}`),
 	})
 	events := sessionLog(t, root)
@@ -277,20 +272,17 @@ func TestStopRecordsAssistantMessageWhenPresent(t *testing.T) {
 	if events[1].Type != session.TypeMessage {
 		t.Fatalf("second event = %+v", events[1])
 	}
-	path := session.LogPath(root, "demo")
-	raw, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(raw), hookTestSecret) {
-		t.Fatalf("assistant secret leaked: %s", raw)
+	for _, ev := range events {
+		if strings.Contains(string(ev.Payload), hookTestSecret) {
+			t.Fatalf("assistant secret leaked: %s", ev.Payload)
+		}
 	}
 }
 
 func TestStopWithoutAssistantMessageDoesNotInventOne(t *testing.T) {
 	root := workspaceWithRun(t)
 	invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 	})
 	events := sessionLog(t, root)
 	if len(events) != 1 || events[0].Type != session.TypeStop {
@@ -301,7 +293,7 @@ func TestStopWithoutAssistantMessageDoesNotInventOne(t *testing.T) {
 func TestSessionLogUsesAmbientWhenNoRun(t *testing.T) {
 	root := t.TempDir()
 	invoke(t, Request{
-		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventSessionStart, Client: DefaultClient, WorkspaceRoot: root,
 	})
 	events := ambientSessionLog(t, root)
 	if len(events) != 1 {
@@ -309,17 +301,33 @@ func TestSessionLogUsesAmbientWhenNoRun(t *testing.T) {
 	}
 }
 
-func TestCodexFailureGapIsDocumented(t *testing.T) {
-	contract, ok := HostContractFor(ClientCodex)
-	if !ok {
-		t.Fatal("Codex contract not found")
-	}
-	for _, gap := range contract.Gaps {
-		if strings.Contains(gap, "cannot be journalled on Codex") {
-			return
+// A host that reports no failed tool call as its own event cannot have its
+// failures journalled. That is the host's gap, and it has to be written down
+// where doctor and the generated reference read it, or it looks like wiring.
+func TestHostsWithoutAFailureEventDocumentTheGap(t *testing.T) {
+	for _, contract := range HostContracts() {
+		if contract.SplitsToolOutcome {
+			continue
+		}
+		hasFailureEvent := false
+		for _, event := range contract.Events {
+			if event.Event == EventPostToolUseFailure {
+				hasFailureEvent = true
+			}
+		}
+		if hasFailureEvent {
+			continue
+		}
+		documented := false
+		for _, gap := range contract.Gaps {
+			if strings.Contains(strings.ToLower(gap), "fail") {
+				documented = true
+			}
+		}
+		if !documented {
+			t.Errorf("%s has no failure event and its contract does not say so: %v", contract.Client, contract.Gaps)
 		}
 	}
-	t.Fatalf("Codex contract should document the failure gap: %v", contract.Gaps)
 }
 
 func jsonString(text string) string {

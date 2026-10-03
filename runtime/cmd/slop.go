@@ -38,10 +38,10 @@ func slopAuditCommand(args []string) error {
 	failOn := flags.Int("fail-on", unsetFailOn, "exit non-zero when score is greater than this value")
 	asJSON := flags.Bool("json", false, "emit the report as JSON")
 	format := flags.String("format", slopFormatText, "output format: text or json")
-	if err := flags.Parse(args); err != nil {
+	rest, err := parseInterspersed(flags, args)
+	if err != nil {
 		return err
 	}
-	rest := flags.Args()
 	target := "."
 	if len(rest) > 0 {
 		if len(rest) > 1 {

@@ -106,7 +106,7 @@ func attempt(t *testing.T, root, command string) (*BlockError, string) {
 
 	var out bytes.Buffer
 	runErr := Run(Request{
-		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		ToolkitRoot: toolkitRoot, Stdin: bytes.NewReader(payload),
 	}, &out)
 
@@ -234,65 +234,12 @@ func TestAFinishedRunDoesNotGate(t *testing.T) {
 	}
 }
 
-// Cursor's beforeShellExecution decides through JSON, so the same verdict has
-// to arrive in a different shape or it is silently ignored.
-func TestCursorReceivesADenyDecisionRatherThanAnError(t *testing.T) {
-	var out bytes.Buffer
-	err := Run(Request{
-		Event: EventPreToolUse, Client: ClientCursor, WorkspaceRoot: workspaceWithRun(t),
-		ToolkitRoot: toolkitRoot,
-		Stdin:       strings.NewReader(`{"command":"git push origin main","cwd":"/repo"}`),
-	}, &out)
-	if err != nil {
-		t.Fatalf("Cursor gate returned an error it cannot deliver: %v", err)
-	}
-
-	var body map[string]any
-	if err := json.Unmarshal(out.Bytes(), &body); err != nil {
-		t.Fatalf("Cursor output is not JSON: %v: %s", err, out.String())
-	}
-	if body["permission"] != "deny" {
-		t.Errorf("Cursor was not told to deny: %s", out.String())
-	}
-	// This asserted body["agentMessage"] and passed for as long as the code
-	// wrote that key. Both were wrong in the same way, because the test was
-	// written from the same reading of the vendor page as the code, so it
-	// confirmed the defect rather than catching it: Cursor honoured the deny
-	// and discarded the message, leaving the agent refused with no reason.
-	//
-	// The key now comes from the contract table, so the test can only agree
-	// with the code when both agree with what the host was recorded as reading.
-	if body[cursorReasonKey(t)] == nil {
-		t.Error("the agent was given no reason for the denial")
-	}
-}
-
-// cursorReasonKey is the field Cursor was recorded as reading the refusal from.
-func cursorReasonKey(t *testing.T) string {
-	t.Helper()
-	contract, ok := HostContractFor(ClientCursor)
-	if !ok {
-		t.Fatal("no Cursor contract")
-	}
-	event, ok := contract.EventFor("beforeShellExecution")
-	if !ok {
-		t.Fatal("the contract records no beforeShellExecution row")
-	}
-	for _, key := range event.OutputKeys {
-		if strings.Contains(key, "agent") {
-			return key
-		}
-	}
-	t.Fatalf("the contract records no agent-facing key for beforeShellExecution: %v", event.OutputKeys)
-	return ""
-}
-
 func TestTheGateSurvivesGarbageAndEmptyInput(t *testing.T) {
 	root := workspaceWithRun(t)
 	for _, stdin := range []string{"", "{}", "not json at all", `{"tool_input":{}}`} {
 		var out bytes.Buffer
 		if err := Run(Request{
-			Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+			Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 			ToolkitRoot: toolkitRoot, Stdin: strings.NewReader(stdin),
 		}, &out); err != nil {
 			t.Errorf("stdin %q produced an error: %v", stdin, err)
@@ -315,7 +262,7 @@ func writeAttempt(t *testing.T, root, target, content string) (*BlockError, stri
 
 	var out bytes.Buffer
 	runErr := Run(Request{
-		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 		ToolkitRoot: toolkitRoot, Stdin: bytes.NewReader(body),
 	}, &out)
 
@@ -400,7 +347,7 @@ func TestCredentialRefusalDoesNotDependOnAnActiveRun(t *testing.T) {
 	// must not: a key entering source is the same event either way, and the
 	// common case is a repository using the toolkit without starting a state.
 	root := t.TempDir()
-	if runs := activeRuns(root); len(runs) != 0 {
+	if runs := state.Active(root); len(runs) != 0 {
 		t.Fatalf("expected a workspace with no run, got %d", len(runs))
 	}
 
@@ -421,7 +368,7 @@ func TestACredentialInAHeredocIsSeen(t *testing.T) {
 	}
 }
 
-func TestCursorGetsADenyForACredentialToo(t *testing.T) {
+func TestAPermissionRefusingHostGetsADenyForACredentialToo(t *testing.T) {
 	root := t.TempDir()
 	body, err := json.Marshal(map[string]any{
 		"tool_name":  "Write",
@@ -433,22 +380,22 @@ func TestCursorGetsADenyForACredentialToo(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := Run(Request{
-		Event: EventPreToolUse, Client: ClientCursor, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: hostWhere(t, refusesWith(RefusePermission)), WorkspaceRoot: root,
 		ToolkitRoot: toolkitRoot, Stdin: bytes.NewReader(body),
 	}, &out); err != nil {
-		t.Fatalf("Cursor path returned an error instead of a decision: %v", err)
+		t.Fatalf("the host returned an error instead of a decision: %v", err)
 	}
 
 	var decision map[string]any
 	if err := json.Unmarshal(out.Bytes(), &decision); err != nil {
-		t.Fatalf("Cursor decision is not JSON: %v (%q)", err, out.String())
+		t.Fatalf("decision is not JSON: %v (%q)", err, out.String())
 	}
 	if decision["permission"] != "deny" {
 		t.Fatalf("expected deny, got %v", decision["permission"])
 	}
 }
 
-func TestAntigravityPreToolUseDenialUsesDecisionAndReason(t *testing.T) {
+func TestADecisionRefusingHostGetsADecisionAndReason(t *testing.T) {
 	root := workspaceWithRun(t)
 	onBranch(t, root, "main")
 
@@ -464,15 +411,15 @@ func TestAntigravityPreToolUseDenialUsesDecisionAndReason(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := Run(Request{
-		Event: EventPreToolUse, Client: ClientAntigravity, WorkspaceRoot: root,
+		Event: EventPreToolUse, Client: hostWhere(t, refusesWith(RefuseDecision)), WorkspaceRoot: root,
 		ToolkitRoot: toolkitRoot, Stdin: bytes.NewReader(body),
 	}, &out); err != nil {
-		t.Fatalf("Antigravity path returned an error instead of a decision: %v", err)
+		t.Fatalf("the host returned an error instead of a decision: %v", err)
 	}
 
 	var decision map[string]any
 	if err := json.Unmarshal(out.Bytes(), &decision); err != nil {
-		t.Fatalf("Antigravity decision is not JSON: %v (%q)", err, out.String())
+		t.Fatalf("decision is not JSON: %v (%q)", err, out.String())
 	}
 	if decision["decision"] != "deny" {
 		t.Fatalf("expected deny, got %v", decision["decision"])

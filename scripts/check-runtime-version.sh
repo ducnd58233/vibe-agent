@@ -12,17 +12,6 @@ VERSION_SH="$SCRIPT_DIR/runtime-version.sh"
 
 fail=0
 
-assert_contains() {
-  local haystack="$1"
-  local needle="$2"
-  local label="$3"
-  if [[ "$haystack" != *"$needle"* ]]; then
-    echo "check-runtime-version: ${label}: expected output to contain ${needle}" >&2
-    echo "  got: ${haystack}" >&2
-    fail=1
-  fi
-}
-
 assert_eq() {
   local got="$1"
   local want="$2"

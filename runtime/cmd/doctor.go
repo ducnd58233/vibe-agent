@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/legacy"
 	"io/fs"
 	"net/url"
 	"os"
@@ -48,7 +49,7 @@ func doctorCommand(args []string) error {
 	// directory it was opened on, so a vendored toolkit's own settings.json is
 	// wiring for opening the toolkit itself and reaches nothing here.
 	checkHookWiring(report, workspaceRoot)
-	checkClaudeIfOutsideClaude(report, toolkitRoot)
+	checkUnsupportedHandlerIf(report, toolkitRoot)
 	checkCheckPlan(report, workspaceRoot, toolkitRoot)
 	checkHumanVerifiers(workspaceRoot)
 	checkTaskFiles(report, workspaceRoot)
@@ -56,6 +57,7 @@ func doctorCommand(args []string) error {
 	checkAutoOptIn(report, workspaceRoot)
 	checkSandboxConfig(report, workspaceRoot)
 	checkMemory(report, workspaceRoot)
+	checkLegacyState(report, workspaceRoot)
 	checkRunState(report, workspaceRoot)
 	checkSlugLanguage(workspaceRoot)
 	checkWebState(report, workspaceRoot)
@@ -98,7 +100,7 @@ func checkAssetCalcs(report *diagnostics, toolkitRoot string) {
 
 	var blocks, lines int
 	var problems []string
-	walkErr := fs.WalkDir(rooted.FS(), ".ai-agents", func(path string, entry fs.DirEntry, err error) error {
+	walkErr := fs.WalkDir(rooted.FS(), workspace.ToolkitDirName, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -386,9 +388,18 @@ func checkGitignore(report *diagnostics, workspaceRoot string) {
 	}
 }
 
-func checkClaudeIfOutsideClaude(report *diagnostics, toolkitRoot string) {
-	problems := harness.ClaudeIfOutsideClaude(toolkitRoot)
-	report.check("non-Claude hooks omit Claude-only if",
+func checkUnsupportedHandlerIf(report *diagnostics, toolkitRoot string) {
+	problems := harness.UnsupportedHandlerIf(toolkitRoot)
+	report.check("hook configs omit an if their host ignores",
 		len(problems) == 0,
-		harness.FormatClaudeIfProblems(problems))
+		harness.FormatHandlerIfProblems(problems))
+}
+
+// checkLegacyState fails while a workspace still holds state in a layout an
+// older build wrote. The runtime reads only the current tables, so state left in
+// an older file is state no hook, verifier, or recall can see.
+func checkLegacyState(report *diagnostics, workspaceRoot string) {
+	pending := legacy.Pending(workspaceRoot)
+	report.check("no state left in an older layout", len(pending) == 0,
+		fmt.Sprintf("still in older files: %s. Run: vibe-agent migrate state", strings.Join(pending, ", ")))
 }

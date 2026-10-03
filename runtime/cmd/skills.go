@@ -32,15 +32,15 @@ func skillsCommand(args []string) error {
 	}
 }
 
-const skillsUsage = `vibe-agent skills - third-party Agent Skills helpers
+var skillsUsage = fmt.Sprintf(`vibe-agent skills - third-party Agent Skills helpers
 
 Usage:
   vibe-agent skills add <owner/repo|url> [-a <agent>]... [-g] [-y] [--skill <name>] [--list]
   vibe-agent skills convert-report <skill-dir>
 
 "add" forwards to "npx --yes skills add" when -y is set, so neither npx nor
-the skills CLI prompts. With no -a flags it targets the four vibe-agent
-hosts: claude-code, codex, cursor, opencode. It never writes MCP or hooks.
+the skills CLI prompts. With no -a flags it targets every host vibe-agent
+supports that the installer knows: %s. It never writes MCP or hooks.
 Pass DISABLE_TELEMETRY=1 into the child environment.
 
 "convert-report" scans SKILL.md frontmatter for host-only keys
@@ -49,9 +49,9 @@ does not rewrite files.
 
 Examples:
   vibe-agent skills add vercel-labs/agent-skills -g -y --skill writing-guidelines
-  vibe-agent skills add some/repo -a cursor -a opencode -g -y
+  vibe-agent skills add some/repo -a <agent> -a <agent> -g -y
   vibe-agent skills convert-report ~/.agents/skills/writing-guidelines
-`
+`, strings.Join(skillsinstall.DefaultAgents(), ", "))
 
 func skillsAddCommand(args []string) error {
 	flags := newFlagSet("skills add")
@@ -60,7 +60,7 @@ func skillsAddCommand(args []string) error {
 	list := flags.Bool("list", false, "list skills in the source without installing")
 	skill := flags.String("skill", "", "install only this skill from a multi-skill source")
 	var agents multiFlag
-	flags.Var(&agents, "a", "target agent (repeatable); default: claude-code,codex,cursor,opencode")
+	flags.Var(&agents, "a", "target agent (repeatable); default: "+strings.Join(skillsinstall.DefaultAgents(), ","))
 	if err := flags.Parse(args); err != nil {
 		return err
 	}

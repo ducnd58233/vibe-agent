@@ -6,7 +6,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/session"
 )
 
-// AmbientStat is filesystem metadata for the ambient session journal.
+// AmbientStat summarises the ambient session journal. Size is the event count.
 type AmbientStat struct {
 	Present bool
 	Size    int64

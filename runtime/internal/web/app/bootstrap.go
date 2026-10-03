@@ -38,7 +38,7 @@ type Config struct {
 // ValidateListenHost refuses non-loopback binds.
 func ValidateListenHost(host string) error {
 	switch host {
-	case "127.0.0.1", "localhost":
+	case ListenHost, "localhost":
 		return nil
 	case "0.0.0.0", "::", "[::]":
 		return fmt.Errorf("refusing to bind %q: loopback only", host)

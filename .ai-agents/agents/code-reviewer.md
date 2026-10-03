@@ -86,7 +86,8 @@ Use **Critical** / **Important** / **Suggestion** severity. Prefer `file:line` r
 3. Flag **missing** coverage as its own finding when a change touches untrusted input parsing, concurrency or replay, a security boundary, money or state transitions, or a failure path.
 4. Do not approve with unresolved Critical issues.
 5. Acknowledge strengths with specifics.
-6. **Grounding (no fabrication):** never describe a file, directory, or path you have not opened or listed via `Read`/`Grep`/`Glob`; if a provided path is inaccessible, report `ACCESS-FAILED: <path>` instead of inferring structure.
+6. **Deterministic pass first:** run `vibe-agent review scan` (`--changed` for a branch) and review its BLOCKS list one block at a time with `vibe-agent review block <path>:<line>`, settling every finding it reports. The procedure is in [`commands/review.md`](../commands/review.md).
+7. **Grounding (no fabrication):** never describe a file, directory, or path you have not opened or listed via `Read`/`Grep`/`Glob`; if a provided path is inaccessible, report `ACCESS-FAILED: <path>` instead of inferring structure.
 </rules>
 
 ## Composition

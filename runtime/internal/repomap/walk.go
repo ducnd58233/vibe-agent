@@ -1,71 +1,19 @@
 package repomap
 
 import (
-	"io/fs"
-	"os"
-	"path/filepath"
-	"strings"
+	"context"
 
-	enry "github.com/go-enry/go-enry/v2"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/sourcefiles"
 )
 
-// MaxFileBytes matches the slopaudit walk so oversized files stay out of both.
-const MaxFileBytes = 1024 * 1024
-
-func listSourceFiles(root string) ([]string, error) {
-	root = filepath.Clean(root)
-	var out []string
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		name := d.Name()
-		if d.IsDir() {
-			if name == ".git" {
-				return filepath.SkipDir
-			}
-			// Classify vendor against the path relative to the walk root so a
-			// test fixture rooted at testdata/ is still readable: enry treats
-			// the string "testdata" as vendor, which would SkipDir the root.
-			if path != root {
-				relDir, relErr := filepath.Rel(root, path)
-				if relErr == nil && enry.IsVendor(filepath.ToSlash(relDir)) {
-					return filepath.SkipDir
-				}
-			}
-			return nil
-		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
-		if skipFile(rel, path) {
-			return nil
-		}
-		out = append(out, filepath.ToSlash(rel))
-		return nil
-	})
-	return out, err
-}
-
-func skipFile(rel, abs string) bool {
-	base := filepath.Base(rel)
-	if base == ".env" || strings.HasPrefix(base, ".env.") {
-		return true
-	}
-	if strings.HasSuffix(base, ".local") || strings.HasSuffix(base, ".local.json") {
-		return true
-	}
-	info, err := os.Stat(abs)
-	if err != nil || info.Size() > MaxFileBytes {
-		return true
-	}
-	data, err := os.ReadFile(filepath.Clean(abs))
+func listSourceFiles(ctx context.Context, root string) ([]string, error) {
+	files, err := sourcefiles.List(ctx, root)
 	if err != nil {
-		return true
+		return nil, err
 	}
-	if enry.IsBinary(data) || enry.IsImage(rel) || enry.IsGenerated(rel, data) {
-		return true
+	out := make([]string, 0, len(files))
+	for _, file := range files {
+		out = append(out, file.Rel)
 	}
-	return false
+	return out, nil
 }

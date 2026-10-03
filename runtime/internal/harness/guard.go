@@ -166,30 +166,17 @@ func postToolUse(req Request, body payload, out io.Writer, failed bool) error {
 	recordToolUse(req, body)
 
 	text := adviseAll(req, body)
-	if req.Client == ClientCursor {
-		// The one place a Cursor session can be told which node its run is at.
-		// Appended rather than sent separately, because Cursor reads a single
-		// additional_context field and a second write would replace the first.
-		text = joinNonEmpty(text, cursorNodeReminder(req))
-		if text == "" {
-			return nil
-		}
-		return write(out, map[string]any{"additional_context": text})
+	dialect := dialectFor(req.Client)
+	if dialect.ToolUseNodeReminder {
+		// The one place such a session can be told which node its run is at.
+		// Appended rather than sent separately, because the host reads a single
+		// context field and a second write would replace the first.
+		text = joinNonEmpty(text, nodeReminder(req))
 	}
 	if text == "" {
 		return nil
 	}
-	// Both fields on purpose. systemMessage reaches the person; additionalContext
-	// reaches the model, which is the one that has to fix the file. Whichever the
-	// installed host does not support is ignored, and a warning only the human
-	// can see is a warning the agent will repeat on the next edit.
-	return write(out, map[string]any{
-		"systemMessage": text,
-		"hookSpecificOutput": map[string]any{
-			"hookEventName":     "PostToolUse",
-			"additionalContext": text,
-		},
-	})
+	return write(out, postToolBody(dialect, text))
 }
 
 // adviseAll collects what every guard has to say about one completed tool call.
@@ -382,22 +369,4 @@ func hasSuffixFold(path string, suffixes []string) bool {
 		}
 	}
 	return false
-}
-
-// isFileWrite reports whether a tool call put text into a file.
-//
-// Each host config used to do this with a matcher - "Edit|Write|NotebookEdit"
-// beside the script - and that filtering does not survive the move: one binary
-// answers every PostToolUse, so a Read, which also carries a file_path, would
-// otherwise be scanned as though it had written the file it opened.
-//
-// An empty name passes. Cursor's afterFileEdit is already edit-only and sends
-// no tool name, and refusing it would silence every guard on that host.
-func isFileWrite(tool string) bool {
-	switch tool {
-	case "", "Edit", "Write", "NotebookEdit", "MultiEdit":
-		return true
-	default:
-		return false
-	}
 }

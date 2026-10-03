@@ -103,7 +103,12 @@ path. When a rule already has a home, link to it instead of restating it.
 - **Source-driven, not memory-driven (MUST):** before using or upgrading a framework or library, read
   the docs for the version pinned in this repo's manifests. When adding a package or initializing a
   project, run the canonical CLI rather than fabricating files from memory, and capture project
-  commands in a Makefile (or `package.json` scripts for Node). If a version is unclear, ask. See
+  commands in a Makefile (or `package.json` scripts for Node). If a version is unclear, ask. When
+  code depends on the *shape* of a library's output (parse-tree node types, a driver's connection
+  options, a response's fields) and the docs do not pin it down, run a throwaway probe against the
+  pinned version and build from what it prints. Assumed tree-sitter behaviour was wrong for three
+  grammars in this repo: no tags query for PHP, and tags queries that returned no definitions for
+  Ruby and Kotlin. See
   [`source-driven-development`](.ai-agents/skills/source-driven-development/SKILL.md).
 - **A build check resolves real dependencies (MUST):** a workspace's declared build or unit check
   (in `vibe-checks.yaml` or its equivalent) installs or resolves dependencies from the manifest and
@@ -145,6 +150,36 @@ path. When a rule already has a home, link to it instead of restating it.
   workspace's `AGENTS.md` as a hard rule and note the graduation in the log. Format and how this
   differs from `memory.db`:
   [`.ai-agents/references/mistakes-log.md`](.ai-agents/references/mistakes-log.md).
+- **Run what CI runs, before pushing (MUST):** the check is the Makefile target CI calls
+  (`make -C runtime check`, which installs the pinned golangci-lint), plus the `scripts/check-*`
+  steps and cross-compile loop in `.github/workflows/`. A subset such as `go vet` plus `go test` is
+  not the check. When a step cannot run locally, make it run (the Makefile pins its tools) instead of
+  listing it as a gap and pushing: a pull request here went red on lint findings that a local
+  `make check` would have shown, after the gap had been written into its test plan.
+- **A failing test is a defect until a reproduction says otherwise (MUST):** reproduce first,
+  with `go test -count=N` (or the stack's repeat flag) for anything concurrent, and fix the cause.
+  "Flaky" is not a diagnosis. A `database is locked` failure that looked like noise was a lock-upgrade
+  race that any two processes opening a new `memory.db` at once could hit; it reproduced within 30
+  runs.
+- **Verify a tool on inputs you did not write (MUST):** fixtures written next to the code share
+  its misreadings. Before calling an analyzer, parser, migration, or scanner done, run it on a
+  codebase you did not write (a standard library, a dependency in the module cache) and on a large
+  one. Doing so for `review scan` surfaced a false-positive class (Go `if v, ok := f(); ok` chains),
+  dynamic dispatch reported as dead code, and a parser-library crash, none of which the fixtures
+  hit.
+- **Read the whole diff before committing (MUST):** run `git status` and `git diff --stat` and
+  account for every file. Running a script can change files as a side effect (a check script here
+  `chmod +x`es another, which nearly shipped as an unrelated mode change). Scripted bulk edits
+  assert that each replacement matched exactly once and are reviewed afterwards: a heuristic
+  cleanup once deleted tests it should have kept.
+- **Removals are exact (MUST):** never `rm -rf` a glob or a relative path after a `cd`; if the
+  `cd` fails or lands elsewhere, the glob matches the wrong tree. Put scratch work in a fresh,
+  uniquely named directory and leave it, rather than emptying a reused one.
+- **Review your own change mechanically (MUST):** before saying a code change is done, run
+  `vibe-agent review scan --changed` and settle every finding. Several rounds of "remove unused
+  code" here still left a production wrapper only a test called and two never-called script
+  helpers; the scan found them in one pass. Procedure:
+  [`commands/review.md`](.ai-agents/commands/review.md).
 - **Agent-only memory goes to `memory.db` (MUST):** what only agents need to recall is never written
   to `docs/` or other human-facing files; boundary and rules in
   [`runtime/AGENTS.md`](runtime/AGENTS.md) section "Agent memory boundary".
@@ -235,7 +270,7 @@ path. When a rule already has a home, link to it instead of restating it.
   CI's Linux runner) and say which platform went unverified. Rule added by the
   `agent-code-quality-hardening` delivery at the user's request.
 - **Consumer charter neutrality (MUST):** when creating or editing a **consumer workspace** charter file (workspace-root `AGENTS.md`, `CLAUDE.md`, `CURSOR.md`, `CLAUDE.local.md`, or `.cursor/rules/*.mdc` that encodes that repo's own rules), write harness-neutral prose only: product, domain, stack, and repo-local conventions. Do not name `vibe-agent`, `.vibe-agent/`, toolkit install paths, `.ai-agents/`, or tell readers to open this toolkit's charter. Those files must stand alone for whatever harness the team uses. Graduating a line from `.agent-state/MISTAKES.md` into a consumer charter uses plain policy text, not toolkit pointers. This rule does **not** apply when editing **this toolkit's** root charter, nested `runtime/AGENTS.md`, or assets under [`.ai-agents/`](.ai-agents). Details: [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) section "Consumer charter files".
-- **Supported harness parity (MUST):** when adding or changing a user-facing capability in this toolkit (skills, commands, agents, hooks, permissions, runtime gates, link/install paths, or delivery workflow), it must remain usable on every GenAI host this repo ships for: **Claude Code, Cursor, Codex, and opencode**. Edit canonical assets under `.ai-agents/`, re-run the link script, and pass the harness checks in [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) section "Supported harness parity". A host-only exception belongs in the spec with the gap named in [`host-hook-contracts.md`](.ai-agents/references/host-hook-contracts.md); do not merge a feature that silently works in one IDE only.
+- **Supported harness parity (MUST):** when adding or changing a user-facing capability in this toolkit (skills, commands, agents, hooks, permissions, runtime gates, link/install paths, or delivery workflow), it must remain usable on every GenAI host this repo ships for. The list is the runtime's contract table (`harness.HostContracts`), listed as the `--client` values in `vibe-agent`'s usage text; do not copy it here, where it went stale at four hosts while the runtime supported seven. Edit canonical assets under `.ai-agents/`, re-run the link script, and pass the harness checks in [`.ai-agents/AUTHORING.md`](.ai-agents/AUTHORING.md) section "Supported harness parity". A host-only exception belongs in the spec with the gap named in [`host-hook-contracts.md`](.ai-agents/references/host-hook-contracts.md); do not merge a feature that silently works in one IDE only.
 - **XML section tags (MUST):** wrap sections in the documented tag set for always-loaded charter files
   (`AGENTS.md`, `CLAUDE.md`, `CURSOR.md`, and harness-loaded nested `AGENTS.md` such as
   `runtime/AGENTS.md`) and for every asset under [`.ai-agents/`](.ai-agents). Do not invent tag
