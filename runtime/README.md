@@ -208,7 +208,7 @@ A doc logs its calculations in a fenced block and the runtime recomputes them:
 ```
 ````
 
-`=> X` means exactly `X`; `=> ~X` means rounded to the decimals `X` shows (half-even, or add `[half_up]`). Check a file with `vibe-agent docs check-calcs <file>...`. `checkpoint` runs the same check at the `auto_research` and `literature` nodes and refuses to leave while a logged figure is wrong, and `doctor` recomputes every calc block in the toolkit's own markdown.
+`=> X` means exactly `X`; `=> ~X` means rounded to the decimals `X` shows (half-even, or add `[half_up]`). Check a file with `vibe-agent docs check-calcs <file>...`. `checkpoint` runs the same check at every node that writes a document (the research digest, the spec, the plan and task list, the hypothesis, the findings, the write-up, and a learner's study record) and refuses to leave while a logged figure is wrong, and `doctor` recomputes every calc block in the toolkit's own markdown.
 
 ## Third-party Agent Skills
 

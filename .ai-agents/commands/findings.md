@@ -22,7 +22,8 @@ Write `docs/<date>/<slug>/<version>/FINDINGS-<date>.md` with:
 3. Failures and what they falsify
 4. Next experiments (optional)
 5. At least one Mermaid summary when the result set has more than one stage
-6. **Cost of the number (MUST):** trials tried, failed and abandoned runs, spread across seeds, coverage (evaluated over total), the selection-versus-held-out gap, and which results are exploratory because their split was reused. Rules: [`research-integrity`](../references/research-integrity.md)
+6. **Figures (MUST):** every figure computed here, such as a mean, a gap, or a rate of change, is computed with `vibe-agent calc` and logged in a `calc` block. `checkpoint` refuses to leave `findings` while a logged line does not recompute. State each figure's unit, and say whether a result is a single run or an average of several. Rules: [`quantitative-accuracy`](../skills/quantitative-accuracy/SKILL.md)
+7. **Cost of the number (MUST):** trials tried, failed and abandoned runs, spread across seeds, coverage (evaluated over total), the selection-versus-held-out gap, and which results are exploratory because their split was reused. Rules: [`research-integrity`](../references/research-integrity.md)
 
 When this work also writes a durable ledger entry under
 `experiments/<project-slug>/<run-id>/` ([`researcher-harness`](../skills/researcher-harness/SKILL.md)

@@ -100,6 +100,14 @@ reorder them.
    Its nodes are in [`task.md`](task.md), and the SPEC must list its deliverable, acceptance rows, and
    outward actions ([`spec.md`](spec.md)).
 
+### Numbers in a run (MUST)
+
+Every figure in a document this run writes (RESEARCH, SPEC, PLAN, TASKS, FINDINGS, WRITEUP) is computed
+with `vibe-agent calc`, not in your head, and logged in a fenced `calc` block. `checkpoint` recomputes
+the block at the node that wrote the document and refuses to leave while a line is wrong, so a wrong
+figure is caught on `/goal` and on `/auto` alike, with nobody reading it. Rules and worked examples:
+[`quantitative-accuracy`](../skills/quantitative-accuracy/SKILL.md).
+
 ### Rules in this mode (MUST)
 
 - **Follow the node the runtime reports.** Never infer the phase, never advance manually. There is
