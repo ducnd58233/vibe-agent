@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestAntigravityToolCallCommandLineIsRead(t *testing.T) {
+func TestACamelCaseToolCallCommandLineIsRead(t *testing.T) {
 	raw := `{
 		"toolCall": {
 			"name": "run_command",

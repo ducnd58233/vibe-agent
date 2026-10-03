@@ -8,33 +8,33 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
-// Cursor gets no prompt-time injection, so postToolUse is the only place a
-// session can learn which node its run is at. Before this it learned nowhere,
+// A host that cannot inject at the prompt learns which node its run is at only
+// from a tool call's reply. Before this it learned nowhere,
 // while commands/goal.md claimed injection happened on every prompt.
-func TestCursorLearnsTheNodeFromAToolCall(t *testing.T) {
+func TestAHostWithoutPromptInjectionLearnsTheNodeFromAToolCall(t *testing.T) {
 	root := workspaceWithRun(t)
 
 	output := invoke(t, Request{
-		Event: EventPostToolUse, Client: ClientCursor, WorkspaceRoot: root,
+		Event: EventPostToolUse, Client: hostWhere(t, remindsAfterToolUse), WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"ls"}}`),
 	})
 
 	if !strings.Contains(output, "additional_context") {
-		t.Fatalf("Cursor was told nothing: %s", output)
+		t.Fatalf("the host was told nothing: %s", output)
 	}
 	if !strings.Contains(output, "demo") || !strings.Contains(output, "node test") {
-		t.Errorf("the node did not reach Cursor: %s", output)
+		t.Errorf("the node did not reach the host: %s", output)
 	}
 }
 
 // Once per change, not once per tool call. A run sitting at one node for twenty
 // edits has nothing new to say, and repeating it teaches a reader to skip the
 // line that matters when it finally changes.
-func TestCursorIsNotToldTheSameNodeTwice(t *testing.T) {
+func TestTheNodeIsNotRepeatedOnEveryToolCall(t *testing.T) {
 	root := workspaceWithRun(t)
 	call := func() string {
 		return invoke(t, Request{
-			Event: EventPostToolUse, Client: ClientCursor, WorkspaceRoot: root,
+			Event: EventPostToolUse, Client: hostWhere(t, remindsAfterToolUse), WorkspaceRoot: root,
 			Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"ls"}}`),
 		})
 	}
@@ -49,11 +49,11 @@ func TestCursorIsNotToldTheSameNodeTwice(t *testing.T) {
 
 // A node change is the thing worth interrupting for, so it has to get through
 // after the quiet period above.
-func TestCursorIsToldWhenTheNodeChanges(t *testing.T) {
+func TestANodeChangeIsAnnouncedAfterAToolCall(t *testing.T) {
 	root := workspaceWithRun(t)
 	call := func() string {
 		return invoke(t, Request{
-			Event: EventPostToolUse, Client: ClientCursor, WorkspaceRoot: root,
+			Event: EventPostToolUse, Client: hostWhere(t, remindsAfterToolUse), WorkspaceRoot: root,
 			Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"ls"}}`),
 		})
 	}
@@ -70,30 +70,33 @@ func TestCursorIsToldWhenTheNodeChanges(t *testing.T) {
 	}
 
 	if output := call(); !strings.Contains(output, "node review") {
-		t.Errorf("the node change did not reach Cursor: %s", output)
+		t.Errorf("the node change did not reach the host: %s", output)
 	}
 }
 
 // Every other host injects on every prompt and must not also get this, or the
 // same fact arrives twice by two routes.
-func TestOnlyCursorGetsTheNodeOnAToolCall(t *testing.T) {
-	for _, client := range []Client{ClientClaude, ClientCodex} {
+func TestHostsThatInjectAtThePromptDoNotAlsoGetTheToolCallReminder(t *testing.T) {
+	for _, client := range Clients() {
+		if contract, _ := HostContractFor(client); contract.Dialect.ToolUseNodeReminder {
+			continue
+		}
 		root := workspaceWithRun(t)
 		output := invoke(t, Request{
 			Event: EventPostToolUse, Client: client, WorkspaceRoot: root,
 			Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"ls"}}`),
 		})
 		if strings.Contains(output, "no prompt-time injection") {
-			t.Errorf("%s got Cursor's compensation as well as its own injection: %s", client, output)
+			t.Errorf("%s got the tool-call reminder as well as its own prompt injection: %s", client, output)
 		}
 	}
 }
 
 // With no run there is nothing to report, and with several, naming one would be
 // choosing which goal the person is working on.
-func TestCursorGetsNoNodeWithoutExactlyOneRun(t *testing.T) {
+func TestNoNodeReminderWithoutExactlyOneRun(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventPostToolUse, Client: ClientCursor, WorkspaceRoot: t.TempDir(),
+		Event: EventPostToolUse, Client: hostWhere(t, remindsAfterToolUse), WorkspaceRoot: t.TempDir(),
 		Stdin: strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"ls"}}`),
 	})
 	if output != "" {

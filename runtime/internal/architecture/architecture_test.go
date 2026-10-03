@@ -173,15 +173,16 @@ func allowed(rel string) bool {
 	return false
 }
 
-// The Client identifiers are the one place a host is a Go name. Branching on one
-// anywhere else is how the per-host differences used to be scattered; they are
-// Dialect fields now.
-func TestNothingBranchesOnAHostIdentifier(t *testing.T) {
+// A host is a row of the contract table, not a Go identifier. Naming one in
+// code, as a typed constant or by comparing a client to a string, is how the
+// per-host differences used to be scattered; they are Dialect and Tools fields
+// now, read from the row.
+func TestNoCodeNamesAHostOutsideTheContractTable(t *testing.T) {
 	root := runtimeRoot(t)
-	identifier := regexp.MustCompile(`\bClient(Claude|Cursor|Codex|Opencode|Antigravity|Kimi|Muse)\b`)
+	hostLiteral := regexp.MustCompile(`Client\("[a-z]|Client = "[a-z]|[Cc]lient [!=]= "[a-z]`)
 	allowedFiles := map[string]bool{
-		"internal/harness/contracts.go": true, // each contract names its own host
-		"internal/harness/hook.go":      true, // defines them
+		"internal/harness/contracts.go": true, // each row names its own host
+		"internal/harness/hook.go":      true, // DefaultClient
 	}
 	for _, rel := range sources(t, root) {
 		if allowedFiles[rel] {
@@ -192,8 +193,8 @@ func TestNothingBranchesOnAHostIdentifier(t *testing.T) {
 			t.Fatal(err)
 		}
 		for i, line := range strings.Split(string(raw), "\n") {
-			if identifier.MatchString(line) {
-				t.Errorf("%s:%d uses a host identifier: %s\n\tput the difference on harness.Dialect instead", rel, i+1, strings.TrimSpace(line))
+			if hostLiteral.MatchString(line) {
+				t.Errorf("%s:%d names a host in code: %s\n\tput the difference on harness.Dialect or HostContract instead", rel, i+1, strings.TrimSpace(line))
 			}
 		}
 	}

@@ -359,7 +359,7 @@ func TestPreToolUseRefusesAnMCPSendOnAnAutoRunAndAllowsItOtherwise(t *testing.T)
 		}
 	})
 	err := runHook(t, Request{
-		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: auto,
+		Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: auto,
 		Stdin: strings.NewReader(payloadJSON),
 	})
 	var blocked *BlockError
@@ -373,7 +373,7 @@ func TestPreToolUseRefusesAnMCPSendOnAnAutoRunAndAllowsItOtherwise(t *testing.T)
 	// A manual run, and a workspace with no run at all, are both interactive.
 	for name, root := range map[string]string{"manual run": workspaceWithRun(t), "no run": t.TempDir()} {
 		if err := runHook(t, Request{
-			Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+			Event: EventPreToolUse, Client: DefaultClient, WorkspaceRoot: root,
 			Stdin: strings.NewReader(payloadJSON),
 		}); err != nil {
 			t.Errorf("%s: an MCP send was refused: %v", name, err)

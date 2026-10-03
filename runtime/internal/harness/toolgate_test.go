@@ -38,7 +38,7 @@ func TestVerdictAgreesWithTheHookPathOnTheSameCall(t *testing.T) {
 	// The hook half, as a host would send it.
 	viaHook := runHook(t, Request{
 		Event:         EventPreToolUse,
-		Client:        ClientClaude,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin: strings.NewReader(
 			`{"tool_name":"Write","tool_input":{"file_path":"` + target + `","content":"{}"}}`),
@@ -68,7 +68,7 @@ func TestVerdictAllowsWhatTheHookAllows(t *testing.T) {
 
 	if err := runHook(t, Request{
 		Event:         EventPreToolUse,
-		Client:        ClientClaude,
+		Client:        DefaultClient,
 		WorkspaceRoot: root,
 		Stdin: strings.NewReader(
 			`{"tool_name":"Write","tool_input":{"file_path":"` + ordinary + `","content":"package main"}}`),

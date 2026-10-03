@@ -170,7 +170,7 @@ func TestOnlyTheHooksObjectIsRead(t *testing.T) {
 	}
 }
 
-func TestAntigravityHookKeysAreRead(t *testing.T) {
+func TestHookKeysNestedUnderAProductKeyAreRead(t *testing.T) {
 	root := t.TempDir()
 	writeConfig(t, root, filepath.Join(".agents", "hooks.json"), `{
   "vibe-agent": {
@@ -191,7 +191,7 @@ func TestAntigravityHookKeysAreRead(t *testing.T) {
 	}
 }
 
-func TestKimiHookSnippetEventsAreRead(t *testing.T) {
+func TestTOMLHookEventsAreRead(t *testing.T) {
 	root := t.TempDir()
 	writeConfig(t, root, filepath.Join(".kimi", "hooks.toml"), `
 [[hooks]]

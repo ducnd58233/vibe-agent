@@ -64,20 +64,6 @@ func TestEveryCatalogedHostHasAReason(t *testing.T) {
 	}
 }
 
-func TestEvalHostAcceptsCursorAlias(t *testing.T) {
-	byCursor, ok := EvalHost("cursor")
-	if !ok {
-		t.Fatal("cursor")
-	}
-	byBinary, ok := EvalHost("cursor-agent")
-	if !ok {
-		t.Fatal("cursor-agent should resolve; the composer posts the catalog id")
-	}
-	if byCursor.Binary != "cursor-agent" || byBinary.Binary != "cursor-agent" {
-		t.Fatalf("cursor=%q cursor-agent=%q", byCursor.Binary, byBinary.Binary)
-	}
-}
-
 func errNotFound(name string) error {
 	return &pathError{name: name}
 }
@@ -137,15 +123,17 @@ func TestEvalHostIsIndependentOfCatalogOrder(t *testing.T) {
 	}
 }
 
-// The alias exists because the runner is called cursor and the binary is
-// cursor-agent. Both have to work.
-func TestBothCursorNamesResolveToTheSameHost(t *testing.T) {
-	short, okShort := EvalHost("cursor")
-	full, okFull := EvalHost("cursor-agent")
-	if !okShort || !okFull {
-		t.Fatalf("cursor=%t cursor-agent=%t", okShort, okFull)
-	}
-	if short.ID != full.ID {
-		t.Errorf("cursor -> %q, cursor-agent -> %q", short.ID, full.ID)
+// An alias exists where the name a person types differs from the catalog id.
+// Both have to resolve, and to the same host.
+func TestEveryAliasAndItsIDResolveToTheSameHost(t *testing.T) {
+	for alias, id := range evalAlias {
+		byAlias, okAlias := EvalHost(alias)
+		byID, okID := EvalHost(id)
+		if !okAlias || !okID {
+			t.Fatalf("%s=%t %s=%t", alias, okAlias, id, okID)
+		}
+		if byAlias.ID != byID.ID {
+			t.Errorf("%s -> %q, %s -> %q", alias, byAlias.ID, id, byID.ID)
+		}
 	}
 }

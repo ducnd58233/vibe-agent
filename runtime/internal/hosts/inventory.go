@@ -28,6 +28,23 @@ type Host struct {
 	// SkillsAgent is this host's identifier in the `skills` installer CLI. Empty
 	// means the installer does not target it.
 	SkillsAgent string
+
+	// Models are the --model values the host documents, best first. Empty means
+	// the host takes no --model flag.
+	Models []string
+	// PrintFlags are set right after the print flag on every print-mode spawn,
+	// replacing whatever EvalCommand gave them: what the composer needs to read
+	// the stream.
+	PrintFlags []Flag
+	// AskMode is the flag that keeps a print-mode spawn read-only. A composer
+	// asking for agent mode drops it; any other request keeps it.
+	AskMode *Flag
+}
+
+// Flag is one command-line flag. An empty Value is a bare flag.
+type Flag struct {
+	Name  string
+	Value string
 }
 
 // Entry is a host plus PATH lookup status.
@@ -46,6 +63,9 @@ var catalog = []Host{
 	},
 	{
 		ID: "claude", Binary: "claude", EvalCommand: "claude -p",
+		// From `claude --help` (--model).
+		Models:       []string{"sonnet", "opus", "fable"},
+		PrintFlags:   []Flag{{"--output-format", "stream-json"}, {"--verbose", ""}, {"--include-hook-events", ""}},
 		RulesFiles:   []string{"CLAUDE.md", "CLAUDE.local.md"},
 		SkillRoots:   []Root{{Workspace, ".claude/skills"}, {Home, ".claude/skills"}},
 		CommandRoots: []Root{{Workspace, ".claude/commands"}, {Home, ".claude/commands"}},
@@ -53,6 +73,10 @@ var catalog = []Host{
 	},
 	{
 		ID: "cursor-agent", Binary: "cursor-agent", EvalCommand: "cursor-agent --print --output-format stream-json --mode ask --trust", PromptAsArg: true,
+		// The --help examples, with auto first because the CLI pins it at the
+		// top of its own model picker.
+		Models:       []string{"auto", "gpt-5", "sonnet-4-thinking"},
+		AskMode:      &Flag{"--mode", "ask"},
 		RulesFiles:   []string{"CURSOR.md"},
 		RulesDirs:    []string{".cursor/rules/"},
 		SkillRoots:   []Root{{Workspace, ".cursor/skills"}, {Home, ".cursor/skills"}},

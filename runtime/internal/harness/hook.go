@@ -34,52 +34,10 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
-// Client is the host whose hook is firing. Payload shapes differ between them.
+// Client names the host whose hook is firing: one row of the contract table.
+// It is data, not a set of identifiers; what differs between hosts is read from
+// that row (HostContract.Dialect, HostContract.Tools), never branched on here.
 type Client string
-
-const (
-	ClientClaude Client = "claude"
-	ClientCursor Client = "cursor"
-	// ClientCodex is Claude's envelope everywhere but the gate.
-	//
-	// Measured against codex-cli 0.147.0 rather than read from documentation,
-	// because the one place the two disagree is the one that refuses an
-	// irreversible action, and a guard that only looks connected is worse than
-	// none. Codex reads hookSpecificOutput.additionalContext, {"decision":
-	// "block"} on Stop, and tool_name / tool_input.command / tool_response with
-	// Claude's spelling. It ignores exit 2.
-	ClientCodex Client = "codex"
-
-	// ClientOpencode is opencode, answered through the plugin at
-	// .opencode/plugin/vibe-agent.js.
-	//
-	// opencode publishes no shell-command hook surface, so unlike the other
-	// three this host cannot be wired from a config file at all: its lifecycle
-	// is reachable only from a JS/TS plugin. Registering an MCP server is not a
-	// substitute, because the model decides whether to call a tool and a control
-	// plane the model may skip is not deterministic.
-	//
-	// Its envelope is this package's choice rather than a vendor's, since the
-	// plugin on the other side is in this repository. Flat and snake_case, which
-	// is the shape a small JS reader wants; it is written down in the contract
-	// like every other host's so the two sides have one source rather than two
-	// habits.
-	ClientOpencode Client = "opencode"
-
-	// ClientAntigravity is Google Antigravity. PreToolUse answers with decision
-	// and reason; PreInvocation maps to user-prompt-submit via injectSteps.
-	ClientAntigravity Client = "antigravity"
-
-	// ClientKimi is Kimi Code CLI. Only PreToolUse, PostToolUse, and Stop are
-	// published; the refusal envelope matches Codex because Kimi documents no
-	// stdout schema.
-	ClientKimi Client = "kimi"
-
-	// ClientMuse is Muse Code. The wire shape matches Claude's hookSpecificOutput
-	// per vendor-adjacent measurement; project hooks live at .muse/hooks.json and
-	// require muse hooks trust before they run.
-	ClientMuse Client = "muse"
-)
 
 // Clients is every host this build has an envelope for.
 //
@@ -102,7 +60,7 @@ func Clients() []Client {
 // DefaultClient answers when a hook command names no host. Configs written
 // before --client existed omit it, which is why a default exists at all; a name
 // this build does not know is still refused, never defaulted.
-const DefaultClient = ClientClaude
+const DefaultClient Client = "claude"
 
 // KnownClient reports whether this build can answer a host.
 func KnownClient(client Client) bool {

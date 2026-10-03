@@ -18,7 +18,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/testutil"
 )
 
-func TestComposerSendRecordsCursorPromptOnTrajectory(t *testing.T) {
+func TestComposerSendRecordsThePromptOnTheTrajectory(t *testing.T) {
 	cursorReady := false
 	for _, entry := range hosts.Inventory() {
 		if entry.Binary == "cursor-agent" && entry.OnPath {
@@ -88,7 +88,7 @@ func TestComposerSendRecordsCursorPromptOnTrajectory(t *testing.T) {
 	}
 }
 
-func TestParsePrintLinesExtractsCodexAgentMessage(t *testing.T) {
+func TestParsePrintLinesExtractsAnItemCompletedAgentMessage(t *testing.T) {
 	raw := `{"type":"thread.started","thread_id":"1"}` + "\n" +
 		`{"type":"turn.started"}` + "\n" +
 		`{"type":"item.completed","item":{"id":"item_0","type":"error","message":"shortened"}}` + "\n" +
@@ -119,7 +119,7 @@ func TestParsePrintOutputQuestionAndTotalTokens(t *testing.T) {
 	}
 }
 
-func TestParsePrintOutputCursorStreamJSONUsage(t *testing.T) {
+func TestParsePrintOutputStreamJSONUsage(t *testing.T) {
 	raw := `{"type":"system","subtype":"init","cwd":"/tmp"}` + "\n" +
 		`{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"pong"}]}}` + "\n" +
 		`{"type":"result","subtype":"success","result":"pong","usage":{"inputTokens":57151,"outputTokens":33,"cacheReadTokens":384}}`
@@ -132,7 +132,7 @@ func TestParsePrintOutputCursorStreamJSONUsage(t *testing.T) {
 	}
 }
 
-func TestParsePrintOutputCursorToolCallStarted(t *testing.T) {
+func TestParsePrintOutputATypedToolCallStarted(t *testing.T) {
 	raw := `{"type":"system","subtype":"init"}` + "\n" +
 		`{"type":"tool_call","subtype":"started","call_id":"1","tool_call":{"readToolCall":{"args":{"path":"README.md"}}}}` + "\n" +
 		`{"type":"tool_call","subtype":"completed","call_id":"1","tool_call":{"readToolCall":{"args":{"path":"README.md"},"result":{"success":{"content":"secret-should-not-land"}}}}}` + "\n" +

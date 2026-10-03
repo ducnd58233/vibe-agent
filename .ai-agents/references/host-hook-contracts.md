@@ -119,8 +119,8 @@ Two rules govern this table:
 | `UserPromptSubmit` | `user-prompt-submit` | `hookSpecificOutput.hookEventName`, `hookSpecificOutput.additionalContext` | yes | no | yes | yes |
 | `PreToolUse` | `pre-tool-use` | `hookSpecificOutput.hookEventName`, `hookSpecificOutput.permissionDecision`, `hookSpecificOutput.permissionDecisionReason` | no | yes | yes | yes |
 | `PostToolUse` | `post-tool-use` | `hookSpecificOutput.hookEventName`, `decision` | no | no | yes | yes |
-| `Stop` | `stop` | none | no | no | yes | **UNVERIFIED** |
-| `SubagentStop` | `subagent-stop` | none | no | no | yes | **UNVERIFIED** |
+| `Stop` | `stop` | `decision`, `reason` | no | yes | yes | **UNVERIFIED** |
+| `SubagentStop` | `subagent-stop` | `decision`, `reason` | no | yes | yes | **UNVERIFIED** |
 
 **Notes**
 
@@ -130,7 +130,7 @@ Two rules govern this table:
 **Why the unverified rows are unverified**
 
 - `Stop`
-  Codex's blocking shape for Stop has not been measured, so the runtime sends nothing here.
+  The runtime sends {decision: block, reason} here, the shape Codex was recorded reading on Stop when its envelopes were measured against codex-cli 0.147.0; this row itself has not been observed separately.
 - `SubagentStop`
   Same as Stop.
 
@@ -230,7 +230,7 @@ Two rules govern this table:
 |---|---|---|---|---|---|---|
 | `SessionStart` | `session-start` | none | no | no | yes | **UNVERIFIED** |
 | `UserPromptSubmit` | `user-prompt-submit` | `stdout` | yes | yes | yes | **UNVERIFIED** |
-| `PreToolUse` | `pre-tool-use` | `hookSpecificOutput.permissionDecision`, `hookSpecificOutput.permissionDecisionReason` | no | yes | yes | **UNVERIFIED** |
+| `PreToolUse` | `pre-tool-use` | `hookSpecificOutput.hookEventName`, `hookSpecificOutput.permissionDecision`, `hookSpecificOutput.permissionDecisionReason` | no | yes | yes | **UNVERIFIED** |
 | `PostToolUse` | `post-tool-use` | none | no | no | yes | **UNVERIFIED** |
 | `PostToolUseFailure` | `post-tool-use-failure` | none | no | no | yes | **UNVERIFIED** |
 | `Stop` | `stop` | none | no | yes | yes | **UNVERIFIED** |
@@ -239,7 +239,7 @@ Two rules govern this table:
 
 - `SessionStart` - Observation-only: stdout is discarded, so the session context arrives with the first prompt instead.
 - `UserPromptSubmit` - Text printed with exit 0 is appended to the context; the field is the text itself.
-- `PreToolUse` - Exit 2 with the reason on stderr also blocks; both are sent.
+- `PreToolUse` - The documented deny carries permissionDecision and its reason; hookEventName is sent beside them, as for the hosts that require it. Exit 2 with the reason on stderr also blocks; both are sent.
 - `PostToolUseFailure` - Fires after a tool fails or is blocked.
 - `Stop` - Blocked by exit 2; stderr is appended so the model continues.
 

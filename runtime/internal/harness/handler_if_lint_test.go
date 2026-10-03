@@ -24,7 +24,7 @@ func TestUnsupportedHandlerIfRejectsFlatIf(t *testing.T) {
 	}
 }
 
-func TestUnsupportedHandlerIfAllowsCleanCodex(t *testing.T) {
+func TestUnsupportedHandlerIfAllowsACleanNestedConfig(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, ".codex")
 	if err := os.MkdirAll(dir, 0o750); err != nil {

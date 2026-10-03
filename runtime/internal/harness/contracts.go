@@ -215,7 +215,7 @@ func (h HostContract) EventFor(hostKey string) (EventContract, bool) {
 // table; what earns a row here is an event the toolkit wires or deliberately
 // declines to.
 var claudeContract = HostContract{
-	Client:            ClientClaude,
+	Client:            "claude",
 	Tools:             ToolVocabulary{Writes: sharedEditTools, Fetches: sharedFetchTools},
 	HonorsHandlerIf:   true,
 	SplitsToolOutcome: true,
@@ -290,7 +290,7 @@ var claudeContract = HostContract{
 // wiring was written from the vendor page and has never been watched running,
 // which is precisely the condition that produced the defects below.
 var cursorContract = HostContract{
-	Client:            ClientCursor,
+	Client:            "cursor",
 	Tools:             ToolVocabulary{Writes: sharedEditTools, Fetches: sharedFetchTools},
 	SplitsToolOutcome: true,
 	Dialect:           Dialect{Context: ContextFlat, Refusal: RefusePermission, StopBlock: StopFollowup, PostTool: PostToolFlat, ToolUseNodeReminder: true},
@@ -410,8 +410,12 @@ const opencodePluginUnmeasured = "The plugin is loaded and no hook in it has bee
 // first: Codex ignores exit 2 outright, running the command anyway while the
 // hook exited 2 and printed its refusal, so the JSON shape is the only gate that
 // works. The second is the missing failure event below.
+//
+// Measured against codex-cli 0.147.0: it reads hookSpecificOutput.additionalContext,
+// {"decision": "block"} on Stop, and tool_name / tool_input.command /
+// tool_response in the shared family's spelling.
 var codexContract = HostContract{
-	Client:         ClientCodex,
+	Client:         "codex",
 	Tools:          ToolVocabulary{Writes: sharedEditTools, Fetches: sharedFetchTools},
 	Dialect:        Dialect{Refusal: RefuseHookSpecific, PromptInjection: true},
 	ConfigPath:     ".codex/hooks.json",
@@ -449,12 +453,13 @@ var codexContract = HostContract{
 		},
 		{
 			HostKey: "Stop", Event: EventStop,
-			OutputKeys: nil, Wired: true,
-			Verification: unverified("Codex's blocking shape for Stop has not been measured, so the runtime sends nothing here."),
+			OutputKeys: []string{"decision", "reason"}, CanRefuse: true, Wired: true,
+			Verification: unverified("The runtime sends {decision: block, reason} here, the shape Codex was recorded reading on Stop " +
+				"when its envelopes were measured against codex-cli 0.147.0; this row itself has not been observed separately."),
 		},
 		{
 			HostKey: "SubagentStop", Event: EventSubagentStop,
-			OutputKeys: nil, Wired: true,
+			OutputKeys: []string{"decision", "reason"}, CanRefuse: true, Wired: true,
 			Verification: unverified("Same as Stop."),
 		},
 	},
@@ -470,8 +475,15 @@ var codexContract = HostContract{
 // opencode exposes no shell-command hook surface at all. Its lifecycle is
 // reachable only from a JS/TS plugin, which is why this host had nothing
 // deterministic wired and policy reached it through commands and skills alone.
+// Registering an MCP server is not a substitute: the model decides whether to
+// call a tool, and a control plane the model may skip is not deterministic.
+//
+// The plugin is .opencode/plugin/vibe-agent.js, in this repository, so the
+// envelope is this toolkit's choice rather than a vendor's: flat and snake_case,
+// the shape a small JS reader wants, recorded here like every other host's so
+// the two sides have one source.
 var opencodeContract = HostContract{
-	Client:     ClientOpencode,
+	Client:     "opencode",
 	Tools:      ToolVocabulary{Writes: []string{"edit", "write", "patch", "multiedit"}},
 	Dialect:    Dialect{Context: ContextFlat, Refusal: RefusePermissionReason, StopBlock: StopNone, PromptInjection: true},
 	ConfigPath: "opencode.json",
@@ -546,7 +558,7 @@ const museNeverObserved = "No Muse hook has been observed firing from this confi
 
 // antigravityContract is Google Antigravity.
 var antigravityContract = HostContract{
-	Client:     ClientAntigravity,
+	Client:     "antigravity",
 	Tools:      ToolVocabulary{Writes: []string{"write_to_file", "replace_file_content", "multi_replace_file_content"}},
 	Dialect:    Dialect{Context: ContextSteps, Refusal: RefuseDecision, StopBlock: StopContinue, PromptInjection: true},
 	ConfigPath: ".agents/hooks.json",
@@ -603,7 +615,7 @@ var antigravityContract = HostContract{
 // documents; PreToolUse also takes a JSON deny, and both are sent. SessionStart
 // is observation-only, so what it prints is discarded.
 var kimiContract = HostContract{
-	Client:            ClientKimi,
+	Client:            "kimi",
 	Tools:             ToolVocabulary{Writes: append([]string{"WriteFile", "EditFile", "StrReplaceFile"}, sharedEditTools...)},
 	SplitsToolOutcome: true,
 	Dialect: Dialect{
@@ -632,10 +644,11 @@ var kimiContract = HostContract{
 		},
 		{
 			HostKey: "PreToolUse", Event: EventPreToolUse,
-			OutputKeys: []string{"hookSpecificOutput.permissionDecision", "hookSpecificOutput.permissionDecisionReason"},
+			OutputKeys: []string{"hookSpecificOutput.hookEventName", "hookSpecificOutput.permissionDecision", "hookSpecificOutput.permissionDecisionReason"},
 			CanRefuse:  true, Wired: true,
 			Verification: unverified(kimiNeverObserved),
-			Note:         "Exit 2 with the reason on stderr also blocks; both are sent.",
+			Note: "The documented deny carries permissionDecision and its reason; hookEventName is sent beside them, as for the " +
+				"hosts that require it. Exit 2 with the reason on stderr also blocks; both are sent.",
 		},
 		{
 			HostKey: "PostToolUse", Event: EventPostToolUse,
@@ -668,7 +681,7 @@ var kimiContract = HostContract{
 // a JSON deny in the wrong shape is ignored without a word. So refusals travel
 // on both channels.
 var museContract = HostContract{
-	Client:            ClientMuse,
+	Client:            "muse",
 	Tools:             ToolVocabulary{Writes: sharedEditTools, Fetches: sharedFetchTools},
 	SplitsToolOutcome: true,
 	Dialect:           Dialect{Refusal: RefuseHookSpecific, RefusalExits: true, PromptInjection: true},

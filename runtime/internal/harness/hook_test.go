@@ -50,7 +50,7 @@ func invoke(t *testing.T, req Request) string {
 
 func TestSessionStartReportsTheSourceOfTruthOrder(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: t.TempDir(),
+		Event: EventSessionStart, Client: DefaultClient, WorkspaceRoot: t.TempDir(),
 	})
 	if !strings.Contains(output, "repository code and config") {
 		t.Errorf("session start does not state the source-of-truth order: %s", output)
@@ -59,7 +59,7 @@ func TestSessionStartReportsTheSourceOfTruthOrder(t *testing.T) {
 
 func TestSessionStartSurfacesAnActiveRun(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: workspaceWithRun(t),
+		Event: EventSessionStart, Client: DefaultClient, WorkspaceRoot: workspaceWithRun(t),
 	})
 	if !strings.Contains(output, "demo") || !strings.Contains(output, "test") {
 		t.Errorf("an active run was not surfaced: %s", output)
@@ -69,9 +69,9 @@ func TestSessionStartSurfacesAnActiveRun(t *testing.T) {
 	}
 }
 
-func TestClaudeSessionStartUsesTheAdditionalContextField(t *testing.T) {
+func TestANestedContextHostsSessionStartUsesTheAdditionalContextField(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: t.TempDir(),
+		Event: EventSessionStart, Client: DefaultClient, WorkspaceRoot: t.TempDir(),
 	})
 	var body map[string]any
 	if err := json.Unmarshal([]byte(output), &body); err != nil {
@@ -86,23 +86,22 @@ func TestClaudeSessionStartUsesTheAdditionalContextField(t *testing.T) {
 	}
 }
 
-// Cursor's beforeSubmitPrompt returns {continue, user_message} and cannot add
-// context. Emitting nothing is the honest behavior; blocking the user to
+// A prompt event that can only validate or block cannot add context. Emitting nothing is the honest behavior; blocking the user to
 // deliver a reminder would be worse than staying quiet.
-func TestCursorPromptSubmitEmitsNothing(t *testing.T) {
+func TestAHostThatCannotInjectAtThePromptIsSentNothing(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventUserPromptSubmit, Client: ClientCursor,
+		Event: EventUserPromptSubmit, Client: hostWhere(t, cannotInjectAtPrompt),
 		WorkspaceRoot: workspaceWithRun(t),
 		Stdin:         strings.NewReader(`{"prompt":"what is the goal status"}`),
 	})
 	if output != "" {
-		t.Errorf("Cursor prompt submit produced output it cannot deliver: %s", output)
+		t.Errorf("prompt submit produced output the host cannot deliver: %s", output)
 	}
 }
 
-func TestClaudePromptSubmitSurfacesTheCurrentNode(t *testing.T) {
+func TestPromptSubmitSurfacesTheCurrentNode(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventUserPromptSubmit, Client: ClientClaude,
+		Event: EventUserPromptSubmit, Client: DefaultClient,
 		WorkspaceRoot: workspaceWithRun(t),
 		Stdin:         strings.NewReader(`{"prompt":"what is the goal status"}`),
 	})
@@ -116,7 +115,7 @@ func TestClaudePromptSubmitSurfacesTheCurrentNode(t *testing.T) {
 // treated as one of those cases; see TestPromptSubmitSurfacesTheRunOnAnyPrompt.
 func TestPromptSubmitStaysQuietWithNothingToReport(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventUserPromptSubmit, Client: ClientClaude,
+		Event: EventUserPromptSubmit, Client: DefaultClient,
 		WorkspaceRoot: t.TempDir(),
 		Stdin:         strings.NewReader(`{"prompt":"explain this regex"}`),
 	})
@@ -127,7 +126,7 @@ func TestPromptSubmitStaysQuietWithNothingToReport(t *testing.T) {
 
 func TestStopRemindsAboutAnUnfinishedRun(t *testing.T) {
 	output := invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: workspaceWithRun(t),
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: workspaceWithRun(t),
 	})
 	if !strings.Contains(output, "Record evidence") {
 		t.Errorf("stop did not remind about recording evidence: %s", output)
@@ -140,7 +139,7 @@ func TestStopReportsABlockerWhenThereIsOne(t *testing.T) {
 			Node: "test", Reason: "flaky integration suite", Attempts: 2, At: at(),
 		}}
 	})
-	output := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	output := invoke(t, Request{Event: EventStop, Client: DefaultClient, WorkspaceRoot: root})
 	if !strings.Contains(output, "flaky integration suite") {
 		t.Errorf("stop did not report the blocker: %s", output)
 	}
@@ -153,7 +152,7 @@ func TestStopIgnoresStaleBlockerOnEarlierNode(t *testing.T) {
 			Node: "external_reviews", Reason: "Awaiting human waiver", Attempts: 1, At: at(),
 		}}
 	})
-	output := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	output := invoke(t, Request{Event: EventStop, Client: DefaultClient, WorkspaceRoot: root})
 	if strings.Contains(output, "external_reviews") {
 		t.Errorf("stop reported a stale blocker: %s", output)
 	}
@@ -194,7 +193,7 @@ func TestInResearchLoopNamesTheSameNodesBothGraphsDeclare(t *testing.T) {
 func TestHooksStayQuietWithNoRunAndNoWorkspace(t *testing.T) {
 	for _, event := range []Event{EventStop, EventSubagentStop, EventUserPromptSubmit} {
 		output := invoke(t, Request{
-			Event: event, Client: ClientClaude, WorkspaceRoot: t.TempDir(),
+			Event: event, Client: DefaultClient, WorkspaceRoot: t.TempDir(),
 		})
 		if output != "" {
 			t.Errorf("%s produced output with no active run: %s", event, output)
@@ -206,7 +205,7 @@ func TestHooksSurviveGarbageOnStdin(t *testing.T) {
 	for _, event := range []Event{EventSessionStart, EventUserPromptSubmit, EventStop} {
 		var out bytes.Buffer
 		err := Run(Request{
-			Event: event, Client: ClientClaude, WorkspaceRoot: t.TempDir(),
+			Event: event, Client: DefaultClient, WorkspaceRoot: t.TempDir(),
 			ToolkitRoot: toolkitRoot, Stdin: strings.NewReader("not json at all"),
 		}, &out)
 		if err != nil {
@@ -217,7 +216,7 @@ func TestHooksSurviveGarbageOnStdin(t *testing.T) {
 
 func TestFinishedRunsAreNotReported(t *testing.T) {
 	root := workspaceWithRun(t, func(run *state.Run) { run.Status = state.StatusDone })
-	output := invoke(t, Request{Event: EventStop, Client: ClientClaude, WorkspaceRoot: root})
+	output := invoke(t, Request{Event: EventStop, Client: DefaultClient, WorkspaceRoot: root})
 	if output != "" {
 		t.Errorf("a finished run was reported as outstanding: %s", output)
 	}

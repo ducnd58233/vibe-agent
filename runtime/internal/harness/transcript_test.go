@@ -28,7 +28,7 @@ func TestTranscriptProjectsUserAndAssistant(t *testing.T) {
 		`{"type":"assistant","message":{"content":[{"type":"text","text":"hi back"}]}}`,
 	)
 	invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"transcript_path":` + jsonString(path) + `}`),
 	})
 
@@ -53,7 +53,7 @@ func TestTranscriptRedactsSecrets(t *testing.T) {
 		`{"type":"user","message":{"content":[{"type":"text","text":"use `+transcriptTestSecret+`"}]}}`,
 	)
 	invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"transcript_path":` + jsonString(path) + `}`),
 	})
 	stored, err := session.Replay(session.LogPath(root, "demo"))
@@ -71,7 +71,7 @@ func TestUnfamiliarTranscriptShapeAppendsNothing(t *testing.T) {
 	root := workspaceWithRun(t)
 	path := writeTranscriptFile(t, "not json", `{"unfamiliar":true}`)
 	invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"transcript_path":` + jsonString(path) + `}`),
 	})
 	events := sessionLog(t, root)
@@ -88,7 +88,7 @@ func TestTranscriptUsageCopiedWhenPresent(t *testing.T) {
 		`{"type":"assistant","message":{"content":[{"type":"text","text":"done"}],"usage":{"input_tokens":120,"output_tokens":45,"cache_read_input_tokens":10}}}`,
 	)
 	invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"transcript_path":` + jsonString(path) + `}`),
 	})
 	events := sessionLog(t, root)
@@ -111,7 +111,7 @@ func TestTranscriptSkipsDuplicateAssistantFromStop(t *testing.T) {
 		`{"type":"assistant","message":{"content":[{"type":"text","text":"`+assistant+`"}]}}`,
 	)
 	invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"transcript_path":` + jsonString(path) + `,"last_assistant_message":` + jsonString(assistant) + `}`),
 	})
 	events := sessionLog(t, root)
@@ -136,7 +136,7 @@ func TestTranscriptCommandInjectionProjectsAsThinking(t *testing.T) {
 		`{"type":"user","message":{"content":[{"type":"text","text":"Drive one objective end to end.\n\n<context>\n\nFollow the skill.\n</context>\n\n## Inputs"}]}}`,
 	)
 	invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"transcript_path":` + jsonString(path) + `}`),
 	})
 	var thinking int
@@ -167,7 +167,7 @@ func TestStopCopiesUsageFromSkippedTranscriptAssistant(t *testing.T) {
 		`{"type":"assistant","message":{"content":[{"type":"text","text":"`+assistant+`"}],"usage":{"input_tokens":120,"output_tokens":45,"cache_read_input_tokens":10}}}`,
 	)
 	invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"transcript_path":` + jsonString(path) + `,"last_assistant_message":` + jsonString(assistant) + `}`),
 	})
 	var body session.Payload
@@ -190,7 +190,7 @@ func TestTranscriptMissingUsageStaysUnset(t *testing.T) {
 		`{"type":"assistant","message":{"content":[{"type":"text","text":"no usage here"}]}}`,
 	)
 	invoke(t, Request{
-		Event: EventStop, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventStop, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"transcript_path":` + jsonString(path) + `}`),
 	})
 	var body session.Payload

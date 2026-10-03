@@ -14,7 +14,7 @@ import (
 func promptIn(t *testing.T, root, session, prompt string) string {
 	t.Helper()
 	return invoke(t, Request{
-		Event: EventUserPromptSubmit, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventUserPromptSubmit, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"session_id":"` + session + `","prompt":"` + prompt + `"}`),
 	})
 }
@@ -73,7 +73,7 @@ func TestSessionStartResetsWhatTheSessionWasTold(t *testing.T) {
 	}
 	// Compaction re-fires SessionStart; whatever was delivered is gone.
 	invoke(t, Request{
-		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventSessionStart, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"session_id":"s1","source":"compact"}`),
 	})
 	if out := promptIn(t, root, "s1", "hello"); !strings.Contains(out, "demo") {
@@ -85,7 +85,7 @@ func TestSessionStartMemoriesAreNotRepeatedOnTheFirstPrompt(t *testing.T) {
 	root := t.TempDir()
 	seedMemory(t, root, "the runtime module builds with CGO disabled")
 	start := invoke(t, Request{
-		Event: EventSessionStart, Client: ClientClaude, WorkspaceRoot: root,
+		Event: EventSessionStart, Client: DefaultClient, WorkspaceRoot: root,
 		Stdin: strings.NewReader(`{"session_id":"s1","source":"startup"}`),
 	})
 	if !strings.Contains(start, "CGO disabled") {
