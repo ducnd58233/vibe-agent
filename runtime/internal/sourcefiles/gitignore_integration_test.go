@@ -1,4 +1,4 @@
-package source
+package sourcefiles
 
 import (
 	"path/filepath"
@@ -21,5 +21,22 @@ func TestLoadGitignoreFromWorkspaceRoot(t *testing.T) {
 	tmpFile := filepath.Join(root, "tmp", "probe", "x.log")
 	if !g.skipFile(tmpFile) {
 		t.Fatalf("expected file under tmp/ to be gitignored")
+	}
+}
+
+func TestGitignoreMatchesAnchoredDirectory(t *testing.T) {
+	root := t.TempDir()
+	g := gitignore{
+		root: root,
+		patterns: []pattern{
+			{raw: ".agents/skills", anchored: true, dirOnly: true},
+		},
+	}
+	skillsDir := filepath.Join(root, ".agents", "skills")
+	if !g.skipDir(skillsDir) {
+		t.Fatal("expected .agents/skills directory to be skipped")
+	}
+	if g.skipFile(filepath.Join(root, "runtime", "main.go")) {
+		t.Fatal("did not expect runtime file to be skipped")
 	}
 }

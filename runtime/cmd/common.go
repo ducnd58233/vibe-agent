@@ -267,3 +267,21 @@ func orDashPtr(value *string) string {
 	}
 	return orDash(*value)
 }
+
+// parseInterspersed parses flags wherever they sit among positional arguments,
+// so `cmd path --json` works as well as `cmd --json path`. The standard parser
+// stops at the first positional and leaves later flags unread.
+func parseInterspersed(flags *flag.FlagSet, args []string) ([]string, error) {
+	var positional []string
+	for {
+		if err := flags.Parse(args); err != nil {
+			return nil, err
+		}
+		args = flags.Args()
+		if len(args) == 0 {
+			return positional, nil
+		}
+		positional = append(positional, args[0])
+		args = args[1:]
+	}
+}

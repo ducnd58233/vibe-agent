@@ -1,4 +1,4 @@
-package source
+package sourcefiles
 
 import (
 	"os"
@@ -6,12 +6,13 @@ import (
 	"strings"
 )
 
-// gitignore holds patterns from a workspace .gitignore for slop walks.
+// gitignore holds patterns from a workspace .gitignore, for walks outside a git
+// work tree (inside one, List asks git, which knows nested and negated rules).
 //
 // The matcher is intentionally small: it covers the paths this toolkit
 // gitignores (root-anchored dirs, simple globs) without implementing the full
-// gitignore spec. Slop only needs to skip evidence and generated views that
-// must never affect the score.
+// gitignore spec. The fallback walk only needs to skip evidence and generated
+// views that must never be read as source.
 type gitignore struct {
 	root     string
 	patterns []pattern
@@ -124,7 +125,7 @@ func (p pattern) matches(rel string, isDir bool) bool {
 }
 
 func matchSimpleGlob(pattern, rel string, isDir bool) bool {
-	// Supports **/middle and trailing * for the slop audit use case only.
+	// Supports **/middle and trailing * only.
 	if strings.HasPrefix(pattern, "**/") {
 		suffix := strings.TrimPrefix(pattern, "**/")
 		if strings.HasSuffix(suffix, "/*") {

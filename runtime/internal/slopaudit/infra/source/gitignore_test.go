@@ -45,20 +45,3 @@ func TestScannerSkipsGitignoredPaths(t *testing.T) {
 		t.Fatalf("summary = %+v", result.Summary)
 	}
 }
-
-func TestGitignoreMatchesAnchoredDirectory(t *testing.T) {
-	root := t.TempDir()
-	g := gitignore{
-		root: root,
-		patterns: []pattern{
-			{raw: ".agents/skills", anchored: true, dirOnly: true},
-		},
-	}
-	skillsDir := filepath.Join(root, ".agents", "skills")
-	if !g.skipDir(skillsDir) {
-		t.Fatal("expected .agents/skills directory to be skipped")
-	}
-	if g.skipFile(filepath.Join(root, "runtime", "main.go")) {
-		t.Fatal("did not expect runtime file to be skipped")
-	}
-}

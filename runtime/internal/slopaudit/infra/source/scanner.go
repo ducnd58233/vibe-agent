@@ -13,10 +13,10 @@ import (
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/slopaudit/domain"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/slopaudit/infra/syntax"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/sourcefiles"
 )
 
 const (
-	MaxFileBytes            = 1024 * 1024
 	DefaultLongFileLines    = 800
 	DuplicateLineMinLength  = 24
 	DuplicateLineMinRepeats = 3
@@ -26,10 +26,6 @@ const (
 	LanguageText = "Text"
 	ParserText   = "go-enry language detection plus gotreesitter syntax parse plus text rules"
 )
-
-var skippedDirectories = map[string]struct{}{
-	".git": {},
-}
 
 var proseLanguages = map[string]struct{}{
 	"Markdown": {},
@@ -104,7 +100,7 @@ func newScanner(workers int, syntaxParser syntaxParser) *Scanner {
 }
 
 func (s *Scanner) Scan(ctx context.Context, target string) (domain.ScanResult, error) {
-	files, err := sourceFiles(target)
+	files, err := sourceFiles(ctx, target)
 	if err != nil {
 		return domain.ScanResult{}, err
 	}
@@ -163,8 +159,9 @@ type fileResult struct {
 	skipped      bool
 }
 
-func sourceFiles(target string) ([]string, error) {
-	var files []string
+// sourceFiles is the shared inventory under a directory target, or the
+// target itself when it names one file.
+func sourceFiles(ctx context.Context, target string) ([]string, error) {
 	info, err := os.Stat(target)
 	if err != nil {
 		return nil, err
@@ -172,47 +169,15 @@ func sourceFiles(target string) ([]string, error) {
 	if !info.IsDir() {
 		return []string{filepath.Clean(target)}, nil
 	}
-	root := filepath.Clean(target)
-	if absRoot, err := filepath.Abs(root); err == nil {
-		root = absRoot
+	listed, err := sourcefiles.List(ctx, target)
+	if err != nil {
+		return nil, err
 	}
-	ignore := loadGitignore(root)
-	err = filepath.WalkDir(target, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			if filepath.Clean(path) == filepath.Clean(target) {
-				return err
-			}
-			if entry != nil && entry.IsDir() {
-				// Junctions and symlinked dirs on Windows can make ReadDir fail.
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		clean := filepath.Clean(path)
-		if abs, absErr := filepath.Abs(clean); absErr == nil {
-			clean = abs
-		}
-		if entry.IsDir() {
-			if clean != root {
-				if _, ok := skippedDirectories[entry.Name()]; ok {
-					return filepath.SkipDir
-				}
-				if enry.IsVendor(filepath.ToSlash(path)) {
-					return filepath.SkipDir
-				}
-				if ignore.skipDir(clean) {
-					return filepath.SkipDir
-				}
-			}
-			return nil
-		}
-		if ignore.skipFile(clean) {
-			return nil
-		}
-		files = append(files, clean)
-		return nil
-	})
-	return files, err
+	files := make([]string, 0, len(listed))
+	for _, file := range listed {
+		files = append(files, file.Abs)
+	}
+	return files, nil
 }
 
 func sourceLanguage(path string, data []byte) string {
@@ -255,22 +220,7 @@ func (s *Scanner) scanFile(path string) fileResult {
 }
 
 func skipFile(path string, data []byte) bool {
-	slashPath := filepath.ToSlash(path)
-	if sensitiveFile(filepath.Base(path)) {
-		return true
-	}
-	return len(data) > MaxFileBytes ||
-		enry.IsBinary(data) ||
-		enry.IsImage(slashPath) ||
-		enry.IsGenerated(slashPath, data)
-}
-
-func sensitiveFile(name string) bool {
-	lower := strings.ToLower(name)
-	return lower == ".env" ||
-		strings.HasPrefix(lower, ".env.") ||
-		strings.HasSuffix(lower, ".local") ||
-		strings.HasSuffix(lower, ".local.json")
+	return sourcefiles.Sensitive(filepath.Base(path)) || !sourcefiles.Readable(filepath.ToSlash(path), data)
 }
 
 func (s *Scanner) lineFindings(path, language string, lines []string) []domain.Finding {
