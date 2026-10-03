@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
@@ -220,6 +222,12 @@ func runStatus(args []string) error {
 		fmt.Printf("  stopped by %s budget\n", current.StoppedBy)
 	}
 	fmt.Printf("  branch     %s\n", orDashPtr(current.Branch))
+	if flags := setFlags(current); flags != "" {
+		// A flag changes which nodes the run visits, so a host agent has to be
+		// able to read it here: task_required is why a code run ends with a
+		// non-code delivery.
+		fmt.Printf("  flags      %s\n", flags)
+	}
 	fmt.Printf("  events     %d\n", len(events))
 
 	// The graph is a nicety here, not a requirement: status still reports state
@@ -269,4 +277,16 @@ func budgetLine(used, budget int) string {
 		return fmt.Sprintf("%d used, no limit", used)
 	}
 	return fmt.Sprintf("%d/%d", used, budget)
+}
+
+// setFlags lists the flags that are on, sorted, as one line.
+func setFlags(run *state.Run) string {
+	names := make([]string, 0, len(run.Flags))
+	for name, on := range run.Flags {
+		if on {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return strings.Join(names, ", ")
 }

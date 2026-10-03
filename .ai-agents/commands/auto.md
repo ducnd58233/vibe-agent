@@ -22,6 +22,7 @@ not need a node for. Everything else, including `remember` and `improve`, is on 
 | After `slop` | `review` | `expectation_review`, then `review` |
 | After `review` | `open_pr` | `review_ok`, then the experiment loop (`experiment_run`, `experiment_monitor`, `results_eval`), then `open_pr` |
 | After `ship` | `approve_merge` | `release_review`, then `approve_merge` |
+| After `improve`, when `task_required` is set | `done` | `execute`, `task_check`, `ac_review`, then `approve_delivery`, which is a person on both paths ([`task.md`](task.md)) |
 | After the merge | `remember` | `merge_ci` (watch the default branch), then `remember` |
 
 The rows are the graph's `when: auto` / `when: "!auto"` edges and `skipWhen` gates; if they

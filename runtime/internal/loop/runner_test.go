@@ -586,6 +586,9 @@ func TestASkippedCheckSatisfiesOnlyAGuardThatOptedIn(t *testing.T) {
 		"bug_hunt_ok":    "a consumer that never declares bug_hunt_ok must not stall; omitting it means no bug-hunt gate",
 		"release_ok":     "a consumer that never declares release_ok must not stall; omitting it means no release gate",
 		"review_ok":      "a consumer that never declares review_ok must not stall; omitting it means no review gate",
+		"task_check_ok":  "the non-code segment: a consumer that declares no task_check has no command to run, and the skip is recorded as skipped",
+		"task_review_ok": "the non-code segment: a consumer that never declares task_review_ok must not stall; omitting it means no acceptance-row gate",
+		"delivery_ok":    "the non-code segment: a consumer that never declares delivery_ok must not stall; approve_delivery, a person, still gates every outward action",
 	}
 	for name := range allowed {
 		optedIn, ok := runner.Graph.Guard(name)

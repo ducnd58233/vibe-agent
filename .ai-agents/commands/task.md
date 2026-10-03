@@ -20,6 +20,8 @@ Read this file one section at a time, not top to bottom. The runtime tells you w
 Every command in a code block is exact. Copy it, and replace only the words in angle brackets.
 
 If this file and the graph disagree, the graph is right.
+
+**These nodes run in two places.** `/task` starts the `task-delivery` graph. A `/goal` or `/auto` run whose `vibe-agent run status` shows the flag `task_required` ends with the same nodes (`execute`, `task_check`, `ac_review`, `approve_delivery`, `deliver`, `delivery_check`) after its last code task. The section for each node is the same in both. There is no `spec` or `approve_spec` in the code run, because it already has them: where a section says "the SPEC", that run means the SPEC that `/spec` wrote, whose "Deliverable", "Acceptance rows", and "Outward actions" sections describe the non-code part ([`spec.md`](spec.md)). On `/auto` the code part runs unattended, and `approve_delivery` is still a person's gate.
 </context>
 
 ## Runtime is required (MUST)
