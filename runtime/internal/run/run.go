@@ -78,5 +78,6 @@ var (
 	AppendRunEvent = persistence.AppendRunEvent
 	ReadEvents     = persistence.ReadEvents
 	List           = persistence.List
+	Active         = persistence.Active
 	PrepareStart   = persistence.PrepareStart
 )

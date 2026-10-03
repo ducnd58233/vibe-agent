@@ -257,7 +257,7 @@ func dangerVerdict(req Request, body payload) *BlockError {
 // With several active auto runs the call cannot be tied to one of them, so the
 // answer is no unless every one of them is in that state.
 func autoRunBlocksOutward(workspaceRoot string) bool {
-	for _, run := range activeRuns(workspaceRoot) {
+	for _, run := range state.Active(workspaceRoot) {
 		if !run.Flags["auto"] {
 			continue
 		}

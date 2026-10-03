@@ -1,10 +1,12 @@
 package harness
 
 import (
+	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/agentstate"
 )
@@ -125,5 +127,25 @@ func TestNothingToInjectWritesNoLedger(t *testing.T) {
 	}
 	if _, ok, _ := agentstate.Get(t.Context(), root, injectNamespace, "claude:s1"); ok {
 		t.Error("an empty prompt wrote a ledger")
+	}
+}
+
+// A memory recalled while a run is in flight is exposed to that run, which is
+// half of what earns it a use; the checkpoint package supplies the other half.
+func TestRecalledMemoryIsExposedToTheActiveRun(t *testing.T) {
+	root := workspaceWithRun(t)
+	seedMemory(t, root, "the runtime module builds with CGO disabled")
+	if out := promptIn(t, root, "s1", "why is CGO turned off here"); !strings.Contains(out, "CGO disabled") {
+		t.Fatalf("setup: memory not recalled: %s", out)
+	}
+	store, err := memory.Open(t.Context(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	run := state.Active(root)[0]
+	credited, err := store.CreditExposures(t.Context(), run.RunID, "check unit passed", time.Now().UTC().Add(time.Minute))
+	if err != nil || len(credited) != 1 {
+		t.Fatalf("credited %v (%v), want the recalled memory", credited, err)
 	}
 }

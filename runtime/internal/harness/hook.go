@@ -24,7 +24,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
@@ -306,7 +305,7 @@ func sessionContextWith(req Request, ledger *injectLedger) string {
 		lines = append(lines, line)
 	}
 
-	if active := activeRuns(req.WorkspaceRoot); len(active) > 0 {
+	if active := state.Active(req.WorkspaceRoot); len(active) > 0 {
 		lines = append(lines, "Active runs:")
 		for _, run := range active {
 			line := fmt.Sprintf(
@@ -343,7 +342,7 @@ func sessionContextWith(req Request, ledger *injectLedger) string {
 // One unambiguous run only. With none there is nothing to resume, and with
 // several the runtime would be choosing which goal the person came back for.
 func steerMessage(req Request) string {
-	active := activeRuns(req.WorkspaceRoot)
+	active := state.Active(req.WorkspaceRoot)
 	if len(active) != 1 || active[0].Status != state.StatusRunning {
 		return ""
 	}
@@ -392,7 +391,7 @@ func promptContext(req Request, body payload) string {
 		}
 	}
 
-	if active := activeRuns(req.WorkspaceRoot); len(active) > 0 {
+	if active := state.Active(req.WorkspaceRoot); len(active) > 0 {
 		for _, run := range active {
 			line := fmt.Sprintf("Run %s is at node %s (%s).", run.Slug, orNotEntered(run.CurrentNode), run.Status)
 			if node, ok := nodeFor(req, run); ok && node.Description != "" {
@@ -427,7 +426,7 @@ func promptContext(req Request, body payload) string {
 // workspace with no run in flight still deserves the answer. With extra empty
 // the behavior is what it was.
 func stop(req Request, body payload, out io.Writer, extra string) error {
-	runs := activeRuns(req.WorkspaceRoot)
+	runs := state.Active(req.WorkspaceRoot)
 
 	// Every other run gets the one-time exemption below; a run parked at its
 	// own graph's research/experiment loop does not, unless something was
@@ -625,29 +624,6 @@ func nodeFor(req Request, run *state.Run) (graph.Node, bool) {
 		return graph.Node{}, false
 	}
 	return loaded.Node(run.CurrentNode)
-}
-
-// activeRuns finds manifests under .agent-state/runs/ that have not finished.
-// or invalid manifest is skipped rather than reported: a hook is not the place
-// to fail a session over a stale file.
-func activeRuns(workspaceRoot string) []*state.Run {
-	slugs, err := state.List(workspaceRoot)
-	if err != nil {
-		return nil
-	}
-	var runs []*state.Run
-	for _, slug := range slugs {
-		run, err := state.Load(state.ManifestPath(workspaceRoot, slug))
-		if err != nil {
-			continue
-		}
-		switch run.Status {
-		case state.StatusRunning, state.StatusAwaitingHuman:
-			runs = append(runs, run)
-		}
-	}
-	sort.Slice(runs, func(i, j int) bool { return runs[i].Slug < runs[j].Slug })
-	return runs
 }
 
 // emitContext writes the host's envelope for text added to the model's context.

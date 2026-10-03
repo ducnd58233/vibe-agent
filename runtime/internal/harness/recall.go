@@ -2,6 +2,7 @@ package harness
 
 import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/harness/infra/memport"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // RecallLimit is how many memories ride along with a hook.
@@ -20,7 +21,7 @@ const RecallLimit = memport.RecallLimit
 // A non-nil ledger excludes memories this session was already given and records
 // the ones returned, so each prompt spends its slots on something new.
 func recall(workspaceRoot, query string, ledger *injectLedger) string {
-	opts := memport.RecallOptions{TokenBudget: memport.RecallTokenBudget}
+	opts := memport.RecallOptions{TokenBudget: memport.RecallTokenBudget, ExposeTo: activeRunIDs(workspaceRoot)}
 	if ledger != nil {
 		opts.Exclude = ledger.recentMemories()
 	}
@@ -29,4 +30,13 @@ func recall(workspaceRoot, query string, ledger *injectLedger) string {
 		ledger.markMemories(recalled.IDs)
 	}
 	return recalled.Text
+}
+
+// activeRunIDs names the runs a recalled memory is exposed to.
+func activeRunIDs(workspaceRoot string) []string {
+	var ids []string
+	for _, run := range state.Active(workspaceRoot) {
+		ids = append(ids, run.RunID)
+	}
+	return ids
 }

@@ -241,7 +241,7 @@ func shellVerdict(req Request, command string) *BlockError {
 		return nil
 	}
 
-	runs := activeRuns(req.WorkspaceRoot)
+	runs := state.Active(req.WorkspaceRoot)
 	if len(runs) == 0 {
 		// Nothing is claiming to manage this workspace, so there is no state to
 		// enforce. Blocking here would break every repo that uses the toolkit
@@ -303,7 +303,7 @@ func stateWriteVerdict(req Request, body payload) *BlockError {
 	if target == "" && command == "" {
 		return nil
 	}
-	if len(activeRuns(req.WorkspaceRoot)) == 0 {
+	if len(state.Active(req.WorkspaceRoot)) == 0 {
 		return nil
 	}
 

@@ -1,6 +1,7 @@
 package harness
 
 import (
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"strings"
 	"time"
 
@@ -19,7 +20,7 @@ func appendSession(req Request, record session.Record) {
 		record.At = time.Now().UTC()
 	}
 
-	runs := activeRuns(req.WorkspaceRoot)
+	runs := state.Active(req.WorkspaceRoot)
 	if len(runs) == 0 {
 		_, _ = session.Append(session.AmbientLogPath(req.WorkspaceRoot), record)
 		return
@@ -55,7 +56,7 @@ func promptSubmitAlreadyLogged(req Request, text string) bool {
 	if trimmed == "" {
 		return false
 	}
-	runs := activeRuns(req.WorkspaceRoot)
+	runs := state.Active(req.WorkspaceRoot)
 	if len(runs) == 0 {
 		return session.HasPromptSubmitBody(session.AmbientLogPath(req.WorkspaceRoot), trimmed)
 	}

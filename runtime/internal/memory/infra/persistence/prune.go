@@ -68,6 +68,7 @@ func (s *Store) Prune(ctx context.Context, opts PruneOptions) (PruneResult, erro
 			n, _ := links.RowsAffected()
 			result.Links += int(n)
 			for _, statement := range []string{
+				`DELETE FROM memory_exposures WHERE memory_id = ?`,
 				`DELETE FROM memories_fts WHERE memory_id = ?`,
 				`DELETE FROM memories WHERE id = ?`,
 			} {

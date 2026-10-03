@@ -253,15 +253,29 @@ func (s *Store) AddReviewer(ctx context.Context, id, agent string, now time.Time
 	return s.update(ctx, record, "review", agent, "")
 }
 
-// RecordUse counts a successful reuse, which feeds promotion proposals.
+// RecordUse counts one reuse a caller has its own evidence for, with a ledger
+// line saying so. Runtime-observed reuse goes through CreditExposures instead,
+// which is the path hooks and verifiers take.
+//
+// updated_at is left alone: it feeds the recency ranking, and being used again
+// does not make a fact newer.
 func (s *Store) RecordUse(ctx context.Context, id string, now time.Time) error {
-	_, err := s.db.ExecContext(ctx,
-		`UPDATE memories SET used_count = used_count + 1, updated_at = ? WHERE id = ?`,
-		now.UTC().Format(time.RFC3339Nano), id)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	result, err := tx.ExecContext(ctx, `UPDATE memories SET used_count = used_count + 1 WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("record memory use: %w", err)
 	}
-	return nil
+	if n, _ := result.RowsAffected(); n == 0 {
+		return fmt.Errorf("no memory %s: %w", id, sql.ErrNoRows)
+	}
+	if err := logEvent(ctx, tx, id, "use", "", "", "", "", now); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // Get returns one memory.

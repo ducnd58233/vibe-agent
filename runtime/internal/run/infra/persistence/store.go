@@ -401,3 +401,27 @@ func walkVersionedRuns(workspaceRoot string, seen map[string]bool) error {
 	}
 	return nil
 }
+
+// Active returns every run still in flight (running, or waiting on a person),
+// sorted by slug. An unreadable or invalid manifest is skipped rather than
+// reported: callers are hooks and tools that must not fail a session over a
+// stale file.
+func Active(workspaceRoot string) []*domain.Run {
+	slugs, err := List(workspaceRoot)
+	if err != nil {
+		return nil
+	}
+	var runs []*domain.Run
+	for _, slug := range slugs {
+		run, err := Load(ManifestPath(workspaceRoot, slug))
+		if err != nil {
+			continue
+		}
+		switch run.Status {
+		case domain.StatusRunning, domain.StatusAwaitingHuman:
+			runs = append(runs, run)
+		}
+	}
+	sort.Slice(runs, func(i, j int) bool { return runs[i].Slug < runs[j].Slug })
+	return runs
+}

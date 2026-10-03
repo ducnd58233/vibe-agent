@@ -99,6 +99,10 @@ type RecallOptions struct {
 	// TokenBudget caps the estimated tokens returned. Zero means RecallLimit
 	// alone.
 	TokenBudget int
+	// ExposeTo names the runs in flight. Each returned memory is recorded as
+	// exposed to them, which is half of what earns it a use; the other half is
+	// the run later passing a verified check.
+	ExposeTo []string
 }
 
 // Recalled is rendered text and the ids it carries, so a caller can remember
@@ -134,6 +138,9 @@ func RecallWith(workspaceRoot, query string, opts RecallOptions) Recalled {
 		lines = append(lines, "  - "+tokenest.TruncateWords(singleLine(hit.Content), recallLineChars))
 		ids = append(ids, hit.ID)
 	}
+	// Bookkeeping, so best effort: a failed write costs a use that may have
+	// been earned, never the recall itself.
+	_ = store.RecordExposures(context.Background(), ids, opts.ExposeTo, time.Now().UTC())
 	return Recalled{Text: strings.Join(lines, "\n"), IDs: ids}
 }
 

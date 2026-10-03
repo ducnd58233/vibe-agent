@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,7 +47,7 @@ type nodeReminderState struct {
 // must not fail a session, and a workspace that cannot write the marker is
 // better served by a repeated reminder than by an error.
 func nodeReminder(req Request) string {
-	runs := activeRuns(req.WorkspaceRoot)
+	runs := state.Active(req.WorkspaceRoot)
 	if len(runs) != 1 {
 		// With none there is nothing to report. With several, naming one would
 		// be choosing which goal the person is working on, which is the same

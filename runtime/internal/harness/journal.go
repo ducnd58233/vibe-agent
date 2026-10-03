@@ -119,7 +119,7 @@ func journal(req Request, body payload, failed bool) error {
 	// Read the runs here rather than at the top. The entry is the same either
 	// way, and computing it first is what lets the no-run case record instead of
 	// return.
-	runs := activeRuns(req.WorkspaceRoot)
+	runs := state.Active(req.WorkspaceRoot)
 	if len(runs) == 0 {
 		if ref := ambientJournal(req.WorkspaceRoot, entry); ref != "" && failed {
 			proposeFailure(req.WorkspaceRoot, string(req.Client), "", "", command, result, ref)

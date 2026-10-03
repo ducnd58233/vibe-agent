@@ -240,6 +240,17 @@ func searchMemory(deps Deps, raw json.RawMessage) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	// What a search returns is in front of the model, so it is exposed to every
+	// run in flight; a later verified pass in that run is what credits it.
+	ids := make([]string, 0, len(hits))
+	for _, hit := range hits {
+		ids = append(ids, hit.ID)
+	}
+	var runIDs []string
+	for _, run := range state.Active(deps.WorkspaceRoot) {
+		runIDs = append(runIDs, run.RunID)
+	}
+	_ = store.RecordExposures(context.Background(), ids, runIDs, time.Now().UTC())
 	return map[string]any{"memories": renderHits(hits), "policy": MemoryDisclaimer}, nil
 }
 

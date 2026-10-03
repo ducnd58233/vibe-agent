@@ -74,8 +74,8 @@ func TestOpenMigratesPreMigrateDatabaseWithoutLosingTables(t *testing.T) {
 	if err := db.QueryRowContext(ctx, `SELECT version, dirty FROM schema_migrations`).Scan(&version, &dirty); err != nil {
 		t.Fatal(err)
 	}
-	if version != 3 || dirty {
-		t.Errorf("schema_migrations = %d dirty=%v, want 3 false", version, dirty)
+	if version != 4 || dirty {
+		t.Errorf("schema_migrations = %d dirty=%v, want 4 false", version, dirty)
 	}
 	var runs int
 	if err := db.QueryRowContext(ctx,

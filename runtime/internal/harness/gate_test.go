@@ -400,7 +400,7 @@ func TestCredentialRefusalDoesNotDependOnAnActiveRun(t *testing.T) {
 	// must not: a key entering source is the same event either way, and the
 	// common case is a repository using the toolkit without starting a state.
 	root := t.TempDir()
-	if runs := activeRuns(root); len(runs) != 0 {
+	if runs := state.Active(root); len(runs) != 0 {
 		t.Fatalf("expected a workspace with no run, got %d", len(runs))
 	}
 
