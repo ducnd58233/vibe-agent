@@ -17,7 +17,6 @@ import (
 // Open: ErrNoChange is success. Baseline SQL uses IF NOT EXISTS so a
 // pre-migrate workspace that already has tables still advances the ledger.
 func Up(ctx context.Context, db *sql.DB) error {
-	_ = ctx
 	src, err := iofs.New(migrations.SQL, ".")
 	if err != nil {
 		return fmt.Errorf("open embedded migrations: %w", err)
@@ -38,7 +37,7 @@ func Up(ctx context.Context, db *sql.DB) error {
 	// it rather than reporting a database that is fine as broken.
 	var upErr error
 	for attempt := 0; attempt < dirtyRetries; attempt++ {
-		upErr = m.Up()
+		upErr = retryBusy(ctx, m.Up)
 		if upErr == nil || errors.Is(upErr, migrate.ErrNoChange) {
 			return nil
 		}
