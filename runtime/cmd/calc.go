@@ -72,18 +72,20 @@ func printCalc(out io.Writer, expr string, result calc.Result, asJSON bool) erro
 		return err
 	}
 
-	fmt.Fprintf(out, "expr      %s\n", expr)
-	fmt.Fprintf(out, "result    %s\n", result.Text)
+	var plain strings.Builder
+	fmt.Fprintf(&plain, "expr      %s\n", expr)
+	fmt.Fprintf(&plain, "result    %s\n", result.Text)
 	switch {
 	case result.Rounded:
-		fmt.Fprintln(out, "exact     no, rounded as asked")
+		plain.WriteString("exact     no, rounded as asked\n")
 	case result.Exact:
-		fmt.Fprintln(out, "exact     yes")
+		plain.WriteString("exact     yes\n")
 	default:
-		fmt.Fprintln(out, "exact     no, the value does not end; the figure above is rounded")
+		plain.WriteString("exact     no, the value does not end; the figure above is rounded\n")
 	}
 	if result.Fraction != "" {
-		fmt.Fprintf(out, "fraction  %s\n", result.Fraction)
+		fmt.Fprintf(&plain, "fraction  %s\n", result.Fraction)
 	}
-	return nil
+	_, err := io.WriteString(out, plain.String())
+	return err
 }

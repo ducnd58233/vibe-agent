@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/calc"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/citations"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/docgrounding"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/docsrouter"
@@ -15,7 +16,7 @@ import (
 // docsCommand dispatches docs/ subcommands.
 func docsCommand(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("docs needs a subcommand: router, check-claims, check-citations")
+		return fmt.Errorf("docs needs a subcommand: router, check-claims, check-citations, check-calcs")
 	}
 	switch args[0] {
 	case "router":
@@ -24,8 +25,10 @@ func docsCommand(args []string) error {
 		return docsCheckClaims(args[1:])
 	case "check-citations":
 		return docsCheckCitations(args[1:])
+	case "check-calcs":
+		return docsCheckCalcs(args[1:])
 	default:
-		return fmt.Errorf("unknown docs subcommand %q; try router, check-claims, check-citations", args[0])
+		return fmt.Errorf("unknown docs subcommand %q; try router, check-claims, check-citations, check-calcs", args[0])
 	}
 }
 
@@ -113,5 +116,37 @@ func docsCheckCitations(args []string) error {
 		return fmt.Errorf("%d of %d cited URL(s) in %s do not resolve", len(failures), len(urls), target)
 	}
 	fmt.Printf("ok    %s: all %d cited URL(s) resolve\n", target, len(urls))
+	return nil
+}
+
+// docsCheckCalcs recomputes every calculation a markdown file logs in a fenced
+// calc block and fails on any that does not hold. A figure a doc computed is
+// then a figure a program computed, and a reader can run the same line.
+func docsCheckCalcs(args []string) error {
+	flags := newFlagSet("docs check-calcs")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() == 0 {
+		return fmt.Errorf("docs check-calcs needs at least one markdown file path")
+	}
+	failed := 0
+	for _, target := range flags.Args() {
+		raw, err := os.ReadFile(filepath.Clean(target))
+		if err != nil {
+			return err
+		}
+		blocks, lines, issues := calc.CheckMarkdown(raw)
+		for _, issue := range issues {
+			fmt.Printf("FAIL  %s:%d: %s\n", target, issue.Line, issue.Message)
+		}
+		failed += len(issues)
+		if len(issues) == 0 {
+			fmt.Printf("ok    %s: %d calculation(s) in %d calc block(s) recompute\n", target, lines, blocks)
+		}
+	}
+	if failed > 0 {
+		return fmt.Errorf("%d calculation(s) do not hold", failed)
+	}
 	return nil
 }

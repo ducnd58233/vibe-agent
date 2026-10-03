@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/calc"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/checkplan"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/harness"
@@ -41,6 +43,7 @@ func doctorCommand(args []string) error {
 	checkGraphs(report, toolkitRoot)
 	checkGraphPathEvals(report, toolkitRoot)
 	checkRoutingEvals(report, toolkitRoot)
+	checkAssetCalcs(report, toolkitRoot)
 	// The workspace, not the toolkit. A host reads hooks from the project
 	// directory it was opened on, so a vendored toolkit's own settings.json is
 	// wiring for opening the toolkit itself and reaches nothing here.
@@ -77,6 +80,50 @@ func (d *diagnostics) check(label string, ok bool, detail string) {
 	}
 	d.problems++
 	fmt.Printf("  FAIL  %s: %s\n", label, detail)
+}
+
+// checkAssetCalcs recomputes every calc block in the toolkit's own markdown. A
+// worked example in a skill or reference is a claim the reader will copy, so it
+// is held to the same standard as a digest's: a program computed it, and a
+// program still agrees.
+func checkAssetCalcs(report *diagnostics, toolkitRoot string) {
+	// Rooted at the toolkit so a symlink inside .ai-agents cannot lead the walk
+	// outside it.
+	rooted, err := os.OpenRoot(toolkitRoot)
+	if err != nil {
+		report.check("asset calculations recompute", false, err.Error())
+		return
+	}
+	defer func() { _ = rooted.Close() }()
+
+	var blocks, lines int
+	var problems []string
+	walkErr := fs.WalkDir(rooted.FS(), ".ai-agents", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() || !strings.HasSuffix(path, ".md") {
+			return nil
+		}
+		raw, readErr := fs.ReadFile(rooted.FS(), path)
+		if readErr != nil {
+			return readErr
+		}
+		b, l, issues := calc.CheckMarkdown(raw)
+		blocks, lines = blocks+b, lines+l
+		for _, issue := range issues {
+			problems = append(problems, path+":"+issue.String())
+		}
+		return nil
+	})
+	switch {
+	case walkErr != nil:
+		report.check("asset calculations recompute", false, walkErr.Error())
+	case len(problems) > 0:
+		report.check("asset calculations recompute", false, strings.Join(problems, "; "))
+	default:
+		report.check(fmt.Sprintf("asset calculations recompute (%d in %d blocks)", lines, blocks), true, "")
+	}
 }
 
 func checkGraphs(report *diagnostics, toolkitRoot string) {
