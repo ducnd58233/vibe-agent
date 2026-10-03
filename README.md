@@ -181,9 +181,9 @@ For a report, an analysis, a document, a data job, an ops step, or a message to 
 /task Summarize the vendor renewal terms in the attached contract and draft a reply to the account manager
 ```
 
-The host agent runs `vibe-agent task "<your text>"`. There is no `/auto` form of it, because the delivery step is the one a person has to approve. Rules: [`.ai-agents/commands/task.md`](.ai-agents/commands/task.md).
+The host agent runs `vibe-agent task "<your text>"`. `/auto task` reaches the work on its own and stops at the delivery gate every time, because the delivery step is the one a person has to approve. Rules: [`.ai-agents/commands/task.md`](.ai-agents/commands/task.md).
 
-To study a subject yourself, `/tutor` tests what you can do instead of telling you what to know: it asks first, plans around your deadline, teaches by questions, and schedules reviews on computed dates in a study record you own. Rules: [`.ai-agents/commands/tutor.md`](.ai-agents/commands/tutor.md).
+To study a subject yourself, `/tutor` (or `/goal tutor`) tests what you can do instead of telling you what to know: it asks first, plans around your deadline, teaches by questions, and schedules reviews on computed dates in a study record you own. The run remembers where you are between sessions and ends only when every topic is tested as learned. Rules: [`.ai-agents/commands/tutor.md`](.ai-agents/commands/tutor.md).
 
 ### Unattended (`/auto`)
 
