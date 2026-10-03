@@ -45,14 +45,14 @@ Do these three steps first, in order:
 4. Check that this workspace declares the two checks that make `/task` strict. Run:
 
    ```sh
-   grep -c -E "^ +(expectation_ok|delivery_ok):" vibe-checks.yaml
+   grep -c -E "^ +(task_review_ok|delivery_ok):" vibe-checks.yaml
    ```
 
    If it prints `2`, go on. If it prints less than `2`, tell the user that these entries are missing from `vibe-checks.yaml` and show them this block to add under `spec: checks:`. Then ask whether to continue anyway. If the user says yes, go on, and say plainly in your final report that the check was skipped.
 
    ```yaml
-       expectation_ok:
-         verifier: expectation
+       task_review_ok:
+         verifier: taskreview
        delivery_ok:
          verifier: delivery
    ```
@@ -309,7 +309,7 @@ This is a verifier node. It reads one file that you write. Write it first, then 
 
 The file path is exactly:
 
-`.agent-state/runs/<date>/<slug>/<version>/expectation/REVIEW.md`
+`.agent-state/runs/<date>/<slug>/<version>/task/REVIEW.md`
 
 Use exactly this shape:
 
@@ -445,7 +445,7 @@ The run is finished. Tell the user, in this order:
 
 1. The deliverable path.
 2. Each acceptance row and its result.
-3. Whether `task_check`, `expectation_ok`, and `delivery_ok` each passed or were skipped.
+3. Whether `task_check`, `task_review_ok`, and `delivery_ok` each passed or were skipped.
 4. What the ledger says was delivered, or that nothing was.
 5. Anything the user should know that did not go as planned.
 

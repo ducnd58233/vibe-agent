@@ -8,8 +8,11 @@
 # every acceptance row needs evidence, a check the workspace declares runs when
 # one exists, and nothing leaves the workspace until a person says so.
 #
-# There is no auto path. Delivery is the step this graph exists to put a person
-# in front of, and an unattended run has nobody to answer it.
+# On /auto the intake and the spec gate are answered by evidence, the same way
+# goal-delivery does it, so an unattended run reaches the work on its own. It
+# stops at approve_delivery, always. That is the one gate this graph exists for,
+# and nothing in auto mode answers it: a person records delivery_approved, and
+# only then may an outward action run.
 #
 # Evidence stays exit_code / file_assert / ci_api / human_event only. No new
 # source was added, and none is needed: a script that checks a total is a
@@ -30,14 +33,33 @@ spec:
   maxTransitions: 60
 
   guards:
+    - name: auto
+      description: >-
+        Auto mode is running this task. Set once by `vibe-agent auto`, never by
+        a node. It skips intake and, when the SPEC has no open marker, the spec
+        gate. It never skips approve_delivery.
+      source: flag
+
+    - name: spec_unambiguous
+      description: >-
+        Auto mode read the SPEC and found no open question in it. Set by
+        `vibe-agent auto gate` only. Absent means false, so the gate holds in
+        every session that does not set it.
+      source: flag
+
     - name: research_required
       description: Intake found facts that are missing from the workspace and need outside sources.
       source: flag
 
     - name: spec_approved
-      description: Human accepted docs/<date>/<slug>/<version>/SPEC-<date>.md.
+      description: >-
+        Human accepted docs/<date>/<slug>/<version>/SPEC-<date>.md, or auto mode
+        skipped the gate because the SPEC held no open question. acceptsSkipped
+        keeps the two distinct in run state: a skipped gate is never recorded
+        as passed.
       source: check
       reads: spec_approved
+      acceptsSkipped: true
 
     - name: task_check_ok
       description: >-
@@ -51,13 +73,13 @@ spec:
       reads: task_check
       acceptsSkipped: true
 
-    - name: expectation_ok
+    - name: task_review_ok
       description: >-
-        expectation/REVIEW.md has status pass and every acceptance row is pass,
-        or the workspace declares no expectation check. Same skip rule as
+        task/REVIEW.md has status pass and every acceptance row is pass, or the
+        workspace declares no task_review_ok check. Same skip rule as
         task_check_ok.
       source: check
-      reads: expectation_ok
+      reads: task_review_ok
       acceptsSkipped: true
 
     - name: delivery_ok
@@ -94,6 +116,7 @@ spec:
       prompt: >-
         Task, task class, deliverable, slug, and the done line are agreed.
         Confirm to proceed.
+      skipWhen: auto
 
     research:
       type: agent
@@ -117,6 +140,7 @@ spec:
       prompt: >-
         Review the SPEC for this run under docs/${date}/${slug}/${version}/SPEC-${date}.md.
         Check the acceptance rows and the outward actions. Approve to start, or send it back.
+      skipWhen: spec_unambiguous
 
     execute:
       type: agent
@@ -137,10 +161,10 @@ spec:
     ac_review:
       type: verifier
       description: >-
-        Assert expectation/REVIEW.md: one row per SPEC acceptance row, each with
-        an evidence path and a pass or fail result. file_assert only.
-      verifier: expectation
-      check: expectation_ok
+        Assert task/REVIEW.md: one row per SPEC acceptance row, each with an
+        evidence path and a pass or fail result. file_assert only.
+      verifier: taskreview
+      check: task_review_ok
 
     approve_delivery:
       type: human_gate
@@ -185,7 +209,7 @@ spec:
         - intake_confirmed
         - spec_approved
         - task_check
-        - expectation_ok
+        - task_review_ok
         - delivery_approved
         - delivery_ok
     - from: spec
@@ -239,7 +263,7 @@ spec:
 
     - from: ac_review
       to: execute
-      when: "!expectation_ok"
+      when: "!task_review_ok"
     - from: ac_review
       to: approve_delivery
 

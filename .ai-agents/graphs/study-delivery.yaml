@@ -1,0 +1,180 @@
+# Executable form of the /tutor loop: one learner, studying one subject, one
+# session at a time, across days or weeks.
+#
+# A study is not one conversation. It is a record that grows over many of them,
+# with a person who comes and goes. So the run is what remembers: after each
+# session the graph checks the study record, and if a topic is not yet learned
+# it parks at wait_learner until the learner comes back. Nothing here is
+# unattended. A tutor needs a learner present, so there is no auto path and
+# `vibe-agent auto tutor` is refused.
+#
+# The study ends only on evidence: the record has at least one topic and every
+# topic says learned. A missing or unreadable record keeps the study going, so a
+# mistake can extend a study and never cut it short.
+#
+# Evidence stays exit_code / file_assert / ci_api / human_event only.
+#
+# Edge conditions are guard names, never expressions. A leading "!" negates.
+# Reference: ../references/loop-and-graph-engineering.md
+
+apiVersion: vibe-agent/v1
+kind: WorkflowGraph
+
+metadata:
+  id: study-delivery
+  description: One learner studying one subject over many sessions, until every topic is tested as learned.
+
+spec:
+  initial: intake
+  # Three transitions per session (session, study_check, wait_learner), so this
+  # allows well over a hundred sessions, which is more than any one study needs.
+  maxTransitions: 400
+
+  guards:
+    - name: study_plan_approved
+      description: The learner accepted the study plan and the topic list in the STUDY record.
+      source: check
+      reads: study_plan_approved
+
+    - name: topics_remaining
+      description: >-
+        The STUDY record has a topic that is not yet learned, or has no readable
+        topics at all. Passes while work remains, the same polarity as
+        tasks_remaining, so every doubtful case keeps the study going.
+        acceptsSkipped because this graph is shared by every workspace and each
+        keeps its own vibe-checks.yaml: a workspace that declares no
+        topics_remaining check has its study continue, never end, and the
+        learner finishes it with `vibe-agent run abort`.
+      source: check
+      reads: topics_remaining
+      acceptsSkipped: true
+
+    - name: human_redirect
+      description: >-
+        The learner changed the goal, the deadline, or the hours. Set with
+        `vibe-agent run flag --set human_redirect --note <why>` while the run
+        waits at a human gate, never inferred from wording. Cleared with
+        `run flag --clear human_redirect` once intake has re-confirmed it.
+      source: flag
+
+  nodes:
+    intake:
+      type: human_gate
+      description: >-
+        Ask the five intake questions, then say back the goal and the date and
+        wait for a yes.
+      check: intake_confirmed
+      prompt: The goal, the deadline, the hours, what they already know, and any book or syllabus are agreed. Confirm to proceed.
+
+    diagnose:
+      type: agent
+      description: >-
+        Three to five short questions across the beginning, middle, and end of
+        the goal, each with its answer key written first and a confidence rating
+        taken before the result is said.
+      command: tutor
+
+    study_plan:
+      type: artifact
+      description: >-
+        Break the goal into four to ten testable topics, work out the calendar
+        with vibe-agent calc, and write the STUDY record with every topic
+        `not started`.
+      command: tutor
+      outputs:
+        - docs/${date}/${slug}/${version}/STUDY-${date}.md
+
+    approve_study_plan:
+      type: human_gate
+      description: The learner reads the topics and the first session date and accepts them or changes them.
+      check: study_plan_approved
+      prompt: >-
+        Read the topics and the plan in docs/${date}/${slug}/${version}/STUDY-${date}.md.
+        Approve to start, or say what to change.
+
+    session:
+      type: agent
+      description: >-
+        One study session: retrieval from memory first, one idea taught, faded
+        practice, a three-question check with confidence ratings, then update the
+        topics table, the misconceptions, and the next review dates.
+      command: tutor
+
+    study_check:
+      type: verifier
+      description: >-
+        Read the STUDY record. Passes while a topic is not yet learned, which
+        sends the run to wait for the learner. Fails when every topic is learned,
+        which ends the study.
+      verifier: study
+      check: topics_remaining
+
+    wait_learner:
+      type: human_gate
+      description: >-
+        Park until the learner returns for the next session. The record says
+        what is due and on which date.
+      check: learner_ready
+      prompt: The learner is back for the next session. Record this when they are.
+
+    done:
+      type: terminal
+      description: Every topic in the STUDY record is tested as learned.
+      status: done
+
+  edges:
+    # Redirect first, so it is tried before a node's normal edges. Every check a
+    # prior walk earned resets, because the goal behind them may have changed.
+    - from: diagnose
+      to: intake
+      when: human_redirect
+      resets: &redirect_resets
+        - intake_confirmed
+        - study_plan_approved
+        - topics_remaining
+        - learner_ready
+    - from: study_plan
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: session
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: wait_learner
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+
+    - from: intake
+      to: diagnose
+
+    - from: diagnose
+      to: study_plan
+
+    - from: study_plan
+      to: approve_study_plan
+
+    - from: approve_study_plan
+      to: study_plan
+      when: "!study_plan_approved"
+    - from: approve_study_plan
+      to: session
+      when: study_plan_approved
+
+    - from: session
+      to: study_check
+
+    # The failure route is tried first only in the sense that topics_remaining
+    # decides: while it is true the study continues, and the fallback is the end.
+    - from: study_check
+      to: wait_learner
+      when: topics_remaining
+    - from: study_check
+      to: done
+
+    # The reset reopens the gate, so the next cycle waits for the learner again
+    # instead of passing on the answer from the last one.
+    - from: wait_learner
+      to: session
+      resets: [learner_ready]
