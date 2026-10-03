@@ -2,9 +2,7 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,11 +15,6 @@ import (
 // ambientScope keys the workspace-level session log, written when no run is
 // in flight. Run logs use "<date>/<slug>/<version>".
 const ambientScope = "ambient"
-
-// corruptSuffix marks a legacy session file this package could not parse.
-// Renaming it keeps one bad line from failing every later append and leaves the
-// file for a person to repair.
-const corruptSuffix = ".corrupt"
 
 type sessionLocation struct {
 	WorkspaceRoot string
@@ -63,13 +56,6 @@ func appendSessionSQL(path string, event *domain.Event) (bool, error) {
 	}
 	defer func() { _ = db.Close() }()
 
-	// A log written before this table existed is adopted first so sequence
-	// numbers continue from it. A file that cannot be adopted is set aside, not
-	// allowed to wedge every later append.
-	if _, statErr := os.Stat(path); statErr == nil {
-		_, _ = importSessionFile(ctx, db, loc.Scope, path)
-	}
-
 	payload := string(event.Payload)
 	at := event.At.UTC().Format(time.RFC3339Nano)
 	err = db.QueryRowContext(ctx, `
@@ -85,14 +71,12 @@ func appendSessionSQL(path string, event *domain.Event) (bool, error) {
 }
 
 // readSessionSQL returns the stored session events. handled is false when the
-// caller should read the file instead: not a database-backed path, no database
-// yet, or a legacy file still on disk (it is authoritative until imported).
+// path is not a database-backed one and the caller should read the file. A
+// session.ndjson left by an older build is not read here; the legacy module
+// imports it (vibe-agent migrate state) and doctor reports one that remains.
 func readSessionSQL(path string) (events []domain.Event, handled bool, err error) {
 	loc, ok := parseSessionPath(path)
 	if !ok {
-		return nil, false, nil
-	}
-	if _, err := os.Stat(path); err == nil {
 		return nil, false, nil
 	}
 	dbPath := workspace.MemoryDBPath(loc.WorkspaceRoot)
@@ -143,17 +127,20 @@ func parseStoredTime(value string) time.Time {
 	return time.Time{}
 }
 
-// importSessionFile moves one legacy session.ndjson into session_events and
-// removes the file. Re-running is safe: rows already present are kept.
-func importSessionFile(ctx context.Context, db *sql.DB, scope, path string) (int, error) {
-	events, err := readEventsFileOnly(path)
-	if err != nil {
-		renamed := path + corruptSuffix
-		if renameErr := os.Rename(path, renamed); renameErr == nil {
-			return 0, fmt.Errorf("read %s: %w (renamed to %s for manual repair)", path, err, renamed)
-		}
-		return 0, fmt.Errorf("read %s: %w", path, err)
+// ImportSessionEvents stores events under the session log path names, keeping
+// their sequence numbers. Events already present for a sequence are kept, so
+// importing the same events twice changes nothing. It returns how many were
+// new. A path that is not database-backed is refused.
+func ImportSessionEvents(ctx context.Context, path string, events []domain.Event) (int, error) {
+	loc, ok := parseSessionPath(path)
+	if !ok {
+		return 0, fmt.Errorf("%s is not a session log the database stores", path)
 	}
+	db, err := openDB(ctx, loc.WorkspaceRoot)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = db.Close() }()
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -161,7 +148,7 @@ func importSessionFile(ctx context.Context, db *sql.DB, scope, path string) (int
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	moved := 0
+	stored := 0
 	for index, event := range events {
 		sequence := event.Sequence
 		if sequence < 1 {
@@ -174,70 +161,13 @@ func importSessionFile(ctx context.Context, db *sql.DB, scope, path string) (int
 		result, err := tx.ExecContext(ctx, `
             INSERT OR IGNORE INTO session_events (scope, sequence, type, at, payload, created_at)
             VALUES (?, ?, ?, ?, ?, ?)`,
-			scope, sequence, string(event.Type), at, string(event.Payload), at)
+			loc.Scope, sequence, string(event.Type), at, string(event.Payload), at)
 		if err != nil {
-			return 0, fmt.Errorf("insert session_event %d: %w", sequence, err)
+			return stored, fmt.Errorf("insert session_event %d: %w", sequence, err)
 		}
 		if n, _ := result.RowsAffected(); n > 0 {
-			moved++
+			stored++
 		}
 	}
-	if err := tx.Commit(); err != nil {
-		return 0, err
-	}
-	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return moved, fmt.Errorf("remove %s: %w", path, err)
-	}
-	return moved, nil
-}
-
-// BackfillSessions moves every legacy session.ndjson (one per run directory,
-// plus the ambient log) into session_events, then removes the files. Safe to
-// re-run: a workspace with none left reports zero.
-func BackfillSessions(ctx context.Context, workspaceRoot string) (int, error) {
-	var files []string
-	runsRoot := workspace.RunsDir(workspaceRoot)
-	walkErr := filepath.WalkDir(runsRoot, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			if os.IsNotExist(err) && path == runsRoot {
-				return nil
-			}
-			return err
-		}
-		if !d.IsDir() && d.Name() == domain.SessionLogName {
-			files = append(files, path)
-		}
-		return nil
-	})
-	if walkErr != nil {
-		return 0, walkErr
-	}
-	ambient := filepath.Join(workspace.StateDir(workspaceRoot), domain.SessionLogName)
-	if _, err := os.Stat(ambient); err == nil {
-		files = append(files, ambient)
-	}
-	if len(files) == 0 {
-		return 0, nil
-	}
-
-	db, err := openDB(ctx, workspaceRoot)
-	if err != nil {
-		return 0, fmt.Errorf("open session database: %w", err)
-	}
-	defer func() { _ = db.Close() }()
-
-	total := 0
-	for _, path := range files {
-		loc, ok := parseSessionPath(path)
-		if !ok {
-			fmt.Fprintf(os.Stderr, "migrate sessions: skip non-run session log %s\n", path)
-			continue
-		}
-		moved, err := importSessionFile(ctx, db, loc.Scope, path)
-		total += moved
-		if err != nil {
-			return total, err
-		}
-	}
-	return total, nil
+	return stored, tx.Commit()
 }

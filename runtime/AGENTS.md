@@ -67,6 +67,12 @@ The runtime serves every supported agent, so no package outside the adapter laye
 
 `internal/architecture` enforces this and the dependency direction above: `go test ./internal/architecture`. A file that legitimately describes one agent (a wire format, a config path) goes in its `adapterFiles` list with a reason.
 
+**Legacy layouts live in one module (MUST):**
+
+- Every older on-disk layout (JSON caches, NDJSON logs, run manifests and run-index pointers, per-host marker files, flat `docs/` and `tmp/`) is known only to [`internal/legacy`](internal/legacy). It finds the old files, reads them, stores them through a module's **Import** function on current storage (`run.ImportRun`, `run.ImportSessionEvents`, `tasks.Save`) or the table directly, and deletes what it moved.
+- Modules read and write only their current tables. A module never imports `internal/legacy`; only `cmd` does (`vibe-agent migrate state`, `vibe-agent migrate docs-tmp`). `vibe-agent doctor` fails while `legacy.Pending` names a layout still on disk.
+- Retiring an old layout means adding a `legacy.Source`, not a fallback path in the module that replaced it.
+
 **Loopback web server (MUST):**
 
 - Bind **`127.0.0.1` only** (`app.ListenHost`). Refuse `0.0.0.0` and non-loopback hosts.

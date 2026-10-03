@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/legacy"
 	"io/fs"
 	"net/url"
 	"os"
@@ -56,6 +57,7 @@ func doctorCommand(args []string) error {
 	checkAutoOptIn(report, workspaceRoot)
 	checkSandboxConfig(report, workspaceRoot)
 	checkMemory(report, workspaceRoot)
+	checkLegacyState(report, workspaceRoot)
 	checkRunState(report, workspaceRoot)
 	checkSlugLanguage(workspaceRoot)
 	checkWebState(report, workspaceRoot)
@@ -391,4 +393,13 @@ func checkUnsupportedHandlerIf(report *diagnostics, toolkitRoot string) {
 	report.check("hook configs omit an if their host ignores",
 		len(problems) == 0,
 		harness.FormatHandlerIfProblems(problems))
+}
+
+// checkLegacyState fails while a workspace still holds state in a layout an
+// older build wrote. The runtime reads only the current tables, so state left in
+// an older file is state no hook, verifier, or recall can see.
+func checkLegacyState(report *diagnostics, workspaceRoot string) {
+	pending := legacy.Pending(workspaceRoot)
+	report.check("no state left in an older layout", len(pending) == 0,
+		fmt.Sprintf("still in older files: %s. Run: vibe-agent migrate state", strings.Join(pending, ", ")))
 }

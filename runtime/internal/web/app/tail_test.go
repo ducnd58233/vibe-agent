@@ -2,10 +2,10 @@ package app
 
 import (
 	"context"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/database"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -60,13 +60,20 @@ func TestSessionEventsTailUnreadableLog(t *testing.T) {
 	}
 	slug := "broken"
 	testutil.EnsureRunIndex(t, root, slug)
+	// A stored row whose payload is not JSON is the one way a session log can
+	// be unreadable now that logs live in the database.
 	logPath := session.LogPath(root, slug)
-	if err := os.MkdirAll(filepath.Dir(logPath), 0o750); err != nil {
+	if _, err := session.Append(logPath, session.Record{Type: session.TypePromptSubmit, Source: session.SourceHook, Body: "hi"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(logPath, []byte("not json\n"), 0o600); err != nil {
+	db, err := database.Open(t.Context(), workspace.MemoryDBPath(root))
+	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.ExecContext(t.Context(), `UPDATE session_events SET payload = 'not json'`); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/session/"+slug+"/events?after=0", nil)
 	handler.ServeHTTP(rec, req)

@@ -110,6 +110,8 @@ func TestDependencyDirection(t *testing.T) {
 				violations = append(violations, rel+" (app) imports "+imp+": an application package depends on ports, not infra")
 			case isInfra(imp) && !strings.HasPrefix(imp, "internal/shared") && module(imp) != module(pkg) && !compositionRoot(pkg):
 				violations = append(violations, rel+" imports "+imp+": another module's infra is reached through its façade")
+			case strings.HasPrefix(imp, "internal/legacy") && pkg != "cmd" && !strings.HasPrefix(pkg, "internal/legacy"):
+				violations = append(violations, rel+" imports "+imp+": only the migrate command reaches the legacy layouts; modules store state one way")
 			case strings.HasPrefix(imp, "internal/testutil"):
 				violations = append(violations, rel+" imports "+imp+": test helpers are for tests only")
 			}

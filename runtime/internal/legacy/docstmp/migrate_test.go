@@ -1,4 +1,4 @@
-package migrate_test
+package docstmp_test
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ducnd58233/vibe-agent/runtime/internal/migrate"
+	migrate "github.com/ducnd58233/vibe-agent/runtime/internal/legacy/docstmp"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/runpath"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )

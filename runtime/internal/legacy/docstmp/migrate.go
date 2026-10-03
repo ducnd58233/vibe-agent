@@ -1,7 +1,7 @@
-// Package migrate moves legacy flat docs/ and workspace-root tmp/ trees into
+// Package docstmp moves legacy flat docs/ and workspace-root tmp/ trees into
 // the current layout. The runtime itself does not read tmp/; this package is
 // the only place that still knows that name, and only as a migration source.
-package migrate
+package docstmp
 
 import (
 	"encoding/json"

@@ -5,12 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/infra/agentstate"
-	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
 // Some hosts never learn which node a run is at.
@@ -84,10 +81,6 @@ func joinNonEmpty(parts ...string) string {
 	return strings.Join(kept, "\n")
 }
 
-// legacyNodeReminderFile is the file this state lived in before agent_state.
-// Disposable, so it is removed on first write rather than migrated.
-const legacyNodeReminderFile = "cursor-node.json"
-
 const (
 	nodeReminderNamespace = "node_reminder"
 	nodeReminderKey       = "last_node"
@@ -115,6 +108,5 @@ func writeNodeReminder(workspaceRoot string, state nodeReminderState) bool {
 		nodeReminderNamespace, nodeReminderKey, string(encoded)); err != nil {
 		return false
 	}
-	_ = os.Remove(filepath.Join(workspace.StateDir(workspaceRoot), legacyNodeReminderFile))
 	return true
 }
