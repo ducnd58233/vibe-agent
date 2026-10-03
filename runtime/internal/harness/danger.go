@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"gopkg.in/yaml.v3"
 )
 
@@ -58,9 +59,11 @@ type dangerCategory struct {
 	// moves money has no command line for Commands to read.
 	Tools []string `yaml:"tools"`
 	// AutoOnly limits the Tools patterns to a workspace with a running auto
-	// run. An interactive session has a person who can answer the host's own
-	// prompt for that call; an unattended one has nobody, so the gate refuses.
-	// It has no effect on Commands or Paths, which refuse everywhere.
+	// run that has no person's approval for the call. An interactive session
+	// has a person who can answer the host's own prompt for that call; an
+	// unattended one has nobody, so the gate refuses, unless a person recorded
+	// delivery_approved and the run is at its deliver node. It has no effect on
+	// Commands or Paths, which refuse everywhere.
 	AutoOnly bool `yaml:"autoOnly"`
 
 	commands []*regexp.Regexp
@@ -210,7 +213,7 @@ func dangerVerdict(req Request, body payload) *BlockError {
 			}
 			if category.AutoOnly {
 				if !autoKnown {
-					autoRunning, autoKnown = autoRunActive(req.WorkspaceRoot), true
+					autoRunning, autoKnown = autoRunBlocksOutward(req.WorkspaceRoot), true
 				}
 				if !autoRunning {
 					continue
@@ -237,15 +240,32 @@ func dangerVerdict(req Request, body payload) *BlockError {
 	return nil
 }
 
-// autoRunActive reports whether an unfinished run in this workspace has the
-// auto flag. `vibe-agent auto` sets it, and `vibe-agent run flag` changes a flag
-// only while the run sits at a human gate, so an agent in the middle of a node
-// cannot clear it to make a refused call pass.
-func autoRunActive(workspaceRoot string) bool {
+// autoRunBlocksOutward reports whether an unfinished auto run is in a state that
+// forbids an outward action. `vibe-agent auto` sets the auto flag, and
+// `vibe-agent run flag` changes a flag only while the run sits at a human gate,
+// so an agent in the middle of a node cannot clear it to make a refused call
+// pass.
+//
+// An auto run stops blocking only in one state: it sits at the deliver node and
+// a person has recorded delivery_approved there as a human_event. That is the
+// whole point of the approve_delivery gate. Without this exception the gate
+// would refuse the very action a person had just approved, and a delivery could
+// never run on an auto run at all. The check is on the node and on the source of
+// the evidence, so a model cannot unlock it by recording an approval itself:
+// there is no way to record human_event on a person's behalf.
+//
+// With several active auto runs the call cannot be tied to one of them, so the
+// answer is no unless every one of them is in that state.
+func autoRunBlocksOutward(workspaceRoot string) bool {
 	for _, run := range activeRuns(workspaceRoot) {
-		if run.Flags["auto"] {
-			return true
+		if !run.Flags["auto"] {
+			continue
 		}
+		approved, ok := run.Checks["delivery_approved"]
+		if run.CurrentNode == "deliver" && ok && approved.Passed && approved.Source == state.SourceHumanEvent {
+			continue
+		}
+		return true
 	}
 	return false
 }

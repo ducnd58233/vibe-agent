@@ -380,3 +380,39 @@ func TestPreToolUseRefusesAnMCPSendOnAnAutoRunAndAllowsItOtherwise(t *testing.T)
 		}
 	}
 }
+
+// A person's approval at approve_delivery is what the gate waits for. On an auto
+// run at its deliver node with delivery_approved recorded as a human_event, the
+// outward call is allowed. Every other state still refuses.
+func TestAnApprovedDeliveryMayRunOnAnAutoRun(t *testing.T) {
+	const tool = "mcp__slack__slack_send_message"
+	cases := []struct {
+		name    string
+		node    string
+		source  state.CheckSource
+		passed  bool
+		blocked bool
+	}{
+		{"approved by a person at deliver", "deliver", state.SourceHumanEvent, true, false},
+		{"approved by a person, but not at deliver", "execute", state.SourceHumanEvent, true, true},
+		{"not approved", "deliver", state.SourceHumanEvent, false, true},
+		{"approval from a command, not a person", "deliver", state.SourceExitCode, true, true},
+	}
+	for _, tc := range cases {
+		root := workspaceWithRun(t, func(run *state.Run) {
+			if err := run.SetFlagAt("auto", true, at()); err != nil {
+				t.Fatal(err)
+			}
+			run.CurrentNode = tc.node
+			if err := run.SetCheckAt("delivery_approved", state.Check{Passed: tc.passed, Source: tc.source, At: at()}, at()); err != nil {
+				t.Fatal(err)
+			}
+		})
+		var body payload
+		body.ToolName = tool
+		blocked := dangerVerdict(Request{WorkspaceRoot: root}, body) != nil
+		if blocked != tc.blocked {
+			t.Errorf("%s: blocked = %v, want %v", tc.name, blocked, tc.blocked)
+		}
+	}
+}

@@ -137,7 +137,9 @@ spec:
     # autoOnly: an interactive session has a person who answers the host's own
     # prompt for an MCP call that no allow rule covers, so refusing there would
     # only break honest work. An unattended auto run has nobody to answer, so it
-    # stops here for a person, the same as every category above.
+    # stops here for a person, the same as every category above. The one
+    # exception is a run at its deliver node whose delivery_approved was
+    # recorded by a person: that approval is the thing this category waits for.
     #
     # Narrow on purpose, and a consumer cannot remove a pattern. Each verb is
     # anchored at the start of the tool's own name (after an optional one-word
