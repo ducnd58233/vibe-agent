@@ -34,5 +34,5 @@ func TaskReviewPath(workspaceRoot, slug string) string {
 func (TaskReview) Verify(_ context.Context, req Request) (Result, error) {
 	return verifyReviewFile(req, "taskreview", TaskReviewPath(req.WorkspaceRoot, req.Slug),
 		"REVIEW.md missing; write the task review before verify",
-		"task review")
+		"task")
 }
