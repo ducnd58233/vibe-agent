@@ -225,8 +225,9 @@ session. The **committed** consumer charter must not require that injection to m
 
 <rules>
 
-This toolkit ships assets for **Claude Code, Cursor, Codex, and opencode**. When you add or change
-something a person invokes through any of them, keep parity unless the spec names a documented
+This toolkit ships assets for every host in the runtime's contract table (`harness.HostContracts`;
+the `--client` values in `vibe-agent`'s usage text list them). When you add or change something a
+person invokes through any of them, keep parity unless the spec names a documented
 host-only gap.
 
 **In scope (parity required):**
