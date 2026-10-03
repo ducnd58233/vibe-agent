@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -64,6 +65,14 @@ func hookCommand(args []string) error {
 		Stdin:         os.Stdin,
 		Log:           log,
 	}, os.Stdout); err != nil {
+		// A refusal is a decision, not a failure. Hosts that read it from the
+		// exit status hand stderr to the model as the reason, so nothing may be
+		// written there ahead of it; it is logged below the default level.
+		var blocked *harness.BlockError
+		if errors.As(err, &blocked) {
+			log.Debug("hook refused", "event", event, "client", *client)
+			return err
+		}
 		observability.LogError(log, "hook failed", err)
 		return err
 	}

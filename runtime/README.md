@@ -371,6 +371,15 @@ vibe-agent memory link --from <id> --to <id> --relation relates_to --agent claud
 
 Linking is metadata like review. It never changes a status, so it cannot confirm.
 
+## When a memory counts as used
+
+`used_count` feeds importance ranking and `memory promotions`, so it has to mean something stronger than "was retrieved". A memory earns a use only when both halves hold:
+
+1. **Exposure.** It was put in front of the model while a run was in flight: recalled by a hook, or returned by `vibe_memory_search`. Each is recorded in `memory_exposures` against every active run, once per memory per run however often it is repeated.
+2. **Verified success.** That run then records a check **the runtime itself verified as passing** (`checkpoint.Verify`, origin runtime). A pass a caller asserted, a human-recorded event, a failure, or a skip credits nothing.
+
+Crediting consumes the exposure, so one exposure earns at most one use, and a memory closed or contradicted after it was shown earns nothing for a success it may have been wrong about. Each credit leaves a `use` line in the ledger naming the check that earned it, for example `run demo check unit passed (exit_code: ...)`. The model never grades its own memories; a verifier does, which is the same rule that governs confirmation.
+
 ## The memory ledger
 
 A memory row is edited in place, so the row only says where a memory ended up. `memory_events` is the append-only ledger of how it got there: every proposal, merge, review, link, confirmation, and closure, with the status before and after, who did it, and when. Each ledger line is written in the same transaction as the change it describes, so the history cannot disagree with the row.
@@ -391,7 +400,7 @@ MCP hosts call `vibe_memory_search` with `scope: "sessions"`. This is the episod
 
 ## Where state lives
 
-Everything an agent recalls is a table in `.agent-state/memory.db`: `memories` (+ `memories_fts`), `memory_links`, `memory_events`, `session_events` (+ `session_events_fts`), `runs`, `run_events`, `run_checks`, `journal_entries`, `task_lists`, `fetch_cache`, `sdd_cache`, and `agent_state` (small keyed hook state, such as the last node announced to Cursor). `vibe-agent migrate state` moves any file-based predecessor into its table; a leftover `session.ndjson` is also adopted on the next append, so nothing is lost if the command is never run.
+Everything an agent recalls is a table in `.agent-state/memory.db`: `memories` (+ `memories_fts`), `memory_links`, `memory_events`, `session_events` (+ `session_events_fts`), `runs`, `run_events`, `run_checks`, `journal_entries`, `task_lists`, `fetch_cache`, `sdd_cache`, and `agent_state` (small keyed hook state, such as the last node announced to Cursor). `vibe-agent migrate state` moves any file-based predecessor into its table. Every older layout is known only to `internal/legacy`, and `vibe-agent doctor` fails while one remains, because the runtime reads only the current tables.
 
 Two things stay outside by design: fetched binaries under `.agent-state/fetch/assets/` (files a reader must be able to open), and `web.json` / `web-workspaces.json` (server discovery and the cross-workspace registry, which must be readable before any one workspace's database is chosen).
 
