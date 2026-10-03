@@ -1,7 +1,7 @@
 // Package harness adapts the control plane to each host's lifecycle hooks.
 //
-// Hooks are the deterministic surface: Claude Code and Cursor always fire them,
-// unlike an MCP tool call, which the model decides to make. That is why the
+// Hooks are the deterministic surface: a host always fires them, unlike an MCP
+// tool call, which the model decides to make. That is why the
 // same capabilities exist in both places and why this one is preferred where it
 // is available.
 //
@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/observability"
@@ -83,18 +84,26 @@ const (
 
 // Clients is every host this build has an envelope for.
 //
-// One list, for the reason Events gives, and with a sharper failure mode. The
-// envelopes differ per host and Claude's is the fallback, so an unrecognised
+// Derived from the contract table, so a host cannot have a contract and be
+// unanswerable, or the reverse. One list, for the reason Events gives, and with
+// a sharper failure mode. The
+// envelopes differ per host and the default host's is the fallback, so an unrecognised
 // name - a typo, or a host wired into a config before the binary learned it -
-// used to be answered in Claude's shape. Every other host ignores that shape,
+// used to be answered in the default host's shape. Every other host ignores it,
 // which leaves a hook that is registered, fires on every tool call, and delivers
 // nothing. Silence is the one failure this control plane cannot see.
 func Clients() []Client {
-	return []Client{
-		ClientClaude, ClientCursor, ClientCodex, ClientOpencode,
-		ClientAntigravity, ClientKimi, ClientMuse,
+	clients := make([]Client, 0, len(hostContracts))
+	for _, contract := range hostContracts {
+		clients = append(clients, contract.Client)
 	}
+	return clients
 }
+
+// DefaultClient answers when a hook command names no host. Configs written
+// before --client existed omit it, which is why a default exists at all; a name
+// this build does not know is still refused, never defaulted.
+const DefaultClient = ClientClaude
 
 // KnownClient reports whether this build can answer a host.
 func KnownClient(client Client) bool {
@@ -123,15 +132,15 @@ const (
 	EventUserPromptSubmit Event = "user-prompt-submit"
 	EventStop             Event = "stop"
 	EventSubagentStop     Event = "subagent-stop"
-	// EventPreToolUse is the one event that can refuse a tool call. Claude Code
-	// fires it as PreToolUse and Cursor as beforeShellExecution.
+	// EventPreToolUse is the one event that can refuse a tool call. Each host
+	// spells it its own way; the contract table maps the spellings.
 	EventPreToolUse Event = "pre-tool-use"
 	// EventPostToolUse records what a tool actually did. It never refuses:
 	// the work already happened by the time it fires.
 	EventPostToolUse Event = "post-tool-use"
 	// EventPostToolUseFailure records a tool call the host reported as failed.
 	//
-	// It is a separate event because Claude Code fires exactly one of the two,
+	// It is a separate event because some hosts fire exactly one of the two,
 	// and PostToolUse is the success half. Registering only that one is what
 	// made this control plane blind to every failing command: the journal's
 	// entire purpose is to remember what broke, and the break was the one
@@ -195,153 +204,6 @@ type Request struct {
 	Log           observability.Logger
 }
 
-// payload is the union of the fields this package reads from either host.
-type payload struct {
-	// raw is the host's original bytes, kept for hooks this package delegates
-	// to another process rather than handles itself.
-	raw []byte
-
-	// Claude Code sends user_prompt; older builds and Cursor send prompt.
-	// Reading both keeps one adapter working across versions.
-	Prompt     string `json:"prompt"`
-	UserPrompt string `json:"user_prompt"`
-
-	// SessionID is Claude's and Codex's conversation id; Cursor sends
-	// conversation_id. The injection ledger is keyed by it so two conversations
-	// in one workspace do not suppress each other's context.
-	SessionID      string `json:"session_id"`
-	ConversationID string `json:"conversation_id"`
-
-	// Claude sends transcript_path; Cursor sends agent_transcript_path.
-	TranscriptPath      string `json:"transcript_path"`
-	AgentTranscriptPath string `json:"agent_transcript_path"`
-	Slug                string `json:"slug"`
-
-	// Source distinguishes a fresh session from a resume, a clear, or the
-	// restart that follows compaction.
-	Source string `json:"source"`
-
-	// StopHookActive is true when this Stop hook is firing because a previous
-	// Stop hook blocked. It is the only thing standing between a blocking Stop
-	// hook and an infinite loop.
-	StopHookActive bool `json:"stop_hook_active"`
-
-	ToolName string `json:"tool_name"`
-	// Claude nests tool arguments; Cursor's beforeShellExecution puts the
-	// command at the top level.
-	ToolInput struct {
-		Command      string `json:"command"`
-		FilePath     string `json:"file_path"`
-		NotebookPath string `json:"notebook_path"`
-
-		// Content is what Write sends; NewString is what Edit sends. The
-		// credential gate needs the text going in, not only its destination:
-		// a key reaching a file is the event, and the path says nothing about
-		// it.
-		Content   string `json:"content"`
-		NewString string `json:"new_string"`
-		// OldString is what Edit is replacing. The suppression gate needs both
-		// halves: a rule it already had is not a rule it just added, and
-		// without the before there is no way to tell a move from an addition.
-		OldString string `json:"old_string"`
-	} `json:"tool_input"`
-	Command  string `json:"command"`
-	FilePath string `json:"file_path"`
-
-	// ToolResponse stays raw: its shape differs per tool and per host version,
-	// and a shape this package does not recognise must not be an error.
-	ToolResponse json.RawMessage `json:"tool_response"`
-
-	// Error is what a failing tool printed. Claude Code sends no tool_response
-	// at all on PostToolUseFailure, so this is the only account of what went
-	// wrong, and it is where the exit code appears: "Exit code 2\nundefined: Foo".
-	//
-	// The number is deliberately not parsed out of it. A field this package can
-	// read is evidence; a number recovered from a sentence is a guess that would
-	// stay confident after the host reworded it. Quoting the line keeps the
-	// figure legible to a human without anyone claiming to have measured it.
-	Error string `json:"error"`
-
-	// ErrorMessage is Cursor's name for the same text. Reading only Claude's
-	// spelling would give every Cursor failure an empty detail line, which is
-	// the whole defect the failure event exists to fix, reintroduced one field
-	// deeper. Ref: https://cursor.com/docs/agent/hooks
-	ErrorMessage string `json:"error_message"`
-
-	// FailureType is Cursor's category for a failure: "error", "timeout", or
-	// "permission_denied".
-	FailureType string `json:"failure_type"`
-
-	// IsInterrupt is Claude's top-level cancellation flag. Cursor puts the same
-	// meaning inside the response as "interrupted", so both are read.
-	IsInterrupt bool `json:"is_interrupt"`
-
-	// LastAssistantMessage is Claude Stop stdin when the host includes the last
-	// assistant turn. When present it is projected as one redacted assistant row.
-	LastAssistantMessage string `json:"last_assistant_message"`
-}
-
-// failurePermissionDenied is the failure_type Cursor reports when a tool call
-// was refused rather than attempted.
-const failurePermissionDenied = "permission_denied"
-
-// failureText returns the account of what went wrong, from whichever field the
-// host filled in.
-func (p payload) failureText() string {
-	if p.Error != "" {
-		return p.Error
-	}
-	return p.ErrorMessage
-}
-
-// declined reports a call the person stopped rather than one the code got wrong.
-//
-// A cancellation and a denied permission are the same event wearing two names:
-// in both the tool never ran, and remembering them would fill the store with a
-// record of the user saying no.
-func (p payload) declined() bool {
-	return p.IsInterrupt || p.FailureType == failurePermissionDenied
-}
-
-// shellCommand returns whichever field the host filled in.
-func (p payload) shellCommand() string {
-	if p.ToolInput.Command != "" {
-		return p.ToolInput.Command
-	}
-	return p.Command
-}
-
-// text returns the submitted prompt from whichever field carried it.
-func (p payload) text() string {
-	if p.UserPrompt != "" {
-		return p.UserPrompt
-	}
-	return p.Prompt
-}
-
-// writtenText returns every piece of text this tool call would put somewhere:
-// the body of a write, the replacement half of an edit, and the shell command
-// itself, since a heredoc writes a file without any tool_input at all.
-func (p payload) writtenText() string {
-	parts := make([]string, 0, 3)
-	for _, candidate := range []string{p.ToolInput.Content, p.ToolInput.NewString, p.shellCommand()} {
-		if candidate != "" {
-			parts = append(parts, candidate)
-		}
-	}
-	return strings.Join(parts, "\n")
-}
-
-// writeTarget returns the file a file-writing tool is aimed at.
-func (p payload) writeTarget() string {
-	for _, candidate := range []string{p.ToolInput.FilePath, p.ToolInput.NotebookPath, p.FilePath} {
-		if candidate != "" {
-			return candidate
-		}
-	}
-	return ""
-}
-
 // Run handles one hook invocation and writes any response to out.
 func Run(req Request, out io.Writer) error {
 	if req.Log != nil {
@@ -355,11 +217,10 @@ func Run(req Request, out io.Writer) error {
 		return sessionStart(req, body, out)
 	case EventUserPromptSubmit:
 		recordPromptSubmit(req, body)
-		// Cursor's beforeSubmitPrompt cannot inject context: its output is
-		// {continue, user_message} and only validates or blocks. Injecting
-		// nothing is correct there; blocking the user to deliver a reminder
-		// would be a different and worse behavior.
-		if req.Client == ClientCursor {
+		// A host whose prompt event can only validate or block cannot be told
+		// anything here. Injecting nothing is correct; blocking the user to
+		// deliver a reminder would be a different and worse behavior.
+		if !dialectFor(req.Client).PromptInjection {
 			return nil
 		}
 		text := promptContext(req, body)
@@ -401,24 +262,6 @@ func Run(req Request, out io.Writer) error {
 	}
 }
 
-func readPayload(reader io.Reader) payload {
-	var body payload
-	if reader == nil {
-		return body
-	}
-	raw, err := io.ReadAll(reader)
-	if err != nil || len(raw) == 0 {
-		return body
-	}
-	_ = json.Unmarshal(raw, &body)
-	// Kept so a delegated hook can be handed exactly what the host sent. Re-
-	// encoding the parsed struct would forward this package's view of the
-	// payload rather than the host's, and drop every field it does not read.
-	body.raw = raw
-	body.enrichFromRaw()
-	return body
-}
-
 // sessionStart tells a new session where the rules are, what the workspace
 // already knows, and whether a run is in flight, so it resumes rather than
 // starting over.
@@ -428,40 +271,24 @@ func sessionStart(req Request, body payload, out io.Writer) error {
 	ledger := resetInjectLedger(req, body)
 	text := sessionContextWith(req, ledger)
 	ledger.save(req)
-	// The flat-envelope hosts. This branch named only Cursor and answered
-	// opencode in Claude's nested shape, which opencode's plugin does not read:
-	// the hook fired, the reply was discarded, and nothing reported it. The bug
-	// survived a test that checked emitContext directly, because this function
-	// does not call it.
-	if req.Client == ClientCursor || req.Client == ClientOpencode {
-		return write(out, map[string]any{"additional_context": text})
-	}
-	if req.Client == ClientAntigravity {
-		return write(out, map[string]any{
-			"injectSteps": []map[string]any{{"ephemeralMessage": text}},
-		})
-	}
+	envelope := contextBody(dialectFor(req.Client), "SessionStart", text)
 
-	specific := map[string]any{
-		"hookEventName":     "SessionStart",
-		"additionalContext": text,
-	}
 	// Compaction re-fires SessionStart in the middle of a session. Steering
 	// there would hijack the conversation already in progress.
 	//
-	// Claude only. Codex reads the same envelope but rejects fields it does not
-	// know, and this one was never measured against it. A rejected response
-	// would cost the retrieved memory as well as the steer, so what is
-	// unverified stays out rather than endangering what is verified.
-	if req.Client == ClientClaude && body.Source != "compact" {
-		if steer := steerMessage(req); steer != "" {
-			specific["initialUserMessage"] = steer
+	// Only a host whose contract says it reads the field. A host that rejects
+	// fields it does not know would cost the retrieved memory as well as the
+	// steer, so what is unverified stays out rather than endangering what is
+	// verified.
+	if dialectFor(req.Client).SteersSessionStart && body.Source != "compact" {
+		if specific, ok := envelope["hookSpecificOutput"].(map[string]any); ok {
+			if steer := steerMessage(req); steer != "" {
+				specific["initialUserMessage"] = steer
+			}
 		}
 	}
-	return write(out, map[string]any{"hookSpecificOutput": specific})
+	return write(out, envelope)
 }
-
-func sessionContext(req Request) string { return sessionContextWith(req, nil) }
 
 // sessionContextWith builds the session-start text. A non-nil ledger records the
 // memories it includes so the first prompt does not repeat them.
@@ -469,7 +296,7 @@ func sessionContextWith(req Request, ledger *injectLedger) string {
 	var lines []string
 	lines = append(lines, "vibe-agent control plane is available.")
 
-	if rules := workspace.PresentBasenames(req.WorkspaceRoot, "AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"); len(rules) > 0 {
+	if rules := workspace.PresentBasenames(req.WorkspaceRoot, hosts.RulesFiles()...); len(rules) > 0 {
 		lines = append(lines, "Workspace rules: "+strings.Join(rules, ", ")+". Read them before applying any toolkit default.")
 	}
 	lines = append(lines,
@@ -623,11 +450,10 @@ func stop(req Request, body payload, out io.Writer, extra string) error {
 		}
 	}
 
-	// The advisory line is Claude's systemMessage and nothing else's. Cursor's
-	// stop hook has one field, followup_message, and using it is the blocking
-	// behavior; Codex's blocking shape is measured but this one is not. With
-	// nothing to block on, saying nothing is the correct output for both.
-	if req.Client != ClientClaude {
+	// The advisory line is a systemMessage, which only some hosts read. Where a
+	// stop hook's one field is the blocking behavior, or the shape was never
+	// measured, saying nothing is the correct output.
+	if !dialectFor(req.Client).StopAdvisory {
 		return nil
 	}
 
@@ -646,22 +472,12 @@ func stop(req Request, body payload, out io.Writer, extra string) error {
 	return emitMessage(out, strings.Join(parts, "\n\n"))
 }
 
-// writeBlockDecision emits the client-specific shape for refusing to end the
-// turn. Shared by the two callers that decide separately whether to refuse.
+// writeBlockDecision emits the host's shape for refusing to end the turn.
+// Shared by the two callers that decide separately whether to refuse. A host
+// with no end-of-turn hook gets nothing: a reply no reader parses is the silent
+// divergence this package keeps finding.
 func writeBlockDecision(out io.Writer, client Client, reason string) error {
-	switch client {
-	case ClientCursor:
-		return write(out, map[string]any{"followup_message": reason})
-	case ClientAntigravity:
-		return write(out, map[string]any{"decision": "continue", "reason": reason})
-	case ClientOpencode:
-		// opencode exposes no end-of-turn hook, so nothing here can refuse a
-		// turn. Emitting Claude's shape would be a reply no reader parses,
-		// which is the silent divergence this package keeps finding; saying
-		// nothing is the honest answer.
-		return nil
-	}
-	return write(out, map[string]any{"decision": "block", "reason": reason})
+	return writeBody(out, stopBody(dialectFor(client), reason))
 }
 
 // researchLoopNodes names each graph's own experiment retry cycle, where a
@@ -834,28 +650,12 @@ func activeRuns(workspaceRoot string) []*state.Run {
 	return runs
 }
 
-// emitContext writes host-specific JSON that adds text to the model's context.
+// emitContext writes the host's envelope for text added to the model's context.
 func emitContext(out io.Writer, client Client, event, text string) error {
 	if text == "" {
 		return nil
 	}
-	// Cursor and opencode both read a flat additional_context, for different
-	// reasons: Cursor because its vendor documents that field, opencode because
-	// the plugin reading it is in this repository and was written to this shape.
-	if client == ClientCursor || client == ClientOpencode {
-		return write(out, map[string]any{"additional_context": text})
-	}
-	if client == ClientAntigravity {
-		return write(out, map[string]any{
-			"injectSteps": []map[string]any{{"ephemeralMessage": text}},
-		})
-	}
-	return write(out, map[string]any{
-		"hookSpecificOutput": map[string]any{
-			"hookEventName":     event,
-			"additionalContext": text,
-		},
-	})
+	return write(out, contextBody(dialectFor(client), event, text))
 }
 
 func emitMessage(out io.Writer, text string) error {

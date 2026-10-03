@@ -15,6 +15,7 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/fetch"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graphroute"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/loop"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
@@ -183,8 +184,8 @@ func bootstrap(deps Deps, raw json.RawMessage) (any, error) {
 	out := map[string]any{
 		"workspaceRoot": deps.WorkspaceRoot,
 		"sourceOfTruth": []string{"repository code and config", "git-backed project rules", "current run state", "retrieved memory", "model assumptions"},
-		"rulesFiles":    workspace.PresentBasenames(deps.WorkspaceRoot, "AGENTS.md", "CLAUDE.md", "CLAUDE.local.md", "CURSOR.md"),
-		"routerEntry":   relativeIfPresent(deps.WorkspaceRoot, filepath.Join(deps.ToolkitRoot, ".ai-agents", "ROUTER.md")),
+		"rulesFiles":    workspace.PresentBasenames(deps.WorkspaceRoot, hosts.RulesFiles()...),
+		"routerEntry":   relativeIfPresent(deps.WorkspaceRoot, workspace.ToolkitPath(deps.ToolkitRoot, "ROUTER.md")),
 		"memoryPolicy":  MemoryDisclaimer,
 	}
 

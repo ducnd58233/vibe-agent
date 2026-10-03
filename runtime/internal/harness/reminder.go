@@ -4,6 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 )
 
 // Two reminders that used to be Python scripts, moved here for the reason
@@ -70,18 +73,26 @@ var (
 // Four rules that are easy to skip and expensive to skip: the precedence order,
 // where routing starts, which template applies, and the router table that has
 // to move in the same change.
-const authoringReminder = `Repository reminders for this request:
-1. Local-first precedence - check the workspace root for its own rules and templates (AGENTS.md, CLAUDE.md, CLAUDE.local.md, .cursor/rules/, its own TEMPLATE.md, existing file patterns) before applying any toolkit default. On conflict follow the local rule and state the divergence.
-2. Routing - read .ai-agents/ROUTER.md, then the matching folder ROUTER.md, before selecting an asset.
-3. Authoring - follow that folder's TEMPLATE.md and complete every required section.
-4. Router tables - after adding, renaming, or removing an asset, update that folder's ROUTER.md in the same change.`
+//
+// A function rather than a constant because rule file names are read from the
+// host table, not written out here.
+func authoringReminder() string {
+	rules := append(hosts.RulesFiles(), hosts.RulesDirs()...)
+	return "Repository reminders for this request:\n" +
+		"1. Local-first precedence - check the workspace root for its own rules and templates (" +
+		strings.Join(rules, ", ") + ", its own TEMPLATE.md, existing file patterns) before applying any toolkit default. " +
+		"On conflict follow the local rule and state the divergence.\n" +
+		"2. Routing - read .ai-agents/ROUTER.md, then the matching folder ROUTER.md, before selecting an asset.\n" +
+		"3. Authoring - follow that folder's TEMPLATE.md and complete every required section.\n" +
+		"4. Router tables - after adding, renaming, or removing an asset, update that folder's ROUTER.md in the same change."
+}
 
 // authoringContext returns the reminder when a prompt reads as asset work.
 func authoringContext(prompt string) string {
 	if prompt == "" || !remindAboutAuthoring(prompt) {
 		return ""
 	}
-	return authoringReminder
+	return authoringReminder()
 }
 
 // remindAboutAuthoring reports whether this prompt is about assets.

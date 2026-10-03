@@ -7,12 +7,27 @@ import (
 	"github.com/ducnd58233/vibe-agent/runtime/internal/safexec"
 )
 
-// Host is one print-mode runner the toolkit knows about.
+// Host is one agent the toolkit knows about: how to run it headless, and where
+// it keeps the files the toolkit reads. Everything that differs per host lives
+// in this table so no other package has to name one.
 type Host struct {
 	ID          string
 	Binary      string
 	EvalCommand string
 	PromptAsArg bool
+
+	// RulesFiles are the files at a workspace root this host loads as standing
+	// instructions, beyond the shared AGENTS.md.
+	RulesFiles []string
+	// RulesDirs are directories of rules this host loads, with a trailing slash.
+	RulesDirs []string
+	// SkillRoots and CommandRoots are where this host reads skills and slash
+	// commands from.
+	SkillRoots   []Root
+	CommandRoots []Root
+	// SkillsAgent is this host's identifier in the `skills` installer CLI. Empty
+	// means the installer does not target it.
+	SkillsAgent string
 }
 
 // Entry is a host plus PATH lookup status.
@@ -24,10 +39,32 @@ type Entry struct {
 
 // catalog is the fixed set of hosts eval routing may spawn.
 var catalog = []Host{
-	{ID: "codex", Binary: "codex", EvalCommand: "codex exec --ephemeral --sandbox read-only --json -"},
-	{ID: "claude", Binary: "claude", EvalCommand: "claude -p"},
-	{ID: "cursor-agent", Binary: "cursor-agent", EvalCommand: "cursor-agent --print --output-format stream-json --mode ask --trust", PromptAsArg: true},
-	{ID: "opencode", Binary: "opencode", EvalCommand: "opencode run", PromptAsArg: true},
+	{
+		ID: "codex", Binary: "codex", EvalCommand: "codex exec --ephemeral --sandbox read-only --json -",
+		SkillRoots:  []Root{{Workspace, ".codex/skills"}},
+		SkillsAgent: "codex",
+	},
+	{
+		ID: "claude", Binary: "claude", EvalCommand: "claude -p",
+		RulesFiles:   []string{"CLAUDE.md", "CLAUDE.local.md"},
+		SkillRoots:   []Root{{Workspace, ".claude/skills"}, {Home, ".claude/skills"}},
+		CommandRoots: []Root{{Workspace, ".claude/commands"}, {Home, ".claude/commands"}},
+		SkillsAgent:  "claude-code",
+	},
+	{
+		ID: "cursor-agent", Binary: "cursor-agent", EvalCommand: "cursor-agent --print --output-format stream-json --mode ask --trust", PromptAsArg: true,
+		RulesFiles:   []string{"CURSOR.md"},
+		RulesDirs:    []string{".cursor/rules/"},
+		SkillRoots:   []Root{{Workspace, ".cursor/skills"}, {Home, ".cursor/skills"}},
+		CommandRoots: []Root{{Workspace, ".cursor/commands"}, {Home, ".cursor/commands"}},
+		SkillsAgent:  "cursor",
+	},
+	{
+		ID: "opencode", Binary: "opencode", EvalCommand: "opencode run", PromptAsArg: true,
+		SkillRoots:   []Root{{ConfigHome, "opencode/skills"}},
+		CommandRoots: []Root{{ConfigHome, "opencode/commands"}},
+		SkillsAgent:  "opencode",
+	},
 
 	// Three hosts nobody here has run. Listed so Inventory answers "not on
 	// PATH" rather than saying nothing. Hook envelopes exist in
@@ -39,13 +76,6 @@ var catalog = []Host{
 }
 
 var lookPath = safexec.LookPath
-
-// Catalog returns the hosts this build knows about.
-func Catalog() []Host {
-	out := make([]Host, len(catalog))
-	copy(out, catalog)
-	return out
-}
 
 // Inventory reports whether each host binary resolves on PATH.
 func Inventory() []Entry {
@@ -61,6 +91,9 @@ func Inventory() []Entry {
 	}
 	return out
 }
+
+// DefaultEvalRunner is the runner `eval routing` uses when none is named.
+const DefaultEvalRunner = "codex"
 
 // evalAlias maps the names `eval routing --runner` accepts to catalog ids.
 //
@@ -79,6 +112,17 @@ var evalAlias = map[string]string{"cursor": "cursor-agent"}
 // cannot drift apart without something failing.
 func EvalRunnerNames() []string {
 	return []string{"codex", "claude", "cursor", "opencode", "kimi", "muse", "antigravity"}
+}
+
+// SkillsAgents are the identifiers the `skills` installer CLI knows the hosts by.
+func SkillsAgents() []string {
+	var agents []string
+	for _, host := range catalog {
+		if host.SkillsAgent != "" {
+			agents = append(agents, host.SkillsAgent)
+		}
+	}
+	return agents
 }
 
 // EvalHost returns the host entry for an eval runner name.

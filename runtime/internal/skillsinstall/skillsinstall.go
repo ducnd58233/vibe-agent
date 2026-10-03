@@ -10,25 +10,23 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 )
 
-// DefaultAgents are the four hosts vibe-agent targets. Names match the
-// vercel-labs/skills CLI agent identifiers used in research.
-var DefaultAgents = []string{
-	"claude-code",
-	"codex",
-	"cursor",
-	"opencode",
-}
+// DefaultAgents returns the hosts vibe-agent installs skills for, named as the
+// skills installer CLI names them. Read from the host table so a host added there
+// is targeted here without a second edit.
+func DefaultAgents() []string { return hosts.SkillsAgents() }
 
 // hostOnlyFrontmatterKeys are Agent Skills YAML keys that are host dialect,
 // not part of the shared agentskills.io body contract. Seeing one means the
 // skill may still load elsewhere after a strip, not that install failed.
 var hostOnlyFrontmatterKeys = map[string]string{
-	"disable-model-invocation": "Claude Code / plugin harness: hide from model auto-load",
-	"context":                  "Claude Code: often context: fork for subagent skills",
-	"allowed-tools":            "Claude Code tool allow-list dialect",
-	"user-invocable":           "Claude Code invocation gate",
+	"disable-model-invocation": "Host dialect: hide from model auto-load",
+	"context":                  "Host dialect: often context: fork for subagent skills",
+	"allowed-tools":            "Host dialect: tool allow-list",
+	"user-invocable":           "Host dialect: invocation gate",
 	"hooks":                    "Host hook wiring; not portable Agent Skills content",
 	"mcpServers":               "Embedded MCP; vibe-agent never auto-registers this",
 	"mcp":                      "Embedded MCP alias; never auto-registers",
@@ -36,7 +34,7 @@ var hostOnlyFrontmatterKeys = map[string]string{
 
 // AddOptions configure a forwarded `npx skills add` invocation.
 type AddOptions struct {
-	// Agents overrides DefaultAgents when non-empty. Each value becomes one -a.
+	// Agents overrides DefaultAgents() when non-empty. Each value becomes one -a.
 	Agents []string
 	// Global asks the skills CLI to install into user-level roots (-g).
 	Global bool
@@ -66,7 +64,7 @@ func AddArgv(source string, opts AddOptions) ([]string, error) {
 	argv = append(argv, "skills", "add", source)
 	agents := opts.Agents
 	if len(agents) == 0 && !opts.List {
-		agents = append([]string(nil), DefaultAgents...)
+		agents = DefaultAgents()
 	}
 	for _, agent := range agents {
 		agent = strings.TrimSpace(agent)

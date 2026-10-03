@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/graph/domain"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,7 +55,7 @@ func Parse(raw []byte) (*domain.Graph, error) {
 
 // DefaultDir is where graphs live relative to a toolkit root.
 func DefaultDir(toolkitRoot string) string {
-	return filepath.Join(toolkitRoot, ".ai-agents", "graphs")
+	return workspace.ToolkitPath(toolkitRoot, "graphs")
 }
 
 // LoadByID finds a graph by id in a directory.

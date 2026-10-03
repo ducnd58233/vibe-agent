@@ -14,10 +14,9 @@ import (
 // in directories with nothing to do with the toolkit. The MCP server did not:
 // it opened eagerly at startup, before any tool was called.
 //
-// That gap belongs to the two hosts with no hook system. Codex and opencode
-// reach the control plane only over MCP, and their host starts the server in
-// every workspace it opens, so every repository either of them was pointed at
-// got an empty database it never asked for.
+// That gap belongs to hosts with no hook system. They reach the control plane
+// only over MCP, and start the server in every workspace they open, so every
+// repository one was pointed at got an empty database it never asked for.
 type Lazy struct {
 	root string
 

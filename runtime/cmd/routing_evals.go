@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"os"
 	"path/filepath"
 	"sort"
@@ -53,7 +54,7 @@ var notAnAsset = map[string]bool{"ROUTER.md": true, "TEMPLATE.md": true, "README
 // checkRoutingEvals validates the fixture table and reports intent coverage.
 func routableAssets(toolkitRoot, family string) map[string]bool {
 	found := map[string]bool{}
-	home := filepath.Join(toolkitRoot, ".ai-agents", familyHome[family])
+	home := workspace.ToolkitPath(toolkitRoot, familyHome[family])
 	entries, err := os.ReadDir(home)
 	if err != nil {
 		return found
@@ -91,7 +92,7 @@ func routableAssets(toolkitRoot, family string) map[string]bool {
 // judgment about what users ask for, and no check can make it. The number is
 // here to be watched rather than enforced.
 func checkRoutingEvals(report *diagnostics, toolkitRoot string) {
-	fixtures := filepath.Join(toolkitRoot, ".ai-agents", "references", "routing-evals.md")
+	fixtures := workspace.ToolkitPath(toolkitRoot, "references", "routing-evals.md")
 	raw, err := os.ReadFile(filepath.Clean(fixtures))
 	if err != nil {
 		return // optional: a consumer repo may mount the toolkit without it

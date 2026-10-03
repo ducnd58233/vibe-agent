@@ -55,6 +55,18 @@ runtime/
 - `web/app` is the web composition root: wires shared middleware, domain, and infra adapters.
 - Do not import concrete types across domain modules (e.g. `web` must not reach into `memory` persistence). Shared path names live in `shared/workspace` only.
 
+**Host-neutral outside the adapter layer (MUST):**
+
+The runtime serves every supported agent, so no package outside the adapter layer names one or branches on one.
+
+- **Per-host differences are data.** A host's hook API lives in `harness.HostContract`, and how the hooks answer it lives in that row's `Dialect` (`harness/dialect.go`: context, refusal, stop, and post-tool envelopes, plus capability flags such as `PromptInjection`). Code asks `dialectFor(client)`; it never compares a `Client`. Adding a host is one contract row.
+- **Host files and commands are data too.** Rules files, skill and command directories, the skills-installer id, and the eval command per host live in `internal/hosts`. `hosts.RulesFiles()`, `hosts.SkillDirs()`, and friends are the only way other packages learn them.
+- **Inbound spellings stay in `harness/payload.go`.** Hosts name fields differently (`prompt`/`user_prompt`, `error`/`error_message`); everything else reads the methods, not a host's key.
+- **Help text lists hosts by reading the tables** (`usage` in `cmd/main.go`), so it cannot drift from what the build supports.
+- **Names the toolkit owns are constants.** `workspace.ToolkitDirName` and `workspace.ToolkitPath` for the toolkit directory, `workspace.StateDir` for state, `app.DefaultPort` for the port. No literal `".ai-agents"`, `".agent-state"`, or port in feature code.
+
+`internal/architecture` enforces this and the dependency direction above: `go test ./internal/architecture`. A file that legitimately describes one agent (a wire format, a config path) goes in its `adapterFiles` list with a reason.
+
 **Loopback web server (MUST):**
 
 - Bind **`127.0.0.1` only** (`app.ListenHost`). Refuse `0.0.0.0` and non-loopback hosts.

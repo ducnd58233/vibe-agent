@@ -8,6 +8,7 @@ package sandbox
 
 import (
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"os"
 	"path/filepath"
 
@@ -22,7 +23,7 @@ const (
 
 // Path is .agent-state/sandbox.yaml under the workspace.
 func Path(workspaceRoot string) string {
-	return filepath.Join(workspaceRoot, ".agent-state", FileName)
+	return filepath.Join(workspace.StateDir(workspaceRoot), FileName)
 }
 
 // Config is the workspace opt-in for runners.

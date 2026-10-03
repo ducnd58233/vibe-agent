@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ducnd58233/vibe-agent/runtime/internal/harness"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
 )
 
@@ -182,7 +183,7 @@ func memoryPropose(args []string) (err error) {
 	content := flags.String("content", "", "the lesson, one claim")
 	sourceType := flags.String("source-type", "", "command_result, file_content, ci_api, human_statement, or review_comment")
 	sourceRef := flags.String("source-ref", "", "where the evidence came from (run event, log path)")
-	client := flags.String("client", "", "host writing this: claude-code, cursor, codex, opencode, ...")
+	client := flags.String("client", "", "host writing this: "+strings.Join(harness.ClientNames(), ", "))
 	model := flags.String("model", "", "model id, when known")
 	confidence := flags.Float64("confidence", 0.7, "0 to 1")
 	var evidence, tags multiFlag
@@ -270,7 +271,7 @@ func memoryReview(args []string) error {
 	flags := newFlagSet("memory review")
 	paths := addRootFlags(flags)
 	id := flags.String("id", "", "memory id")
-	agent := flags.String("agent", "", "reviewing agent: host client, optionally /model (claude, codex/gpt-5)")
+	agent := flags.String("agent", "", "reviewing agent: host client, optionally /model, e.g. "+harness.ClientNames()[0]+"/<model>")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}

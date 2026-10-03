@@ -2,11 +2,14 @@ package catalog
 
 import (
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
 )
 
 // Family groups toolkit assets exposed in the composer catalog.
@@ -34,11 +37,11 @@ type Index struct {
 // Load reads command and skill ROUTER tables from the toolkit root.
 func Load(toolkitRoot string) (Index, error) {
 	root := filepath.Clean(toolkitRoot)
-	commands, err := loadRouter(filepath.Join(root, ".ai-agents", "commands", "ROUTER.md"), FamilyCommand)
+	commands, err := loadRouter(workspace.ToolkitPath(root, "commands", "ROUTER.md"), FamilyCommand)
 	if err != nil {
 		return Index{}, fmt.Errorf("commands router: %w", err)
 	}
-	skills, err := loadRouter(filepath.Join(root, ".ai-agents", "skills", "ROUTER.md"), FamilySkill)
+	skills, err := loadRouter(workspace.ToolkitPath(root, "skills", "ROUTER.md"), FamilySkill)
 	if err != nil {
 		return Index{}, fmt.Errorf("skills router: %w", err)
 	}
@@ -59,7 +62,7 @@ func LoadForWorkspace(workspaceRoot, toolkitRoot string) (Index, error) {
 	for _, c := range idx.Commands {
 		seenCmd[c.Slug] = struct{}{}
 	}
-	for _, dir := range extraCommandDirs(workspaceRoot) {
+	for _, dir := range hosts.CommandDirs(workspaceRoot) {
 		for _, e := range loadCommandFilesFromDir(dir) {
 			if _, ok := seenCmd[e.Slug]; ok {
 				continue
@@ -73,7 +76,7 @@ func LoadForWorkspace(workspaceRoot, toolkitRoot string) (Index, error) {
 	for _, s := range idx.Skills {
 		seenSkill[s.Slug] = struct{}{}
 	}
-	for _, dir := range extraSkillDirs(workspaceRoot) {
+	for _, dir := range hosts.SkillDirs(workspaceRoot) {
 		for _, e := range loadSkillFilesFromDir(dir) {
 			if _, ok := seenSkill[e.Slug]; ok {
 				continue
@@ -84,32 +87,6 @@ func LoadForWorkspace(workspaceRoot, toolkitRoot string) (Index, error) {
 	}
 
 	return idx, nil
-}
-
-func extraSkillDirs(workspaceRoot string) []string {
-	ws := filepath.Clean(workspaceRoot)
-	dirs := []string{
-		filepath.Join(ws, ".claude", "skills"),
-		filepath.Join(ws, ".cursor", "skills"),
-		filepath.Join(ws, ".codex", "skills"),
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return dirs
-	}
-	xdg := os.Getenv("XDG_CONFIG_HOME")
-	if xdg == "" {
-		xdg = filepath.Join(home, ".config")
-	}
-
-	dirs = append(dirs,
-		filepath.Join(home, ".claude", "skills"),
-		filepath.Join(home, ".cursor", "skills"),
-		filepath.Join(home, ".agents", "skills"),
-		filepath.Join(xdg, "opencode", "skills"),
-	)
-	return dirs
 }
 
 type skillFrontmatter struct {
@@ -204,31 +181,6 @@ func parseSkillMarkdownFile(path, slug string) (Entry, bool) {
 		Description: desc,
 		Insert:      "@" + slug,
 	}, true
-}
-
-func extraCommandDirs(workspaceRoot string) []string {
-	// Always include consumer workspace command directories.
-	dirs := []string{
-		filepath.Join(filepath.Clean(workspaceRoot), ".cursor", "commands"),
-		filepath.Join(filepath.Clean(workspaceRoot), ".claude", "commands"),
-	}
-
-	// Global install paths come from scripts/install-global.{sh,ps1}.
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return dirs
-	}
-	xdg := os.Getenv("XDG_CONFIG_HOME")
-	if xdg == "" {
-		xdg = filepath.Join(home, ".config")
-	}
-
-	dirs = append(dirs,
-		filepath.Join(home, ".cursor", "commands"),
-		filepath.Join(home, ".claude", "commands"),
-		filepath.Join(xdg, "opencode", "commands"),
-	)
-	return dirs
 }
 
 type commandFrontmatter struct {

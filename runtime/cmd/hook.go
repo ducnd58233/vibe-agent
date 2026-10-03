@@ -31,13 +31,13 @@ func hookCommand(args []string) error {
 
 	flags := newFlagSet("hook")
 	paths := addRootFlags(flags)
-	client := flags.String("client", string(harness.ClientClaude),
+	client := flags.String("client", string(harness.DefaultClient),
 		"host: "+strings.Join(harness.ClientNames(), " or "))
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
-	// Refused rather than defaulted. Answering an unknown host in Claude's shape
-	// is the quiet failure described on Clients: the hook runs, the host discards
+	// Refused rather than defaulted. Answering an unknown host in another host's
+	// shape is the quiet failure described on Clients: the hook runs, the host discards
 	// what it said, and nothing anywhere reports a problem.
 	if !harness.KnownClient(harness.Client(*client)) {
 		return fmt.Errorf("unknown hook client %q; this build answers %s. "+

@@ -16,8 +16,8 @@ import (
 // BlockError stops the action a hook was called about instead of commenting on
 // it. It is the one place this package is allowed to interfere with a session.
 //
-// Claude Code treats exit 2 as the only hard block: stdout is ignored and
-// stderr is handed back to the model. The softer alternative, a JSON
+// A host that reads its refusal from the exit code treats exit 2 as the only
+// hard block: stdout is ignored and stderr is handed back to the model. The softer alternative, a JSON
 // permissionDecision of "deny", fails open, because one stray line on stdout
 // makes the JSON unparseable and the call proceeds. A gate in front of an
 // irreversible action has to fail closed, so this maps to exit 2 in main.
@@ -140,65 +140,17 @@ func gate(req Request, body payload, out io.Writer) error {
 // Separate from gate because gate is no longer the only source of a refusal:
 // the delegated WebFetch cache also refuses, by serving cached content instead
 // of letting the fetch run. Leaving the translation inside gate meant that
-// refusal returned an error nobody rendered, so Cursor and Codex received exit
-// 0 and an empty reply while Claude got the cached page. That is the same class
+// refusal returned an error nobody rendered, so hosts that read JSON received
+// exit 0 and an empty reply while the one that reads the exit code got the
+// cached page. That is the same class
 // of silent per-host divergence the contract table was added to catch, produced
 // while fixing another one.
 func deliverBlock(req Request, blocked *BlockError, out io.Writer) error {
-	switch req.Client {
-	case ClientCursor:
-		// Cursor decides through JSON rather than exit codes, so the same
-		// verdict has to travel a different way.
-		//
-		// snake_case, and that was the defect. This wrote agentMessage and
-		// userMessage, which Cursor does not read: it honoured the deny and
-		// discarded both messages, so the agent was refused with no stated
-		// reason and retried. The same file spelled additional_context and
-		// followup_message correctly, so this was one field pair out of step
-		// rather than a convention anyone had chosen.
-		//
-		// "deny" and not "ask": beforeShellExecution accepts all three of allow,
-		// deny and ask, while preToolUse accepts only allow and deny. Emitting
-		// the value both events share is what lets one branch answer both, and
-		// TestCursorNeverAsks keeps it that way.
-		return write(out, map[string]any{
-			"permission":    "deny",
-			"agent_message": blocked.Reason,
-			"user_message":  "vibe-agent blocked a command that would bypass the delivery graph.",
-		})
-	case ClientOpencode:
-		// The plugin turns this into permission.ask returning status "deny",
-		// which is opencode's only refusal path: tool.execute.before can throw,
-		// but a thrown error reads to the model as a broken tool rather than a
-		// decision about one.
-		return write(out, map[string]any{
-			"permission": "deny",
-			"reason":     blocked.Reason,
-		})
-	case ClientCodex, ClientKimi, ClientMuse:
-		// Codex ignores exit 2 outright. It was measured running the command
-		// anyway while the hook exited 2 and printed the refusal, and blocking
-		// it with this shape instead - the model then reported the reason back
-		// verbatim. A gate that fails open is not a gate, so this is the branch
-		// that had to be established by experiment rather than inference.
-		//
-		// Kimi publishes no stdout schema; Muse was measured independently as
-		// Claude-compatible on PreToolUse. Both reuse this shape as UNVERIFIED.
-		return write(out, map[string]any{
-			"hookSpecificOutput": map[string]any{
-				"hookEventName":            "PreToolUse",
-				"permissionDecision":       "deny",
-				"permissionDecisionReason": blocked.Reason,
-			},
-		})
-	case ClientAntigravity:
-		return write(out, map[string]any{
-			"decision": "deny",
-			"reason":   blocked.Reason,
-		})
-	case ClientClaude:
+	body := refusalBody(dialectFor(req.Client), blocked.Reason)
+	if body == nil {
+		return blocked
 	}
-	return blocked
+	return write(out, body)
 }
 
 // verdict runs every guard this hook enforces. The first refusal wins.

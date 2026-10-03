@@ -31,8 +31,8 @@ type toolUse struct {
 	// ExitCode is a pointer so "the host did not report one" stays different
 	// from "it exited 0".
 	ExitCode *int `json:"exitCode,omitempty"`
-	// Failed is the host's own verdict, carried by which event fired. Claude
-	// Code reports no exit code at all, so without this the log could not tell
+	// Failed is the host's own verdict, carried by which event fired. Some
+	// hosts report no exit code at all, so without this the log could not tell
 	// a green command from a red one.
 	Failed bool `json:"failed,omitempty"`
 }
@@ -55,7 +55,7 @@ func (r response) exit() *int {
 
 // readResponse parses whatever the host put in tool_response.
 //
-// Claude Code sends a bare JSON string for Bash, which is why the earlier
+// Some hosts send a bare JSON string for a shell tool, which is why the earlier
 // struct-only parse produced an empty response every time and cost this package
 // its evidence. A string carries no exit code, so it lands in Stderr, where the
 // only caller uses it: as the detail line on a failure memory.
@@ -88,7 +88,7 @@ func journal(req Request, body payload, failed bool) error {
 
 	result := readResponse(body.ToolResponse)
 
-	// Fold in the fields Claude puts beside the response rather than inside it.
+	// Fold in the fields some hosts put beside the response rather than inside it.
 	// A failure payload has no tool_response, so without this the detail line
 	// every failure memory is supposed to carry would always be empty.
 	if result.Stderr == "" {
@@ -99,7 +99,7 @@ func journal(req Request, body payload, failed bool) error {
 	}
 
 	// A host that reports an exit code has said the same thing twice. Trust
-	// either witness: Cursor supplies the number, Claude supplies the event.
+	// either witness: some hosts supply the number, others the event.
 	if exit := result.exit(); exit != nil && *exit != 0 {
 		failed = true
 	}

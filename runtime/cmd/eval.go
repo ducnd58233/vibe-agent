@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"os"
 	"path/filepath"
 	"sort"
@@ -112,10 +113,10 @@ func resolveRunner(value string) ([]runnerSpec, error) {
 // routerFiles are what a session reads when deciding where to go: the hub, then
 // the folder tables it points at.
 var routerFiles = []string{
-	filepath.Join(".ai-agents", "ROUTER.md"),
-	filepath.Join(".ai-agents", "skills", "ROUTER.md"),
-	filepath.Join(".ai-agents", "agents", "ROUTER.md"),
-	filepath.Join(".ai-agents", "commands", "ROUTER.md"),
+	filepath.Join(workspace.ToolkitDirName, "ROUTER.md"),
+	filepath.Join(workspace.ToolkitDirName, "skills", "ROUTER.md"),
+	filepath.Join(workspace.ToolkitDirName, "agents", "ROUTER.md"),
+	filepath.Join(workspace.ToolkitDirName, "commands", "ROUTER.md"),
 }
 
 func evalCommand(args []string) error {
@@ -139,7 +140,7 @@ func routingEvalCommand(args []string) error {
 	jobs := flags.Int("jobs", 4, "fixtures asked in parallel")
 	var runnerArgs runnerFlag
 	flags.Var(&runnerArgs, "runner",
-		"runner preset or command; repeat or comma-separate. Presets: codex, claude, cursor, opencode, all")
+		"runner preset or command; repeat or comma-separate. Presets: "+strings.Join(hosts.EvalRunnerNames(), ", ")+", all")
 	only := flags.String("only", "", "run fixtures whose intent contains this text")
 	timeout := flags.Duration("timeout", 2*time.Minute, "how long one model call may take")
 	asJSON := flags.String("json", "", "also write the full result to this file")
@@ -218,7 +219,7 @@ func routingEvalCommand(args []string) error {
 
 func resolveRunners(values []string) ([]runnerSpec, error) {
 	if len(values) == 0 {
-		values = []string{"codex"}
+		values = []string{hosts.DefaultEvalRunner}
 	}
 	var out []runnerSpec
 	for _, value := range values {
@@ -250,7 +251,7 @@ func runnerNames(runners []runnerSpec) string {
 // Malformed rows are skipped rather than reported, because doctor already fails
 // on them and saying it twice in two voices helps nobody.
 func loadFixtures(toolkitRoot string) ([]fixture, error) {
-	path := filepath.Join(toolkitRoot, ".ai-agents", "references", "routing-evals.md")
+	path := workspace.ToolkitPath(toolkitRoot, "references", "routing-evals.md")
 	raw, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, fmt.Errorf("read fixtures: %w", err)

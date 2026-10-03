@@ -19,22 +19,22 @@ import (
 // script by a relative path, which resolves against whatever directory that
 // host runs a hook in.
 //
-// Only Claude Code documents that directory, through ${CLAUDE_PROJECT_DIR}.
-// Cursor and Codex publish nothing, so on those hosts the interpreter was being
-// handed a path resolved from an unknown starting point. The failure is quiet:
+// Only some hosts document that directory, through a variable of their own.
+// The rest publish nothing, so on those hosts the interpreter was being handed a
+// path resolved from an unknown starting point. The failure is quiet:
 // python reports a missing file, the host logs it out of sight, and the cache
 // silently never runs.
 //
 // Calling the script from here fixes it for every host at once. This binary
 // discovers its own workspace and toolkit root, so it can name the script
 // absolutely, and it can hand the script the project root the script itself
-// wants: sdd-cache-pre.py reads CLAUDE_PROJECT_DIR and falls back to its own
+// wants: sdd-cache-pre.py reads VIBE_WORKSPACE_ROOT and falls back to its own
 // cwd, which had the same defect one layer down.
 //
 // The delegation is deliberately thin. It forwards the payload unread, relays
 // the script's own output, and translates a refusal into this package's
-// BlockError so the same cache hit reaches the model correctly on all four
-// hosts instead of only on Claude.
+// BlockError so the same cache hit reaches the model correctly on every
+// host, not only the one whose convention it was written against.
 
 // sddCacheTool is the tool whose calls the cache wraps.
 const sddCacheTool = "WebFetch"
@@ -45,8 +45,8 @@ const sddCacheTool = "WebFetch"
 const sddCacheTimeout = 20 * time.Second
 
 // sddCacheBlockExit is the status the script uses to serve cached content
-// instead of letting the fetch proceed. It is Claude Code's convention, which
-// the script was written against.
+// instead of letting the fetch proceed. It is one host's blocking convention,
+// which the script was written against.
 const sddCacheBlockExit = 2
 
 // pythonCandidates are the interpreter names to try, in order.
@@ -68,7 +68,7 @@ func sddCache(req Request, body payload, script string) *BlockError {
 	if body.ToolName != sddCacheTool {
 		return nil
 	}
-	path := filepath.Join(req.ToolkitRoot, ".ai-agents", "hooks", script)
+	path := workspace.ToolkitPath(req.ToolkitRoot, "hooks", script)
 	if _, err := os.Stat(filepath.Clean(path)); err != nil {
 		return nil
 	}
@@ -95,7 +95,7 @@ func sddCache(req Request, body payload, script string) *BlockError {
 	// own working directory without it. Passing the root this binary already
 	// discovered is what stops the fallback from being reached.
 	cmd.Env = append(os.Environ(),
-		"CLAUDE_PROJECT_DIR="+req.WorkspaceRoot,
+		workspace.EnvWorkspaceRoot+"="+req.WorkspaceRoot,
 		workspace.EnvMemoryDBPath+"="+workspace.MemoryDBPath(req.WorkspaceRoot),
 	)
 

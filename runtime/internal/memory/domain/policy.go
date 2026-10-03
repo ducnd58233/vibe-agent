@@ -164,7 +164,7 @@ func promotionTarget(kind Kind) string {
 	case KindSemantic:
 		return "AGENTS.md or a stack profile, plus a deterministic preflight check where one is possible"
 	case KindPreference, KindCorrection:
-		return "AGENTS.md conventions, or the workspace CLAUDE.local.md when it is personal"
+		return "AGENTS.md conventions, or the workspace's untracked local rules file when it is personal"
 	default:
 		return "AGENTS.md"
 	}

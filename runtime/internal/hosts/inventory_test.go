@@ -51,7 +51,6 @@ func TestEveryCatalogedHostHasAReason(t *testing.T) {
 		"antigravity":  "hooks at .agents/hooks.json; PreToolUse uses decision/reason, UNVERIFIED until observed",
 	}
 
-	catalog := Catalog()
 	if len(catalog) != len(reasons) {
 		t.Errorf("catalog has %d hosts, the reason list has %d", len(catalog), len(reasons))
 	}

@@ -84,7 +84,32 @@ type HostContract struct {
 	// workspace root.
 	ConfigPath string
 	// Source is the vendor documentation this row set was read from.
-	Source        string
+	Source string
+	// AltConfigPaths are further files the host reads hook wiring from.
+	AltConfigPaths []string
+	// SplitsToolOutcome is true where the host reports a failed tool call as its
+	// own event, so a config wiring only the success half records the wrong half
+	// rather than less.
+	//
+	// Claude and Cursor both split: each fires exactly one of PostToolUse and
+	// PostToolUseFailure per call, so wiring one alone is a defect.
+	//
+	// Codex is false for a different and worse reason. Its documentation says
+	// PostToolUse fires "including when commands exit with a non-zero status",
+	// and codex-cli 0.147.0 does not: a failing command produces PreToolUse and
+	// then nothing, measured twice, while a passing one in the same session
+	// produced both. Codex publishes no failure event either, so there is no
+	// second hook to ask for - the gap is the host's and cannot be wired shut.
+	// Reporting it would only tell someone to add a hook that does not exist.
+	//
+	// opencode exposes tool lifecycle through JS/TS plugins rather than shell
+	// commands, so it registers no events here at all.
+	SplitsToolOutcome bool
+	// HonorsHandlerIf is true when a hook handler may carry an "if" filter that
+	// the host evaluates. For every other host the field is a silent no-op.
+	HonorsHandlerIf bool
+	// Dialect is how the hooks' answers are spelled for this host.
+	Dialect       Dialect
 	WorkspaceRoot WorkspaceRoot
 	Events        []EventContract
 	// Gaps are the things this host does not provide. They matter as much as the
@@ -141,9 +166,12 @@ func (h HostContract) EventFor(hostKey string) (EventContract, bool) {
 // table; what earns a row here is an event the toolkit wires or deliberately
 // declines to.
 var claudeContract = HostContract{
-	Client:     ClientClaude,
-	ConfigPath: ".claude/settings.json",
-	Source:     "https://code.claude.com/docs/en/hooks",
+	Client:            ClientClaude,
+	HonorsHandlerIf:   true,
+	SplitsToolOutcome: true,
+	Dialect:           Dialect{PromptInjection: true, StopAdvisory: true, SteersSessionStart: true},
+	ConfigPath:        ".claude/settings.json",
+	Source:            "https://code.claude.com/docs/en/hooks",
 	WorkspaceRoot: WorkspaceRoot{
 		Variable: "${CLAUDE_PROJECT_DIR}",
 		Reliable: true,
@@ -212,9 +240,11 @@ var claudeContract = HostContract{
 // wiring was written from the vendor page and has never been watched running,
 // which is precisely the condition that produced the defects below.
 var cursorContract = HostContract{
-	Client:     ClientCursor,
-	ConfigPath: ".cursor/hooks.json",
-	Source:     "https://cursor.com/docs/agent/hooks",
+	Client:            ClientCursor,
+	SplitsToolOutcome: true,
+	Dialect:           Dialect{Context: ContextFlat, Refusal: RefusePermission, StopBlock: StopFollowup, PostTool: PostToolFlat, ToolUseNodeReminder: true},
+	ConfigPath:        ".cursor/hooks.json",
+	Source:            "https://cursor.com/docs/agent/hooks",
 	WorkspaceRoot: WorkspaceRoot{
 		Reliable: false,
 		Note: "Cursor publishes no project-directory variable for hook commands and does not document the cwd they run in. " +
@@ -330,9 +360,11 @@ const opencodePluginUnmeasured = "The plugin is loaded and no hook in it has bee
 // hook exited 2 and printed its refusal, so the JSON shape is the only gate that
 // works. The second is the missing failure event below.
 var codexContract = HostContract{
-	Client:     ClientCodex,
-	ConfigPath: ".codex/hooks.json",
-	Source:     "https://learn.chatgpt.com/docs/hooks",
+	Client:         ClientCodex,
+	Dialect:        Dialect{Refusal: RefuseHookSpecific, PromptInjection: true},
+	ConfigPath:     ".codex/hooks.json",
+	AltConfigPaths: []string{".codex/config.toml"},
+	Source:         "https://learn.chatgpt.com/docs/hooks",
 	WorkspaceRoot: WorkspaceRoot{
 		Reliable: false,
 		Note: "Hook commands run with the session's cwd and Codex publishes no project-directory variable for them. " +
@@ -388,6 +420,7 @@ var codexContract = HostContract{
 // deterministic wired and policy reached it through commands and skills alone.
 var opencodeContract = HostContract{
 	Client:     ClientOpencode,
+	Dialect:    Dialect{Context: ContextFlat, Refusal: RefusePermissionReason, StopBlock: StopNone, PromptInjection: true},
 	ConfigPath: "opencode.json",
 	Source:     "https://opencode.ai/docs/plugins/",
 	WorkspaceRoot: WorkspaceRoot{
@@ -461,6 +494,7 @@ const museNeverObserved = "No Muse hook has been observed firing. Beta builds ma
 // antigravityContract is Google Antigravity.
 var antigravityContract = HostContract{
 	Client:     ClientAntigravity,
+	Dialect:    Dialect{Context: ContextSteps, Refusal: RefuseDecision, StopBlock: StopContinue, PromptInjection: true},
 	ConfigPath: ".agents/hooks.json",
 	Source:     "https://antigravity.google/docs/hooks",
 	WorkspaceRoot: WorkspaceRoot{
@@ -507,6 +541,7 @@ var antigravityContract = HostContract{
 // kimiContract is Kimi Code CLI.
 var kimiContract = HostContract{
 	Client:     ClientKimi,
+	Dialect:    Dialect{Refusal: RefuseHookSpecific, PromptInjection: true},
 	ConfigPath: ".kimi/hooks.toml",
 	Source:     "https://moonshotai.github.io/kimi-cli/en/configuration/config-files.html",
 	WorkspaceRoot: WorkspaceRoot{
@@ -544,6 +579,7 @@ var kimiContract = HostContract{
 // museContract is Muse Code.
 var museContract = HostContract{
 	Client:     ClientMuse,
+	Dialect:    Dialect{Refusal: RefuseHookSpecific, PromptInjection: true},
 	ConfigPath: ".muse/hooks.json",
 	Source:     "https://dev.meta.ai/docs/muse-code/extending",
 	WorkspaceRoot: WorkspaceRoot{

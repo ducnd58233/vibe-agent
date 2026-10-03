@@ -48,7 +48,7 @@ func doctorCommand(args []string) error {
 	// directory it was opened on, so a vendored toolkit's own settings.json is
 	// wiring for opening the toolkit itself and reaches nothing here.
 	checkHookWiring(report, workspaceRoot)
-	checkClaudeIfOutsideClaude(report, toolkitRoot)
+	checkUnsupportedHandlerIf(report, toolkitRoot)
 	checkCheckPlan(report, workspaceRoot, toolkitRoot)
 	checkHumanVerifiers(workspaceRoot)
 	checkTaskFiles(report, workspaceRoot)
@@ -98,7 +98,7 @@ func checkAssetCalcs(report *diagnostics, toolkitRoot string) {
 
 	var blocks, lines int
 	var problems []string
-	walkErr := fs.WalkDir(rooted.FS(), ".ai-agents", func(path string, entry fs.DirEntry, err error) error {
+	walkErr := fs.WalkDir(rooted.FS(), workspace.ToolkitDirName, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -386,9 +386,9 @@ func checkGitignore(report *diagnostics, workspaceRoot string) {
 	}
 }
 
-func checkClaudeIfOutsideClaude(report *diagnostics, toolkitRoot string) {
-	problems := harness.ClaudeIfOutsideClaude(toolkitRoot)
-	report.check("non-Claude hooks omit Claude-only if",
+func checkUnsupportedHandlerIf(report *diagnostics, toolkitRoot string) {
+	problems := harness.UnsupportedHandlerIf(toolkitRoot)
+	report.check("hook configs omit an if their host ignores",
 		len(problems) == 0,
-		harness.FormatClaudeIfProblems(problems))
+		harness.FormatHandlerIfProblems(problems))
 }

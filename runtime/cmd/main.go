@@ -1,9 +1,8 @@
 // Command vibe-agent is the outer-loop control plane for the vibe-agent
 // toolkit. It owns run state, graph transitions, and verification evidence.
 //
-// It does not own the inner loop. Claude Code, Codex, Cursor, and opencode keep
-// their own model and tool loops; this binary decides what happens between
-// their turns.
+// It does not own the inner loop. Each supported host keeps its own model and
+// tool loop; this binary decides what happens between their turns.
 //
 // One file per command: run.go, checkpoint.go, graph.go, mcp.go, hook.go, and
 // doctor.go. Shared flag and formatting helpers live in common.go.
@@ -13,14 +12,18 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/harness"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/hosts"
+	webapp "github.com/ducnd58233/vibe-agent/runtime/internal/web/app"
 )
 
 // version is overridden at build time with -ldflags "-X main.version=...".
 var version = "dev"
 
-const usage = `vibe-agent - outer-loop control plane
+const usageTemplate = `vibe-agent - outer-loop control plane
 
 Usage:
   vibe-agent goal [delivery|research|experiment|task|tutor] [--with-task] "<objective>"
@@ -50,7 +53,7 @@ Usage:
   vibe-agent auto gate --slug <slug>
   vibe-agent auto merge --slug <slug>
   vibe-agent guards <list|init> [--workspace <dir>] [--force]
-  vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|post-tool-use-failure|stop|subagent-stop> [--client claude|cursor]
+  vibe-agent hook <session-start|user-prompt-submit|pre-tool-use|post-tool-use|post-tool-use-failure|stop|subagent-stop> [--client {clients}]
   vibe-agent hook --events
   vibe-agent memory list [--status <status>]
   vibe-agent memory confirm --id <id>
@@ -61,7 +64,7 @@ Usage:
   vibe-agent memory gc [--expired-for 168h] [--sessions-older-than 2160h] [--dry-run]
   vibe-agent session list
   vibe-agent session show --slug <slug|ambient>
-  vibe-agent web [--port 1411] [--open]
+  vibe-agent web [--port {port}] [--open]
   vibe-agent migrate docs-tmp [--dry-run] [--workspace <dir>]
   vibe-agent migrate state [--workspace <dir>]
   vibe-agent sandbox init [--workspace <dir>]
@@ -71,7 +74,7 @@ Usage:
   vibe-agent doctor
   vibe-agent docs router [--workspace <dir>]
   vibe-agent docs check-claims <markdown-file> [--workspace <dir>]
-  vibe-agent eval routing [--trials N] [--jobs N] [--runner codex|claude|cursor|opencode|all] [--only <text>]
+  vibe-agent eval routing [--trials N] [--jobs N] [--runner {runners}|all] [--only <text>]
   vibe-agent version
 
 Graph state is stored in .agent-state/memory.db (runs and run_events tables).
@@ -183,21 +186,39 @@ what is stored and "memory confirm" to vouch for one yourself.
 the answers against the asset each row names. It calls a model, so it is not
 part of "doctor" and not part of CI: run it locally or nightly. It reports
 pass^k, the rate of passing every trial, and exits non-zero only with --require.
-The default runner is "codex". Runner presets include:
+The default runner is "{defaultRunner}". Runner presets include:
 
-  codex     codex exec --ephemeral --sandbox read-only --json -
-  claude    claude -p
-	cursor    cursor-agent --print --output-format stream-json --mode ask --trust
-  opencode  opencode run
+{presets}
   all       all presets above
 
 Pass --runner more than once, or comma-separate names, to compare hosts:
-  vibe-agent eval routing --runner codex --runner claude
+  vibe-agent eval routing --runner {first} --runner {second}
 
 Global flags:
   --workspace <dir>   Workspace root (default: current directory)
   --toolkit <dir>     Toolkit root holding .ai-agents (default: workspace root)
 `
+
+// usage is the help text, with every host-dependent list read from the host
+// tables rather than written out, so a host added there appears here.
+var usage = func() string {
+	runners := hosts.EvalRunnerNames()
+	var presets strings.Builder
+	for _, name := range runners {
+		if host, ok := hosts.EvalHost(name); ok {
+			fmt.Fprintf(&presets, "  %-12s%s\n", name, host.EvalCommand)
+		}
+	}
+	return strings.NewReplacer(
+		"{clients}", strings.Join(harness.ClientNames(), "|"),
+		"{runners}", strings.Join(runners, "|"),
+		"{port}", strconv.Itoa(webapp.DefaultPort),
+		"{defaultRunner}", hosts.DefaultEvalRunner,
+		"{presets}", strings.TrimRight(presets.String(), "\n"),
+		"{first}", runners[0],
+		"{second}", runners[1],
+	).Replace(usageTemplate)
+}()
 
 func main() {
 	err := run(os.Args[1:])
@@ -219,72 +240,53 @@ func main() {
 	os.Exit(1)
 }
 
-// run dispatches to one command. Each case lives in its own file, so this stays
-// a routing table rather than a place logic accumulates.
+// commands maps a command name to its handler. Each handler lives in its own
+// file, so this stays a routing table rather than a place logic accumulates.
+var commands = map[string]func(args []string) error{
+	"run":        runCommand,
+	"checkpoint": checkpointCommand,
+	"verify":     verifyCommand,
+	"graph":      graphCommand,
+	"fetch":      fetchCommand,
+	"slop":       slopCommand,
+	"skills":     skillsCommand,
+	"mcp":        mcpCommand,
+	"auto":       autoCommand,
+	"goal":       goalCommand,
+	"research":   researchCommand,
+	"experiment": experimentCommand,
+	"task":       taskCommand,
+	"tutor":      tutorCommand,
+	"calc":       calcCommand,
+	"guards":     guardsCommand,
+	"hook":       hookCommand,
+	"memory":     memoryCommand,
+	"session":    sessionCommand,
+	"web":        webCommand,
+	"sandbox":    sandboxCommand,
+	"migrate":    migrateCommand,
+	"doctor":     doctorCommand,
+	"docs":       docsCommand,
+	"eval":       evalCommand,
+	"version":    func([]string) error { fmt.Println(version); return nil },
+	"help":       printUsage,
+	"-h":         printUsage,
+	"--help":     printUsage,
+}
+
+func printUsage([]string) error {
+	fmt.Print(usage)
+	return nil
+}
+
+// run dispatches to one command.
 func run(args []string) error {
 	if len(args) == 0 {
-		fmt.Print(usage)
-		return nil
+		return printUsage(nil)
 	}
-
-	switch args[0] {
-	case "run":
-		return runCommand(args[1:])
-	case "checkpoint":
-		return checkpointCommand(args[1:])
-	case "verify":
-		return verifyCommand(args[1:])
-	case "graph":
-		return graphCommand(args[1:])
-	case "fetch":
-		return fetchCommand(args[1:])
-	case "slop":
-		return slopCommand(args[1:])
-	case "skills":
-		return skillsCommand(args[1:])
-	case "mcp":
-		return mcpCommand(args[1:])
-	case "auto":
-		return autoCommand(args[1:])
-	case "goal":
-		return goalCommand(args[1:])
-	case "research":
-		return researchCommand(args[1:])
-	case "experiment":
-		return experimentCommand(args[1:])
-	case "task":
-		return taskCommand(args[1:])
-	case "tutor":
-		return tutorCommand(args[1:])
-	case "calc":
-		return calcCommand(args[1:])
-	case "guards":
-		return guardsCommand(args[1:])
-	case "hook":
-		return hookCommand(args[1:])
-	case "memory":
-		return memoryCommand(args[1:])
-	case "session":
-		return sessionCommand(args[1:])
-	case "web":
-		return webCommand(args[1:])
-	case "sandbox":
-		return sandboxCommand(args[1:])
-	case "migrate":
-		return migrateCommand(args[1:])
-	case "doctor":
-		return doctorCommand(args[1:])
-	case "docs":
-		return docsCommand(args[1:])
-	case "eval":
-		return evalCommand(args[1:])
-	case "version":
-		fmt.Println(version)
-		return nil
-	case "help", "-h", "--help":
-		fmt.Print(usage)
-		return nil
-	default:
+	command, ok := commands[args[0]]
+	if !ok {
 		return fmt.Errorf("unknown command %q; try `vibe-agent help`", args[0])
 	}
+	return command(args[1:])
 }

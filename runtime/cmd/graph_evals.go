@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 	"os"
 	"path/filepath"
 	"sort"
@@ -123,7 +124,7 @@ func parsePathEvals(raw []byte) (*pathEvalFile, error) {
 
 // pathEvalsPath is where the fixtures live for a toolkit root.
 func pathEvalsPath(toolkitRoot string) string {
-	return filepath.Join(toolkitRoot, ".ai-agents", "references", PathEvalsFileName)
+	return workspace.ToolkitPath(toolkitRoot, "references", PathEvalsFileName)
 }
 
 // loadPathEvals reads the fixture file. A missing file is not an error: a

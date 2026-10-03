@@ -144,7 +144,7 @@ type Record struct {
 	ValidTo   *time.Time `json:"validTo,omitempty"`
 
 	// CreatedBy is the agent that wrote the memory: the host client, with the
-	// model after a slash when it is known ("codex/gpt-5"). Empty means the row
+	// model after a slash when it is known ("<client>/<model>"). Empty means the row
 	// predates this field; nothing is inferred for it.
 	CreatedBy string `json:"createdBy,omitempty"`
 	// ReviewedBy lists, once each and in order, the agents that audited this

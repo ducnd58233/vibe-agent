@@ -45,10 +45,7 @@ type injectLedger struct {
 // ledgerKey scopes a ledger to one conversation. Two sessions sharing a
 // workspace must not suppress each other's context.
 func ledgerKey(req Request, body payload) string {
-	session := body.SessionID
-	if session == "" {
-		session = body.ConversationID
-	}
+	session := body.sessionKey()
 	if session == "" {
 		session = "default"
 	}

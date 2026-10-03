@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -44,4 +45,23 @@ func writeLegacyIndex(t *testing.T, root, slug, date string, version int) {
 	if err := os.WriteFile(runpath.IndexPath(root, slug), []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// deleteRunSQLRow removes one runs row and its events/checks. Tests use this
+// to force a file-only Load after forging a manifest on disk.
+func deleteRunSQLRow(workspaceRoot, runID string) error {
+	ctx := context.Background()
+	db, err := openDB(ctx, workspaceRoot)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = db.Close() }()
+	if _, err := db.ExecContext(ctx, `DELETE FROM run_checks WHERE run_id = ?`, runID); err != nil {
+		return err
+	}
+	if _, err := db.ExecContext(ctx, `DELETE FROM run_events WHERE run_id = ?`, runID); err != nil {
+		return err
+	}
+	_, err = db.ExecContext(ctx, `DELETE FROM runs WHERE run_id = ?`, runID)
+	return err
 }
