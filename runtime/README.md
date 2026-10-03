@@ -181,9 +181,26 @@ vibe-agent slop audit . --json
 vibe-agent slop audit . --fail-on 49
 ```
 
-The built-in scanner runs without external tools and reports files, lines, languages, tree-sitter parse counts, parser basis, and scoring basis. Language detection comes from [`go-enry`](https://pkg.go.dev/github.com/go-enry/go-enry/v2), the Go port of GitHub Linguist, instead of a local extension table. Syntax parsing uses [`gotreesitter`](https://pkg.go.dev/github.com/odvcencio/gotreesitter), a pure-Go tree-sitter runtime with bundled grammar metadata, so the runtime stays `CGO_ENABLED=0` and still handles mixed repos such as Go, Python, TSX, Vue, YAML, Dockerfiles, PHP, Rust, and Zig. Unknown non-binary text files are still scanned as `Text`. Vendor, generated, binary, image, and sensitive local config files are skipped before scoring.
+The built-in scanner runs without external tools and reports files, lines, languages, tree-sitter parse counts, parser basis, and scoring basis. Language detection comes from [`go-enry`](https://pkg.go.dev/github.com/go-enry/go-enry/v2), the Go port of GitHub Linguist, instead of a local extension table. Syntax parsing uses [`gotreesitter`](https://pkg.go.dev/github.com/odvcencio/gotreesitter), a pure-Go tree-sitter runtime with bundled grammar metadata, so the runtime stays `CGO_ENABLED=0` and still handles mixed repos such as Go, Python, TSX, Vue, YAML, Dockerfiles, PHP, Rust, and Zig. Unknown non-binary text files are still scanned as `Text`. Files come from the shared inventory in `internal/sourcefiles` (git's own file list inside a work tree, so nested `.gitignore` rules apply), which drops installed dependencies, build output, tool caches, virtual environments under any name, and vendored, generated, binary, image, and sensitive local config files before scoring.
 
 The score is weighted finding density per KLOC, capped at 100. It is a review signal, not proof that code is correct. The command does not spawn external linters from user-controlled paths; teams that want Semgrep, ast-grep, or benchmark gates should add them as repo-owned verifier commands.
+
+## Review scan
+
+`vibe-agent review scan` is the mechanical half of a code review, so an agent does not do it by eye. It reads every source file from the same inventory as `slop audit`, parses each with tree-sitter, and cuts it into blocks (each definition, plus each stretch of top-level code between definitions) that together cover every non-blank line. Then it reports:
+
+- **References**, indexed across the whole workspace: unused imports (Python, JavaScript, TypeScript, Java, Kotlin, PHP; Go and Rust compilers already reject or warn on these), definitions nothing references, helpers only tests call, and with `--changed`, definitions whose last caller the change removed (`orphaned-by-change`).
+- **Bug shapes** that read the same in every grammar: self-comparison, NaN comparison, identical branches, repeated conditions in an if/else-if chain, unreachable statements, duplicate literal keys, assignment in a condition, swallowed errors, `typeof` typos, return in finally, `defer` in a loop, mutable default arguments, `is` with a literal, leftover debugger calls, and redefinitions in languages where the later one silently wins.
+
+```bash
+vibe-agent review scan                       # whole workspace: findings, then every block in reading order
+vibe-agent review scan --changed             # findings in the change; changed blocks marked *
+vibe-agent review scan src/ --json           # one subtree, machine-readable
+vibe-agent review block src/app.py:42        # one block with line numbers, its findings, and who references it
+vibe-agent review block src/app.py:handler   # the same, by name
+```
+
+Findings are leads, not verdicts: nothing here resolves types, so a call through reflection, a framework, or another repository is invisible. A definition with a decorator or annotation, a protocol method (`String`, `__str__`, `toString`, lifecycle hooks), a test-runner entry point, or a name spelled in a string (a lookup, a config) is never reported as dead. One whose name a string starts (`getattr(self, "_handle_" + kind)`) is reported only as `info`. A `review:ignore <reason>` comment, or a linter's own `noqa`/`nolint`/`eslint-disable`, on or above a line silences it. Exit status is 0 unless `--fail-on <severity>` is given.
 
 ## Calculate exactly
 

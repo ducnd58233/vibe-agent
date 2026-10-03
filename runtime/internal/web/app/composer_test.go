@@ -88,16 +88,12 @@ func TestComposerSendRecordsThePromptOnTheTrajectory(t *testing.T) {
 	}
 }
 
-func TestParsePrintLinesExtractsAnItemCompletedAgentMessage(t *testing.T) {
+func TestParsePrintOutputExtractsAnItemCompletedAgentMessage(t *testing.T) {
 	raw := `{"type":"thread.started","thread_id":"1"}` + "\n" +
 		`{"type":"turn.started"}` + "\n" +
 		`{"type":"item.completed","item":{"id":"item_0","type":"error","message":"shortened"}}` + "\n" +
 		`{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"pong"}}` + "\n" +
 		`{"type":"turn.completed","usage":{"input_tokens":12,"output_tokens":3}}`
-	got := parsePrintLines(raw)
-	if len(got) != 1 || got[0] != "pong" {
-		t.Fatalf("got %q", got)
-	}
 	fragments, usage := parsePrintOutput(raw)
 	if len(fragments) != 1 || fragments[0].Body != "pong" {
 		t.Fatalf("fragments = %+v", fragments)

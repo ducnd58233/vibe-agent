@@ -118,10 +118,6 @@ compare_sets() {
   return 1
 }
 
-nonempty_lines() {
-  printf '%s' "$1" | grep -c . 2>/dev/null || true
-}
-
 check_skills() {
   local dir="$AI/skills"
   local disk=""

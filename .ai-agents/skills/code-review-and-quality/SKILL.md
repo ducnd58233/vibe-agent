@@ -159,7 +159,7 @@ Tests reveal intent and coverage:
 
 ### Step 3: Review the Implementation
 
-Walk through the code with the five axes in mind:
+Take the files and blocks to read from `vibe-agent review scan`, not from your own pick, and read each one with `vibe-agent review block` ([`commands/review.md`](../../commands/review.md) has the procedure). Then walk through the code with the five axes in mind:
 
 ```
 For each file changed:
@@ -232,7 +232,7 @@ Flag any issues as Critical, Important, or Suggestion.
 
 After any refactoring or implementation change, check for orphaned code:
 
-1. Identify code that is now unreachable or unused
+1. Identify code that is now unreachable or unused: `vibe-agent review scan --changed` reports unused imports, unreferenced definitions, and the ones this change left without a caller (`orphaned-by-change`)
 2. List it explicitly
 3. **Ask before deleting:** "Should I remove these now-unused elements: [list]?"
 

@@ -51,6 +51,7 @@ $runtimeDir = Join-Path $PSScriptRoot '../runtime'
 function Show-Result {
     param([string]$Target)
     $installed = ''
+    # A build too old to answer `version` still installed; report it unversioned.
     try { $installed = (& $Target version 2>$null | Select-Object -First 1).Trim() } catch { }
     if ($installed) {
         Write-Host "installed $Target ($installed)"
@@ -65,6 +66,7 @@ function Show-Result {
     $resolved = Get-Command vibe-agent -ErrorAction SilentlyContinue
     if ($resolved -and $installed) {
         $winner = ''
+        # The shadowing copy may predate `version`; then there is no comparison to make.
         try { $winner = (& $resolved.Source version 2>$null | Select-Object -First 1).Trim() } catch { }
         if ($winner -and $winner -ne $installed) {
             Write-Host ''

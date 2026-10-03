@@ -279,17 +279,6 @@ func runHostPrint(ctx context.Context, host hosts.Host, prompt string, opts host
 	return response.Text, nil
 }
 
-func parsePrintLines(raw string) []string {
-	fragments, _ := parsePrintOutput(raw)
-	texts := make([]string, 0, len(fragments))
-	for _, frag := range fragments {
-		if frag.Body != "" {
-			texts = append(texts, frag.Body)
-		}
-	}
-	return texts
-}
-
 func parsePrintOutput(raw string) ([]printFragment, *session.Usage) {
 	lines := strings.Split(strings.TrimSpace(raw), "\n")
 	if len(lines) == 1 && !strings.HasPrefix(strings.TrimSpace(raw), "{") {
