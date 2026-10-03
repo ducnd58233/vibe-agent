@@ -104,6 +104,8 @@ func Default() Registry {
 		"shipdecision": ShipDecision{},
 		"reviewbots":   ReviewBots{},
 		"delivery":     Delivery{},
+		"taskreview":   TaskReview{},
+		"study":        Study{},
 	}
 }
 
