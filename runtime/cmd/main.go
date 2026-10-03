@@ -58,6 +58,7 @@ Usage:
   vibe-agent memory history --id <id>
   vibe-agent memory link --from <id> --to <id> [--relation relates_to|derived_from|supersedes|contradicts]
   vibe-agent memory sessions --query <words> [--limit N]
+  vibe-agent memory gc [--expired-for 168h] [--sessions-older-than 2160h] [--dry-run]
   vibe-agent session list
   vibe-agent session show --slug <slug|ambient>
   vibe-agent web [--port 1411] [--open]

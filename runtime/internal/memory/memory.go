@@ -28,6 +28,9 @@ type (
 	Relation   = domain.Relation
 	Ledger     = domain.LedgerEntry
 	SessionHit = domain.SessionHit
+
+	PruneOptions = persistence.PruneOptions
+	PruneResult  = persistence.PruneResult
 )
 
 const (
@@ -62,6 +65,9 @@ const (
 	Disclaimer         = persistence.Disclaimer
 	DefaultLimit       = persistence.DefaultLimit
 )
+
+// FitBudget keeps hits, in rank order, while their estimated token cost fits.
+var FitBudget = persistence.FitBudget
 
 // ProposePromotions finds memories reused often enough to belong in a reviewed
 // asset rather than in a store nobody reads.

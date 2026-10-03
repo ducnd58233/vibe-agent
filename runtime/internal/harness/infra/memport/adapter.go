@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/tokenest"
 )
 
 // RecallLimit is how many memories ride along with a hook.
@@ -81,11 +82,38 @@ func ProposeFailure(p FailureProposal) {
 	_, _ = store.Confirm(ctx, stored.ID, memory.SourceCommandResult, p.SourceRef, now)
 }
 
-// Recall renders memories worth putting in front of this turn, or "" when none.
-func Recall(workspaceRoot, query string) string {
+// RecallTokenBudget caps what one retrieval may add to a prompt. Five memories
+// is a count, not a cost; a budget keeps five paragraphs from costing what
+// five facts would. Per-memory text is also capped, so one long memory cannot
+// take the whole allowance.
+const RecallTokenBudget = 350
+
+// recallLineChars caps one memory's line. Content can be 2000 characters; a
+// prompt-time reminder needs the claim, and the id lets a model ask for the rest.
+const recallLineChars = 280
+
+// RecallOptions tunes one retrieval.
+type RecallOptions struct {
+	// Exclude skips memories already in front of the model.
+	Exclude []string
+	// TokenBudget caps the estimated tokens returned. Zero means RecallLimit
+	// alone.
+	TokenBudget int
+}
+
+// Recalled is rendered text and the ids it carries, so a caller can remember
+// what it delivered.
+type Recalled struct {
+	Text string
+	IDs  []string
+}
+
+// RecallWith renders memories worth putting in front of this turn, or empty text
+// when none, skipping excluded ids and fitting a token budget.
+func RecallWith(workspaceRoot, query string, opts RecallOptions) Recalled {
 	store, opened := openExisting(workspaceRoot)
 	if !opened {
-		return ""
+		return Recalled{}
 	}
 	defer func() { _ = store.Close() }()
 
@@ -93,16 +121,20 @@ func Recall(workspaceRoot, query string) string {
 		WorkspaceID: memory.WorkspaceKey(workspaceRoot),
 		Text:        query,
 		Limit:       RecallLimit,
+		Exclude:     opts.Exclude,
+		TokenBudget: opts.TokenBudget,
 	})
 	if err != nil || len(hits) == 0 {
-		return ""
+		return Recalled{}
 	}
 
 	lines := []string{"Retrieved memory. " + memory.Disclaimer}
+	ids := make([]string, 0, len(hits))
 	for _, hit := range hits {
-		lines = append(lines, "  - "+singleLine(hit.Content))
+		lines = append(lines, "  - "+tokenest.TruncateWords(singleLine(hit.Content), recallLineChars))
+		ids = append(ids, hit.ID)
 	}
-	return strings.Join(lines, "\n")
+	return Recalled{Text: strings.Join(lines, "\n"), IDs: ids}
 }
 
 func openExisting(workspaceRoot string) (*memory.Store, bool) {

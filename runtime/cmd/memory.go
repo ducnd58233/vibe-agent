@@ -21,7 +21,7 @@ import (
 // into every session. This is that way.
 func memoryCommand(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("memory needs a subcommand: list, propose, confirm, forget, review, promotions, history, link, sessions")
+		return fmt.Errorf("memory needs a subcommand: list, propose, confirm, forget, review, promotions, history, link, sessions, gc")
 	}
 	switch args[0] {
 	case "list":
@@ -42,8 +42,10 @@ func memoryCommand(args []string) error {
 		return memoryLink(args[1:])
 	case "sessions":
 		return memorySessions(args[1:])
+	case "gc":
+		return memoryGC(args[1:])
 	default:
-		return fmt.Errorf("unknown memory subcommand %q; try list, propose, confirm, forget, review, promotions, history, link, or sessions", args[0])
+		return fmt.Errorf("unknown memory subcommand %q; try list, propose, confirm, forget, review, promotions, history, link, sessions, or gc", args[0])
 	}
 }
 
@@ -379,6 +381,35 @@ func memorySessions(args []string) error {
 				hit.Type, singleLine(hit.Snippet))
 		}
 		fmt.Printf("\n%s\n", memory.Disclaimer)
+		return nil
+	})
+}
+
+// memoryGC reclaims space from what can no longer be retrieved. By default it
+// only removes memories whose own expiry passed over a week ago, which no query
+// returns anyway; session history is kept unless a retention is asked for.
+func memoryGC(args []string) error {
+	flags := newFlagSet("memory gc")
+	paths := addRootFlags(flags)
+	expired := flags.Duration("expired-for", 7*24*time.Hour, "remove memories whose expiry passed at least this long ago (0 keeps them)")
+	sessions := flags.Duration("sessions-older-than", 0, "remove session history older than this, e.g. 2160h for 90 days (0 keeps it)")
+	dryRun := flags.Bool("dry-run", false, "count what would be removed without removing it")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	return withMemory(paths, func(store *memory.Store) error {
+		result, err := store.Prune(context.Background(), memory.PruneOptions{
+			Now: time.Now().UTC(), ExpiredFor: *expired, SessionsOlderThan: *sessions, DryRun: *dryRun,
+		})
+		if err != nil {
+			return err
+		}
+		verb := "removed"
+		if *dryRun {
+			verb = "would remove"
+		}
+		fmt.Printf("%s %d expired memor(ies), %d link(s), %d session event(s).\n",
+			verb, result.Memories, result.Links, result.Sessions)
 		return nil
 	})
 }

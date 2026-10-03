@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/ducnd58233/vibe-agent/runtime/internal/memory/domain"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/tokenest"
 )
 
 // DefaultLimit caps retrieval. Eight evidence-backed facts fit in a prompt; a
@@ -36,6 +38,14 @@ type Query struct {
 	// that was true then is usually stale now, and excluding it would make
 	// every as-of query answer with the present.
 	Statuses []domain.Status
+	// Exclude skips memories by id. A caller that already put a memory in front
+	// of the model passes it here so the slot goes to something new, rather than
+	// being spent repeating text that is already in context.
+	Exclude []string
+	// TokenBudget caps the estimated tokens of everything returned. Counting
+	// items instead is a poor proxy: five short facts and five paragraphs are the
+	// same limit and very different costs. Zero means no cap beyond Limit.
+	TokenBudget int
 	// AsOf asks what the workspace believed at an instant rather than what it
 	// believes now. Zero means now.
 	AsOf  time.Time
@@ -103,9 +113,35 @@ func (s *Store) Search(ctx context.Context, query Query) ([]Hit, error) {
 		return nil, err
 	}
 	if text == "" {
-		return hits, nil
+		return FitBudget(hits, query.TokenBudget), nil
 	}
-	return s.expandLinked(ctx, fuse(hits, query.Limit), query), nil
+	return FitBudget(s.expandLinked(ctx, fuse(hits, query.Limit), query), query.TokenBudget), nil
+}
+
+// hitOverhead is the estimated tokens a rendered hit costs beyond its content:
+// the bullet, and whatever id or label the caller prints with it.
+const hitOverhead = 6
+
+// FitBudget keeps hits, in rank order, while their estimated cost fits budget.
+//
+// It stops at the first hit that does not fit rather than skipping to a smaller
+// one further down: a lower-ranked fact leapfrogging the better one because it
+// happens to be shorter would make the budget reorder the answer. The top hit is
+// always kept, since returning nothing for a query that matched is worse than
+// returning one over-long memory (content is capped at 2000 characters anyway).
+func FitBudget(hits []Hit, budget int) []Hit {
+	if budget <= 0 || len(hits) == 0 {
+		return hits
+	}
+	spent := 0
+	for i, hit := range hits {
+		cost := tokenest.Estimate(hit.Content) + hitOverhead
+		if i > 0 && spent+cost > budget {
+			return hits[:i]
+		}
+		spent += cost
+	}
+	return hits
 }
 
 // expandLinked fills result slots the keyword stage left empty with the linked
@@ -147,7 +183,7 @@ func (s *Store) expandLinked(ctx context.Context, hits []Hit, query Query) []Hit
 
 // neighbourAllowed applies the same filters candidates applies in SQL.
 func neighbourAllowed(record domain.Record, query Query, instant time.Time) bool {
-	if record.WorkspaceID != query.WorkspaceID {
+	if record.WorkspaceID != query.WorkspaceID || slices.Contains(query.Exclude, record.ID) {
 		return false
 	}
 	allowedStatus := false
@@ -196,6 +232,13 @@ func (s *Store) candidates(ctx context.Context, query Query, text string, limit 
 		args = append(args, ftsQuery(text))
 		selectExpr = "bm25(memories_fts) AS score"
 		order = "score ASC"
+	}
+
+	if len(query.Exclude) > 0 {
+		conditions = append(conditions, "m.id NOT IN ("+strings.TrimSuffix(strings.Repeat("?,", len(query.Exclude)), ",")+")")
+		for _, id := range query.Exclude {
+			args = append(args, id)
+		}
 	}
 
 	conditions = append(conditions, inClause("m.status", len(query.Statuses)))

@@ -20,6 +20,7 @@ import (
 	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/runstart"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/observability"
+	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/tokenest"
 	"github.com/ducnd58233/vibe-agent/runtime/internal/shared/workspace"
 )
 
@@ -104,7 +105,7 @@ func Tools(deps Deps) []Tool {
 		{
 			Name:        "vibe_memory_search",
 			Description: "Call to check what earlier work already established before repeating research. Pass scope \"sessions\" to search what earlier conversations and tool calls said when nothing has been distilled yet. Do not call for this run's own state; use vibe_run_status instead.",
-			InputSchema: schema(`{"type":"object","required":["query"],"properties":{"query":{"type":"string"},"scope":{"type":"string","enum":["memories","sessions"],"description":"memories (default) searches confirmed memories; sessions searches past session turns"},"kinds":{"type":"array","items":{"type":"string","enum":["semantic","episodic","correction","preference"]}},"limit":{"type":"integer","minimum":1,"maximum":25}}}`),
+			InputSchema: schema(`{"type":"object","required":["query"],"properties":{"query":{"type":"string"},"scope":{"type":"string","enum":["memories","sessions"],"description":"memories (default) searches confirmed memories; sessions searches past session turns"},"kinds":{"type":"array","items":{"type":"string","enum":["semantic","episodic","correction","preference"]}},"limit":{"type":"integer","minimum":1,"maximum":25},"budget":{"type":"integer","minimum":1,"description":"Approximate token budget for the whole reply; lower-ranked memories are left out once it is spent"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return searchMemory(deps, raw) },
 		},
 		{
@@ -209,10 +210,11 @@ func bootstrap(deps Deps, raw json.RawMessage) (any, error) {
 func searchMemory(deps Deps, raw json.RawMessage) (any, error) {
 	store := deps.read()
 	var args struct {
-		Query string   `json:"query"`
-		Scope string   `json:"scope"`
-		Kinds []string `json:"kinds"`
-		Limit int      `json:"limit"`
+		Query  string   `json:"query"`
+		Scope  string   `json:"scope"`
+		Kinds  []string `json:"kinds"`
+		Limit  int      `json:"limit"`
+		Budget int      `json:"budget"`
 	}
 	if err := json.Unmarshal(raw, &args); err != nil {
 		return nil, err
@@ -229,7 +231,7 @@ func searchMemory(deps Deps, raw json.RawMessage) (any, error) {
 		return searchSessions(store, args.Query, args.Limit)
 	}
 
-	query := memory.Query{WorkspaceID: deps.WorkspaceID, Text: args.Query, Limit: args.Limit}
+	query := memory.Query{WorkspaceID: deps.WorkspaceID, Text: args.Query, Limit: args.Limit, TokenBudget: args.Budget}
 	for _, kind := range args.Kinds {
 		query.Kinds = append(query.Kinds, memory.Kind(kind))
 	}
@@ -761,13 +763,35 @@ func checksSummary(checks map[string]state.Check) map[string]any {
 	}
 }
 
+// Evidence is why a memory can be trusted, and a model deciding whether to act
+// on one needs the first few observations, not every one a long-lived memory has
+// accumulated. The rest stay in the store, and evidenceCount says they exist.
+const (
+	maxEvidenceItems = 3
+	maxEvidenceChars = 240
+)
+
+func compactEvidence(evidence []string) []string {
+	if len(evidence) > maxEvidenceItems {
+		evidence = evidence[:maxEvidenceItems]
+	}
+	out := make([]string, len(evidence))
+	for i, item := range evidence {
+		out[i] = tokenest.TruncateWords(item, maxEvidenceChars)
+	}
+	return out
+}
+
 func renderHits(hits []memory.Hit) []map[string]any {
 	rendered := make([]map[string]any, 0, len(hits))
 	for _, hit := range hits {
 		entry := map[string]any{
 			"id": hit.ID, "kind": string(hit.Kind),
 			"content": hit.Content, "confidence": hit.Confidence,
-			"evidence": hit.Evidence, "source": hit.SourceRef,
+			"evidence": compactEvidence(hit.Evidence), "source": hit.SourceRef,
+		}
+		if len(hit.Evidence) > maxEvidenceItems {
+			entry["evidenceCount"] = len(hit.Evidence)
 		}
 		if hit.Via != "" {
 			entry["via"] = hit.Via

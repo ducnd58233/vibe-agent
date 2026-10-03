@@ -76,6 +76,15 @@ Do not use when:
 5. **Override on demand**
    - If the user asks for details, expand depth immediately.
 
+## What the runtime already does
+
+<context>
+
+Context the hooks inject is deduplicated per conversation, budgeted in tokens, and capped per turn,
+so do not restate a run's node or a recalled memory the session already has. How, and the research
+behind it: [`runtime/README.md`](../../../runtime/README.md) section "Token efficiency".
+</context>
+
 ## Execution flow
 
 1. Clarify the deliverable and acceptance criteria.

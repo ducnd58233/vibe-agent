@@ -49,12 +49,6 @@ func parseSessionPath(path string) (sessionLocation, bool) {
 	return sessionLocation{}, false
 }
 
-// IsSessionSQLPath reports whether a log path is stored in the session_events table.
-func IsSessionSQLPath(path string) bool {
-	_, ok := parseSessionPath(path)
-	return ok
-}
-
 // appendSessionSQL stores one session gesture. Sequence is assigned inside one
 // statement, so two hook processes appending at once cannot pick the same number.
 func appendSessionSQL(path string, event *domain.Event) (bool, error) {

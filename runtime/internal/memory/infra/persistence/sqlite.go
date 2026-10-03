@@ -127,7 +127,7 @@ func (s *Store) Close() error { return s.db.Close() }
 // This is the only write path model output can reach, and it cannot produce a
 // confirmed record.
 func (s *Store) Propose(ctx context.Context, candidate domain.Record, now time.Time) (domain.Record, domain.Decision, error) {
-	existing, err := s.List(ctx, candidate.WorkspaceID)
+	existing, err := s.listOpen(ctx, candidate.WorkspaceID, candidate.Kind)
 	if err != nil {
 		return domain.Record{}, domain.Decision{}, err
 	}
@@ -287,6 +287,22 @@ func (s *Store) List(ctx context.Context, workspaceID string) ([]domain.Record, 
 		selectColumns+` WHERE workspace_id = ? ORDER BY created_at DESC`, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("list memories: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	return scanRecords(rows)
+}
+
+// listOpen returns the memories a candidate could duplicate: same workspace and
+// kind, still held. The duplicate check never looks at closed or stale records,
+// so loading them on every proposal made each failing shell command scan the
+// whole history for nothing.
+func (s *Store) listOpen(ctx context.Context, workspaceID string, kind domain.Kind) ([]domain.Record, error) {
+	rows, err := s.db.QueryContext(ctx,
+		selectColumns+` WHERE workspace_id = ? AND kind = ? AND status IN (?, ?) AND valid_to IS NULL
+         ORDER BY created_at DESC`,
+		workspaceID, string(kind), string(domain.StatusProposed), string(domain.StatusConfirmed))
+	if err != nil {
+		return nil, fmt.Errorf("list open memories: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 	return scanRecords(rows)

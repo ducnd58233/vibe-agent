@@ -206,6 +206,12 @@ type payload struct {
 	Prompt     string `json:"prompt"`
 	UserPrompt string `json:"user_prompt"`
 
+	// SessionID is Claude's and Codex's conversation id; Cursor sends
+	// conversation_id. The injection ledger is keyed by it so two conversations
+	// in one workspace do not suppress each other's context.
+	SessionID      string `json:"session_id"`
+	ConversationID string `json:"conversation_id"`
+
 	// Claude sends transcript_path; Cursor sends agent_transcript_path.
 	TranscriptPath      string `json:"transcript_path"`
 	AgentTranscriptPath string `json:"agent_transcript_path"`
@@ -356,7 +362,7 @@ func Run(req Request, out io.Writer) error {
 		if req.Client == ClientCursor {
 			return nil
 		}
-		text := promptContext(req, body.text())
+		text := promptContext(req, body)
 		if text == "" {
 			return nil
 		}
@@ -417,7 +423,11 @@ func readPayload(reader io.Reader) payload {
 // already knows, and whether a run is in flight, so it resumes rather than
 // starting over.
 func sessionStart(req Request, body payload, out io.Writer) error {
-	text := sessionContext(req)
+	// A new, resumed, cleared or compacted session has lost whatever the last
+	// one was told, so its ledger starts over and records what this one is told.
+	ledger := resetInjectLedger(req, body)
+	text := sessionContextWith(req, ledger)
+	ledger.save(req)
 	// The flat-envelope hosts. This branch named only Cursor and answered
 	// opencode in Claude's nested shape, which opencode's plugin does not read:
 	// the hook fired, the reply was discarded, and nothing reported it. The bug
@@ -451,7 +461,11 @@ func sessionStart(req Request, body payload, out io.Writer) error {
 	return write(out, map[string]any{"hookSpecificOutput": specific})
 }
 
-func sessionContext(req Request) string {
+func sessionContext(req Request) string { return sessionContextWith(req, nil) }
+
+// sessionContextWith builds the session-start text. A non-nil ledger records the
+// memories it includes so the first prompt does not repeat them.
+func sessionContextWith(req Request, ledger *injectLedger) string {
 	var lines []string
 	lines = append(lines, "vibe-agent control plane is available.")
 
@@ -491,7 +505,7 @@ func sessionContext(req Request) string {
 	// Retrieval happens here rather than behind a tool call, so what the
 	// workspace already learned reaches the model whether or not it thinks to
 	// ask. Passing no query returns the most recently updated memories.
-	if recalled := recall(req.WorkspaceRoot, ""); recalled != "" {
+	if recalled := recall(req.WorkspaceRoot, "", ledger); recalled != "" {
 		lines = append(lines, recalled)
 	}
 	return strings.Join(lines, "\n")
@@ -539,8 +553,17 @@ func autoRunHint(run *state.Run) string {
 // This used to fire only when the prompt contained a progress-sounding keyword,
 // which meant an ordinary question got neither. Whether context is needed is not
 // something a substring match can answer.
-func promptContext(req Request, prompt string) string {
+func promptContext(req Request, body payload) string {
+	prompt := body.text()
+	ledger := loadInjectLedger(req, body)
+	ledger.Prompt++
+
 	var lines []string
+	emit := func(line string) {
+		if ledger.due(line) {
+			lines = append(lines, line)
+		}
+	}
 
 	if active := activeRuns(req.WorkspaceRoot); len(active) > 0 {
 		for _, run := range active {
@@ -548,18 +571,19 @@ func promptContext(req Request, prompt string) string {
 			if node, ok := nodeFor(req, run); ok && node.Description != "" {
 				line += " " + node.Description
 			}
-			lines = append(lines, line)
+			emit(line)
 		}
-		lines = append(lines, "Follow the current node the runtime reports. Do not advance workflow state by inference.")
+		emit("Follow the current node the runtime reports. Do not advance workflow state by inference.")
 	}
 
 	if reminder := authoringContext(prompt); reminder != "" {
-		lines = append(lines, reminder)
+		emit(reminder)
 	}
 
-	if recalled := recall(req.WorkspaceRoot, prompt); recalled != "" {
+	if recalled := recall(req.WorkspaceRoot, prompt, ledger); recalled != "" {
 		lines = append(lines, recalled)
 	}
+	ledger.save(req)
 	return strings.Join(lines, "\n")
 }
 

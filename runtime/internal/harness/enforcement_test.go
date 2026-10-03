@@ -292,7 +292,9 @@ func TestPromptSubmitReadsEitherPromptField(t *testing.T) {
 	for _, field := range []string{"prompt", "user_prompt"} {
 		output := invoke(t, Request{
 			Event: EventUserPromptSubmit, Client: ClientClaude, WorkspaceRoot: root,
-			Stdin: strings.NewReader(`{"` + field + `":"why is CGO turned off here"}`),
+			// Distinct sessions: within one, the second identical prompt is
+			// deliberately not answered with the same memory again.
+			Stdin: strings.NewReader(`{"session_id":"` + field + `","` + field + `":"why is CGO turned off here"}`),
 		})
 		if !strings.Contains(output, "CGO disabled") {
 			t.Errorf("field %q was not read: %s", field, output)
