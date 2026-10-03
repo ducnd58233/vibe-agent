@@ -15,7 +15,7 @@ tools:
 
 <references>
 
-Follow [`evidence-based-analysis`](../skills/evidence-based-analysis/SKILL.md).
+Follow [`evidence-based-analysis`](../skills/evidence-based-analysis/SKILL.md). When the evidence is an experiment or benchmark result, also apply [`research-integrity`](../references/research-integrity.md): label a result from a single run, a reused split, or an unreported trial count as low confidence.
 
 When the analysis includes diagrams, flows, timelines, or decision maps, follow [`diagram-authoring`](../references/diagram-authoring.md).
 </references>

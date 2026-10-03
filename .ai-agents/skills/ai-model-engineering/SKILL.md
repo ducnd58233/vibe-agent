@@ -20,6 +20,7 @@ disable-model-invocation: true
    - Confirm whether an API/pretrained model, retrieval/rules, fine-tune/adapter, or training-from-scratch is justified.
 3. **Audit data**
    - Check source, license/consent, splits, leakage, missingness, imbalance, label quality, PII/sensitive data, dataset version, and deployment representativeness.
+   - Split by the unit that must not cross (user, session, document, time), fit preprocessing on train only, and remove duplicates across splits. Rules: [`research-integrity`](../../references/research-integrity.md).
    - Require dataset cards or equivalent notes for reusable datasets.
 4. **Build baselines and experiments**
    - Establish simple heuristic/classical/pretrained baselines before custom complexity.
@@ -27,7 +28,8 @@ disable-model-invocation: true
    - Keep notebooks exploratory; move production training/eval into deterministic scripts.
 5. **Evaluate rigorously**
    - Select metrics for the task and domain.
-   - Compare against baseline, add slice tests and failure examples, and keep a held-out test set.
+   - Compare against baseline, add slice tests and failure examples, and keep a held-out test set that is scored once.
+   - Treat validation-high, test-low as a leakage signal to investigate, not a number to tune away.
    - For LLM/RAG/agent systems, evaluate retrieval/context separately from final answer behavior.
 6. **Prepare for serving**
    - Define model signature, preprocessing/postprocessing, artifact format, runtime target, batch/online mode, fallback, rollback, and resource envelope.
@@ -71,6 +73,7 @@ Do not use for generic data analysis only; use [`mlops-lifecycle`](../mlops-life
 - [ ] Data source, split, leakage, license, and quality risks are documented.
 - [ ] Experiment artifacts are reproducible.
 - [ ] Evaluation includes baseline comparison and relevant slices.
+- [ ] Selection-versus-held-out gap is reported; the held-out split was not used to choose anything; trials tried are counted.
 - [ ] Serving plan includes latency/cost/resource and rollback constraints.
 - [ ] Monitoring signals, owner, thresholds, and retraining/retirement criteria are defined.
 - [ ] Model card and dataset card are updated when applicable.

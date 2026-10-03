@@ -26,7 +26,7 @@ disable-model-invocation: true
 5. **Design reproduction or experiment**
    - Define minimal reproducible target: dataset subset, metric, expected range, hardware, time budget, seeds, configs, and stopping criteria.
    - Plan ablations for the core claim, not every paper detail.
-   - Avoid test-set tuning and hidden leakage.
+   - Freeze splits, metric, thresholds, trial budget, and data terms before running; avoid test-set tuning and hidden leakage. Rules: [`research-integrity`](../../references/research-integrity.md).
 6. **Analyze failures**
    - Inspect qualitative examples, slices, confusions, prompt/retrieval failures, modality-specific errors, and out-of-distribution behavior.
 7. **Handoff to engineering**
@@ -42,6 +42,7 @@ disable-model-invocation: true
 - Pair with [`evidence-based-analysis`](../evidence-based-analysis/SKILL.md) for final tradeoff recommendation.
 - Pair with [`mlops-lifecycle`](../mlops-lifecycle/SKILL.md) when research affects production model lifecycle.
 - Use [`../../references/ai-model-development-patterns.md`](../../references/ai-model-development-patterns.md) for lifecycle/evaluation/documentation checks.
+- Use [`../../references/research-integrity.md`](../../references/research-integrity.md) for leakage, selection pressure, shortcutting, contamination, and data-terms rules.
 
 Use before adopting new AI methods, model families, datasets, benchmarks, evaluation frameworks, or papers; use when a task needs research-grade evidence rather than direct implementation.
 Do not use for ordinary coding or generic web research that is not AI/ML-method specific.
@@ -64,5 +65,6 @@ Do not use for ordinary coding or generic web research that is not AI/ML-method 
 - [ ] Sources are cited and source quality is graded.
 - [ ] Claims distinguish paper-reported, independently reproduced, and unverified results.
 - [ ] Reproduction/experiment plan has metric, data, compute, seed/config, and stop criteria.
+- [ ] Splits, thresholds, and trial budget were fixed before any result; the held-out split is scored once; data licence and terms are recorded.
 - [ ] Recommendation includes implementation, eval, safety, and monitoring implications.
 </verification>

@@ -26,6 +26,7 @@ type MetricThreshold struct {
 type MetricsDocument struct {
 	Metrics    map[string]float64         `json:"metrics"`
 	Thresholds map[string]MetricThreshold `json:"thresholds"`
+	Integrity  *Integrity                 `json:"integrity,omitempty"`
 }
 
 // Results reads experiment/METRICS.json and experiment/STATUS.md together.
@@ -100,6 +101,7 @@ func (Results) Verify(_ context.Context, req Request) (Result, error) {
 			problems = append(problems, fmt.Sprintf("%s=%g does not satisfy %s %g", name, actual, threshold.Op, threshold.Value))
 		}
 	}
+	problems = append(problems, checkIntegrity(doc)...)
 	now := time.Now().UTC()
 	if len(problems) > 0 {
 		return failResult(relative, strings.Join(problems, "; "), now), nil
@@ -111,7 +113,7 @@ func (Results) Verify(_ context.Context, req Request) (Result, error) {
 			Ref:    relative,
 			At:     now,
 		},
-		Summary: "experiment metrics meet every declared threshold",
+		Summary: "experiment metrics meet every declared threshold and the evaluation record is consistent",
 		Detail:  string(raw),
 	}, nil
 }

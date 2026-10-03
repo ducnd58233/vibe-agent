@@ -54,7 +54,9 @@ Applies to consumer repositories that build, adapt, train, evaluate, serve, or m
 <required>
 
 - Do not claim model quality without evaluation data, baseline comparison, and split details
-- Do not tune against the final test set
+- Do not tune against the final test set, and do not reuse it: a split scored more than once is a selection split
+- Do not edit an evaluator, grader, label, or threshold to make a result pass
+- Treat validation-high, test-low as leakage to investigate; rules in [`research-integrity`](../references/research-integrity.md)
 - Do not use datasets without license/source/consent review
 - Do not log secrets, PII, sensitive prompts, labels, or model outputs without policy review
 - Do not publish models/datasets or upload artifacts externally without approval

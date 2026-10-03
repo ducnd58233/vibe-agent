@@ -208,11 +208,17 @@ Stop only when:
 
 - run status is terminal (`done`, `failed`, `budget_exceeded`), or
 - a gate document leaves open markers (Open questions, TBD, or missing Applicability / Refine /
-  Mermaid on RESEARCH, or missing Mermaid on PLAN).
+  Mermaid on RESEARCH, or missing Mermaid, Evaluation protocol, or Data and terms on an experiment PLAN), or
+- `results_eval` fails with a summary starting `INTEGRITY:` that correcting the record cannot fix
+  (a spent held-out split, or a gap that points at leakage). Report it to the person
+  and end the turn without recording a blocker; re-running to make it pass is the failure it exists
+  to stop. See [`experiment.md`](experiment.md) "Integrity (MUST)".
 
 A missed metrics threshold at `results_eval` is neither of those - it is a verifier fail the graph
-already retries automatically. Never record it as `checkpoint --blocker`; see
-[`AGENTS.md`](../../AGENTS.md) "Blocker vs. retry".
+already retries automatically (an `INTEGRITY:` failure is the exception above). Never record it as
+`checkpoint --blocker`; see [`AGENTS.md`](../../AGENTS.md) "Blocker vs. retry". Unclear dataset
+licence or terms are a separate stop; see [`research-integrity`](../references/research-integrity.md)
+"When to stop and ask a person".
 
 **One honest check is not the same as a terminal status.** The Stop hook will let a turn end at
 `experiment_monitor` once a single `vibe-agent verify` has come back, even when it came back

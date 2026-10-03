@@ -66,6 +66,14 @@ path. When a rule already has a home, link to it instead of restating it.
 - **Grounded claims (no fabrication):** never describe a file, path, command result, or source you
   have not actually opened, listed, or run. Report `ACCESS-FAILED: <path>` for inaccessible inputs
   instead of inferring. Harness-agnostic, and applies to subagents as much as to primary agents.
+- **Research integrity (MUST):** in any experiment, benchmark, model evaluation, or research that
+  reports a number, never tune on, reuse, or peek at the held-out split; never edit an evaluator,
+  grader, threshold, label, or test to make a result pass; never report a number you did not trace
+  to a log or an opened source. Freeze splits, metric, thresholds, and trial budget before the run,
+  and record each dataset's licence and terms. A validation-high, test-low gap is a leakage signal
+  to investigate, not to tune away. Failure classes and the checks that enforce this (the
+  `integrity` block in `METRICS.json`, the PLAN sections at `approve_design`):
+  [`research-integrity.md`](.ai-agents/references/research-integrity.md).
 - **Security first (MUST):** apply [`secure-by-default`](.ai-agents/skills/secure-by-default/SKILL.md)
   to any work touching auth, user data, logging, error handling, config, or a client surface. No
   credential, token, or personal data reaches a channel an end user, outside developer, or attacker

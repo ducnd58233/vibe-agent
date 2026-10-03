@@ -132,7 +132,10 @@ spec:
       check: design_approved
       prompt: >-
         Review the experiment PLAN Mermaid and tasks under
-        docs/${date}/${slug}/${version}/. Approve to run on host/CI compute.
+        docs/${date}/${slug}/${version}/. Check the Evaluation protocol (splits,
+        what is tuned where, frozen thresholds, trial budget) and Data and terms
+        (licence, terms of use, consent) before approving; they cannot change
+        after the run. Approve to run on host/CI compute.
       skipWhen: design_ok
 
     experiment_run:

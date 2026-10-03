@@ -53,6 +53,7 @@ Applies to consumer repositories that train, evaluate, register, deploy, monitor
 <required>
 
 - Do not promote a model without evaluation results, lineage, artifact version, and rollback path
+- Do not promote on a held-out split that was used for selection or scored repeatedly; see [`research-integrity`](../references/research-integrity.md)
 - Do not couple notebooks directly to production jobs without extracting deterministic scripts
 - Do not treat test accuracy alone as production readiness; include drift, calibration, latency, fairness/safety where applicable
 - Do not log sensitive training data, prompts, labels, or model outputs without policy review
