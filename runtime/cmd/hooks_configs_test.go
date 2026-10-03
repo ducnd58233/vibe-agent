@@ -12,7 +12,7 @@ func TestHookConfigsCoverEveryContractPath(t *testing.T) {
 	for _, config := range hookConfigs {
 		have[config.Path] = true
 	}
-	for _, want := range []string{".codex/config.toml", ".kimi/hooks.toml", "opencode.json"} {
+	for _, want := range []string{".codex/config.toml", ".kimi-code/hooks.toml", "opencode.json"} {
 		if !have[filepath.FromSlash(want)] {
 			t.Errorf("hook configs lack %s", want)
 		}

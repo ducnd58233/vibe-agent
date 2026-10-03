@@ -370,21 +370,3 @@ func hasSuffixFold(path string, suffixes []string) bool {
 	}
 	return false
 }
-
-// isFileWrite reports whether a tool call put text into a file.
-//
-// Each host config used to do this with a matcher - "Edit|Write|NotebookEdit"
-// beside the script - and that filtering does not survive the move: one binary
-// answers every PostToolUse, so a Read, which also carries a file_path, would
-// otherwise be scanned as though it had written the file it opened.
-//
-// An empty name passes. A host whose edit event is already edit-only sends no
-// tool name, and refusing it would silence every guard on that host.
-func isFileWrite(tool string) bool {
-	switch tool {
-	case "", "Edit", "Write", "NotebookEdit", "MultiEdit":
-		return true
-	default:
-		return false
-	}
-}

@@ -111,7 +111,7 @@ func (s selector) empty() bool {
 // judge the file that now exists: an Edit sends only its replacement half, and
 // a heredoc writes a file with no tool_input at all.
 func resolveSubject(req Request, body payload) (subject, bool) {
-	if !isFileWrite(body.ToolName) {
+	if !isFileWrite(req.Client, body.ToolName) {
 		return subject{}, false
 	}
 	target := body.writeTarget()

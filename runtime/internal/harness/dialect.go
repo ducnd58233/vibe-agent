@@ -22,6 +22,11 @@ type Dialect struct {
 	StopBlock StopShape
 	// PostTool is how advice after a completed tool call is reported.
 	PostTool PostToolShape
+	// RefusalExits also exits with the blocking status after writing the
+	// refusal body. For a host measured to fail open on everything but that
+	// status, the JSON alone can be ignored without a word, so both channels
+	// carry the same refusal.
+	RefusalExits bool
 
 	// PromptInjection is true when the prompt-submit event can add context. A
 	// host that cannot is sent nothing there: blocking the person to deliver a
@@ -48,6 +53,10 @@ const (
 	ContextFlat ContextShape = "flat"
 	// ContextSteps is injectSteps carrying an ephemeral message.
 	ContextSteps ContextShape = "steps"
+	// ContextPlain is the text itself on stdout, for a host that appends
+	// whatever a hook prints to the model's context. A JSON envelope there
+	// would arrive as literal JSON.
+	ContextPlain ContextShape = "plain"
 )
 
 // RefusalShape names how a PreToolUse refusal reaches the host.
@@ -82,6 +91,9 @@ const (
 	// StopNone means the host has no end-of-turn hook, so nothing can be refused
 	// and saying nothing is the honest answer.
 	StopNone StopShape = "none"
+	// StopExit refuses through the blocking exit status, with the reason on
+	// stderr, for a host whose stop hook reads nothing from stdout.
+	StopExit StopShape = "exit"
 )
 
 // PostToolShape names how advice after a tool call reaches the host.
@@ -114,6 +126,8 @@ func contextBody(d Dialect, event, text string) map[string]any {
 		return map[string]any{"additional_context": text}
 	case ContextSteps:
 		return map[string]any{"injectSteps": []map[string]any{{"ephemeralMessage": text}}}
+	case ContextPlain:
+		return nil
 	default:
 		return map[string]any{"hookSpecificOutput": map[string]any{
 			"hookEventName":     event,
@@ -155,7 +169,7 @@ func stopBody(d Dialect, reason string) map[string]any {
 		return map[string]any{"followup_message": reason}
 	case StopContinue:
 		return map[string]any{"decision": "continue", "reason": reason}
-	case StopNone:
+	case StopNone, StopExit:
 		return nil
 	default:
 		return map[string]any{"decision": "block", "reason": reason}
@@ -170,6 +184,15 @@ func postToolBody(d Dialect, text string) map[string]any {
 	body := contextBody(Dialect{}, "PostToolUse", text)
 	body["systemMessage"] = text
 	return body
+}
+
+// writeContext writes text added to the model's context in the host's shape.
+func writeContext(out io.Writer, d Dialect, event, text string) error {
+	if d.Context == ContextPlain {
+		_, err := io.WriteString(out, text+"\n")
+		return err
+	}
+	return write(out, contextBody(d, event, text))
 }
 
 func writeBody(out io.Writer, body map[string]any) error {

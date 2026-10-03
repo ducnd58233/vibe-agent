@@ -36,9 +36,6 @@ import (
 // BlockError so the same cache hit reaches the model correctly on every
 // host, not only the one whose convention it was written against.
 
-// sddCacheTool is the tool whose calls the cache wraps.
-const sddCacheTool = "WebFetch"
-
 // sddCacheTimeout bounds a revalidation request. The script makes one HTTP HEAD
 // call, so this is generous rather than tight; the point is that a hung network
 // cannot hold a tool call open indefinitely.
@@ -65,7 +62,7 @@ var pythonCandidates = []string{"python3", "python"}
 // optional accelerator is not installed is worse than one that quietly does not
 // accelerate.
 func sddCache(req Request, body payload, script string) *BlockError {
-	if body.ToolName != sddCacheTool {
+	if !isFetch(req.Client, body.ToolName) {
 		return nil
 	}
 	path := workspace.ToolkitPath(req.ToolkitRoot, "hooks", script)

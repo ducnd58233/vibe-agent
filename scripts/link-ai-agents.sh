@@ -576,6 +576,9 @@ EOF
     "PostToolUse": [
       { "hooks": [ { "type": "command", "command": "$(hook_command post-tool-use muse)" } ] }
     ],
+    "PostToolUseFailure": [
+      { "hooks": [ { "type": "command", "command": "$(hook_command post-tool-use-failure muse)" } ] }
+    ],
     "Stop": [
       { "hooks": [ { "type": "command", "command": "$(hook_command stop muse)" } ] }
     ]
@@ -585,21 +588,36 @@ EOF
     echo "Installed minimal Muse hook config at $WORKSPACE/.muse/hooks.json (run muse hooks trust after install)"
   fi
 
-  if [ ! -f "$WORKSPACE/.kimi/hooks.toml" ]; then
-    mkdir -p "$WORKSPACE/.kimi"
-    cat > "$WORKSPACE/.kimi/hooks.toml" <<EOF
-# Copy these [[hooks]] blocks into ~/.kimi/config.toml (Kimi reads user config only).
+  if [ ! -f "$WORKSPACE/.kimi-code/hooks.toml" ]; then
+    mkdir -p "$WORKSPACE/.kimi-code"
+    cat > "$WORKSPACE/.kimi-code/hooks.toml" <<EOF
+# Copy these [[hooks]] blocks into ~/.kimi-code/config.toml (\$KIMI_CODE_HOME/config.toml).
+# Kimi Code reads hooks from user config only; [[hooks]] accepts exactly
+# event, matcher, command, and timeout. No matcher: vibe-agent filters tools itself.
+
+[[hooks]]
+event = "SessionStart"
+command = "$(hook_command session-start kimi)"
+timeout = 30
+
+[[hooks]]
+event = "UserPromptSubmit"
+command = "$(hook_command user-prompt-submit kimi)"
+timeout = 30
 
 [[hooks]]
 event = "PreToolUse"
-matcher = "Shell|WriteFile|EditFile|MultiEdit|FetchURL|SearchWeb"
 command = "$(hook_command pre-tool-use kimi)"
 timeout = 30
 
 [[hooks]]
 event = "PostToolUse"
-matcher = "Shell|WriteFile|EditFile|MultiEdit|FetchURL|SearchWeb"
 command = "$(hook_command post-tool-use kimi)"
+timeout = 30
+
+[[hooks]]
+event = "PostToolUseFailure"
+command = "$(hook_command post-tool-use-failure kimi)"
 timeout = 30
 
 [[hooks]]
@@ -607,7 +625,7 @@ event = "Stop"
 command = "$(hook_command stop kimi)"
 timeout = 30
 EOF
-    echo "Installed Kimi hook snippet at $WORKSPACE/.kimi/hooks.toml (merge into ~/.kimi/config.toml)"
+    echo "Installed Kimi Code hook snippet at $WORKSPACE/.kimi-code/hooks.toml (merge into ~/.kimi-code/config.toml)"
   fi
 }
 
@@ -851,7 +869,7 @@ install_workspace_hook_configs
 emit_plugin_manifests "$WORKSPACE"
 install_runtime
 
-echo "Symlinks created under $WORKSPACE (.claude, .cursor, .opencode, .agents, .muse, .kimi) -> $ASSETS"
+echo "Symlinks created under $WORKSPACE (.claude, .cursor, .opencode, .agents, .muse, .kimi-code) -> $ASSETS"
 echo "Codex custom agents synced to $WORKSPACE/.codex/agents"
 echo "Codex command skills synced to $WORKSPACE/.agents/skills as <name>"
 echo "Codex command form in a linked workspace: \$<name> (custom /prompts and top-level /vibe-* are not available in Codex CLI 0.147.0)"

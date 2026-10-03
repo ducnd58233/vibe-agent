@@ -29,9 +29,10 @@ type Root struct {
 	Dir string
 }
 
-// sharedSkillRoots are read by hosts that follow the vendor-neutral layout
-// rather than a directory of their own.
-var sharedSkillRoots = []Root{{Home, ".agents/skills"}}
+// sharedSkillRoots are the vendor-neutral skill directories. Codex, Kimi Code,
+// Muse, and Antigravity all read them, in the workspace and in the user's home,
+// so a skill placed there reaches every one of them.
+var sharedSkillRoots = []Root{{Workspace, ".agents/skills"}, {Home, ".agents/skills"}}
 
 // RulesFiles lists every standing-instructions file a host may leave at a
 // workspace root, shared one first.

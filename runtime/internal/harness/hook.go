@@ -270,7 +270,11 @@ func sessionStart(req Request, body payload, out io.Writer) error {
 	ledger := resetInjectLedger(req, body)
 	text := sessionContextWith(req, ledger)
 	ledger.save(req)
-	envelope := contextBody(dialectFor(req.Client), "SessionStart", text)
+	dialect := dialectFor(req.Client)
+	if dialect.Context == ContextPlain {
+		return writeContext(out, dialect, "SessionStart", text)
+	}
+	envelope := contextBody(dialect, "SessionStart", text)
 
 	// Compaction re-fires SessionStart in the middle of a session. Steering
 	// there would hijack the conversation already in progress.
@@ -279,7 +283,7 @@ func sessionStart(req Request, body payload, out io.Writer) error {
 	// fields it does not know would cost the retrieved memory as well as the
 	// steer, so what is unverified stays out rather than endangering what is
 	// verified.
-	if dialectFor(req.Client).SteersSessionStart && body.Source != "compact" {
+	if dialect.SteersSessionStart && body.Source != "compact" {
 		if specific, ok := envelope["hookSpecificOutput"].(map[string]any); ok {
 			if steer := steerMessage(req); steer != "" {
 				specific["initialUserMessage"] = steer
@@ -476,7 +480,11 @@ func stop(req Request, body payload, out io.Writer, extra string) error {
 // with no end-of-turn hook gets nothing: a reply no reader parses is the silent
 // divergence this package keeps finding.
 func writeBlockDecision(out io.Writer, client Client, reason string) error {
-	return writeBody(out, stopBody(dialectFor(client), reason))
+	dialect := dialectFor(client)
+	if dialect.StopBlock == StopExit {
+		return &BlockError{Reason: reason}
+	}
+	return writeBody(out, stopBody(dialect, reason))
 }
 
 // researchLoopNodes names each graph's own experiment retry cycle, where a
@@ -631,7 +639,7 @@ func emitContext(out io.Writer, client Client, event, text string) error {
 	if text == "" {
 		return nil
 	}
-	return write(out, contextBody(dialectFor(client), event, text))
+	return writeContext(out, dialectFor(client), event, text)
 }
 
 func emitMessage(out io.Writer, text string) error {

@@ -91,13 +91,13 @@ The runtime hooks session start, prompt submit, pre-tool gates, post-tool journa
 | Cursor | `cursor-agent` | `.cursor/hooks.json` | Verified |
 | Codex CLI | `codex` | `.codex/config.toml` | Verified |
 | opencode | `opencode` | `opencode.json` | Verified |
-| Google Antigravity | `antigravity` | `.agents/hooks.json` | Hook wiring shipped; payload fields UNVERIFIED until observed on a live host |
-| Kimi | `kimi` | `.kimi/hooks.toml` (merge into `~/.kimi/config.toml`) | Hook wiring shipped; Kimi reads user config only |
-| Muse | `muse` | `.muse/hooks.json` | Hook wiring shipped; run `muse hooks trust` after install |
+| Google Antigravity | `antigravity` | `.agents/hooks.json` (user: `~/.gemini/config/hooks.json`) | Hook wiring shipped; camelCase stdin mapped; UNVERIFIED until observed on a live host |
+| Kimi Code | `kimi` | `.kimi-code/hooks.toml` (merge into `~/.kimi-code/config.toml`) | All six events wired from the vendor docs; hooks are user-level only; UNVERIFIED |
+| Muse | `muse` | `.muse/hooks.json` | Six events wired; refusals also exit 2 because the host fails open otherwise; run `muse hooks trust` |
 
-`bash scripts/link-ai-agents.sh` creates Antigravity, Kimi, and Muse hook stubs when those files are missing. `vibe-agent doctor` scans all seven configs and reports wiring status. Generated hook contracts: [`.ai-agents/references/host-hook-contracts.md`](.ai-agents/references/host-hook-contracts.md).
+`bash scripts/link-ai-agents.sh` and `scripts/link-ai-agents.ps1` create Antigravity, Kimi Code, and Muse hook stubs when those files are missing. `vibe-agent doctor` scans all seven configs and reports wiring status. Generated hook contracts: [`.ai-agents/references/host-hook-contracts.md`](.ai-agents/references/host-hook-contracts.md).
 
-Codex and Antigravity also get command skills under `.agents/skills/` (Agent Skills layout). Cursor and Claude keep commands under their own generated views.
+Codex, Antigravity, Kimi Code, and Muse all read `.agents/skills/` (Agent Skills layout), so the command skills synced there reach all four. Cursor and Claude keep commands under their own generated views.
 
 ## Three ways to work
 

@@ -146,11 +146,18 @@ func gate(req Request, body payload, out io.Writer) error {
 // of silent per-host divergence the contract table was added to catch, produced
 // while fixing another one.
 func deliverBlock(req Request, blocked *BlockError, out io.Writer) error {
-	body := refusalBody(dialectFor(req.Client), blocked.Reason)
+	dialect := dialectFor(req.Client)
+	body := refusalBody(dialect, blocked.Reason)
 	if body == nil {
 		return blocked
 	}
-	return write(out, body)
+	if err := write(out, body); err != nil {
+		return err
+	}
+	if dialect.RefusalExits {
+		return blocked
+	}
+	return nil
 }
 
 // verdict runs every guard this hook enforces. The first refusal wins.

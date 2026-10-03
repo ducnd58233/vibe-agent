@@ -66,13 +66,26 @@ var catalog = []Host{
 		SkillsAgent:  "opencode",
 	},
 
-	// Three hosts nobody here has run. Listed so Inventory answers "not on
-	// PATH" rather than saying nothing. Hook envelopes exist in
-	// runtime/internal/harness/contracts.go and are marked UNVERIFIED until
-	// someone watches them fire.
-	{ID: "kimi", Binary: "kimi", EvalCommand: "kimi --print", PromptAsArg: true},
-	{ID: "muse", Binary: "muse", EvalCommand: "muse exec --json", PromptAsArg: true},
-	{ID: "antigravity", Binary: "antigravity", EvalCommand: "antigravity exec", PromptAsArg: true},
+	// Three hosts nobody here has run. Their layout and hook contracts are read
+	// from vendor documentation and independent measurement; the contracts stay
+	// UNVERIFIED in runtime/internal/harness/contracts.go until someone watches
+	// a hook fire.
+	{
+		ID: "kimi", Binary: "kimi", EvalCommand: "kimi --print", PromptAsArg: true,
+		SkillRoots: []Root{{Workspace, ".kimi-code/skills"}, {Home, ".kimi-code/skills"}},
+	},
+	{
+		ID: "muse", Binary: "muse", EvalCommand: "muse exec --json", PromptAsArg: true,
+		// Muse reads an existing CLAUDE.md alongside AGENTS.md, and skills from the
+		// shared .agents/skills root.
+		RulesFiles: []string{"CLAUDE.md"},
+	},
+	{
+		ID: "antigravity", Binary: "antigravity", EvalCommand: "antigravity exec", PromptAsArg: true,
+		// Antigravity keeps workspace customisation under .agents/, whose skills
+		// root is shared. Its user directory is documented for hooks only
+		// (~/.gemini/config/hooks.json), so no user skill root is claimed.
+	},
 }
 
 var lookPath = safexec.LookPath

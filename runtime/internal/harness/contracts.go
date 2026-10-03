@@ -1,5 +1,7 @@
 package harness
 
+import "slices"
+
 // What each host's hook API actually is, as data.
 //
 // This table exists because the same class of defect was fixed five times and
@@ -53,6 +55,22 @@ type WorkspaceRoot struct {
 	// Note explains the mechanism.
 	Note string
 }
+
+// ToolVocabulary names a host's tools by what they do. The guards act on what a
+// tool does; hosts disagree on what it is called, and a name missing from here
+// is a tool whose writes no guard ever scans.
+type ToolVocabulary struct {
+	// Writes put text into a file the guards should read afterwards.
+	Writes []string
+	// Fetches retrieve a URL in the payload shape the WebFetch cache script reads.
+	Fetches []string
+}
+
+// sharedEditTools are the edit tools of the hosts that share one tool family.
+var sharedEditTools = []string{"Edit", "Write", "NotebookEdit", "MultiEdit"}
+
+// sharedFetchTools is that family's fetch tool.
+var sharedFetchTools = []string{"WebFetch"}
 
 // EventContract is one lifecycle event on one host.
 type EventContract struct {
@@ -109,7 +127,9 @@ type HostContract struct {
 	// the host evaluates. For every other host the field is a silent no-op.
 	HonorsHandlerIf bool
 	// Dialect is how the hooks' answers are spelled for this host.
-	Dialect       Dialect
+	Dialect Dialect
+	// Tools is what the host calls its tools.
+	Tools         ToolVocabulary
 	WorkspaceRoot WorkspaceRoot
 	Events        []EventContract
 	// Gaps are the things this host does not provide. They matter as much as the
@@ -131,6 +151,35 @@ func HostContractFor(client Client) (HostContract, bool) {
 		}
 	}
 	return HostContract{}, false
+}
+
+// isFileWrite reports whether a host's tool call put text into a file.
+//
+// One binary answers every PostToolUse, so a read, which also carries a file
+// path, would otherwise be scanned as though it wrote the file it opened.
+//
+// An empty name passes. A host whose edit event is already edit-only sends no
+// tool name, and refusing it would silence every guard on that host.
+func isFileWrite(client Client, tool string) bool {
+	if tool == "" {
+		return true
+	}
+	return slices.Contains(toolsFor(client).Writes, tool)
+}
+
+// isFetch reports whether a host's tool call is the fetch the WebFetch cache
+// script understands.
+func isFetch(client Client, tool string) bool {
+	return slices.Contains(toolsFor(client).Fetches, tool)
+}
+
+// toolsFor returns a host's vocabulary, or the shared family's for a host this
+// build has no row for, the same default the zero Dialect gives.
+func toolsFor(client Client) ToolVocabulary {
+	if contract, ok := HostContractFor(client); ok {
+		return contract.Tools
+	}
+	return ToolVocabulary{Writes: sharedEditTools, Fetches: sharedFetchTools}
 }
 
 // HostContracts returns every contract, for the document generator and the
@@ -167,6 +216,7 @@ func (h HostContract) EventFor(hostKey string) (EventContract, bool) {
 // declines to.
 var claudeContract = HostContract{
 	Client:            ClientClaude,
+	Tools:             ToolVocabulary{Writes: sharedEditTools, Fetches: sharedFetchTools},
 	HonorsHandlerIf:   true,
 	SplitsToolOutcome: true,
 	Dialect:           Dialect{PromptInjection: true, StopAdvisory: true, SteersSessionStart: true},
@@ -241,6 +291,7 @@ var claudeContract = HostContract{
 // which is precisely the condition that produced the defects below.
 var cursorContract = HostContract{
 	Client:            ClientCursor,
+	Tools:             ToolVocabulary{Writes: sharedEditTools, Fetches: sharedFetchTools},
 	SplitsToolOutcome: true,
 	Dialect:           Dialect{Context: ContextFlat, Refusal: RefusePermission, StopBlock: StopFollowup, PostTool: PostToolFlat, ToolUseNodeReminder: true},
 	ConfigPath:        ".cursor/hooks.json",
@@ -361,6 +412,7 @@ const opencodePluginUnmeasured = "The plugin is loaded and no hook in it has bee
 // works. The second is the missing failure event below.
 var codexContract = HostContract{
 	Client:         ClientCodex,
+	Tools:          ToolVocabulary{Writes: sharedEditTools, Fetches: sharedFetchTools},
 	Dialect:        Dialect{Refusal: RefuseHookSpecific, PromptInjection: true},
 	ConfigPath:     ".codex/hooks.json",
 	AltConfigPaths: []string{".codex/config.toml"},
@@ -420,6 +472,7 @@ var codexContract = HostContract{
 // deterministic wired and policy reached it through commands and skills alone.
 var opencodeContract = HostContract{
 	Client:     ClientOpencode,
+	Tools:      ToolVocabulary{Writes: []string{"edit", "write", "patch", "multiedit"}},
 	Dialect:    Dialect{Context: ContextFlat, Refusal: RefusePermissionReason, StopBlock: StopNone, PromptInjection: true},
 	ConfigPath: "opencode.json",
 	Source:     "https://opencode.ai/docs/plugins/",
@@ -485,15 +538,16 @@ var opencodeContract = HostContract{
 const antigravityNeverObserved = "No Antigravity hook has been observed firing from this config. " +
 	"The envelope matches https://antigravity.google/docs/hooks and nobody here has run the binary."
 
-const kimiNeverObserved = "No Kimi hook has been observed firing. Kimi documents event names and " +
-	"command wiring in config.toml but not the stdin or stdout schema, so PreToolUse refusal reuses Codex's shape."
+const kimiNeverObserved = "No Kimi hook has been observed firing from this config. The shapes are the vendor's own " +
+	"documentation (MoonshotAI/kimi-code docs/en/customization/hooks.md), read rather than measured."
 
-const museNeverObserved = "No Muse hook has been observed firing. Beta builds may ignore .muse/hooks.json; " +
-	"the envelope matches the Claude hook schema reported by independent measurement, not vendor confirmation here."
+const museNeverObserved = "No Muse hook has been observed firing from this config. Payload keys and the deny " +
+	"behaviour come from an independent live measurement (pinta-ai/pinta-musecode README), not from this repository."
 
 // antigravityContract is Google Antigravity.
 var antigravityContract = HostContract{
 	Client:     ClientAntigravity,
+	Tools:      ToolVocabulary{Writes: []string{"write_to_file", "replace_file_content", "multi_replace_file_content"}},
 	Dialect:    Dialect{Context: ContextSteps, Refusal: RefuseDecision, StopBlock: StopContinue, PromptInjection: true},
 	ConfigPath: ".agents/hooks.json",
 	Source:     "https://antigravity.google/docs/hooks",
@@ -535,56 +589,94 @@ var antigravityContract = HostContract{
 		"No SessionStart event; first-turn steering uses PreInvocation instead.",
 		"No PostToolUseFailure event; journal a failed tool from PostToolUse when error is non-empty.",
 		"workspacePaths is an array; a hook must not assume a single checkout root from stdin alone.",
+		"Stdin is camelCase (conversationId, transcriptPath, toolCall.name/args); the payload adapter maps it.",
+		"User-level hooks also load from ~/.gemini/config/hooks.json.",
 	},
 }
 
-// kimiContract is Kimi Code CLI.
+// kimiContract is Kimi Code CLI, the successor to kimi-cli.
+//
+// Read from the vendor's documentation rather than measured. Three facts set its
+// dialect apart from the hosts it resembles. Whatever a UserPromptSubmit hook
+// prints is appended to the context as text, so the envelope is the text
+// itself. Blocking is exit 2 with the reason on stderr, the only channel Stop
+// documents; PreToolUse also takes a JSON deny, and both are sent. SessionStart
+// is observation-only, so what it prints is discarded.
 var kimiContract = HostContract{
-	Client:     ClientKimi,
-	Dialect:    Dialect{Refusal: RefuseHookSpecific, PromptInjection: true},
-	ConfigPath: ".kimi/hooks.toml",
-	Source:     "https://moonshotai.github.io/kimi-cli/en/configuration/config-files.html",
+	Client:            ClientKimi,
+	Tools:             ToolVocabulary{Writes: append([]string{"WriteFile", "EditFile", "StrReplaceFile"}, sharedEditTools...)},
+	SplitsToolOutcome: true,
+	Dialect: Dialect{
+		Context: ContextPlain, Refusal: RefuseHookSpecific, RefusalExits: true, StopBlock: StopExit,
+		PromptInjection: true,
+	},
+	ConfigPath: ".kimi-code/hooks.toml",
+	Source:     "https://moonshotai.github.io/kimi-code/en/customization/hooks.html",
 	WorkspaceRoot: WorkspaceRoot{
-		Reliable: false,
-		Note: "Hooks are configured in the user's ~/.kimi/config.toml. The workspace file is a copy-ready snippet; " +
-			"merge it into the user config or Kimi will never call these commands.",
+		Reliable: true,
+		Note: "The vendor documents a hook command's working directory as the session's project directory. Hooks are read " +
+			"only from the user's ~/.kimi-code/config.toml ($KIMI_CODE_HOME); the workspace file is a copy-ready snippet.",
 	},
 	Events: []EventContract{
 		{
+			HostKey: "SessionStart", Event: EventSessionStart,
+			Wired: true, Verification: unverified(kimiNeverObserved),
+			Note: "Observation-only: stdout is discarded, so the session context arrives with the first prompt instead.",
+		},
+		{
+			HostKey: "UserPromptSubmit", Event: EventUserPromptSubmit,
+			OutputKeys: []string{"stdout"},
+			CanInject:  true, CanRefuse: true, Wired: true,
+			Verification: unverified(kimiNeverObserved),
+			Note:         "Text printed with exit 0 is appended to the context; the field is the text itself.",
+		},
+		{
 			HostKey: "PreToolUse", Event: EventPreToolUse,
-			OutputKeys: []string{"hookSpecificOutput.hookEventName", "hookSpecificOutput.permissionDecision", "hookSpecificOutput.permissionDecisionReason"},
+			OutputKeys: []string{"hookSpecificOutput.permissionDecision", "hookSpecificOutput.permissionDecisionReason"},
 			CanRefuse:  true, Wired: true,
 			Verification: unverified(kimiNeverObserved),
+			Note:         "Exit 2 with the reason on stderr also blocks; both are sent.",
 		},
 		{
 			HostKey: "PostToolUse", Event: EventPostToolUse,
-			OutputKeys: nil, Wired: true,
-			Verification: unverified(kimiNeverObserved),
+			Wired: true, Verification: unverified(kimiNeverObserved),
+		},
+		{
+			HostKey: "PostToolUseFailure", Event: EventPostToolUseFailure,
+			Wired: true, Verification: unverified(kimiNeverObserved),
+			Note: "Fires after a tool fails or is blocked.",
 		},
 		{
 			HostKey: "Stop", Event: EventStop,
-			OutputKeys: []string{"decision", "reason"},
-			CanRefuse:  true, Wired: true,
+			CanRefuse: true, Wired: true,
 			Verification: unverified(kimiNeverObserved),
-			Note:         "Stop stdout schema is undocumented; this reuses Claude's decision block shape.",
+			Note:         "Blocked by exit 2; stderr is appended so the model continues.",
 		},
 	},
 	Gaps: []string{
-		"No SessionStart or UserPromptSubmit hook events published.",
-		"Hooks live in user config.toml, not in the repository, unless someone merges the snippet.",
-		"No separate failure event documented for PostToolUse.",
+		"Hooks are user-level only: ~/.kimi-code/config.toml. A repository cannot wire them; someone merges the snippet.",
+		"[[hooks]] accepts exactly event, matcher, command, and timeout; any other key stops the config from loading.",
+		"Fail-open: a non-2 exit, a crash, or a timeout lets the action proceed.",
 	},
 }
 
 // museContract is Muse Code.
+//
+// The payload is the shared family's (session_id, prompt, tool_name, tool_input,
+// stop_hook_active). What makes its dialect different was measured live by an
+// independent adapter: the host fails open on every response except exit 2, and
+// a JSON deny in the wrong shape is ignored without a word. So refusals travel
+// on both channels.
 var museContract = HostContract{
-	Client:     ClientMuse,
-	Dialect:    Dialect{Refusal: RefuseHookSpecific, PromptInjection: true},
-	ConfigPath: ".muse/hooks.json",
-	Source:     "https://dev.meta.ai/docs/muse-code/extending",
+	Client:            ClientMuse,
+	Tools:             ToolVocabulary{Writes: sharedEditTools, Fetches: sharedFetchTools},
+	SplitsToolOutcome: true,
+	Dialect:           Dialect{Refusal: RefuseHookSpecific, RefusalExits: true, PromptInjection: true},
+	ConfigPath:        ".muse/hooks.json",
+	Source:            "https://dev.meta.ai/docs/muse-code/extending",
 	WorkspaceRoot: WorkspaceRoot{
 		Reliable: false,
-		Note:     "Project hooks at .muse/hooks.json require `muse hooks trust` before they run. Pass --workspace explicitly.",
+		Note:     "Project hooks at .muse/hooks.json run only after the project folder is trusted. Pass --workspace explicitly.",
 	},
 	Events: []EventContract{
 		{
@@ -604,23 +696,27 @@ var museContract = HostContract{
 			OutputKeys: []string{"hookSpecificOutput.hookEventName", "hookSpecificOutput.permissionDecision", "hookSpecificOutput.permissionDecisionReason"},
 			CanRefuse:  true, Wired: true,
 			Verification: unverified(museNeverObserved),
+			Note:         "The binary's validation requires hookEventName to match the firing event; exit 2 is sent as well.",
 		},
 		{
 			HostKey: "PostToolUse", Event: EventPostToolUse,
-			OutputKeys: nil, Wired: true,
-			Verification: unverified(museNeverObserved),
+			Wired: true, Verification: unverified(museNeverObserved),
+		},
+		{
+			HostKey: "PostToolUseFailure", Event: EventPostToolUseFailure,
+			Wired: true, Verification: unverified(museNeverObserved),
 		},
 		{
 			HostKey: "Stop", Event: EventStop,
 			OutputKeys: []string{"decision", "reason"},
 			CanRefuse:  true, Wired: true,
 			Verification: unverified(museNeverObserved),
-			Note:         "Independent measurement reports a legacy decision block on Stop; not confirmed here.",
+			Note:         "{\"decision\":\"block\"} was measured blocking a prompt; Stop carries stop_hook_active.",
 		},
 	},
 	Gaps: []string{
-		"Project hooks require trust before they run; link script installs config only.",
-		"Some beta builds ignore .muse/hooks.json; native plugins are an alternate path not wired here.",
-		"No PostToolUseFailure event documented.",
+		"Project hooks need the folder trusted first; the link script installs config only.",
+		"Fails open on everything except exit 2, so a JSON-only refusal can be ignored silently.",
+		"Treats .muse, .git and .agents as read-only inside the workspace.",
 	},
 }

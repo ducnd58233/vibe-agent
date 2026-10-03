@@ -213,6 +213,8 @@ Two rules govern this table:
 - No SessionStart event; first-turn steering uses PreInvocation instead.
 - No PostToolUseFailure event; journal a failed tool from PostToolUse when error is non-empty.
 - workspacePaths is an array; a hook must not assume a single checkout root from stdin alone.
+- Stdin is camelCase (conversationId, transcriptPath, toolCall.name/args); the payload adapter maps it.
+- User-level hooks also load from ~/.gemini/config/hooks.json.
 
 </context>
 
@@ -220,30 +222,37 @@ Two rules govern this table:
 
 <context>
 
-- **Config:** `.kimi/hooks.toml`
-- **Source:** <https://moonshotai.github.io/kimi-cli/en/configuration/config-files.html>
-- **Workspace root:** **no reliable host variable.** Hooks are configured in the user's ~/.kimi/config.toml. The workspace file is a copy-ready snippet; merge it into the user config or Kimi will never call these commands.
+- **Config:** `.kimi-code/hooks.toml`
+- **Source:** <https://moonshotai.github.io/kimi-code/en/customization/hooks.html>
+- **Workspace root:** The vendor documents a hook command's working directory as the session's project directory. Hooks are read only from the user's ~/.kimi-code/config.toml ($KIMI_CODE_HOME); the workspace file is a copy-ready snippet.
 
 | Host event key | vibe-agent event | Output keys the host reads | Inject | Refuse | Wired | Verified |
 |---|---|---|---|---|---|---|
-| `PreToolUse` | `pre-tool-use` | `hookSpecificOutput.hookEventName`, `hookSpecificOutput.permissionDecision`, `hookSpecificOutput.permissionDecisionReason` | no | yes | yes | **UNVERIFIED** |
+| `SessionStart` | `session-start` | none | no | no | yes | **UNVERIFIED** |
+| `UserPromptSubmit` | `user-prompt-submit` | `stdout` | yes | yes | yes | **UNVERIFIED** |
+| `PreToolUse` | `pre-tool-use` | `hookSpecificOutput.permissionDecision`, `hookSpecificOutput.permissionDecisionReason` | no | yes | yes | **UNVERIFIED** |
 | `PostToolUse` | `post-tool-use` | none | no | no | yes | **UNVERIFIED** |
-| `Stop` | `stop` | `decision`, `reason` | no | yes | yes | **UNVERIFIED** |
+| `PostToolUseFailure` | `post-tool-use-failure` | none | no | no | yes | **UNVERIFIED** |
+| `Stop` | `stop` | none | no | yes | yes | **UNVERIFIED** |
 
 **Notes**
 
-- `Stop` - Stop stdout schema is undocumented; this reuses Claude's decision block shape.
+- `SessionStart` - Observation-only: stdout is discarded, so the session context arrives with the first prompt instead.
+- `UserPromptSubmit` - Text printed with exit 0 is appended to the context; the field is the text itself.
+- `PreToolUse` - Exit 2 with the reason on stderr also blocks; both are sent.
+- `PostToolUseFailure` - Fires after a tool fails or is blocked.
+- `Stop` - Blocked by exit 2; stderr is appended so the model continues.
 
 **Why the unverified rows are unverified**
 
-- `PreToolUse`, `PostToolUse`, `Stop`
-  No Kimi hook has been observed firing. Kimi documents event names and command wiring in config.toml but not the stdin or stdout schema, so PreToolUse refusal reuses Codex's shape.
+- `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `Stop`
+  No Kimi hook has been observed firing from this config. The shapes are the vendor's own documentation (MoonshotAI/kimi-code docs/en/customization/hooks.md), read rather than measured.
 
 **What this host does not provide**
 
-- No SessionStart or UserPromptSubmit hook events published.
-- Hooks live in user config.toml, not in the repository, unless someone merges the snippet.
-- No separate failure event documented for PostToolUse.
+- Hooks are user-level only: ~/.kimi-code/config.toml. A repository cannot wire them; someone merges the snippet.
+- [[hooks]] accepts exactly event, matcher, command, and timeout; any other key stops the config from loading.
+- Fail-open: a non-2 exit, a crash, or a timeout lets the action proceed.
 
 </context>
 
@@ -253,7 +262,7 @@ Two rules govern this table:
 
 - **Config:** `.muse/hooks.json`
 - **Source:** <https://dev.meta.ai/docs/muse-code/extending>
-- **Workspace root:** **no reliable host variable.** Project hooks at .muse/hooks.json require `muse hooks trust` before they run. Pass --workspace explicitly.
+- **Workspace root:** **no reliable host variable.** Project hooks at .muse/hooks.json run only after the project folder is trusted. Pass --workspace explicitly.
 
 | Host event key | vibe-agent event | Output keys the host reads | Inject | Refuse | Wired | Verified |
 |---|---|---|---|---|---|---|
@@ -261,21 +270,23 @@ Two rules govern this table:
 | `UserPromptSubmit` | `user-prompt-submit` | `hookSpecificOutput.hookEventName`, `hookSpecificOutput.additionalContext` | yes | no | yes | **UNVERIFIED** |
 | `PreToolUse` | `pre-tool-use` | `hookSpecificOutput.hookEventName`, `hookSpecificOutput.permissionDecision`, `hookSpecificOutput.permissionDecisionReason` | no | yes | yes | **UNVERIFIED** |
 | `PostToolUse` | `post-tool-use` | none | no | no | yes | **UNVERIFIED** |
+| `PostToolUseFailure` | `post-tool-use-failure` | none | no | no | yes | **UNVERIFIED** |
 | `Stop` | `stop` | `decision`, `reason` | no | yes | yes | **UNVERIFIED** |
 
 **Notes**
 
-- `Stop` - Independent measurement reports a legacy decision block on Stop; not confirmed here.
+- `PreToolUse` - The binary's validation requires hookEventName to match the firing event; exit 2 is sent as well.
+- `Stop` - {"decision":"block"} was measured blocking a prompt; Stop carries stop_hook_active.
 
 **Why the unverified rows are unverified**
 
-- `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`
-  No Muse hook has been observed firing. Beta builds may ignore .muse/hooks.json; the envelope matches the Claude hook schema reported by independent measurement, not vendor confirmation here.
+- `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `Stop`
+  No Muse hook has been observed firing from this config. Payload keys and the deny behaviour come from an independent live measurement (pinta-ai/pinta-musecode README), not from this repository.
 
 **What this host does not provide**
 
-- Project hooks require trust before they run; link script installs config only.
-- Some beta builds ignore .muse/hooks.json; native plugins are an alternate path not wired here.
-- No PostToolUseFailure event documented.
+- Project hooks need the folder trusted first; the link script installs config only.
+- Fails open on everything except exit 2, so a JSON-only refusal can be ignored silently.
+- Treats .muse, .git and .agents as read-only inside the workspace.
 
 </context>

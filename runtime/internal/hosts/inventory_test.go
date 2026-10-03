@@ -46,9 +46,9 @@ func TestEveryCatalogedHostHasAReason(t *testing.T) {
 		"claude":       "the reference host; every hook event is wired and verified here",
 		"cursor-agent": "hooks through .cursor/hooks.json; refuses through JSON rather than exit codes",
 		"opencode":     "plugin at .opencode/plugin; permission.ask is its only refusal path",
-		"kimi":         "skills at ~/.config/agents/skills; hooks snippet at .kimi/hooks.toml, merge into user config.toml",
-		"muse":         "skills via .codex/.claude paths; hooks at .muse/hooks.json, UNVERIFIED until trusted and observed",
-		"antigravity":  "hooks at .agents/hooks.json; PreToolUse uses decision/reason, UNVERIFIED until observed",
+		"kimi":         "Kimi Code: skills at .kimi-code/skills and .agents/skills; hooks snippet at .kimi-code/hooks.toml, merged into ~/.kimi-code/config.toml",
+		"muse":         "reads AGENTS.md and CLAUDE.md, skills at .agents/skills; hooks at .muse/hooks.json once the folder is trusted",
+		"antigravity":  "hooks at .agents/hooks.json (camelCase stdin); PreToolUse uses decision/reason, UNVERIFIED until observed",
 	}
 
 	if len(catalog) != len(reasons) {
