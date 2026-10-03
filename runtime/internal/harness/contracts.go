@@ -198,16 +198,6 @@ func (h HostContract) HostKeys() []string {
 	return keys
 }
 
-// EventFor returns the contract for one host-side key.
-func (h HostContract) EventFor(hostKey string) (EventContract, bool) {
-	for _, event := range h.Events {
-		if event.HostKey == hostKey {
-			return event, true
-		}
-	}
-	return EventContract{}, false
-}
-
 // claudeContract is Claude Code.
 //
 // Only the events this toolkit could wire are listed. Claude publishes roughly
