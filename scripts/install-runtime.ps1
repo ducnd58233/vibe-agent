@@ -169,7 +169,7 @@ quiet no-op and the markdown assets work exactly as they do today.
     Push-Location $runtimeDir
     try {
         $env:CGO_ENABLED = '0'
-        & go build -ldflags='-s -w -X main.version=source' -o $target ./cmd
+        & go build -ldflags='-s -w' -o $target ./cmd
         if ($LASTEXITCODE -ne 0) {
             throw "Build failed. Run 'cd runtime; make check' to see why."
         }
