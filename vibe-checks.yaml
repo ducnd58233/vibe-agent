@@ -174,6 +174,16 @@ spec:
         still misses SPEC intent reopens plan. Missing or fail rows use
         file_assert only; no judge LLM as evidence.
 
+    delivery_ok:
+      verifier: delivery
+      description: >-
+        Reads .agent-state/runs/<date>/<slug>/<version>/delivery/LEDGER.md after
+        a /task run performed its outward actions. Passes only when status is
+        pass, every row is pass, and the ledger has a row for every outward
+        action (OA id) the approved SPEC listed. A failure routes back to
+        approve_delivery so a person decides, never straight back to deliver.
+        file_assert only.
+
     bug_hunt_ok:
       verifier: bughunt
       description: >-

@@ -116,8 +116,8 @@ func Tools(deps Deps) []Tool {
 		{
 			Name: "vibe_run_start",
 			Description: "Call to create a run when none exists yet for this objective. Pass the user's objective as goal; derive slug when omitted. " +
-				"Use workflow research for literature/experiment loops, delivery (default) for spec/build/ship. Do not call when a run for this slug is already active; use vibe_run_status instead.",
-			InputSchema: schema(`{"type":"object","required":["goal"],"properties":{"goal":{"type":"string"},"slug":{"type":"string"},"workflow":{"type":"string","enum":["delivery","research"],"default":"delivery"},"graph":{"type":"string","description":"Advanced override only"}}}`),
+				"Use workflow research for literature/experiment loops, task for a non-code deliverable (report, analysis, document, data job, message), delivery (default) for spec/build/ship. Do not call when a run for this slug is already active; use vibe_run_status instead.",
+			InputSchema: schema(`{"type":"object","required":["goal"],"properties":{"goal":{"type":"string"},"slug":{"type":"string"},"workflow":{"type":"string","enum":["delivery","research","task"],"default":"delivery"},"graph":{"type":"string","description":"Advanced override only"}}}`),
 			Handler:     func(raw json.RawMessage) (any, error) { return runStart(deps, raw) },
 		},
 		{

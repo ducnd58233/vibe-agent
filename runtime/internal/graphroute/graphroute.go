@@ -19,6 +19,9 @@ const (
 	GraphDelivery = "goal-delivery"
 	// GraphResearcher is the literature → experiment → findings loop.
 	GraphResearcher = "researcher-delivery"
+	// GraphTask is a non-code task from request to an approved delivery. It has
+	// no auto path: the delivery step is the one a person has to approve.
+	GraphTask = "task-delivery"
 )
 
 // Command is a toolkit entry surface (/goal, /research, /auto, ...).
@@ -30,6 +33,7 @@ const (
 	CmdResearch   Command = "research"
 	CmdExperiment Command = "experiment"
 	CmdFindings   Command = "findings"
+	CmdTask       Command = "task"
 )
 
 // Workflow selects a graph when no explicit graph override is set.
@@ -38,6 +42,7 @@ type Workflow string
 const (
 	WorkflowDelivery Workflow = "delivery"
 	WorkflowResearch Workflow = "research"
+	WorkflowTask     Workflow = "task"
 )
 
 // DefaultSlugWords bounds a derived slug.
@@ -65,6 +70,8 @@ func GraphFor(cmd Command) string {
 	switch cmd {
 	case CmdResearch, CmdExperiment, CmdFindings:
 		return GraphResearcher
+	case CmdTask:
+		return GraphTask
 	default:
 		return GraphDelivery
 	}
@@ -75,6 +82,8 @@ func GraphForWorkflow(w Workflow) string {
 	switch w {
 	case WorkflowResearch:
 		return GraphResearcher
+	case WorkflowTask:
+		return GraphTask
 	default:
 		return GraphDelivery
 	}

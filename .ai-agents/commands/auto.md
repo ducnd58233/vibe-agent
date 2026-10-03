@@ -139,7 +139,8 @@ below already holds. Any one of them missing means it stops and a person decides
 **The danger list stops auto mode every time**, whatever the other five say: schema and data
 migrations, data destruction, production writes, credential changes, history rewrites,
 infrastructure destruction, and outward publication. Those need a person, and the gate refuses with
-exit 2 rather than asking.
+exit 2 rather than asking. On Claude Code that includes an MCP tool call that sends, posts, pays,
+shares, or schedules (the `outward-action` category, which applies to an auto run only).
 
 **Ambiguity is the other stop.** A goal that cannot be specified without inventing an acceptance
 criterion is ambiguous, and auto mode stops at `approve_spec` and asks. That is a test on the spec,

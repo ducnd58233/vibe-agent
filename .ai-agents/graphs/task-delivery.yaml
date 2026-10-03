@@ -1,0 +1,263 @@
+# Executable form of the /task loop: a non-code deliverable, from request to a
+# delivered, verified result, with a person approving before anything leaves.
+#
+# goal-delivery assumes a repository, a branch, and a pull request. This graph
+# assumes none of them. A task here is a report, an analysis, a document, a data
+# job, an ops step, or a message to other people. What it keeps from goal-delivery
+# is the part that is not about code: the spec is approved before work starts,
+# every acceptance row needs evidence, a check the workspace declares runs when
+# one exists, and nothing leaves the workspace until a person says so.
+#
+# There is no auto path. Delivery is the step this graph exists to put a person
+# in front of, and an unattended run has nobody to answer it.
+#
+# Evidence stays exit_code / file_assert / ci_api / human_event only. No new
+# source was added, and none is needed: a script that checks a total is a
+# command check, and a REVIEW.md table is a file_assert.
+#
+# Edge conditions are guard names, never expressions. A leading "!" negates.
+# Reference: ../references/loop-and-graph-engineering.md
+
+apiVersion: vibe-agent/v1
+kind: WorkflowGraph
+
+metadata:
+  id: task-delivery
+  description: A non-code task from request to a verified, person-approved delivery.
+
+spec:
+  initial: intake
+  maxTransitions: 60
+
+  guards:
+    - name: research_required
+      description: Intake found facts that are missing from the workspace and need outside sources.
+      source: flag
+
+    - name: spec_approved
+      description: Human accepted docs/<date>/<slug>/<version>/SPEC-<date>.md.
+      source: check
+      reads: spec_approved
+
+    - name: task_check_ok
+      description: >-
+        The command the workspace declares as task_check exited 0, or the
+        workspace declares none. A skip is recorded as skipped, never as passed,
+        so run state still says which of the two happened. acceptsSkipped
+        because this graph is shared by every workspace and each keeps its own
+        vibe-checks.yaml: without it, adding this graph would stall doctor for
+        every workspace that has no task check.
+      source: check
+      reads: task_check
+      acceptsSkipped: true
+
+    - name: expectation_ok
+      description: >-
+        expectation/REVIEW.md has status pass and every acceptance row is pass,
+        or the workspace declares no expectation check. Same skip rule as
+        task_check_ok.
+      source: check
+      reads: expectation_ok
+      acceptsSkipped: true
+
+    - name: delivery_ok
+      description: >-
+        delivery/LEDGER.md has status pass, every row pass, and a row for every
+        outward action the SPEC listed, or the workspace declares no delivery
+        check. Same skip rule as task_check_ok.
+      source: check
+      reads: delivery_ok
+      acceptsSkipped: true
+
+    - name: delivery_approved
+      description: >-
+        Human accepted the deliverable and the exact list of outward actions in
+        the SPEC. Nothing is sent, posted, paid, or shared before this is true.
+      source: check
+      reads: delivery_approved
+
+    - name: human_redirect
+      description: >-
+        A live human message changed the objective mid-run. Set with
+        `vibe-agent run flag --set human_redirect --note <why>` by the host agent
+        that received the message, never inferred from wording. Cleared with
+        `run flag --clear human_redirect` once intake has re-confirmed it.
+      source: flag
+
+  nodes:
+    intake:
+      type: human_gate
+      description: >-
+        Restate the task, name the task class, list unknowns, ask focused
+        questions, agree the slug, the deliverable, and the measurable done line.
+      check: intake_confirmed
+      prompt: >-
+        Task, task class, deliverable, slug, and the done line are agreed.
+        Confirm to proceed.
+
+    research:
+      type: agent
+      description: Gather citations when facts are missing and not in the workspace.
+      command: research
+      optional: true
+
+    spec:
+      type: artifact
+      description: >-
+        Task spec: deliverable, sources, acceptance rows, outward actions, and
+        budget. The outward-actions section is a list, and "none" is a valid list.
+      command: task
+      outputs:
+        - docs/${date}/${slug}/${version}/SPEC-${date}.md
+
+    approve_spec:
+      type: human_gate
+      description: Spec checkpoint before any work or outward action.
+      check: spec_approved
+      prompt: >-
+        Review the SPEC for this run under docs/${date}/${slug}/${version}/SPEC-${date}.md.
+        Check the acceptance rows and the outward actions. Approve to start, or send it back.
+
+    execute:
+      type: agent
+      description: >-
+        Do the work and write the deliverable where the SPEC says. Keep every
+        outward action as a draft. Nothing leaves the workspace at this node.
+      command: task
+
+    task_check:
+      type: verifier
+      description: >-
+        Run the command the workspace declares as task_check, such as a script
+        that re-adds a total or re-reads every cited source. Skipped when the
+        workspace declares none.
+      verifier: command
+      check: task_check
+
+    ac_review:
+      type: verifier
+      description: >-
+        Assert expectation/REVIEW.md: one row per SPEC acceptance row, each with
+        an evidence path and a pass or fail result. file_assert only.
+      verifier: expectation
+      check: expectation_ok
+
+    approve_delivery:
+      type: human_gate
+      description: Delivery checkpoint. The last point at which a person can stop an outward action.
+      check: delivery_approved
+      prompt: >-
+        Read the deliverable and the outward actions listed in the SPEC. Approve
+        only if each action is correct as written: recipient, content, and amount.
+        Nothing has been sent yet.
+
+    deliver:
+      type: agent
+      description: >-
+        Perform exactly the outward actions the SPEC lists and the person
+        approved, one at a time, then write the delivery ledger: one row per
+        action, with what was done and what the tool replied. A task with no
+        outward actions writes a ledger saying so.
+      command: task
+
+    delivery_check:
+      type: verifier
+      description: >-
+        Assert delivery/LEDGER.md: status pass, every row pass, and a row for
+        every outward action in the SPEC. A failed or missing row sends the run
+        back to approve_delivery, never straight back to deliver, because
+        repeating a send can send it twice.
+      verifier: delivery
+      check: delivery_ok
+
+    done:
+      type: terminal
+      description: Deliverable verified, approved, and delivered, with a checked ledger.
+      status: done
+
+  edges:
+    # Redirect first, so it is tried before a node's normal edges. Every check a
+    # prior walk earned resets, because the task behind them may have changed.
+    - from: research
+      to: intake
+      when: human_redirect
+      resets: &redirect_resets
+        - intake_confirmed
+        - spec_approved
+        - task_check
+        - expectation_ok
+        - delivery_approved
+        - delivery_ok
+    - from: spec
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: execute
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: deliver
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+    - from: delivery_check
+      to: intake
+      when: human_redirect
+      resets: *redirect_resets
+
+    - from: intake
+      to: research
+      when: research_required
+    - from: intake
+      to: spec
+      when: "!research_required"
+
+    - from: research
+      to: spec
+
+    - from: spec
+      to: approve_spec
+
+    - from: approve_spec
+      to: execute
+      when: spec_approved
+    - from: approve_spec
+      to: spec
+      when: "!spec_approved"
+
+    - from: execute
+      to: task_check
+
+    # A failed check or a failed acceptance row sends the run back to execute.
+    # The order carries the meaning: the failure route is tried first, so
+    # approve_delivery is only reached with both checks passed or skipped.
+    - from: task_check
+      to: execute
+      when: "!task_check_ok"
+    - from: task_check
+      to: ac_review
+
+    - from: ac_review
+      to: execute
+      when: "!expectation_ok"
+    - from: ac_review
+      to: approve_delivery
+
+    - from: approve_delivery
+      to: execute
+      when: "!delivery_approved"
+    - from: approve_delivery
+      to: deliver
+      when: delivery_approved
+
+    - from: deliver
+      to: delivery_check
+
+    # A failed delivery goes to a person, not back to deliver. The reset reopens
+    # the gate so the person has to answer it again.
+    - from: delivery_check
+      to: approve_delivery
+      when: "!delivery_ok"
+      resets: [delivery_approved]
+    - from: delivery_check
+      to: done

@@ -43,7 +43,7 @@ Two rules govern this table:
 
 - `SessionStart` - Re-fires after compaction, which is why steering is suppressed when source is compact.
 - `UserPromptSubmit` - The only per-prompt injection point. No matcher support.
-- `PreToolUse` - This toolkit refuses through exit 2 and stderr here rather than the JSON shape; both are documented.
+- `PreToolUse` - This toolkit refuses through exit 2 and stderr here rather than the JSON shape; both are documented. The matcher also names mcp__.*, which the vendor page documents as a regular expression over mcp__<server>__<tool>, so the outward-action danger category sees MCP calls.
 - `PostToolUse` - Success half only. Fires exactly one of this and PostToolUseFailure per call.
 - `PostToolUseFailure` - Failure half. Carries no tool_response; what the tool printed is in error.
 - `Stop` - Blocks at most once per turn, guarded by stop_hook_active. The top-level {decision: block, reason} shape is honoured: measured on 2026-08-15 against Claude Code 2.1.229 with a run at node build, where the hook refused the turn and the reason arrived verbatim in the next one. Worth knowing because the vendor table documents this event as reading hookSpecificOutput.decision with allow/deny, and rewriting the working shape to match that page would have broken a hook that works.
@@ -101,6 +101,7 @@ Two rules govern this table:
 - No per-prompt context injection. beforeSubmitPrompt can only validate or block. The run's current node is delivered on postToolUse instead, which is a partial substitute: it arrives after a tool call rather than before a prompt, and a session that runs no tools never sees it.
 - No per-prompt memory retrieval. Memories reach a Cursor session at session start and not again, so one that runs for hours works from what was true when it opened.
 - No documented project-directory variable and no documented cwd for hook commands.
+- MCP tool calls are not wired to the gate. The outward-action danger category matches an MCP tool name, but this config does not register beforeMCPExecution and the payload that event sends has not been read, so on Cursor an MCP send is not refused on an auto run.
 
 </context>
 
@@ -137,6 +138,7 @@ Two rules govern this table:
 
 - No failure event exists, and PostToolUse does not fire for a failed command despite the documentation saying it does. A failed command therefore cannot be journalled on Codex. This gap is the host's and cannot be wired shut.
 - Exit code 2 does not refuse a tool call.
+- Whether PreToolUse fires for an MCP tool call, and under what tool_name, has not been observed. The outward-action danger category matches mcp__<server>__<tool> names, so until that is measured it is not known to refuse an MCP send on Codex.
 
 </context>
 
@@ -175,6 +177,7 @@ Two rules govern this table:
 - Registering an MCP server is not a substitute: the model decides whether to call a tool, and a control plane the model may skip is not deterministic.
 - No failure event and no exit status on tool.execute.after, so a failed command cannot be told from a successful one. The same gap as Codex, reached by a different route.
 - No end-of-turn hook, so nothing can refuse to end a turn with a run mid-graph the way stop does on Claude and Cursor.
+- permission.ask reports a permission type rather than a tool name, and how an MCP tool appears there has not been observed. The outward-action danger category matches mcp__<server>__<tool> names, so it is not known to refuse an MCP send on opencode.
 
 </context>
 

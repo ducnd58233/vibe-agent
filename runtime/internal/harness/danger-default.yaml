@@ -128,3 +128,29 @@ spec:
         # Overwriting a file so it cannot be recovered is the whole point of the
         # tool, which makes every use of it the dangerous form.
         - '(?i)\bshred\s+'
+
+    # Calls that carry structured arguments instead of a shell command, so no
+    # pattern above can see them: an MCP tool that sends a message, moves money,
+    # or shares something with other people. Matched against the tool's name,
+    # which a host reports as mcp__<server>__<tool> (Claude Code).
+    #
+    # autoOnly: an interactive session has a person who answers the host's own
+    # prompt for an MCP call that no allow rule covers, so refusing there would
+    # only break honest work. An unattended auto run has nobody to answer, so it
+    # stops here for a person, the same as every category above.
+    #
+    # Narrow on purpose, and a consumer cannot remove a pattern. Each verb is
+    # anchored at the start of the tool's own name (after an optional one-word
+    # service prefix), so `get_post`, `list_payments` and `read_message` are
+    # reads and pass.
+    - id: outward-action
+      autoOnly: true
+      reason: >-
+        This tells other people something or moves their money, and neither can be taken back.
+        A sent message is already read, and a payment is already settled, before anyone checks it.
+      tools:
+        - '(?i)^mcp__.*__(?:[a-z0-9]+_)?(?:send|post|reply|forward|broadcast|publish|tweet)(?:_|$)'
+        - '(?i)^mcp__.*__(?:[a-z0-9]+_)?(?:pay|transfer|refund|charge|payout|withdraw|purchase)(?:_|$)'
+        - '(?i)^mcp__.*__(?:[a-z0-9]+_)?(?:create|issue|capture|void|cancel|submit|place|execute)_(?:payment|charge|refund|payout|transfer|invoice|order|trade)'
+        - '(?i)^mcp__.*__(?:[a-z0-9]+_)?(?:share|invite)(?:_|$)'
+        - '(?i)^mcp__.*__(?:[a-z0-9]+_)?(?:create|update|delete|cancel)_(?:event|meeting)'

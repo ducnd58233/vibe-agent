@@ -300,6 +300,9 @@ Follow links from those files only as the task requires.
   5. `/ship` returned **GO**.
   6. The diff touches nothing on the danger list: migrations, data destruction, production writes,
      credential changes, history rewrites, infrastructure destruction, or outward publication.
+     On Claude Code the list also refuses, on an auto run, an MCP tool call that sends, posts,
+     pays, shares, or schedules (`outward-action` in `danger-default.yaml`). Other hosts do not
+     yet refuse it; the gap is in [`host-hook-contracts.md`](.ai-agents/references/host-hook-contracts.md).
 
   This loosens a boundary this file used to state without exception. It is written here rather than
   left to a mode flag because a reader of this rule has to be able to see what changed and when it

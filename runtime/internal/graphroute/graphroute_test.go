@@ -10,6 +10,12 @@ func TestGraphForCommands(t *testing.T) {
 	if GraphFor(CmdResearch) != GraphResearcher {
 		t.Fatal("research should use researcher graph")
 	}
+	if GraphFor(CmdTask) != GraphTask {
+		t.Fatal("task should use the task graph")
+	}
+	if GraphForWorkflow(WorkflowTask) != GraphTask {
+		t.Fatal("the task workflow should use the task graph")
+	}
 }
 
 func TestResolveDerivesSlug(t *testing.T) {

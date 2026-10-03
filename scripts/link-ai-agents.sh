@@ -407,7 +407,7 @@ install_workspace_hook_configs() {
         ]
       },
       {
-        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "matcher": "Bash|Edit|Write|NotebookEdit|mcp__.*",
         "hooks": [
           { "type": "command", "command": "$(hook_command pre-tool-use claude)" }
         ]

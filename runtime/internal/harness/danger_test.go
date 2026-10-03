@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	state "github.com/ducnd58233/vibe-agent/runtime/internal/run"
 )
 
 // refuse asks the gate about one shell command, with no run in the workspace.
@@ -18,6 +20,23 @@ func refuse(t *testing.T, command string) *BlockError {
 	body.ToolName = "Bash"
 	body.ToolInput.Command = command
 	return dangerVerdict(Request{WorkspaceRoot: t.TempDir()}, body)
+}
+
+// refuseTool asks the gate about one tool call that carries no shell command,
+// in a workspace that either has a running auto run or has none.
+func refuseTool(t *testing.T, tool string, autoRun bool) *BlockError {
+	t.Helper()
+	root := t.TempDir()
+	if autoRun {
+		root = workspaceWithRun(t, func(run *state.Run) {
+			if err := run.SetFlagAt("auto", true, at()); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+	var body payload
+	body.ToolName = tool
+	return dangerVerdict(Request{WorkspaceRoot: root}, body)
 }
 
 // Every category needs a test. Walking the ids means adding one without a case
@@ -40,6 +59,9 @@ func TestEveryDangerCategoryRefusesSomething(t *testing.T) {
 		{"local-destruction", "rm" + " -rf /"},
 		{"publication", "npm publish"},
 	}
+	// outward-action reads a tool name, not a command, so it has its own case
+	// list below; it is added to covered here so the walk still sees it.
+	outwardTool := "mcp__slack__slack_send_message"
 
 	categories := DangerCategories()
 	if len(categories) == 0 {
@@ -58,6 +80,8 @@ func TestEveryDangerCategoryRefusesSomething(t *testing.T) {
 				testCase.category, testCase.command, blocked.Reason)
 		}
 	}
+
+	covered["outward-action"] = refuseTool(t, outwardTool, true) != nil
 
 	for _, id := range categories {
 		if !covered[id] {
@@ -236,5 +260,123 @@ func TestTheBuiltInDangerPlanCompiles(t *testing.T) {
 	}
 	if len(plan) != len(DangerCategories()) {
 		t.Errorf("plan has %d categories, DangerCategories reports %d", len(plan), len(DangerCategories()))
+	}
+}
+
+// Outward actions are refused only where nobody can answer a prompt. The same
+// call in an interactive session is left to the host's own permission flow.
+func TestOutwardActionsAreRefusedOnAnAutoRunOnly(t *testing.T) {
+	for _, tool := range []string{
+		"mcp__slack__slack_send_message",
+		"mcp__gmail__send_email",
+		"mcp__stripe__create_refund",
+		"mcp__bank__transfer_funds",
+		"mcp__payments__create_payment",
+		"mcp__Google_Drive__share_file",
+		"mcp__calendar__create_event",
+		"mcp__x__tweet",
+	} {
+		blocked := refuseTool(t, tool, true)
+		if blocked == nil {
+			t.Errorf("%q was allowed on an auto run", tool)
+			continue
+		}
+		if !strings.Contains(blocked.Reason, "outward-action") || !strings.Contains(blocked.Reason, tool) {
+			t.Errorf("%q refusal does not name the category and the tool:\n%s", tool, blocked.Reason)
+		}
+		if interactive := refuseTool(t, tool, false); interactive != nil {
+			t.Errorf("%q was refused with no auto run, which would break interactive work:\n%s", tool, interactive.Reason)
+		}
+	}
+}
+
+// Reads that share a verb's spelling, and the toolkit's own tools, stay allowed
+// on an auto run. A pattern that fires on a read gets the gate switched off.
+func TestOutwardActionPatternsLeaveReadsAlone(t *testing.T) {
+	for _, tool := range []string{
+		"mcp__slack__slack_list_channels",
+		"mcp__slack__slack_get_thread_replies",
+		"mcp__gmail__search_messages",
+		"mcp__gmail__read_message",
+		"mcp__stripe__list_payments",
+		"mcp__stripe__get_invoice",
+		"mcp__calendar__list_events",
+		"mcp__github__get_pull_request",
+		"mcp__github__create_pull_request",
+		"mcp__vibe-agent__vibe_checkpoint",
+		"mcp__vibe-agent__vibe_verify",
+		"Read",
+		"Bash",
+	} {
+		if blocked := refuseTool(t, tool, true); blocked != nil {
+			t.Errorf("%q was refused on an auto run:\n%s", tool, blocked.Reason)
+		}
+	}
+}
+
+// A consumer may add tool patterns, and they honour autoOnly the same way.
+func TestAConsumerToolPatternCanBeAutoOnlyOrAlways(t *testing.T) {
+	plan, err := parseDangerPlan([]byte(`
+apiVersion: vibe-agent/v1
+kind: DangerPlan
+spec:
+  categories:
+    - id: house-tool
+      reason: This repository stops this tool.
+      tools: ['^mcp__crm__delete_']
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan) != 1 || len(plan[0].tools) != 1 || plan[0].AutoOnly {
+		t.Fatalf("plan parsed wrong: %+v", plan)
+	}
+}
+
+// A category with only tool patterns still counts as matching something.
+func TestADangerCategoryWithOnlyToolsIsValid(t *testing.T) {
+	if _, err := parseDangerPlan([]byte(`
+apiVersion: vibe-agent/v1
+kind: DangerPlan
+spec:
+  categories:
+    - id: tools-only
+      reason: A reason.
+      tools: ['^mcp__x__']
+`)); err != nil {
+		t.Errorf("a tools-only category was rejected: %v", err)
+	}
+}
+
+// The same refusal, reached the way a host reaches it: a Claude PreToolUse
+// payload for an MCP call, through the hook entry point.
+func TestPreToolUseRefusesAnMCPSendOnAnAutoRunAndAllowsItOtherwise(t *testing.T) {
+	const payloadJSON = `{"tool_name":"mcp__slack__slack_send_message","tool_input":{"channel":"C1","text":"hi"}}`
+
+	auto := workspaceWithRun(t, func(run *state.Run) {
+		if err := run.SetFlagAt("auto", true, at()); err != nil {
+			t.Fatal(err)
+		}
+	})
+	err := runHook(t, Request{
+		Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: auto,
+		Stdin: strings.NewReader(payloadJSON),
+	})
+	var blocked *BlockError
+	if !asBlock(err, &blocked) {
+		t.Fatalf("an MCP send was allowed on an auto run: %v", err)
+	}
+	if !strings.Contains(blocked.Reason, "outward-action") {
+		t.Errorf("the refusal does not name its category: %s", blocked.Reason)
+	}
+
+	// A manual run, and a workspace with no run at all, are both interactive.
+	for name, root := range map[string]string{"manual run": workspaceWithRun(t), "no run": t.TempDir()} {
+		if err := runHook(t, Request{
+			Event: EventPreToolUse, Client: ClientClaude, WorkspaceRoot: root,
+			Stdin: strings.NewReader(payloadJSON),
+		}); err != nil {
+			t.Errorf("%s: an MCP send was refused: %v", name, err)
+		}
 	}
 }

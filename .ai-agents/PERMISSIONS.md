@@ -38,6 +38,11 @@ Current project posture:
   utilities, `WebFetch`.
 - Asks for almost nothing: `NotebookEdit`, `chmod`, `chown`, `kill`, `killall`, `pkill` only. Nothing
   else is in `ask`, deliberately — see the note above.
+- Runs the `pre-tool-use` hook on MCP tool calls too (matcher `mcp__.*` on Claude Code), so the
+  `outward-action` danger category can refuse a message send, a payment, a share, or a calendar
+  write on an auto run. On an interactive run an MCP tool no allow rule covers still prompts the
+  person. Other hosts are not known to gate MCP calls; see
+  [`references/host-hook-contracts.md`](references/host-hook-contracts.md).
 - Denies credential-shaped file reads, `git push --force`, `git clean`, `git push --mirror`,
   `git filter-branch`, and hand-writes to a run's own `manifest.json`/`events.ndjson`.
 - **Deny patterns must be specific enough to miss ordinary source files.** A broad `Read(**/*token*)` also blocked runtime guard code and design-token files such as `tokens.json`, and because deny overrides allow there is no way to grant an exception. It is now a set of credential-shaped patterns (`*access_token*`, `*refresh_token*`, `*auth_token*`, `*api_token*`, `*id_token*`, `.token*`, `token.json`). When adding a deny rule, check it against real repository paths before committing it.

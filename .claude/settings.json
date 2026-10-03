@@ -139,7 +139,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Edit|Write|NotebookEdit|WebFetch",
+        "matcher": "Bash|Edit|Write|NotebookEdit|WebFetch|mcp__.*",
         "hooks": [
           {
             "type": "command",

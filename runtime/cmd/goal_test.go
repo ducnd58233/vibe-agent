@@ -56,3 +56,22 @@ func TestAutoResearchSubcommand(t *testing.T) {
 		t.Fatal("expected auto flag")
 	}
 }
+
+func TestTaskCommandStartsTaskGraph(t *testing.T) {
+	root := t.TempDir()
+	flags := []string{"--workspace", root, "--toolkit", toolkitRoot,
+		"Summarize the vendor contract renewal terms"}
+	if err := taskCommand(flags); err != nil {
+		t.Fatal(err)
+	}
+	run, err := state.Load(state.ManifestPath(root, "summarize-vendor-contract-renewal"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if run.GraphID != "task-delivery" {
+		t.Fatalf("graph = %q", run.GraphID)
+	}
+	if run.Flags["auto"] {
+		t.Fatal("task command must not set the auto flag")
+	}
+}

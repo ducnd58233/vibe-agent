@@ -173,6 +173,16 @@ Human gates on spec and plan under `/goal`; `/auto` can skip them when docs pass
 
 The host agent runs `vibe-agent goal "<your text>"`. Slug and graph are derived; do not pass `--goal`, `--graph`, or `--slug`. Rules: [`.ai-agents/commands/goal.md`](.ai-agents/commands/goal.md).
 
+### Not code (`/task`)
+
+For a report, an analysis, a document, a data job, an ops step, or a message to other people, there is no branch or pull request to gate on. `/task` runs the `task-delivery` graph instead: you approve a spec with written acceptance rows, the work is checked row by row, and you approve the exact delivery before anything is sent, posted, paid, or shared.
+
+```text
+/task Summarize the vendor renewal terms in the attached contract and draft a reply to the account manager
+```
+
+The host agent runs `vibe-agent task "<your text>"`. There is no `/auto` form of it, because the delivery step is the one a person has to approve. Rules: [`.ai-agents/commands/task.md`](.ai-agents/commands/task.md).
+
 ### Unattended (`/auto`)
 
 Same graphs and checks as `/goal`, but approval gates close on evidence instead of waiting for you. Requires the runtime and a workspace opt-in file.
