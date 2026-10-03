@@ -66,6 +66,11 @@ path. When a rule already has a home, link to it instead of restating it.
 - **Grounded claims (no fabrication):** never describe a file, path, command result, or source you
   have not actually opened, listed, or run. Report `ACCESS-FAILED: <path>` for inaccessible inputs
   instead of inferring. Harness-agnostic, and applies to subagents as much as to primary agents.
+- **Numbers (MUST):** compute every figure you did not copy from a source with `vibe-agent calc`,
+  never in your head. Give each figure its unit, currency, as-of date, and source. Log each
+  calculation in a fenced `calc` block and check it with `vibe-agent docs check-calcs`. A
+  read-only agent with no shell lists the calculations for the main session instead. Rules and
+  worked examples: [`quantitative-accuracy`](.ai-agents/skills/quantitative-accuracy/SKILL.md).
 - **Research integrity (MUST):** in any experiment, benchmark, model evaluation, or research that
   reports a number, never tune on, reuse, or peek at the held-out split; never edit an evaluator,
   grader, threshold, label, or test to make a result pass; never report a number you did not trace

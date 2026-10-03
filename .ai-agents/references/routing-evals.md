@@ -56,6 +56,7 @@ For skill and agent behavioral evaluation more broadly, see
 | Record a decision affecting several modules so it is not relitigated | skill | [`documentation-and-adrs`](../skills/documentation-and-adrs/SKILL.md) |
 | Settle branching habits and untangle a messy merge | skill | [`git-workflow-and-versioning`](../skills/git-workflow-and-versioning/SKILL.md) |
 | Run the citation digest slash command on a scoped topic | command | [`research.md`](../commands/research.md) |
+| Compare two growth rates with units and rounding stated, and show the working | skill | [`quantitative-accuracy`](../skills/quantitative-accuracy/SKILL.md) |
 | Draft a reply to a customer and send it only after I approve the exact text | command | [`task.md`](../commands/task.md) |
 | Write acceptance rows that a script or a second person can check for a report | skill | [`general-task-delivery`](../skills/general-task-delivery/SKILL.md) |
 | Audit toolkit asset health (routers, links, hooks) | command | [`doctor.md`](../commands/doctor.md) |

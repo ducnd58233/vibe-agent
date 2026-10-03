@@ -19,6 +19,7 @@ disable-model-invocation: true
 2. COMPARE
    - Build option-by-option comparison.
    - Each non-trivial cell is cited or labeled `UNVERIFIED`.
+   - Compare like with like (unit, period, definition) and show the bases, not only the difference. Computed cells follow [`quantitative-accuracy`](../quantitative-accuracy/SKILL.md).
 3. JUDGE
    - Apply criteria consistently and show weighting rationale.
    - Challenge your own leading hypothesis with counter-evidence.

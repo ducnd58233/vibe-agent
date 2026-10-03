@@ -59,6 +59,8 @@ research loops with metric gates, use `vibe-agent auto research "<topic>"` after
 
 <required>
 
+Every figure the digest computes is computed with `vibe-agent calc` and logged in a fenced `calc` block. `vibe-agent docs check-calcs <RESEARCH file>` recomputes each line, and `checkpoint` runs the same check at `auto_research` and `literature`, so it refuses to leave the node while a logged figure is wrong. Give every figure its unit, currency, as-of date, and source. Rules: [`quantitative-accuracy`](../skills/quantitative-accuracy/SKILL.md).
+
 For every benchmark, dataset, or reported number a source relies on, record in the digest whether the result is self-reported or independently reproduced, whether the benchmark may be in a model's training data or leaks between its splits, and the dataset's licence and terms of use. A number you cannot trace to an opened source is `UNVERIFIED`. Applicability must say if a source's evaluation setting matches this topic's, because a baseline number from a different setting is not a baseline. Rules: [`research-integrity`](../references/research-integrity.md).
 </required>
 
