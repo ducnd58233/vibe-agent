@@ -27,6 +27,10 @@ import (
 	"time"
 )
 
+// evalTimeLimit caps the wall-clock time of one evaluation. It is a variable
+// only so a test can shorten it.
+var evalTimeLimit = 5 * time.Second
+
 // Limits bound what one evaluation may spend.
 const (
 	maxExprLen       = 4096
@@ -127,7 +131,7 @@ func Eval(expr string, opts Options) (res Result, err error) {
 	if err != nil {
 		return Result{}, err
 	}
-	p := &parser{tokens: tokens}
+	p := &parser{tokens: tokens, deadline: time.Now().Add(evalTimeLimit)}
 	v, err := p.parseExpr()
 	if err != nil {
 		return Result{}, err

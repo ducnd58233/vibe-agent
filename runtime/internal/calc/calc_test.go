@@ -357,3 +357,14 @@ func FuzzEval(f *testing.F) {
 		}
 	})
 }
+
+func TestEvalStopsAtItsTimeLimit(t *testing.T) {
+	saved := evalTimeLimit
+	evalTimeLimit = time.Nanosecond
+	defer func() { evalTimeLimit = saved }()
+
+	_, err := Eval("1+2+3+4+5+6+7+8+9", Options{})
+	if err == nil || !strings.Contains(err.Error(), "took longer") {
+		t.Fatalf("want a time-limit error, got %v", err)
+	}
+}

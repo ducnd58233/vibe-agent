@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 )
 
 type tokKind int
@@ -144,9 +145,20 @@ func scanNumber(s string, i int) (int, error) {
 }
 
 type parser struct {
-	tokens []token
-	pos    int
-	depth  int
+	tokens   []token
+	pos      int
+	depth    int
+	deadline time.Time
+}
+
+// check fails an evaluation that has run past its time limit. The size bounds
+// keep any one operation short, and this keeps a long chain of them from adding
+// up: an input is not trusted to be cheap just because every step of it is.
+func (p *parser) check() error {
+	if time.Now().After(p.deadline) {
+		return fmt.Errorf("the expression took longer than %s to evaluate; use smaller numbers or fewer operations", evalTimeLimit)
+	}
+	return nil
 }
 
 func (p *parser) peek() token { return p.tokens[p.pos] }
@@ -186,6 +198,9 @@ func (p *parser) parseExpr() (value, error) {
 		return value{}, err
 	}
 	for p.isOp("+") || p.isOp("-") {
+		if err := p.check(); err != nil {
+			return value{}, err
+		}
 		op := p.next().text
 		right, err := p.parseTerm()
 		if err != nil {
@@ -205,6 +220,9 @@ func (p *parser) parseTerm() (value, error) {
 		return value{}, err
 	}
 	for p.isOp("*") || p.isOp("/") {
+		if err := p.check(); err != nil {
+			return value{}, err
+		}
 		op := p.next().text
 		right, err := p.parseUnary()
 		if err != nil {
@@ -253,6 +271,9 @@ func (p *parser) parsePow() (value, error) {
 		return base, nil
 	}
 	p.next()
+	if err := p.check(); err != nil {
+		return value{}, err
+	}
 	if err := p.enter(); err != nil {
 		return value{}, err
 	}
@@ -329,6 +350,9 @@ func (p *parser) parseCall(name token) (value, error) {
 	for {
 		if len(args) >= maxArgs {
 			return value{}, fmt.Errorf("%s has more than %d arguments", name.text, maxArgs)
+		}
+		if err := p.check(); err != nil {
+			return value{}, err
 		}
 		arg, err := p.parseExpr()
 		if err != nil {
