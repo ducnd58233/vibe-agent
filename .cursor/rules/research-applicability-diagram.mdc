@@ -20,4 +20,6 @@ When writing or editing research artifacts for `researcher-delivery` or `/resear
 2. **Refine (MUST)** - State concrete method/data/scope changes before experiments.
 3. **Mermaid (MUST)** - Include at least one fenced ` ```mermaid ` diagram (literature map, experiment setup, or findings flow). See `.ai-agents/references/diagram-authoring.md`.
 
+4. **Evaluation protocol and Data and terms (MUST, on experiment PLAN)** - Freeze splits, what is tuned on which split, metric, thresholds, `maxGap`, trial budget, and each dataset's licence and terms before the run. Never edit an evaluator or threshold to pass a result; score the held-out split once. See `.ai-agents/references/research-integrity.md`.
+
 Do not claim GPU sandbox support in-process; experiments run on host or CI and update `experiment/STATUS.md`.

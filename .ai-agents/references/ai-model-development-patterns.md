@@ -12,6 +12,7 @@ Use this reference when building, adapting, evaluating, documenting, or monitori
 - **Start with the product task, not the model.** Define user need, decision boundary, latency/cost budget, failure tolerance, and acceptance metrics before selecting a model.
 - **Use the simplest useful baseline.** Compare heuristics, retrieval, rules, pretrained APIs, classical ML, fine-tuning, and training-from-scratch before choosing complexity.
 - **Treat data as the primary artifact.** Track source, license, consent, labeling process, splits, leakage checks, schema, quality, bias risks, and dataset version.
+- **Treat a result as a claim to be earned.** Freeze splits, metric, thresholds, and trial budget before running, score the held-out split once, and report the cost of the number. Rules and failure classes: [`research-integrity.md`](research-integrity.md).
 - **Make experiments reproducible.** Version code, data snapshot, config, seed, environment, model artifact, metrics, and hardware/runtime notes.
 - **Evaluate by slices and failure modes.** Report aggregate metrics plus slices for domain, language, class, geography, device, demographic/proxy risks, long-tail examples, and adversarial cases where relevant.
 - **Document intended use and limits.** Maintain model cards and dataset cards for models/datasets that may be reused, shipped, or audited.
@@ -82,6 +83,7 @@ Include when a model/dataset can be reused, deployed, or audited:
 
 <references>
 
+- [`research-integrity.md`](research-integrity.md)
 - [`agent-evaluation-patterns.md`](agent-evaluation-patterns.md)
 - [`context-management-patterns.md`](context-management-patterns.md)
 - [`ci-cd-observability-patterns.md`](ci-cd-observability-patterns.md)

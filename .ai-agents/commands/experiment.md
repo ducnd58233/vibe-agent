@@ -69,14 +69,43 @@ When `status` becomes `done`, also write `experiment/METRICS.json`:
 
 The `results_eval` verifier compares metrics to thresholds. Values below the bar route the graph back to `hypothesis` without human approval.
 
+`METRICS.json` also carries an `integrity` block, and the verifier fails a file that has none. A run that fits or tunes a model, a prompt, or a rule and reports a number from held-out data writes:
+
+```json
+"integrity": {
+  "kind": "held_out_eval",
+  "selectionSplit": "validation",
+  "reportedSplit": "test",
+  "selectionMetrics": {"ndcg_at_10": 0.86},
+  "maxGap": {"ndcg_at_10": 0.03},
+  "trials": 14,
+  "reportedSplitEvaluations": 1
+}
+```
+
+A run with no model, split, or tuning step (a reproduce-and-fix cycle, a closed-form check) writes `{"kind": "not_applicable", "reason": "<why>"}`; a blank reason fails. The verifier fails a gap larger than `maxGap` in either direction, a reported split scored more than once, and a selection split equal to the reported one. Schema: [`experiment-run.schema.json`](../../schemas/experiment-run.schema.json).
+
 **Comparing this run against earlier iterations (not just gating this one):** this STATUS.md/METRICS.json pair is scoped to the current graph run and stops mattering once it finishes. To keep a comparable record across many iterations for a paper, report, or competition writeup, also write `experiments/<project-slug>/<run-id>/` per [`researcher-harness`](../skills/researcher-harness/SKILL.md) section "Experiment ledger, across runs".
+</required>
+
+## Integrity (MUST)
+
+<required>
+
+Rules and reasons: [`research-integrity`](../references/research-integrity.md). The ones that bind this command:
+
+- **Run the frozen PLAN.** Splits, metric, thresholds, `maxGap`, and trial budget come from the approved PLAN's Evaluation protocol. Copy them into `METRICS.json`; do not choose them after seeing a result.
+- **Never edit the evaluator to pass.** No change to metric code, a grader, a threshold, labels, the eval set, or a test in the change that produces the result.
+- **Count, do not recall.** `trials` and `reportedSplitEvaluations` come from the experiment ledger (`experiments/<project-slug>/`), counting failed and abandoned runs.
+- **Report coverage.** Samples skipped by an error or timeout are reported as evaluated over total, not dropped from the average.
+- **An `INTEGRITY:` failure is not a miss to retry.** Looping to `hypothesis` re-scores the reported split. Correct the record if it was wrong, re-split or bring fresh held-out data if the split is spent, or stop and ask a person. Never record it as `checkpoint --blocker`, and never re-run until it passes.
 </required>
 
 ## How
 
 <procedure>
 
-1. Read PLAN Mermaid and TASKS acceptance criteria.
+1. Read PLAN Mermaid, Evaluation protocol, Data and terms, and TASKS acceptance criteria.
 2. Run the next host/CI step the plan names.
 3. Refresh STATUS.md before returning.
 4. Call `vibe_verify` at `experiment_monitor`.

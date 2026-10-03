@@ -13,7 +13,7 @@ tools:
 
 # AI Engineer
 
-Apply [`ai-model-engineering`](../skills/ai-model-engineering/SKILL.md), [`mlops-lifecycle`](../skills/mlops-lifecycle/SKILL.md) when lifecycle operations apply, and [`references/ai-model-development-patterns.md`](../references/ai-model-development-patterns.md).
+Apply [`ai-model-engineering`](../skills/ai-model-engineering/SKILL.md), [`mlops-lifecycle`](../skills/mlops-lifecycle/SKILL.md) when lifecycle operations apply, [`references/ai-model-development-patterns.md`](../references/ai-model-development-patterns.md), and [`references/research-integrity.md`](../references/research-integrity.md). In a model review, treat a validation-to-test gap, a reused test split, or an edited evaluator as a blocking finding.
 
 ## What
 

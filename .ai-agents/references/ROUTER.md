@@ -26,6 +26,7 @@ Lookup table for shared checklists and pattern docs under this folder. These fil
 | Context budgets and progressive disclosure | [`context-management-patterns.md`](context-management-patterns.md) | `context-engineering`, asset authors |
 | Measured token and memory savings: extraction, indexes, cache keys, what a runtime may own | [`token-efficiency.md`](token-efficiency.md) | `token-efficient-execution`, `agent-harness-engineering` |
 | AI/ML model development, evaluation, documentation, monitoring | [`ai-model-development-patterns.md`](ai-model-development-patterns.md) | `ai-model-engineering`, `ai-research-methodology`, `ai-engineer`, `ai-researcher` |
+| Research and experiment integrity: leakage, selection pressure, agent shortcutting, contamination, selective reporting, data terms; the frozen-protocol and `integrity` record rules | [`research-integrity.md`](research-integrity.md) | `researcher-harness`, `ai-research-methodology`, `ai-model-engineering`, `mlops-lifecycle`, `ai-researcher`, `ai-engineer`, `data-analyst`, `/experiment`, `/findings` |
 | Delivery and observability review patterns | [`ci-cd-observability-patterns.md`](ci-cd-observability-patterns.md) | `devops-platform-delivery`, `observability-monitoring` |
 | SQL/NoSQL query diagnosis and optimization | [`database-query-patterns.md`](database-query-patterns.md) | `database-query-optimization`, `database-query-auditor` |
 | Manual QA and automation strategy | [`qa-testing-strategy.md`](qa-testing-strategy.md) | `qa-testing-strategy`, `qa-tester` |

@@ -159,7 +159,8 @@ func writeExperimentResults(t *testing.T, root, slug string) {
 	}
 	write(t, filepath.Join(dir, "STATUS.md"), "# Experiment\n\nstatus: done\njudgement: not_applicable\n")
 	write(t, filepath.Join(dir, "METRICS.json"),
-		`{"metrics":{"quality":1},"thresholds":{"quality":{"op":">=","value":0.5}}}`)
+		`{"metrics":{"quality":1},"thresholds":{"quality":{"op":">=","value":0.5}},`+
+			`"integrity":{"kind":"not_applicable","reason":"fixture has no tuning step"}}`)
 }
 
 // settledDocs writes the artifacts the gates read, with nothing left open.

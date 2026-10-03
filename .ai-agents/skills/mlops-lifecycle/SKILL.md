@@ -21,6 +21,7 @@ disable-model-invocation: true
    - Move production logic out of notebooks into deterministic scripts/pipelines.
 4. **Gate model promotion**
    - Require evaluation metrics, baseline comparison, slice tests, latency/cost checks, lineage, and rollback target.
+   - Refuse a promotion whose held-out split was reused for selection or whose validation and held-out numbers diverge without explanation. Rules: [`research-integrity`](../../references/research-integrity.md).
    - Add human approval for high-impact or regulated decisions.
 5. **Serve safely**
    - Keep inference APIs observable, bounded, and rollbackable.
@@ -57,6 +58,7 @@ Use for ML pipelines, model lifecycle, MLflow/Kubeflow work, inference services,
 
 - [ ] Code, data, features, config, artifact, metrics, and environment lineage are tracked.
 - [ ] Promotion gate compares against baseline and includes slice/edge-case evaluation.
+- [ ] Promotion evidence shows an unspent held-out split and a bounded validation-to-held-out gap.
 - [ ] Serving path has latency/error/resource monitoring and rollback target.
 - [ ] Drift/data-quality/model-quality monitoring is defined or explicitly deferred.
 - [ ] Sensitive data/model-output logging is avoided or policy-reviewed.

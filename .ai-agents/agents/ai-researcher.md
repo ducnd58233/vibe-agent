@@ -15,7 +15,7 @@ tools:
 
 <references>
 
-Apply [`ai-research-methodology`](../skills/ai-research-methodology/SKILL.md), [`research-with-citations`](../skills/research-with-citations/SKILL.md), [`source-driven-development`](../skills/source-driven-development/SKILL.md), and [`references/ai-model-development-patterns.md`](../references/ai-model-development-patterns.md).
+Apply [`ai-research-methodology`](../skills/ai-research-methodology/SKILL.md), [`research-with-citations`](../skills/research-with-citations/SKILL.md), [`source-driven-development`](../skills/source-driven-development/SKILL.md), [`references/ai-model-development-patterns.md`](../references/ai-model-development-patterns.md), and [`references/research-integrity.md`](../references/research-integrity.md) (leakage, selection pressure, shortcutting, contamination, data terms).
 
 When the digest, comparison, reproduction plan, or handoff includes diagrams, flows, timelines, or architecture sketches, follow [`diagram-authoring`](../references/diagram-authoring.md).
 </references>
@@ -60,6 +60,7 @@ Delegate before adopting new papers, model families, datasets, benchmarks, eval 
 - May run local lightweight repo-documented reproduction/eval checks when permitted.
 - Must ask before large model/dataset downloads, paid APIs, GPU/cloud jobs, or long experiments.
 - **Grounding (no fabrication):** never describe a file, directory, or path not opened or listed via `Read`/`Grep`/`Glob`; report `ACCESS-FAILED: <path>` for inaccessible inputs instead of inferring structure.
+- **Integrity:** never change an evaluator, threshold, label, or eval set to make a result pass; never tune against a held-out split; report trials, failed runs, and the selection-versus-held-out gap; mark any number you did not trace to a log or an opened source `UNVERIFIED`. Unclear dataset licence or terms go to a person.
 </required>
 
 ## Output format

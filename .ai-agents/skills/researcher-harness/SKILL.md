@@ -20,10 +20,10 @@ disable-model-invocation: true
    - **Refine** - what to change before experiments.
    - A fenced `mermaid` literature or claim→method diagram.
 2. **Hypothesis** - testable questions derived from Refine.
-3. **Experiment design** - PLAN with Mermaid setup (data → protocol → metrics → stop), plus TASKS.
+3. **Experiment design** - PLAN with Mermaid setup (data → protocol → metrics → stop), plus TASKS, plus **Evaluation protocol** and **Data and terms** sections that freeze splits, metric, thresholds, `maxGap`, trial budget, and data licence and terms before the run. Rules: [`research-integrity`](../../references/research-integrity.md).
 4. **Run** - host or CI only. Keep `experiment/STATUS.md` (`running|done|failed`).
 5. **Monitor** - `vibe_verify` / `vibe_experiment_status` until terminal.
-6. **Findings + writeup** - cite STATUS and artifacts; no orphan claims.
+6. **Findings + writeup** - cite STATUS and artifacts; no orphan claims; state trials, failed runs, seed spread, coverage, and the selection-versus-held-out gap.
 
 Anti-fabrication: no model assertion as check evidence. Gates use `file_assert` / `human_event` / `exit_code` / `ci_api` only.
 
@@ -80,7 +80,10 @@ Next: <what this implies for the next run-id, if anything>
 [`schemas/experiment-run.schema.json`](../../../schemas/experiment-run.schema.json)
 (`$defs/config`, `$defs/metrics`) - the same `{metrics, thresholds}` shape
 `experiment/METRICS.json` already uses, so one parser reads both, and every
-run in a series shares the same fields to diff against. `JUDGEMENT.md` is prose, like `SUMMARY.md`,
+run in a series shares the same fields to diff against. `metrics.json` carries the same `integrity`
+block as `experiment/METRICS.json`, and the ledger is where `trials` and `reportedSplitEvaluations`
+are counted from, so a run that is not in the ledger is not allowed to claim a held-out split is
+unspent. `JUDGEMENT.md` is prose, like `SUMMARY.md`,
 and is not schema-validated. A worked example:
 [`experiments/_example/001/`](../../../experiments/_example/001/).
 
@@ -97,6 +100,7 @@ usually track it, since comparing runs later for a writeup is the point.
 - Commands: [`research.md`](../../commands/research.md), [`experiment.md`](../../commands/experiment.md), [`findings.md`](../../commands/findings.md)
 - Cursor rule: research Applicability + Mermaid MUST
 - Prefer [`ai-research-methodology`](../ai-research-methodology/SKILL.md) only for AI/ML method detail overlays
+- Integrity rules for every experiment: [`research-integrity`](../../references/research-integrity.md)
 
 Use for researcher workflows. Avoid when shipping product code through `goal-delivery`.
 </routing>

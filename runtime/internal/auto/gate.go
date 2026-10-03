@@ -97,6 +97,7 @@ func ScanGateDocuments(workspaceRoot, slug, nodeID, date string) ([]Ambiguity, [
 		case "PLAN":
 			if nodeID == "approve_design" {
 				findings = append(findings, RequireExperimentDiagram(string(document))...)
+				findings = append(findings, RequireEvaluationProtocol(string(document))...)
 			}
 		}
 	}

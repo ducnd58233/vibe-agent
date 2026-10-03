@@ -51,6 +51,8 @@ Applies to data-science and ML workflows in consumer repositories, including ana
 - Require source + date + license for dataset claims
 - Require held-out evaluation details for model performance claims
 - Mark unverified metrics as `UNVERIFIED`
+- Split by the unit that must not cross, fit preprocessing on train only, and score the held-out split once; rules in [`research-integrity`](../references/research-integrity.md)
+- Report the validation-to-test gap and the number of trials tried
 </required>
 
 ## References

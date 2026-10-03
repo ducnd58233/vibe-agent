@@ -30,8 +30,8 @@
     },
     "metrics": {
       "type": "object",
-      "description": "metrics.json: the same {metrics, thresholds} shape experiment/METRICS.json already uses, so one parser reads both.",
-      "required": ["metrics", "thresholds"],
+      "description": "metrics.json: the same {metrics, thresholds, integrity} shape experiment/METRICS.json uses, so one parser reads both. integrity is required: a metric with no record of which data it was chosen on cannot be told apart from a tuned one.",
+      "required": ["metrics", "thresholds", "integrity"],
       "additionalProperties": false,
       "properties": {
         "metrics": {
@@ -58,6 +58,63 @@
               }
             }
           }
+        },
+        "integrity": {
+          "type": "object",
+          "description": "The evaluation record beside the metrics. Self-reported, so it does not stop deliberate fraud; it forces the facts that expose silent leakage and test-set tuning into a file the results verifier reads. Mirrors runtime/internal/verifier/integrity.go. Declare the values in the approved PLAN before the run.",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": ["held_out_eval", "not_applicable"],
+              "description": "held_out_eval: the headline metrics come from data no choice was tuned on. not_applicable: there is no model, split, or tuning step; say why in reason."
+            },
+            "reason": {
+              "type": "string",
+              "description": "Required for not_applicable."
+            },
+            "selectionSplit": {
+              "type": "string",
+              "description": "Where hyperparameters, prompts, features, checkpoints, and thresholds were chosen."
+            },
+            "reportedSplit": {
+              "type": "string",
+              "description": "The held-out split the headline metrics come from. Must differ from selectionSplit."
+            },
+            "selectionMetrics": {
+              "type": "object",
+              "description": "The gated metrics measured on selectionSplit.",
+              "additionalProperties": { "type": "number" }
+            },
+            "maxGap": {
+              "type": "object",
+              "description": "Largest accepted absolute difference between selectionMetrics and metrics, per gated metric.",
+              "additionalProperties": { "type": "number", "minimum": 0 }
+            },
+            "trials": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Every configuration tried to reach this run, failures included."
+            },
+            "reportedSplitEvaluations": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Times reportedSplit was scored over the whole project. Must be 1: a split scored twice is no longer held out."
+            }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "kind": { "const": "not_applicable" } }, "required": ["kind"] },
+              "then": { "required": ["reason"] }
+            },
+            {
+              "if": { "properties": { "kind": { "const": "held_out_eval" } }, "required": ["kind"] },
+              "then": {
+                "required": ["selectionSplit", "reportedSplit", "selectionMetrics", "maxGap", "trials", "reportedSplitEvaluations"],
+                "properties": { "reportedSplitEvaluations": { "const": 1 } }
+              }
+            }
+          ]
         }
       }
     }

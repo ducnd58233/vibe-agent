@@ -4,6 +4,22 @@
     "latency_ms_p50": 620
   },
   "thresholds": {
-    "accuracy": { "op": ">=", "value": 0.8 }
+    "accuracy": {
+      "op": ">=",
+      "value": 0.8
+    }
+  },
+  "integrity": {
+    "kind": "held_out_eval",
+    "selectionSplit": "validation",
+    "reportedSplit": "test",
+    "selectionMetrics": {
+      "accuracy": 0.86
+    },
+    "maxGap": {
+      "accuracy": 0.05
+    },
+    "trials": 1,
+    "reportedSplitEvaluations": 1
   }
 }

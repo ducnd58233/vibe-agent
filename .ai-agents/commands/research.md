@@ -55,6 +55,13 @@ Host agents derive slug and graph; do not ask the user for flags. For unattended
 research loops with metric gates, use `vibe-agent auto research "<topic>"` after
 `vibe-agent auto init`.
 
+## Benchmarks, datasets, and numbers (MUST)
+
+<required>
+
+For every benchmark, dataset, or reported number a source relies on, record in the digest whether the result is self-reported or independently reproduced, whether the benchmark may be in a model's training data or leaks between its splits, and the dataset's licence and terms of use. A number you cannot trace to an opened source is `UNVERIFIED`. Applicability must say if a source's evaluation setting matches this topic's, because a baseline number from a different setting is not a baseline. Rules: [`research-integrity`](../references/research-integrity.md).
+</required>
+
 ## Routing & discovery
 
 <routing>
